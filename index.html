@@ -14,7 +14,7 @@
   <div id="toast"></div>
 
   <script>
-    var version = "0.3.2";
+    var version = "0.3.7";
     function loadAllGameComponents() {
       // Definiera den strikta ordningen av alla filer
       const scriptOrder = [
@@ -45,12 +45,14 @@
         'js/systems/units.js',
         'js/systems/construction.js',
         'js/systems/production.js',
+        'js/systems/pathdecay.js',
         // 5. Rendering, indata, UI
         'js/render/shapes.js',
         'js/render/renderer.js',
         'js/render/layers.js',
         'js/input.js',
         'js/ui.js',
+        'js/minimap.js',
         // 6. Spelloop (Sista steg innan init)
         'js/game.js'
       ];

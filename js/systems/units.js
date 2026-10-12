@@ -32,12 +32,13 @@
 
       const dx = nextTile.x + .5 - unit.x, dy = nextTile.y + .5 - unit.y, distance = Math.hypot(dx, dy);
       const stepLength = Config.settings.walkSpeed * (unit.definition.speedMultiplier || 1) * deltaSeconds / (tileCost === Infinity ? 1 : tileCost);
-      unit.status = 'Går';
+      unit.status = 'Walking';
+
       if (distance <= stepLength) {
         unit.x = nextTile.x + .5; unit.y = nextTile.y + .5; step.pathIndex++;
         if (unit.definition.wearsPaths) { // trampar upp stigen
           const tile = World.getTile(nextTile.x, nextTile.y);
-          tile.wear = Math.min(1, tile.wear + Config.settings.wearPerPass);
+          tile.wear = Math.min(2, tile.wear + Config.settings.wearPerPass);
         }
       } else {
         unit.x += dx / distance * stepLength; unit.y += dy / distance * stepLength;

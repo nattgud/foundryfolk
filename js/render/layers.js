@@ -66,6 +66,10 @@
         context.fillStyle = '#000'; context.fillRect(x + 3, y + tileSize - 8, tileSize - 6, 5);
         context.fillStyle = '#5fb55f'; context.fillRect(x + 3, y + tileSize - 8, (tileSize - 6) * building.buildProgress, 5);
       } else if (!building.definition.isStorage) { // indata nederst, utdata överst
+        // Om det finns en byggnad på denna plats, ignorera ritning av resurser
+        if (World.buildings.some(b => b.x === x && b.y === y)) {
+          return; // Hoppa över resten av denna loop-iteration
+        }
         renderer.drawResourceIcons(context, building.inputStock, x, y + tileSize - 7);
         renderer.drawResourceIcons(context, building.outputStock, x, y + 1);
       }

@@ -23,7 +23,8 @@
       World.init();
       CityBuilder.Renderer.init();
       CityBuilder.Input.init();
-      UI.init();
+        UI.init();
+      if (CityBuilder.Minimap) CityBuilder.Minimap.init();
       for (let i = 0; i < Config.settings.startingCarriers; i++) World.spawnUnit('carrier', 0, 0);
       const restored = Save ? Save.applyStart() : false;
       if (level) UI.showToast((restored ? 'Spelet laddades. ' : '') + 'Bana ' + level.level + ': ' + level.name);

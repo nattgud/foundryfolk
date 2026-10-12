@@ -9,10 +9,10 @@ CityBuilder.Config.settings = {
   startingCarriers: 20,
   carriersPerBuilding: 2,
   startingResources: { wood: 12, plank: 10, stone: 10, hammer: 10 },
-  gameSpeeds: [1, 2, 4, 8, 16, 32, 64],
+  gameSpeeds: [1, 2, 4, 64],
   defaultEquipment: {}, // utrustning som varje produktionshus måste få (kan åsidosättas med requiredEquipment)
-  wearPerPass: .05,              // slitage per bärarpassage
-  maxWearSpeedBonus: .4,         // max hastighetsökning på helt upptrampad ruta
+  wearPerPass: 0.2,              // slitage per bärarpassage
+  maxWearSpeedBonus: .25,         // max hastighetsökning på helt upptrampad ruta
   maxPathSearchesPerFrame: 16,
   pathfinding: { nodeLimit: 3000, margin: 24, maxCells: 160000, maxCachedPaths: 800 },
   logistics: { planningIntervalSeconds: .25, maxTasks: 8, requestsPerBuilding: 4 },

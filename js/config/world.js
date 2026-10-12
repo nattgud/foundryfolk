@@ -173,13 +173,48 @@
       }
     },
 
-    // 2. Meteoritnedslag: krater med en fallen stjärna i mitten.
+    // 2. fallen stars: 10 separata nedslag
     context => {
-      const site = siteInCell(context, 110, 300, 0.22, 9);
-      if (!site) return;
-      const distance = Math.hypot(context.x - site.centerX, context.y - site.centerY);
-      if (distance < 0.5) return 'fallen_star';
-      if (distance < 3.4 && random(context, context.x, context.y, 305) < 0.9) return 'meteor_crater';
+      for (let i = 0; i < 20; i++) {
+        const site = siteInCell(context, 110, 300 + i * 10, 1, 9);
+        if (!site) continue;
+
+        const distance = Math.hypot(
+          context.x - site.centerX,
+          context.y - site.centerY
+        );
+
+        if (distance < 0.5) return 'fallen_star';
+      }
+    },
+    
+    // 2. Meteoriter: slumpmässiga nedslag över hela världen.
+    context => {
+      const cellSize = 12;
+      const cellX = Math.floor(context.x / cellSize);
+      const cellY = Math.floor(context.y / cellSize);
+
+      // Varje cell har en möjlig nedslagsposition.
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          const cx = cellX + ox;
+          const cy = cellY + oy;
+
+          if (random(context, cx, cy, 500) >= 0.3) continue;
+
+          const x = cx * cellSize +
+            Math.floor(random(context, cx, cy, 501) * cellSize);
+          const y = cy * cellSize +
+            Math.floor(random(context, cx, cy, 502) * cellSize);
+
+          // Kratern får bara uppta en enda tile.
+          if (context.x !== x || context.y !== y) continue;
+
+          if (isOpenWater(landscapeAt(context))) return;
+
+          return 'meteor_crater';
+        }
+      }
     },
 
     // 3. Forntida altare: ett altare omgivet av en ring av ruiner.
