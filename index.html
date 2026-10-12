@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Towner</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body onload="loadAllGameComponents()">
+  <canvas id="gameCanvas"></canvas>
+  <div id="top"></div>
+  <div id="info"></div>
+  <div id="bottom"></div>
+  <div id="toast"></div>
+
+  <script>
+    var version = "0.3.2";
+    function loadAllGameComponents() {
+      // Definiera den strikta ordningen av alla filer
+      const scriptOrder = [
+        // 1. Kärna
+        'js/core/namespace.js',
+        'js/core/util.js',
+        'js/core/heap.js',
+        'js/core/assets.js',
+        'js/core/save.js',
+        // 2. Konfiguration
+        'js/config/settings.js',
+        'js/config/resources.js',
+        'js/config/terrain.js',
+        'js/config/units.js',
+        'js/config/buildings.js',
+        'js/config/world.js',
+        'js/config/levels.js',
+        'js/config/finalize.js',
+        // 3. Värld
+        'js/world/generator.js',
+        'js/world/world.js',
+        // 4. Spelsystem
+        'js/systems/pathfinding.js',
+        'js/systems/economy.js',
+        'js/systems/jobs.js',
+        'js/systems/behaviors.js',
+        'js/systems/logistics.js',
+        'js/systems/units.js',
+        'js/systems/construction.js',
+        'js/systems/production.js',
+        // 5. Rendering, indata, UI
+        'js/render/shapes.js',
+        'js/render/renderer.js',
+        'js/render/layers.js',
+        'js/input.js',
+        'js/ui.js',
+        // 6. Spelloop (Sista steg innan init)
+        'js/game.js'
+      ];
+
+      let loadIndex = 0;
+      const totalScripts = scriptOrder.length;
+
+      function loadNextScript() {
+        if (loadIndex < totalScripts) {
+          const scriptPath = scriptOrder[loadIndex]+"?v="+version;
+          const script = document.createElement('script');
+          script.src = scriptPath;
+          
+          script.onload = () => {
+            loadIndex++;
+            loadNextScript(); // Gå vidare till nästa skript
+          };
+
+          script.onerror = (error) => {
+            console.error(`FATAL ERROR: Failed to load script at step ${loadIndex + 1}: ${scriptPath}`, error);
+            // Stoppa laddningen vid ett fel
+          };
+
+          document.head.appendChild(script);
+        } else {
+          console.log('Game components loaded!');
+          
+          // SÄKERHETSKONTROLL: Anropa init endast om vi tror att CityBuilder är redo
+          if (window.CityBuilder && window.CityBuilder.Game && typeof window.CityBuilder.Game.init === 'function') {
+             window.CityBuilder.Game.init();
+             console.log('CityBuilder.Game.init() executed.');
+          } else {
+             console.warn('Initialization failed: CityBuilder.Game.init() is not defined.');
+          }
+        }
+      }
+
+      loadNextScript();
+    }
+  </script>
+
+</body>
+</html>
