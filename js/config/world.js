@@ -175,7 +175,7 @@
 
     // 2. fallen stars: 10 separata nedslag
     context => {
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 10; i++) {
         const site = siteInCell(context, 110, 300 + i * 10, 1, 9);
         if (!site) continue;
 

@@ -11,6 +11,18 @@ CityBuilder.Config.buildings = {
     buildDuration: 5
   },
 
+  // guardtower: {
+  //   name: 'Guard Tower',
+  //   category: 'storage',
+  //   symbol: 'GT',
+  //   color: '#f00',
+  //   buildCost: { wood: 5, plank: 3 },
+  //   buildDuration: 5,
+
+  //   spawnsUnits: 'warrior',
+  //   maxUnits: 3,
+  // },
+
   warehouse: {
     name: 'Warehouse',
     category: 'storage',
@@ -198,6 +210,22 @@ CityBuilder.Config.buildings = {
       workSeconds: 5
     },
     buildDuration: 5
+  },
+  // Gruvbrytning och stenbrott
+  rock_crusher: {
+    name: 'Rock crusher',
+    category: 'gathering',
+    symbol: 'RC',
+    color: '#5d6368',
+    buildCost: { plank: 5 },
+    job: {
+      kind: 'gather',
+      sourceTerrain: 'rock',
+      searchRadius: 20,
+      outputResource: 'sand',
+      workSeconds: 0.1
+    },
+    buildDuration: 10
   },
 
   iron_mine: {

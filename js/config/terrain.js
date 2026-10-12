@@ -23,7 +23,7 @@ CityBuilder.Config.terrain = {
   petrified_wood:   { name: "Petrified wood",  color: '#62594c', walkCost: 5, fallbackShape: 'tree', resourceAmount: 10 }, // Adjusted to 10
 
   // Sten och malm
-  rock:             { name: "Rock",        color: '#35603a', walkCost: 20, gatherersStopBefore: true, fallbackShape: 'rock', resourceAmount: 15 }, // Increased slightly
+  rock:             { name: "Rock",        color: '#666', walkCost: 20, gatherersStopBefore: true, fallbackShape: 'rock', resourceAmount: 15 }, // Increased slightly
   iron_ore:         { name: "Iron Ore",     color: '#65463f', walkCost: 5, fallbackShape: 'rock', resourceAmount: 30 }, // Increased to 30
   copper_ore:       { name: "Copper Ore",   color: '#ad704b', walkCost: 5, fallbackShape: 'rock', resourceAmount: 25 }, // Increased to 25
   tin_ore:          { name: "Tin Ore",        color: '#9ba3a5', walkCost: 5, fallbackShape: 'rock', resourceAmount: 25 }, // Increased to 25

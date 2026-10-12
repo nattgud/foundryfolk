@@ -22,7 +22,7 @@
             World.spawnUnit('carrier', World.headquarters.x, World.headquarters.y);
           }
         }
-        if (building.definition.isWinBuilding) CityBuilder.UI.showToast('★ Monumentet är byggt!<br>Du vann!');
+        if (building.definition.isWinBuilding) CityBuilder.UI.showToast('★ Monument is built!');
       }
     },
   };

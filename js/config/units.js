@@ -13,6 +13,23 @@ CityBuilder.Config.units = {
     image: 'images/units/carrier.png', 
     imageCarrying: 'images/units/carrier_loaded.png', 
   },
+  // warrior: {
+  //   isHauler: false,
+  //   wearsPaths: true,
+  //   speedMultiplier: 1,
+  //   color: '#4fd1e8',
+  //   fallbackShape: 'square',
+  //   fallbackSize: 8,
+  //   imageSize: 16,
+  //   image: 'images/units/carrier.png',
+  //   imageCarrying: 'images/units/carrier_loaded.png',
+
+  //   isSoldier: true,
+  //   searchRadius: 10,
+  //   attackRange: 1,
+  //   attackDamage: 1,
+  //   attackCooldown: 1,
+  // },
   worker:  {
     speedMultiplier: 1,
     color: '#ffffff',

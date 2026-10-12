@@ -1185,6 +1185,31 @@
             display: none;
           }
         }
+
+        /* Menyknappar: större tryckytor på mobil (pekskärm eller smal skärm) */
+        @media (pointer: coarse), (max-width: 520px) {
+          #mainMenuButton {
+            min-width: 44px;
+            min-height: 44px;
+            font-size: 20px;
+          }
+
+          .main-menu-button {
+            min-height: 48px;
+            padding: 12px 14px;
+            font-size: 16px;
+          }
+
+          .main-menu .resource-window-close {
+            width: 44px;
+            height: 44px;
+            font-size: 26px;
+          }
+
+          .main-menu-slot-meta {
+            font-size: 13px;
+          }
+        }
       `;
 
       document.head.appendChild(style);
@@ -1262,6 +1287,7 @@
 
       if (job?.kind === 'gather') {
         lines.push(`Gathering: ${this.terrainName(job.sourceTerrain)} → ${this.resourceName(job.outputResource)}`);
+        if (this.getBuildingRange(definition)) lines.push(`Räckvidd: ${this.getBuildingRange(definition)} rutor`);
       } else if (job?.kind === 'craft') {
         const inputs = Utils.formatResourceList(job.inputs);
         const outputs = Utils.formatResourceList(job.outputs);
@@ -1338,6 +1364,36 @@
         context.lineWidth = 2;
         context.strokeRect(this.inspectedTile.x * size + 1, this.inspectedTile.y * size + 1, size - 2, size - 2);
       });
+
+      // Räckvidd: en gul cirkel runt vald (eller hovrad) byggnad som samlar från terrängen.
+      // En ruta är inom räckhåll när avståndet till byggnaden är högst searchRadius (samma regel som i behaviors.js).
+      CityBuilder.Renderer.addLayer('buildingRange', (context, renderer) => {
+        const game = CityBuilder.Game;
+        const input = CityBuilder.Input;
+        const tile = renderer.hoverTile;
+        const hovering = input && input.mouseOverMap && !input.dragging && tile && !game.placingType;
+        const hovered = hovering ? World.buildingAt(tile.x, tile.y) : null;
+        const size = renderer.tileSize;
+
+        for (const building of new Set([game.selectedBuilding, hovered])) {
+          const range = building && !building.removed ? this.getBuildingRange(building.definition) : 0;
+          if (!range) continue;
+
+          context.beginPath();
+          context.arc((building.x + 0.5) * size, (building.y + 0.5) * size, range * size, 0, Math.PI * 2);
+          context.fillStyle = 'rgba(255, 214, 90, 0.12)';
+          context.fill();
+          context.lineWidth = 2;
+          context.strokeStyle = 'rgba(255, 214, 90, 0.5)';
+          context.stroke();
+        }
+      });
+    },
+
+    // Hur många rutor en byggnad når (0 om den inte har någon räckvidd)
+    getBuildingRange(definition) {
+      const job = definition && definition.job;
+      return job && job.kind === 'gather' && job.searchRadius > 0 ? job.searchRadius : 0;
     },
 
     // Hover-tooltip för byggnader och terrängnoder under musen (inte på pekskärm, inte vid panorering)
@@ -1436,7 +1492,8 @@
 
       byId('infoStatus').innerHTML = building.definition.isStorage
         ? `Lager: ${Utils.formatResourceList(building.storedGoods) || 'tomt'}`
-        : `${statusText}<br>In: ${Utils.formatResourceList(building.inputStock) || '–'} · Ut: ${Utils.formatResourceList(building.outputStock) || '–'}`;
+        : `${statusText}<br>In: ${Utils.formatResourceList(building.inputStock) || '–'} · Ut: ${Utils.formatResourceList(building.outputStock) || '–'}` +
+          (this.getBuildingRange(building.definition) ? `<br>Räckvidd: ${this.getBuildingRange(building.definition)} rutor` : '');
 
       if (byId('pauseButton')) {
         byId('pauseButton').textContent = building.paused ? 'Starta' : 'Pausa';
