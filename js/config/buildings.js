@@ -205,7 +205,7 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'gather',
       sourceTerrain: 'rock',
-      searchRadius: 30,
+      searchRadius: 14,
       outputResource: 'stone',
       workSeconds: 5
     },
@@ -220,10 +220,10 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 5 },
     job: {
       kind: 'gather',
-      sourceTerrain: 'rock',
-      searchRadius: 20,
+      sourceTerrain: 'mountain',
+      searchRadius: 25,
       outputResource: 'sand',
-      workSeconds: 0.1
+      workSeconds: 60
     },
     buildDuration: 10
   },
@@ -330,6 +330,23 @@ CityBuilder.Config.buildings = {
     buildDuration: 8
   },
 
+  gemstone_mine: {
+    name: 'Gemstone Mine',
+    category: 'mining',
+    symbol: 'GM',
+    color: '#765aa8',
+    buildCost: { plank: 5, stone: 4 },
+    placeOnTerrain: 'gemstone',
+    job: {
+      kind: 'gather',
+      sourceTerrain: 'gemstone',
+      searchRadius: 4,
+      outputResource: 'gemstone',
+      workSeconds: 10
+    },
+    buildDuration: 9
+  },
+
   salt_mine: {
     name: 'Salt Mine',
     category: 'mining',
@@ -362,23 +379,6 @@ CityBuilder.Config.buildings = {
       workSeconds: 8
     },
     buildDuration: 7
-  },
-
-  gemstone_mine: {
-    name: 'Gemstone Mine',
-    category: 'mining',
-    symbol: 'GM',
-    color: '#765aa8',
-    buildCost: { plank: 5, stone: 4 },
-    placeOnTerrain: 'gemstone',
-    job: {
-      kind: 'gather',
-      sourceTerrain: 'gemstone',
-      searchRadius: 4,
-      outputResource: 'gemstone',
-      workSeconds: 10
-    },
-    buildDuration: 9
   },
 
   // Förädling och materialproduktion

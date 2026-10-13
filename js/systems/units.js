@@ -46,9 +46,9 @@
     },
 
     handleIdle(unit, deltaSeconds) {
-      unit.status = '';
-      if ((unit.idleCooldown -= deltaSeconds) > 0) return;
+      if ((unit.idleCooldown -= deltaSeconds) > 0 ) return;
       unit.idleCooldown = .5;
+      unit.status = '';
       if (unit.homeBuilding) { // arbetare planerar nytt arbetspass
         if (!unit.homeBuilding.paused) Behaviors.get(unit.homeBuilding.definition.job.kind).planWork(unit);
         else unit.status = 'Pausad';

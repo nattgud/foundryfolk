@@ -15,6 +15,48 @@
       return behavior;
     },
 
+    // Hur långt ut varje arbetare har sökt hittills (ej sparat: en ny sökning startar vid laddning)
+    searchProgress: new WeakMap(),
+
+    // Sök efter närmaste nod i ringar. Returnerar { x, y, tile }, null (inget finns inom räckvidd) eller
+    // undefined (sökningen är inte klar, anropa igen). Små räckvidder söks i ett enda anrop.
+    searchNearest(worker, building, job) {
+      const maxRadius = job.searchRadius;
+      const settings = Config.settings;
+      const ringWidth = settings.gatherSearchRingWidth || 8;       // ringens tjocklek i rutor
+      const tileBudget = settings.gatherSearchTilesPerCall || 2500; // ungefär så många rutor per anrop
+      let from = this.searchProgress.get(worker) || 0;
+      let checked = 0;
+
+      while (from < maxRadius) {
+        const to = Math.min(maxRadius, from + ringWidth);
+        let best = null, bestDistance = 1e9;
+
+        for (let dy = -to; dy <= to; dy++) {
+          const rowHalf = Math.floor(Math.sqrt(to * to - dy * dy));
+          // Hoppa över den redan genomsökta mitten (avstånd <= from)
+          const innerHalf = Math.abs(dy) <= from ? Math.ceil(Math.sqrt(from * from - dy * dy)) : -1;
+          for (let dx = -rowHalf; dx <= rowHalf; dx++) {
+            if (innerHalf >= 0 && dx > -innerHalf && dx < innerHalf) { dx = innerHalf - 1; continue; }
+            const distance = Math.hypot(dx, dy);
+            if (distance <= from && from > 0 || distance > to) continue;
+            checked++;
+            const x = building.x + dx, y = building.y + dy, tile = World.getTile(x, y);
+            if (tile.terrainType === job.sourceTerrain && tile.remainingAmount > 0 && distance < bestDistance) {
+              bestDistance = distance; best = { x, y, tile };
+            }
+          }
+        }
+
+        if (best) { this.searchProgress.delete(worker); return best; }
+        from = to;
+        if (checked >= tileBudget && from < maxRadius) { this.searchProgress.set(worker, from); return undefined; }
+      }
+
+      this.searchProgress.delete(worker);
+      return null;
+    },
+
     forBuilding(building) { return building.definition.job ? this.get(building.definition.job.kind) : null; },
 
     // Allt huset ska ha levererat: insatser (upp till kapacitet) och utrustning
@@ -38,16 +80,12 @@
       if (!Behaviors.hasRequiredEquipment(building)) { worker.status = 'Saknar verktyg'; return; }
       if (Utils.sumValues(building.outputStock) >= Config.settings.outputBufferCapacity) { worker.status = 'Fullt lager'; return; }
 
-      let target = null, targetDistance = 1e9;
-      for (let y = building.y - job.searchRadius; y <= building.y + job.searchRadius; y++) {
-        for (let x = building.x - job.searchRadius; x <= building.x + job.searchRadius; x++) {
-          const tile = World.getTile(x, y), distance = Math.hypot(x - building.x, y - building.y);
-          if (tile.terrainType === job.sourceTerrain && tile.remainingAmount > 0 && distance <= job.searchRadius && distance < targetDistance) {
-            targetDistance = distance; target = { x, y, tile };
-          }
-        }
-      }
-      if (!target) { worker.status = 'Inga resurser'; return; }
+      // Sökningen sker i omgångar (ringar utåt från huset) så att stora räckvidder inte hänger spelet.
+      // Närmaste noden vinner alltid: en ring genomsöks färdigt, och hittas inget går sökningen vidare utåt
+      // (över flera anrop/bilder) tills searchRadius är nådd.
+      const target = Behaviors.searchNearest(worker, building, job);
+      if (target === undefined) { worker.status = 'Söker...'; return; } // fortsätter vid nästa anrop
+      if (target === null) { worker.status = 'Inga resurser'; worker.idleCooldown = 60; return; }
 
       const stopBeside = Config.terrain[target.tile.terrainType].gatherersStopBefore;
       worker.stepQueue = [

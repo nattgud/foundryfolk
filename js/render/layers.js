@@ -47,11 +47,12 @@
 
   Renderer.addLayer('buildings', (context, renderer) => {
     const tileSize = renderer.tileSize;
+    let first = 1;
     for (const building of World.buildings) {
       const x = building.x * tileSize, y = building.y * tileSize;
       const isFinished = building.buildProgress >= 1, image = Assets.get(building.definition.image);
-
       context.globalAlpha = isFinished ? (building.paused ? .55 : 1) : .45;
+
       if (image) context.drawImage(image, x + 2, y + 2, tileSize - 4, tileSize - 4);
       else {
         context.fillStyle = building.definition.color;
@@ -61,7 +62,12 @@
         context.fillText(building.definition.symbol || '?', x + tileSize / 2, y + tileSize / 2 + 1);
       }
       context.globalAlpha = 1;
-
+      
+      if(building?.workerUnit?.status === "Inga resurser" || building?.workerUnit?.idleCooldown < 0.5) {
+        const icon = Assets.get("images/ui/icons/question_blue.png");
+        if (icon) context.drawImage(icon, x, y, tileSize / 2, tileSize / 2);
+      }
+      
       if (!isFinished) { // byggframsteg
         context.fillStyle = '#000'; context.fillRect(x + 3, y + tileSize - 8, tileSize - 6, 5);
         context.fillStyle = '#5fb55f'; context.fillRect(x + 3, y + tileSize - 8, (tileSize - 6) * building.buildProgress, 5);

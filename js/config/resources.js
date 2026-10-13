@@ -43,9 +43,9 @@ CityBuilder.Config.resources = {
   coal:             { name: 'Coal',               color: '#292a30' },
   gold_ore:         { name: 'Gold Ore',            color: '#827044' },
   silver_ore:       { name: 'Silver Ore',          color: '#b9c1ca' },
+  gemstone:         { name: 'Gemstone',            color: '#5b6' },
   salt_ore:         { name: 'Salt Ore',            color: '#d6d0bd' },
   sulfur:           { name: 'Sulfur',              color: '#d6c83f' },
-  gemstone:         { name: 'Gemstone',            color: '#765aa8' },
 
   // Metaller och metallkomponenter
   iron:             { name: 'Iron',                color: '#7a8fb5' },

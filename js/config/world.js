@@ -35,8 +35,8 @@
 
   /* ---------- Brus ---------- */
 
-  // Hela världens storlek: 1 = som tidigare, 0.5 = alla landskapsdrag hälften så stora (tätare värld)
-  const FEATURE_SCALE = 0.5;
+  // world size (0.5 default)
+  const FEATURE_SCALE = 1;
 
   // Roterat fraktalbrus i två skalor. Rotationen döljer rutnätsmönstret i värdebruset.
   const fbm = (context, x, y, scale, channel, angle) => {
@@ -66,6 +66,13 @@
 
   /* ---------- Landskapsmodell (beräknas en gång per ruta) ---------- */
   const SEA_LEVEL = 0.4;
+  // Berg (terrängtypen 'mountain'): ruta med relief över nivån, med ojämn kant. Justera här för mer/mindre berg.
+  const MOUNTAIN_LEVEL = 0.76;
+  // Malm utanför berg: enstaka fynd på en eller två rutor, väldigt utspridda och helst intill vanlig sten.
+  const SCATTERED_ORE_CHANCE = 0.006;      // chans per ruta att vara ett fynd (före stenvillkoret). Lägre = färre fynd
+  const SCATTERED_ORE_FAR_CHANCE = 0.2;    // andel av fynden som får ligga utan sten i närheten (1 = överallt, 0 = bara intill sten)
+  const SCATTERED_ORE_PAIR_CHANCE = 0.4;   // chans att ett fynd är två rutor i stället för en
+  const SCATTERED_ORE_MIN_ORIGIN = 30;     // inga spridda fynd närmare startpunkten än så här (startområdet har egna)
   const modelCache = new WeakMap();
 
   const landscapeAt = context => {
@@ -116,12 +123,150 @@
       0.30 * smoothstep(0.62, 0.85, relief)
     );
 
-    model = { x, y, origin, startArea, elevation, relief, mountain, mountainZone, moisture, seaDepth, riverDistance, riverHalfWidth, warpX, warpY };
+    // Bergruta: högt relief, ojämn kant och aldrig nära start
+    const mountainEdge = (fbm(context, x, y, 10, 265, 0.5) - 0.5) * 0.06;
+    const mountainDepth = relief + mountainEdge - MOUNTAIN_LEVEL; // > 0 = bergsruta, högre = längre in/upp
+    const inMountain = origin > 40 && mountainDepth > 0;
+    // Bergskärna: marginellt högre upp än bergets kant. Malm i berg ligger bara här, så den är alltid omsluten av berg.
+    const coreMountain = inMountain && mountainDepth > MOUNTAIN_ORE_MARGIN;
+
+    model = { x, y, origin, startArea, elevation, relief, mountain, inMountain, coreMountain, mountainDepth, mountainZone, moisture, seaDepth, riverDistance, riverHalfWidth, warpX, warpY };
     modelCache.set(context, model);
     return model;
   };
 
   const isOpenWater = model => model.seaDepth > 0 || model.riverDistance < 0;
+
+  // Malm inne i bergen: ungefär så här stor andel av bergsrutorna blir malm (exklusive svavel och månsten).
+  // Mängden är en slumpandel per ruta, så den ligger nära målet oavsett hur bruset ser ut. Klungbildningen
+  // flyttar den lokalt men inte i snitt.
+  const MOUNTAIN_ORE_SHARE = 0.40;  // andel av bergets KÄRNA (se marginalen nedan). Hela berget blir ca 25-30 % malm
+  const MOUNTAIN_ORE_MARGIN = 0.03; // hur mycket högre än bergets kant en ruta måste ligga för att få malm (större = bredare malmfri kant)
+  // Bas-vikter (summan 1) för vilken malm en malmruta i berg blir. Provinser (brus) förskjuter dem regionalt.
+  const MOUNTAIN_ORE_MIX = [
+    // [terräng, vikt, provinskanal (samma kanal = samma provins, så brons-malmerna hamnar nära varandra)]
+    ['iron_ore', 0.27, 420], ['coal', 0.22, 421], ['copper_ore', 0.18, 422], ['tin_ore', 0.10, 422],
+    ['silver_ore', 0.08, 423], ['gold_ore', 0.05, 424], ['crystal', 0.06, 425], ['gemstone', 0.04, 426],
+  ];
+
+  // Väljer malmtyp för en ruta (vikter + regionala provinser)
+  const pickOre = (context, x, y) => {
+    const weights = MOUNTAIN_ORE_MIX.map(([terrain, base, channel]) =>
+      base * (0.2 + 1.6 * smoothstep(0.38, 0.62, fbm(context, x, y, 70, channel, 0.8))));
+    let pick = random(context, x, y, 402) * weights.reduce((sum, weight) => sum + weight, 0);
+    for (let i = 0; i < weights.length; i++) {
+      if ((pick -= weights[i]) < 0) return MOUNTAIN_ORE_MIX[i][0];
+    }
+    return MOUNTAIN_ORE_MIX[0][0];
+  };
+
+  const mountainOre = (context, model) => {
+    const { x, y } = context;
+    if (!model.coreMountain) return; // bergets kant är bara berg
+    const cluster = fbm(context, x, y, 9, 400, 1.0);
+    const chance = clamp01(MOUNTAIN_ORE_SHARE + (cluster - 0.5) * 0.9);
+    if (random(context, x, y, 401) >= chance) return;
+
+    // Garanti: alla åtta grannar måste också vara bergsrutor, så malmen aldrig gränsar mot öppen mark.
+    // (Kontrollen körs bara för rutor som redan blivit malmkandidater, så den är billig.)
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const neighbor = Object.create(context);
+        neighbor.x = x + dx;
+        neighbor.y = y + dy;
+        neighbor.distanceFromOrigin = Math.hypot(neighbor.x, neighbor.y);
+        if (!landscapeAt(neighbor).inMountain) return;
+      }
+    }
+
+    return pickOre(context, x, y);
+  };
+
+  // Träsk: returnerar 'water' (pöl), 'bog' eller undefined. Egen funktion så att kratrarna kan undvika träsk.
+  const bogAt = (context, model) => {
+    const aboveSea = -model.seaDepth;
+    if (aboveSea < 0.015 || aboveSea > 0.2 || model.moisture < 0.62 || model.origin < 30) return; // inget träsk vid starten
+    const bogness = stretch(fbm(context, context.x, context.y, 38, 170, 0.5), 2.4) * smoothstep(0.6, 0.78, model.moisture);
+    if (bogness < 0.42) return;
+    if (fbm(context, context.x, context.y, 5, 171, 1.1) > 0.74) return 'water';
+    if (random(context, context.x, context.y, 172) < 0.85) return 'bog';
+  };
+
+  // Är rutan (en vanlig) sten? Utspridda block oberoende av höjd, utan vatten och tjärgropar.
+  const rockAt = context => {
+    const outcrop = fbm(context, context.x, context.y, 13, 270, 1.4);
+    const wanted = (outcrop > 0.6 && random(context, context.x, context.y, 271) < 0.45) ||
+                   random(context, context.x, context.y, 272) < 0.02;
+    if (!wanted) return;
+    const model = landscapeAt(context);
+
+    // Vatten: hav, sjöar, floder och en marginal runt dem
+    if (model.seaDepth > -0.03 || model.riverDistance < 3) return;
+
+    // Tjärgropar: inte inom två rutor från en (samma villkor som tjärregeln)
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const nx = context.x + dx, ny = context.y + dy;
+        if (random(context, nx, ny, 244) < 0.0025 && fbm(context, nx, ny, 100, 240, 0.9) > 0.58) return;
+      }
+    }
+    return 'rock';
+  };
+
+  // En kopia av kontexten för en annan ruta (landskapet cachas per kontext)
+  const contextAt = (context, x, y) => {
+    const other = Object.create(context);
+    other.x = x;
+    other.y = y;
+    other.distanceFromOrigin = Math.hypot(x, y);
+    return other;
+  };
+
+  // Utspridda malmfynd utanför berg. Ett fynd är en "ankarruta" (slumpad, helst intill sten) som med viss chans
+  // har en granne med samma malm: aldrig mer än två rutor (fynden är så glesa att de inte hinner klumpa ihop sig).
+  const NEIGHBORS_4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+  const scatteredAnchorGate = (context, x, y) => random(context, x, y, 430) < SCATTERED_ORE_CHANCE;
+
+  // Ankarruta som duger? (öppen mark, inte sten, intill sten eller en slumpad andel)
+  const scatteredAnchorValid = (context, x, y) => {
+    const anchor = contextAt(context, x, y);
+    const model = landscapeAt(anchor);
+    if (model.origin < SCATTERED_ORE_MIN_ORIGIN || isOpenWater(model) || model.inMountain || bogAt(anchor, model) || rockAt(anchor)) return false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if ((dx || dy) && rockAt(contextAt(context, x + dx, y + dy))) return true;
+      }
+    }
+    return random(context, x, y, 431) < SCATTERED_ORE_FAR_CHANCE;
+  };
+
+  const scatteredOre = (context, model) => {
+    const { x, y } = context;
+    if (model.origin < SCATTERED_ORE_MIN_ORIGIN || model.inMountain || bogAt(context, model)) return;
+
+    let anchorX = null, anchorY = null;
+    if (scatteredAnchorGate(context, x, y) && scatteredAnchorValid(context, x, y)) {
+      anchorX = x; anchorY = y;
+    } else {
+      // Är jag partnerruta till en granne? (partner = grannen i slumpad riktning, bara för en del av fynden)
+      for (const [dx, dy] of NEIGHBORS_4) {
+        const ax = x + dx, ay = y + dy;
+        if (!scatteredAnchorGate(context, ax, ay)) continue;
+        if (random(context, ax, ay, 433) >= SCATTERED_ORE_PAIR_CHANCE) continue;
+        const [px, py] = NEIGHBORS_4[Math.floor(random(context, ax, ay, 432) * 4) % 4];
+        if (ax + px !== x || ay + py !== y) continue;
+        if (!scatteredAnchorValid(context, ax, ay) || rockAt(context)) continue;
+        anchorX = ax; anchorY = ay;
+        break;
+      }
+    }
+    if (anchorX === null) return;
+
+    const ore = pickOre(context, anchorX, anchorY);
+    return ore === 'gemstone' ? 'crystal' : ore; // ädelsten finns bara i berg
+  };
 
   /* ---------- Fasta platser (rutnätsceller med deterministisk mittpunkt) ---------- */
 
@@ -138,10 +283,13 @@
 
   /* ---------- Startområdet: lagom nära rikedomar, annars blir spelet omöjligt ---------- */
   let starterCache = null;
+  const STARTER_ORE_FINDS = 8;     // antal malmfynd (järn och kol var för sig) runt startområdet
+  const STARTER_ORE_SPREAD = 9;    // hur långt från mittpunkten de sprids (rutor)
+  const STARTER_ORE_MIN_GAP = 3;   // minsta avstånd mellan två fynd
   const starterDeposits = () => {
     const seed = currentSeed();
     if (starterCache && starterCache.seed === seed) return starterCache.list;
-    const list = [];
+    const list = [], tiles = new Map(); // tiles: utspridda malmrutor "x,y" -> terräng
     const hashFor = index => CityBuilder.Utils.hash(index, seed, 4242);
     const base = hashFor(0) * Math.PI * 2;
     const add = (terrainType, distance, radius, index) => {
@@ -150,14 +298,32 @@
       list.push(deposit);
       return deposit;
     };
+    // Malm nära start: små enstaka fynd (en eller två rutor) utspridda runt en punkt, inte en stor fläck
+    const addFinds = (terrainType, distance, index) => {
+      const angle = base + index * 1.9 + (hashFor(index) - 0.5) * 0.7;
+      const centerX = Math.cos(angle) * distance, centerY = Math.sin(angle) * distance;
+      const placed = [];
+      for (let attempt = 0; placed.length < STARTER_ORE_FINDS && attempt < STARTER_ORE_FINDS * 12; attempt++) {
+        const a = hashFor(index * 1000 + attempt * 3 + 1) * Math.PI * 2;
+        const d = Math.sqrt(hashFor(index * 1000 + attempt * 3 + 2)) * STARTER_ORE_SPREAD;
+        const x = Math.round(centerX + Math.cos(a) * d), y = Math.round(centerY + Math.sin(a) * d);
+        if (placed.some(find => Math.hypot(find.x - x, find.y - y) < STARTER_ORE_MIN_GAP)) continue; // glest
+        placed.push({ x, y });
+        tiles.set(x + ',' + y, terrainType);
+        if (hashFor(index * 1000 + attempt * 3 + 3) < SCATTERED_ORE_PAIR_CHANCE) { // ibland två rutor
+          const [dx, dy] = NEIGHBORS_4[Math.floor(hashFor(index * 1000 + attempt * 3 + 4) * 4) % 4];
+          tiles.set((x + dx) + ',' + (y + dy), terrainType);
+        }
+      }
+    };
     const pond = add('water', 21, 3.4, 6); // en damm med sandstrand, så brunnar går att bygga från start
     list.push({ terrainType: 'sand', x: pond.x, y: pond.y, radius: pond.radius + 2.2 });
     add('rock', 15, 3.3, 1);
-    add('iron_ore', 27, 3.0, 2);
-    add('coal', 29, 2.8, 3);
+    addFinds('iron_ore', 27, 2);
+    addFinds('coal', 29, 3);
     add('clay', 24, 2.6, 4);
     add('limestone', 30, 2.8, 5);
-    starterCache = { seed, list };
+    starterCache = { seed, list, tiles };
     return list;
   };
 
@@ -210,7 +376,9 @@
           // Kratern får bara uppta en enda tile.
           if (context.x !== x || context.y !== y) continue;
 
-          if (isOpenWater(landscapeAt(context))) return;
+          // Inte i vatten, berg eller träsk (inklusive träskets pölar)
+          const model = landscapeAt(context);
+          if (isOpenWater(model) || model.inMountain || bogAt(context, model)) return;
 
           return 'meteor_crater';
         }
@@ -250,6 +418,10 @@
 
     // 6. Startområdets rikedomar (oregelbundna fläckar nära huvudlagret).
     context => {
+      if (context.distanceFromOrigin > 55) return;
+      starterDeposits();
+      const find = starterCache.tiles.get(context.x + ',' + context.y);
+      if (find) return find;
       if (context.distanceFromOrigin > 45) return;
       for (const deposit of starterDeposits()) {
         const edgeNoise = (fbm(context, context.x, context.y, 6, 140, 0.9) - 0.5) * 3.2;
@@ -280,15 +452,7 @@
     },
 
     // 9. Träsk: fuktiga lågmarker, med små vattenpölar. Pölarna sitter i mitten av träsket.
-    context => {
-      const model = landscapeAt(context);
-      const aboveSea = -model.seaDepth;
-      if (aboveSea < 0.015 || aboveSea > 0.2 || model.moisture < 0.62 || model.origin < 30) return; // inget träsk vid starten
-      const bogness = stretch(fbm(context, context.x, context.y, 38, 170, 0.5), 2.4) * smoothstep(0.6, 0.78, model.moisture);
-      if (bogness < 0.42) return;
-      if (fbm(context, context.x, context.y, 5, 171, 1.1) > 0.74) return 'water';
-      if (random(context, context.x, context.y, 172) < 0.85) return 'bog';
-    },
+    context => bogAt(context, landscapeAt(context)),
 
     // 10. Månsten: på höga toppar.
     context => {
@@ -299,31 +463,17 @@
     // 11–20. Malm och mineraler. Allt följer geologi: ådror (veinDistance) inom provinser (brusmasker).
     //   Sällsynta mineraler först så att de inte skuggas av vanliga.
 
-    // Ädelstenar och kristaller: djupt inne i höga berg, i små fickor.
+    // Malm. I berg avgörs allt av mountainOre (en bestämd andel av bergets kärna). Utanför berg ligger enstaka
+    // fynd på en eller två rutor, väldigt utspridda och helst intill sten (scatteredOre). Reglerna för
+    // guld/silver, koppar/tenn, järn och kol nedan är därför tomma platshållare: regelordningen (och
+    // indexen i levels.js) ska vara oförändrad.
     context => {
       const model = landscapeAt(context);
-      if (model.mountain < 0.4) return;
-      const pocket = fbm(context, context.x, context.y, 7, 190, 0.9);
-      const province = fbm(context, context.x, context.y, 70, 191, 0.3);
-      if (province < 0.58 || pocket < 0.66) return;
-      const roll = random(context, context.x, context.y, 192);
-      if (roll < 0.35) return model.mountain > 0.55 ? 'gemstone' : 'crystal';
-      if (roll < 0.62) return 'crystal';
+      return model.inMountain ? mountainOre(context, model) : scatteredOre(context, model);
     },
 
-    // Guld (kärnan) och silver (ådror runt kärnan): hydrotermiska provinser högt upp.
-    context => {
-      const model = landscapeAt(context);
-      if (model.mountain < 0.3) return;
-      const hydro = fbm(context, context.x, context.y, 95, 200, 0.6);
-      if (hydro < 0.56) return;
-      const vein = veinDistance(context.x, context.y, 26, 201, 0.4, model.warpX * 0.3, model.warpY * 0.3);
-      const pocket = fbm(context, context.x, context.y, 6, 202, 1.5);
-      if (vein > 1.7 || pocket < 0.45) return;
-      const core = hydro > 0.64 && vein < 0.9 && model.mountain > 0.42;
-      if (core && random(context, context.x, context.y, 203) < 0.75) return 'gold_ore';
-      if (random(context, context.x, context.y, 204) < 0.7) return 'silver_ore';
-    },
+    // (guld/silver: se regeln ovan)
+    () => undefined,
 
     // Svavel: vulkaniska provinser i bergen, i små fläckar.
     context => {
@@ -334,38 +484,19 @@
       if (volcanic > 0.7 && pocket > 0.6 && random(context, context.x, context.y, 212) < 0.8) return 'sulfur';
     },
 
-    // Koppar och tenn: samma provins, tenn i smalare ådror i provinsens utkant (brons kräver båda).
-    context => {
-      const model = landscapeAt(context);
-      if (model.mountain < 0.2) return;
-      const bronze = fbm(context, context.x, context.y, 90, 220, 1.2);
-      if (bronze < 0.56) return;
-      const copperVein = veinDistance(context.x, context.y, 30, 221, 0.7, model.warpX * 0.3, model.warpY * 0.3);
-      const tinVein = veinDistance(context.x, context.y, 24, 222, 1.7, model.warpX * 0.3, model.warpY * 0.3);
-      const pocket = fbm(context, context.x, context.y, 7, 223, 0.4);
-      if (copperVein < 1.5 && pocket > 0.55 && random(context, context.x, context.y, 224) < 0.8) return 'copper_ore';
-      if (tinVein < 1.2 && pocket > 0.58 && bronze > 0.6 && random(context, context.x, context.y, 225) < 0.8) return 'tin_ore';
-    },
+    // (koppar/tenn: se malmregeln ovan)
+    () => undefined,
 
-    // Järn: stora provinser i berg och höglänta kullar, tjockare ådror.
-    context => {
-      const model = landscapeAt(context);
-      if (model.mountain < 0.12) return;
-      if (fbm(context, context.x, context.y, 80, 230, 0.2) < 0.56) return;
-      const vein = veinDistance(context.x, context.y, 32, 231, 0.3, model.warpX * 0.3, model.warpY * 0.3);
-      const pocket = fbm(context, context.x, context.y, 8, 232, 1.1);
-      if (vein < 1.8 && pocket > 0.56 && random(context, context.x, context.y, 233) < 0.85) return 'iron_ore';
-    },
+    // (järn: se malmregeln ovan)
+    () => undefined,
 
-    // Sedimentära bäcken: kol (flötsar), kalksten (blockfält) och tjärgropar.
+    // Sedimentära bäcken: kalksten (blockfält) och tjärgropar. (Kol: se malmregeln ovan)
     context => {
       const model = landscapeAt(context);
-      if (model.relief < 0.45 || model.relief > 0.78 || model.mountain > 0.6) return;
       const basin = fbm(context, context.x, context.y, 100, 240, 0.9);
       if (basin < 0.56) return;
-      const seam = veinDistance(context.x, context.y, 36, 241, 1.0, model.warpX * 0.3, model.warpY * 0.3);
-      const pocket = fbm(context, context.x, context.y, 8, 242, 0.5);
-      if (seam < 2.2 && pocket > 0.56 && random(context, context.x, context.y, 243) < 0.85) return 'coal';
+
+      if (model.relief < 0.45 || model.relief > 0.78 || model.mountain > 0.6) return;
       if (basin > 0.58 && random(context, context.x, context.y, 244) < 0.0025) return 'tar_pit';
       const limeField = fbm(context, context.x, context.y, 16, 245, 0.2);
       if (basin > 0.56 && limeField > 0.66 && random(context, context.x, context.y, 246) < 0.55) return 'limestone';
@@ -381,23 +512,13 @@
       if (fbm(context, context.x, context.y, 9, 252, 1.6) > 0.7 && random(context, context.x, context.y, 253) < 0.35) return 'petrified_wood';
     },
 
-    // 21. Berg: grus och block. Ju brantare/högre, desto mer sten, och gles vegetation ovanför trädgränsen.
+    // 21. Berg: höga höjder blir 'mountain'. Malmen ovan ligger redan i bergen och går före.
     context => {
-      const model = landscapeAt(context);
-      if (model.mountain < 0.18) return;
-      const scree = smoothstep(0.18, 0.6, model.mountain);
-      const patchy = stretch(fbm(context, context.x, context.y, 11, 260, 0.7), 2.0);
-      const field = scree * 0.85 + (patchy - 0.5) * 0.5;
-      if (random(context, context.x, context.y, 261) < smoothstep(0.2, 0.55, field) * 0.92) return 'rock';
+      if (landscapeAt(context).inMountain) return 'mountain';
     },
 
-    // 22. Stenblock på låglänt mark: enstaka klippblock och små klungor av flyttblock.
-    context => {
-      const model = landscapeAt(context);
-      const outcrop = fbm(context, context.x, context.y, 13, 270, 1.4);
-      if (outcrop > 0.6 && random(context, context.x, context.y, 271) < 0.55) return 'rock';
-      if (random(context, context.x, context.y, 272) < 0.014 * (model.moisture < 0.4 ? 1.8 : 1)) return 'rock';
-    },
+    // 22. Sten: utspridda block över hela världen, oberoende av höjd. Undviker vatten och tjärgropar.
+    context => rockAt(context),
 
     // 23. Förbannad mark: djupt inne i gammal skog och i träsk, aldrig nära start.
     context => {

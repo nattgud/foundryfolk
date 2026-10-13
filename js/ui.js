@@ -83,6 +83,7 @@
 
       this.buildBuildMenu(buildMenu);
       this.initMapInspection();
+      this.createVersionLabel();
       this.lastBuildingCount = World.buildings.length;
 
       // Infopanelen ligger precis ovanför byggmenyn.
@@ -92,6 +93,15 @@
 
       this.positionInfoPanel();
       addEventListener('resize', this.positionInfoPanel);
+    },
+
+    // Litet versionsnummer längst ner i högra hörnet
+    createVersionLabel() {
+      if (byId('versionLabel')) return;
+      const label = document.createElement('div');
+      label.id = 'versionLabel';
+      label.textContent = typeof version !== 'undefined' ? 'v' + version : '';
+      document.body.appendChild(label);
     },
 
     // ---- Resursfält --------------------------------------------------------------------------
@@ -142,7 +152,7 @@
       menuButton.type = 'button';
       menuButton.id = 'mainMenuButton';
       menuButton.textContent = '☰';
-      menuButton.title = 'Meny';
+      menuButton.title = 'Main menu';
       menuButton.setAttribute('aria-label', 'Meny');
       menuButton.setAttribute('aria-haspopup', 'dialog');
       menuButton.onclick = () => this.toggleMainMenu();
@@ -226,16 +236,54 @@
 
       item.append(icon, amount);
 
+      this.attachTooltip(item, () => this.resourceTooltip(resourceId), true);
+
       if (!compact) {
         const favorite = document.createElement('button');
         favorite.type = 'button';
         favorite.className = 'resource-favorite';
         favorite.dataset.resourceFavorite = resourceId;
         favorite.onclick = () => this.toggleResourceFavorite(resourceId);
+        this.attachTooltip(favorite, () => this.tooltipContent(
+          this.resourceFavorites.has(resourceId) ? 'Remove from favorites' : 'Add to favorites',
+          null,
+          [Config.resources[resourceId].name]
+        ));
         item.appendChild(favorite);
       }
 
       return item;
+    },
+
+    resourceTooltip(resourceId) {
+      const resource = Config.resources[resourceId];
+      const total = Economy.totalAmount(resourceId);
+      const free = Economy.freeAmount ? Economy.freeAmount(resourceId) : total;
+      const details = ['x' + total];
+      if (free !== total) details.push('Free: ' + free);
+      if (resource.description) details.push(resource.description);
+      return this.tooltipContent(resource.name, null, details);
+    },
+
+    // Tooltip under elementet (för resursfältet högst upp). Mus: hover/fokus. Pekskärm: visas en kort stund vid tryck.
+    attachTooltip(element, content, showOnTouch = false) {
+      element.addEventListener('pointerenter', event => {
+        if (event.pointerType === 'mouse') this.showTooltip(element, content(), 'below');
+      });
+      element.addEventListener('pointerleave', () => this.hideTooltip());
+      element.addEventListener('focus', () => {
+        if (element.matches(':focus-visible')) this.showTooltip(element, content(), 'below');
+      });
+      element.addEventListener('blur', () => this.hideTooltip());
+
+      if (showOnTouch) {
+        element.addEventListener('pointerup', event => {
+          if (event.pointerType === 'mouse') return;
+          this.showTooltip(element, content(), 'below');
+          clearTimeout(this.touchTooltipTimer);
+          this.touchTooltipTimer = setTimeout(() => this.hideTooltip(), 1800);
+        });
+      }
     },
 
     renderPinnedResources() {
@@ -331,7 +379,7 @@
           JSON.stringify([...this.resourceFavorites])
         );
       } catch (error) {
-        console.warn('Kunde inte spara resursfavoriter:', error);
+        console.warn("Unable to save favorites:", error);
       }
 
       this.renderPinnedResources();
@@ -349,11 +397,9 @@
         button.setAttribute('aria-pressed', String(favorite));
         button.setAttribute(
           'aria-label',
-          favorite ? 'Ta bort favorit' : 'Lägg till favorit'
+          favorite ? 'Remove from favorites' : 'Add to favorites'
         );
-        button.title = favorite
-          ? 'Ta bort favorit'
-          : 'Lägg till favorit';
+        button.removeAttribute('title');
       });
     },
 
@@ -440,33 +486,33 @@
         return row;
       };
 
-      const titles = { main: 'Meny', save: 'Spara spel', load: 'Ladda spel', confirm: 'Är du säker?' };
+      const titles = { main: 'Main menu', save: 'Save game', load: 'Load game', confirm: 'Are you sure?' };
       const header = make('header', 'resource-window-header');
       const close = make('button', 'resource-window-close', '×');
       close.type = 'button';
-      close.setAttribute('aria-label', 'Stäng menyn');
+      close.setAttribute('aria-label', 'Close menu');
       close.onclick = () => this.toggleMainMenu(false);
       header.append(make('strong', '', titles[view]), close);
 
       const body = make('div', 'main-menu-body');
-      const slotLabels = [['slot1', 'Plats 1'], ['slot2', 'Plats 2'], ['slot3', 'Plats 3']];
+      const slotLabels = [['slot1', 'Slot 1'], ['slot2', 'Slot 2'], ['slot3', 'Slot 3'], ['slot4', 'Slot 4'], ['slot5', 'Slot 5']];
 
       const fail = text => this.showToast(text);
       const requireSaveSystem = () => {
         if (saveSystem) return true;
-        fail('Sparsystemet saknas (CityBuilder.Save)');
+        fail('Somehow the savesystem is unreachable');
         return false;
       };
 
       if (view === 'main') {
         if (level) body.append(make('div', 'main-menu-level', `Bana ${level.level}: ${level.name}`));
         body.append(
-          button('Fortsätt', () => this.toggleMainMenu(false)),
-          button('Spara spel', () => this.renderMainMenu('save')),
-          button('Ladda spel', entries.size ? () => this.renderMainMenu('load') : null),
-          button('Nytt spel', () => this.renderMainMenu('confirm', {
-            text: 'Ett nytt spel startar om från bana 1 med nya banor. Autosparningen skrivs över. Manuella sparningar ligger kvar.',
-            confirmLabel: 'Starta nytt spel',
+          button('Continue', () => this.toggleMainMenu(false)),
+          button('Save game', () => this.renderMainMenu('save')),
+          button('Load game', entries.size ? () => this.renderMainMenu('load') : null),
+          button('New game', () => this.renderMainMenu('confirm', {
+            text: 'New game resets the game and autosave, and generates new maps. Manual saves are unchanged.',
+            confirmLabel: 'Start a new game',
             danger: true,
             back: 'main',
             onConfirm: () => {
@@ -480,46 +526,46 @@
       } else if (view === 'save') {
         const doSave = id => {
           if (!requireSaveSystem()) return;
-          if (saveSystem.save(id) === false) return fail('Det gick inte att spara: ' + (saveSystem.lastError || 'okänt fel'));
-          this.showToast('Spelet sparades');
+          if (saveSystem.save(id) === false) return fail('Unable to save: ' + (saveSystem.lastError || 'unknown erro'));
+          this.showToast('Game saved');
           this.renderMainMenu('save');
         };
 
         for (const [id, label] of slotLabels) {
           body.append(slotRow(id, label, () => entries.has(id)
             ? this.renderMainMenu('confirm', {
-                text: `${label} innehåller redan en sparning. Vill du skriva över den?`,
-                confirmLabel: 'Skriv över',
+                text: `${label} exists. Want to overwrite?`,
+                confirmLabel: 'Overwrite',
                 danger: true,
                 back: 'save',
                 onConfirm: () => doSave(id),
               })
             : doSave(id), true));
         }
-        body.append(button('Tillbaka', () => this.renderMainMenu('main')));
+        body.append(button('Back', () => this.renderMainMenu('main')));
       } else if (view === 'load') {
         const doLoad = (id, label) => this.renderMainMenu('confirm', {
-          text: `Ladda ${label.toLowerCase()}? Allt du inte har sparat i det pågående spelet går förlorat.`,
-          confirmLabel: 'Ladda',
+          text: `Load ${label.toLowerCase()}? Unsaved progress will be gone.`,
+          confirmLabel: 'Load',
           danger: true,
           back: 'load',
           onConfirm: () => {
             if (!requireSaveSystem()) return;
-            if (saveSystem.load(id) === false) return fail('Det gick inte att ladda');
+            if (saveSystem.load(id) === false) return fail('Unable to load');
             this.toggleMainMenu(false);
           },
         });
 
-        body.append(slotRow('autosave', 'Autosparning', () => doLoad('autosave', 'Autosparning')));
+        body.append(slotRow('autosave', 'Autosave', () => doLoad('autosave', 'Autosave')));
         for (const [id, label] of slotLabels) body.append(slotRow(id, label, () => doLoad(id, label)));
-        body.append(button('Tillbaka', () => this.renderMainMenu('main')));
+        body.append(button('Back', () => this.renderMainMenu('main')));
       } else if (view === 'confirm') {
         body.append(
           make('div', 'main-menu-note', confirm.text),
           button(confirm.confirmLabel, () => {
             confirm.onConfirm();
           }, confirm.danger ? 'main-menu-danger' : ''),
-          button('Avbryt', () => this.renderMainMenu(confirm.back))
+          button('Cancel', () => this.renderMainMenu(confirm.back))
         );
       }
 
@@ -628,7 +674,7 @@
 
           submenu.appendChild(button);
         }
-
+        
         submenuArea.appendChild(submenu);
         this.categoryToggles.set(categoryId, toggle);
         this.categorySubmenus.set(categoryId, submenu);
@@ -797,7 +843,14 @@
         innerWidth - tooltipRect.width - 4
       ) + 'px';
 
-      if (placement === 'map') {
+      if (placement === 'below') {
+        const below = anchorRect.bottom + 8;
+        tooltip.style.top = (
+          below + tooltipRect.height <= innerHeight - 4
+            ? below
+            : Math.max(4, anchorRect.top - tooltipRect.height - 8)
+        ) + 'px';
+      } else if (placement === 'map') {
         const topBarBottom = byId('top').getBoundingClientRect().bottom;
         const above = anchorRect.top - tooltipRect.height - 8;
 
@@ -915,7 +968,7 @@
 
         #buildTooltip {
           position: fixed;
-          z-index: 30;
+          z-index: 150;
           display: none;
           pointer-events: none;
           max-width: 240px;
@@ -926,6 +979,18 @@
           color: var(--text);
           font-size: 12px;
           line-height: 1.35;
+        }
+
+        #versionLabel {
+          position: fixed;
+          right: 6px;
+          bottom: 3px;
+          z-index: 20;
+          pointer-events: none;
+          font-size: 10px;
+          line-height: 1;
+          color: var(--dim);
+          opacity: 0.6;
         }
 
         #buildTooltip .tooltip-title {
@@ -1287,7 +1352,7 @@
 
       if (job?.kind === 'gather') {
         lines.push(`Gathering: ${this.terrainName(job.sourceTerrain)} → ${this.resourceName(job.outputResource)}`);
-        if (this.getBuildingRange(definition)) lines.push(`Räckvidd: ${this.getBuildingRange(definition)} rutor`);
+        if (this.getBuildingRange(definition)) lines.push(`Range: ${this.getBuildingRange(definition)} tiles`);
       } else if (job?.kind === 'craft') {
         const inputs = Utils.formatResourceList(job.inputs);
         const outputs = Utils.formatResourceList(job.outputs);
@@ -1295,7 +1360,7 @@
       }
 
       if (definition.placeOnTerrain) {
-        lines.push(`Byggs på: ${this.terrainName(definition.placeOnTerrain)}`);
+        lines.push(`Placed on: ${this.terrainName(definition.placeOnTerrain)}`);
       }
 
       const equipment = Utils.formatResourceList(definition.requiredEquipment || {});
@@ -1429,7 +1494,7 @@
             building.definition.name,
             null,
             [
-              ...(building.buildProgress < 1 ? [`Byggs ${Math.round(building.buildProgress * 100)}%`] : []),
+              ...(building.buildProgress < 1 ? [`Contructing ${Math.round(building.buildProgress * 100)}%`] : []),
               ...this.describeBuilding(building.definition),
             ]
           )
@@ -1491,12 +1556,12 @@
         : building.status;
 
       byId('infoStatus').innerHTML = building.definition.isStorage
-        ? `Lager: ${Utils.formatResourceList(building.storedGoods) || 'tomt'}`
-        : `${statusText}<br>In: ${Utils.formatResourceList(building.inputStock) || '–'} · Ut: ${Utils.formatResourceList(building.outputStock) || '–'}` +
-          (this.getBuildingRange(building.definition) ? `<br>Räckvidd: ${this.getBuildingRange(building.definition)} rutor` : '');
+        ? `Storage: ${Utils.formatResourceList(building.storedGoods) || 'empty'}`
+        : `${statusText}<br>Import: ${Utils.formatResourceList(building.inputStock) || '–'} · Export: ${Utils.formatResourceList(building.outputStock) || '–'}` +
+          (this.getBuildingRange(building.definition) ? `<br>Range: ${this.getBuildingRange(building.definition)} tiles` : '');
 
       if (byId('pauseButton')) {
-        byId('pauseButton').textContent = building.paused ? 'Starta' : 'Pausa';
+        byId('pauseButton').textContent = building.paused ? 'Unpause' : 'Pause';
       }
     },
 
@@ -1512,7 +1577,7 @@
 
         panel.innerHTML =
           `<div><b>${definition.name}</b><br><span id="infoStatus"></span></div>` +
-          '<div style="display:flex;gap:6px"><button id="cancelPlacementButton">Avbryt</button></div>';
+          '<div style="display:flex;gap:6px"><button id="cancelPlacementButton">Cancel</button></div>';
 
         byId('cancelPlacementButton').onclick = () => game.setPlacingType(null);
       }
@@ -1525,7 +1590,7 @@
         .join(', ');
 
       byId('infoStatus').innerHTML = [
-        `Kostnad: ${cost || '–'}`,
+        `Cost: ${cost || '–'}`,
         ...this.describeBuilding(definition),
       ].join('<br>');
     },
