@@ -22,6 +22,10 @@
       const bottom = corner(0, 1) * (1 - smoothX) + corner(1, 1) * smoothX;
       return top * (1 - smoothY) + bottom * smoothY;
     },
+    assign(target, source, overrides = {}) {
+      Object.assign(target, source, overrides);
+      return target;
+    },
 
     // Fraktalt brus: två oktaver av smoothNoise
     fractalNoise: (x, y, channel) =>

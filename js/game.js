@@ -69,7 +69,12 @@
     advanceSimulation(deltaSeconds) {
       this.deltaSeconds = deltaSeconds;
       Pathfinder.remainingSearches = Config.settings.maxPathSearchesPerFrame;
-      for (const system of this.systems) system.update(deltaSeconds);
+
+      CityBuilder.Deer.updateActivation();
+
+      for (const system of this.systems) {
+        system.update(deltaSeconds);
+      }
     },
 
     frame(time) {

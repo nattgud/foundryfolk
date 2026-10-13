@@ -154,6 +154,10 @@
         carriers: haulers.length,
         carried,
         tiles: this.collectTileChanges(),
+        deerChunks: (
+          CityBuilder.Deer.syncActive(),
+          Array.from(World.deerByChunk.entries())
+        ),
       };
     },
 
@@ -166,6 +170,7 @@
         const tile = World.getTile(x, y);
         if (tile) Object.assign(tile, changed);
       }
+      World.deerByChunk = new Map(data.deerChunks || []);
 
       for (const saved of data.buildings || []) {
         try {

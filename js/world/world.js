@@ -10,6 +10,7 @@
     units: [],
     headquarters: null,
     nextBuildingId: 1,
+    deerByChunk: new Map(),
 
     // Ruta: { terrainType, remainingAmount, wear }
     getTile(x, y) {
