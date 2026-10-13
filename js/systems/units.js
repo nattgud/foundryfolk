@@ -49,6 +49,14 @@
       if ((unit.idleCooldown -= deltaSeconds) > 0 ) return;
       unit.idleCooldown = .5;
       unit.status = '';
+      if (unit.kind === 'deer') {
+        // Djurets beteende hanteras här.
+        console.log(unit);
+        unit.stepQueue = [
+          Jobs.walkTo(unit.x, unit.y+0.5),
+        ];
+        return;
+      }
       if (unit.homeBuilding) { // arbetare planerar nytt arbetspass
         if (!unit.homeBuilding.paused) Behaviors.get(unit.homeBuilding.definition.job.kind).planWork(unit);
         else unit.status = 'Pausad';

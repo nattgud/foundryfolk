@@ -13,6 +13,16 @@ CityBuilder.Config.units = {
     image: 'images/units/carrier.png', 
     imageCarrying: 'images/units/carrier_loaded.png', 
   },
+  deer: {
+    isHauler: false, 
+    wearsPaths: false, 
+    speedMultiplier: 0.5, 
+    color: '#760', 
+    fallbackShape: 'circle', 
+    fallbackSize: 6, 
+    imageSize: 16,
+    image: 'images/units/deer.png', 
+  },
   // warrior: {
   //   isHauler: false,
   //   wearsPaths: true,
