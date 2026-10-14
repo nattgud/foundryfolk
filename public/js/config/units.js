@@ -51,6 +51,7 @@ CityBuilder.Config.units = {
       sawmill:     { image: 'images/units/worker_grey.png', imageCarrying: 'images/units/worker_grey_carry.png' },
 
       farm:        { image: 'images/units/worker_farmer.png', imageCarrying: 'images/units/worker_farmer_carry.png' },
+      hunters_cottage:  { image: 'images/units/hunter.png', imageCarrying: 'images/units/hunter_carry.png' },
       apple_gatherer:   { image: 'images/units/worker_picker.png', imageCarrying: 'images/units/worker_picker_carry.png' },
       berry_gatherer:   { image: 'images/units/worker_picker.png', imageCarrying: 'images/units/worker_picker_carry.png' },
       herb_gatherer:    { image: 'images/units/worker_picker.png', imageCarrying: 'images/units/worker_picker_carry.png' },

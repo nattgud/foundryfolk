@@ -65,6 +65,22 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 5
   },
+  hunters_cottage: {
+    name: 'Hunter',
+    category: 'farming',
+    symbol: 'HU',
+    color: '#be1f1f',
+    buildCost: { plank: 3, wood: 2 },
+    job: {
+      kind: 'gather',
+      sourceUnit: 'deer',
+      searchRadius: 20,
+      workLabel: "Hunting",
+      outputs: { meat: 4 },
+      craftSeconds: 1
+    },
+    buildDuration: 5
+  },
 
   apple_gatherer: {
     name: 'Apple Gatherer',
@@ -238,9 +254,9 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'gather',
       sourceTerrain: 'iron_ore',
-      searchRadius: 4,
+      searchRadius: 10,
       outputResource: 'iron_ore',
-      workSeconds: 7
+      workSeconds: 20
     },
     buildDuration: 6
   },
@@ -255,9 +271,9 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'gather',
       sourceTerrain: 'copper_ore',
-      searchRadius: 4,
+      searchRadius: 10,
       outputResource: 'copper_ore',
-      workSeconds: 7
+      workSeconds: 20
     },
     buildDuration: 6
   },
@@ -272,9 +288,9 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'gather',
       sourceTerrain: 'tin_ore',
-      searchRadius: 4,
+      searchRadius: 10,
       outputResource: 'tin_ore',
-      workSeconds: 7
+      workSeconds: 30
     },
     buildDuration: 6
   },
@@ -289,9 +305,9 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'gather',
       sourceTerrain: 'coal',
-      searchRadius: 4,
+      searchRadius: 10,
       outputResource: 'coal',
-      workSeconds: 7
+      workSeconds: 20
     },
     buildDuration: 6
   },
@@ -306,9 +322,9 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'gather',
       sourceTerrain: 'gold_ore',
-      searchRadius: 4,
+      searchRadius: 10,
       outputResource: 'gold_ore',
-      workSeconds: 10
+      workSeconds: 30
     },
     buildDuration: 8
   },
@@ -323,9 +339,9 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'gather',
       sourceTerrain: 'silver_ore',
-      searchRadius: 4,
+      searchRadius: 10,
       outputResource: 'silver_ore',
-      workSeconds: 10
+      workSeconds: 30
     },
     buildDuration: 8
   },
@@ -340,9 +356,9 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'gather',
       sourceTerrain: 'gemstone',
-      searchRadius: 4,
+      searchRadius: 10,
       outputResource: 'gemstone',
-      workSeconds: 10
+      workSeconds: 30
     },
     buildDuration: 9
   },
@@ -357,9 +373,9 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'gather',
       sourceTerrain: 'salt_ore',
-      searchRadius: 4,
+      searchRadius: 10,
       outputResource: 'salt',
-      workSeconds: 7
+      workSeconds: 30
     },
     buildDuration: 6
   },
@@ -374,9 +390,9 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'gather',
       sourceTerrain: 'sulfur',
-      searchRadius: 4,
+      searchRadius: 10,
       outputResource: 'sulfur',
-      workSeconds: 8
+      workSeconds: 30
     },
     buildDuration: 7
   },

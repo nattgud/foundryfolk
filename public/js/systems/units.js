@@ -11,6 +11,9 @@
     idleCooldown: 0.5,   // Tid mellan nya beslut
     maxFoodPerTile: 10,
     maxSpreadDistance: 8,
+    breedChancePerSecond: Config.settings.deerBreedChancePerSecond ?? 1500 / 1500, // chans per speltidssekund att få en unge (snitt ca 25 min mellan ungar per hjort)
+    breedCooldown: Config.settings.deerBreedCooldown ?? 1,    // speltid i sekunder innan samma hjort (eller ungen) kan få en ny unge
+    maxPopulation: Config.settings.deerMaxPopulation ?? 20,     // inga fler hjortar än så här i världen
   };
 
   const DEER_FOOD_TYPES = new Set([
@@ -22,6 +25,35 @@
 
   const Units = {
     update(unit, deltaSeconds) {
+      if (unit.kind === 'deer' && unit.huntedBy) {
+        const hunter = unit.huntedBy;
+        const step = hunter.stepQueue[0];
+
+        // Stanna medan jägaren fortfarande fångar just denna hjort.
+        if (
+          step &&
+          step.kind === 'followUnit' &&
+          step.target === unit &&
+          !hunter.removed
+        ) {
+          const sameTile =
+            Math.floor(hunter.x) === Math.floor(unit.x) &&
+            Math.floor(hunter.y) === Math.floor(unit.y);
+
+          if (sameTile) {
+            unit.status = 'Hunted';
+            return;
+          }
+        }
+
+        // Jakten är avslutad eller avbruten: släpp hjorten fri.
+        unit.huntedBy = null;
+      }
+      if (unit.kind === 'deer') {
+        if (unit.deerBreedCooldown > 0) unit.deerBreedCooldown -= deltaSeconds;
+        else if (Math.random() < DEER.breedChancePerSecond * deltaSeconds) this.tryDeerBreed(unit);
+      }
+
       const step = unit.stepQueue[0];
       if (!step) return this.handleIdle(unit, deltaSeconds);
 
@@ -29,6 +61,13 @@
       else if (step.kind === 'wait') {
         unit.status = step.statusText;
         if ((step.secondsLeft -= deltaSeconds) <= 0) unit.stepQueue.shift();
+      } else if (step.kind === 'followUnit') {
+        const result = this.followUnit(unit, step, deltaSeconds);
+        if (result === false) {
+          unit.stepQueue.length = 0;
+        } else if (result === true) {
+          unit.stepQueue.shift();
+        }
       } else {
         if (step.action(unit) === false) unit.stepQueue.length = 0; else unit.stepQueue.shift();
       }
@@ -41,7 +80,15 @@
         if (!path) return this.handlePathFailure(unit);
         step.path = path; step.pathIndex = 0;
       }
-      if (step.pathIndex >= step.path.length) { unit.stepQueue.shift(); return; }
+      if (step.pathIndex >= step.path.length) {
+        if (step.kind === 'followUnit') {
+          step.path = null;
+          step.pathIndex = 0;
+        } else {
+          unit.stepQueue.shift();
+        }
+        return;
+      }
 
       const nextTile = step.path[step.pathIndex], tileCost = Pathfinder.tileCost(nextTile.x, nextTile.y);
       const isTarget = nextTile.x === step.targetX && nextTile.y === step.targetY;
@@ -60,6 +107,75 @@
       } else {
         unit.x += dx / distance * stepLength; unit.y += dy / distance * stepLength;
       }
+    },
+
+    followUnit(unit, step, deltaSeconds) {
+      const prey = step.target;
+      if (prey.huntedBy && prey.huntedBy !== unit) {
+        return false;
+      }
+
+      // Bytet har försvunnit eller matchar inte längre jobbet.
+      if (prey.removed || !Behaviors.unitMatches(prey, step.job)) {
+        return false;
+      }
+
+      const preyTileX = Math.floor(prey.x);
+      const preyTileY = Math.floor(prey.y);
+
+      const unitTileX = Math.floor(unit.x);
+      const unitTileY = Math.floor(unit.y);
+
+      // Jägaren och hjorten befinner sig på samma tile.
+      if (unitTileX === preyTileX && unitTileY === preyTileY) {
+        prey.huntedBy = unit;
+        step.path = null;
+        step.pathIndex = 0;
+
+        if (step.secondsLeft === null) {
+          step.secondsLeft = step.workSeconds;
+        }
+
+        unit.status = step.statusText;
+        step.secondsLeft -= deltaSeconds;
+
+        if (step.secondsLeft <= 0) {
+          // Kontrollera igen innan fångsten genomförs.
+          if (
+            prey.removed ||
+            !Behaviors.unitMatches(prey, step.job) ||
+            Math.floor(prey.x) !== Math.floor(unit.x) ||
+            Math.floor(prey.y) !== Math.floor(unit.y)
+          ) {
+            step.secondsLeft = null;
+            return;
+          }
+
+          Behaviors.removeUnit(prey);
+          unit.carriedResource = step.outputResource;
+
+          return true;
+        }
+
+        return;
+      }
+
+      // Hjorten har lämnat jägaren: jaktmomentet börjar om.
+      step.secondsLeft = null;
+
+      // Beräkna om rutten endast när hjorten byter tile.
+      if (
+        step.targetX !== preyTileX ||
+        step.targetY !== preyTileY
+      ) {
+        step.targetX = preyTileX;
+        step.targetY = preyTileY;
+        step.path = null;
+        step.pathIndex = 0;
+      }
+
+      // Återanvänd spelets befintliga rörelselogik.
+      this.walk(unit, step, deltaSeconds);
     },
 
     handleIdle(unit, deltaSeconds) {
@@ -314,6 +430,29 @@
 
 
 
+
+    // Hjortar får mycket sällan en unge (slumpchans över tid, vilotid efteråt och en övre gräns för antalet).
+    tryDeerBreed(unit) {
+      let population = 0;
+      for (const other of World.units) if (other.kind === 'deer') population++;
+      if (population >= DEER.maxPopulation) return;
+
+      // Ungen föds på en ledig gräs- eller trädruta alldeles intill (annars på samma ruta)
+      const cx = Math.floor(unit.x), cy = Math.floor(unit.y);
+      const spots = [];
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          if (!dx && !dy) continue;
+          const terrainType = World.getTile(cx + dx, cy + dy).terrainType;
+          if (terrainType === 'grass' || terrainType === 'tree') spots.push({ x: cx + dx, y: cy + dy });
+        }
+      }
+      const spot = spots.length ? spots[Math.floor(Math.random() * spots.length)] : { x: cx, y: cy };
+
+      const fawn = World.spawnUnit('deer', spot.x, spot.y);
+      unit.deerBreedCooldown = DEER.breedCooldown;
+      if (fawn) fawn.deerBreedCooldown = DEER.breedCooldown;
+    },
 
     handlePathFailure(unit) {
       unit.stepQueue.length = 0; unit.idleCooldown = 1; unit.status = 'Ingen väg';

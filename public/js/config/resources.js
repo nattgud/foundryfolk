@@ -18,6 +18,7 @@ CityBuilder.Config.resources = {
 
   // Jordbruk och växtresurser
   grain:            { name: 'Grain',            color: '#e8d44d' },
+  meat:             { name: 'Meat',             color: '#c01b1b' },
   seeds:            { name: 'Seeds',            color: '#8c7545' },
   flour:            { name: 'Flour',            color: '#f2f2f2' },
   apples:           { name: 'Apples',           color: '#bd4938' },

@@ -57,6 +57,55 @@
       return null;
     },
 
+    // ---- Enheter som källa (jakt m.m.) --------------------------------------------------------
+    // Ett gather-jobb hämtar antingen från terräng (job.sourceTerrain) eller från enheter (job.sourceUnit):
+    //   sourceUnit: 'deer'                  en enhetstyp (unit.kind)
+    //   sourceUnit: ['deer', 'soldier']     flera typer
+    //   sourceFilter: unit => boolean       valfritt extra villkor (t.ex. bara fientliga enheter)
+    //   reach: 3                            hur nära (i rutor) bytet måste vara när arbetaren slår till
+    //   workLabel: 'Hunting'                statustext medan arbetaren arbetar
+
+    unitMatches(unit, job) {
+      if (unit.removed) return false;
+      const wanted = job.sourceUnit;
+      if (Array.isArray(wanted) ? !wanted.includes(unit.kind) : unit.kind !== wanted) return false;
+      return job.sourceFilter ? Boolean(job.sourceFilter(unit)) : true;
+    },
+
+    // Närmaste enhet av rätt typ inom searchRadius från huset (eller null)
+    findUnitTarget(building, job, worker) {
+      let best = null, bestDistance = job.searchRadius;
+      for (const unit of World.units) {
+        if (unit === worker || !this.unitMatches(unit, job)) continue;
+        const distance = Math.hypot(unit.x - (building.x + .5), unit.y - (building.y + .5));
+        if (distance <= bestDistance) { bestDistance = distance; best = unit; }
+      }
+      return best;
+    },
+
+    // Tar bort en enhet ur världen (dödad, fångad, ...)
+    removeUnit(unit) {
+      // Markera hjortens sparade post som permanent död.
+      if (unit.kind === 'deer' && unit.deerRecordId && unit.deerChunkKey) {
+        const records = World.deerByChunk.get(unit.deerChunkKey);
+        const record = records?.find(
+          entry => entry.id === unit.deerRecordId
+        );
+
+        if (record) record.dead = true;
+      }
+
+      if (typeof World.removeUnit === 'function') {
+        World.removeUnit(unit);
+      } else if (Array.isArray(World.units)) {
+        const index = World.units.indexOf(unit);
+        if (index >= 0) World.units.splice(index, 1);
+      }
+
+      unit.removed = true;
+      unit.stepQueue = [];
+    },
+
     forBuilding(building) { return building.definition.job ? this.get(building.definition.job.kind) : null; },
 
     // Allt huset ska ha levererat: insatser (upp till kapacitet) och utrustning
@@ -75,10 +124,41 @@
 
     update(building) { building.status = building.workerUnit ? building.workerUnit.status : ''; },
 
+    // Jakt/fångst: arbetaren går till närmaste enhet av rätt typ, väntar, och om bytet fortfarande är nära
+    // tas det bort ur världen och arbetaren bär hem resursen. Har bytet hunnit iväg avbryts passet och
+    // arbetaren planerar om (jagar vidare).
+    planUnitWork(worker, building, job) {
+      // Utdata: outputResource (1 st) eller outputs: { resurs: antal } som i craft-jobb (första posten används)
+      const outputResource = job.outputResource || Object.keys(job.outputs || {})[0];
+      const outputAmount = job.outputResource ? 1 : ((job.outputs || {})[outputResource] || 1);
+      if (!outputResource) { worker.status = 'Saknar outputResource'; worker.idleCooldown = 5; return; }
+
+      const prey = Behaviors.findUnitTarget(building, job, worker);
+      if (!prey) { worker.status = 'Inga hjortar i räckvidd'; worker.idleCooldown = job.retrySeconds || 5; return; }
+
+      worker.stepQueue = [
+        Jobs.followUnit(prey, job, outputResource),
+
+        Jobs.walkTo(building.x, building.y),
+
+        Jobs.run(() => {
+          if (worker.carriedResource && !building.removed) {
+            building.outputStock[worker.carriedResource] =
+              (building.outputStock[worker.carriedResource] || 0) +
+              outputAmount;
+          }
+
+          worker.carriedResource = null;
+        }),
+      ];
+    },
+
     planWork(worker) {
       const building = worker.homeBuilding, job = building.definition.job;
       if (!Behaviors.hasRequiredEquipment(building)) { worker.status = 'Saknar verktyg'; return; }
       if (Utils.sumValues(building.outputStock) >= Config.settings.outputBufferCapacity) { worker.status = 'Fullt lager'; return; }
+
+      if (job.sourceUnit) return this.planUnitWork(worker, building, job);
 
       // Sökningen sker i omgångar (ringar utåt från huset) så att stora räckvidder inte hänger spelet.
       // Närmaste noden vinner alltid: en ring genomsöks färdigt, och hittas inget går sökningen vidare utåt

@@ -66,6 +66,7 @@
           id: `${key}:${i}`,
           x: position.x + 0.5,
           y: position.y + 0.5,
+          dead: false,
           deerLastEaten: null,
           deerMealTile: null,
           deerMustMoveAfterMeal: false,
@@ -110,6 +111,8 @@
           this.ensureChunk(chunkX, chunkY);
 
           for (const record of World.deerByChunk.get(key)) {
+            if (record.dead) continue;
+
             let unit = World.units.find(
               candidate => candidate.deerRecordId === record.id
             );
