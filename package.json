@@ -1,0 +1,12 @@
+{
+  "name": "microgame_server",
+  "version": "1.0.0",
+  "description": "A Node.js server for deployment of microgame",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

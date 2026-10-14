@@ -70,7 +70,6 @@
       if (unit.kind === 'deer') {
         unit.idleCooldown = DEER.idleCooldown;
 
-        // Efter måltiden måste hjorten flytta sig först.
         if (unit.deerMustMoveAfterMeal) {
           this.queueDeerWander(unit, true);
           return;
