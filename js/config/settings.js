@@ -4,7 +4,7 @@ CityBuilder.Config.settings = {
   tileSize: 36,                  // pixlar per ruta vid zoom 1
   walkSpeed: 1,                  // rutor per sekund på gräs
   buildDurationSeconds: 1,
-  outputBufferCapacity: 5,       // max i utbuffert innan producenten pausar
+  outputBufferCapacity: 20,       // max i utbuffert innan producenten pausar
   flushThreshold: 1,             // överskott över detta skickas till lagret
   startingCarriers: 20,
   carriersPerBuilding: 2,

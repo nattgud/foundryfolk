@@ -129,7 +129,7 @@
 
       if (!building.isCrafting) {
         if (!Behaviors.hasRequiredEquipment(building)) {
-          building.status = 'Saknar verktyg';
+          building.status = 'Tools missing';
           return;
         }
         const missingInputs = Object.entries(inputs)

@@ -63,18 +63,12 @@
       }
       context.globalAlpha = 1;
       
-      if(building?.workerUnit?.status === "Inga resurser" || building?.workerUnit?.idleCooldown < 0.5) {
-        const icon = Assets.get("images/ui/icons/question_blue.png");
-        if (icon) context.drawImage(icon, x, y, tileSize / 2, tileSize / 2);
-      }
-      
       if (!isFinished) { // byggframsteg
         context.fillStyle = '#000'; context.fillRect(x + 3, y + tileSize - 8, tileSize - 6, 5);
         context.fillStyle = '#5fb55f'; context.fillRect(x + 3, y + tileSize - 8, (tileSize - 6) * building.buildProgress, 5);
-      } else if (!building.definition.isStorage) { // indata nederst, utdata överst
-        // Om det finns en byggnad på denna plats, ignorera ritning av resurser
+      } else if (!building.definition.isStorage) {
         if (World.buildings.some(b => b.x === x && b.y === y)) {
-          return; // Hoppa över resten av denna loop-iteration
+          return;
         }
         renderer.drawResourceIcons(context, building.inputStock, x, y + tileSize - 7);
         renderer.drawResourceIcons(context, building.outputStock, x, y + 1);
@@ -113,6 +107,17 @@
         const resource = Config.resources[unit.carriedResource], resourceImage = Assets.get(resource.image);
         if (resourceImage) context.drawImage(resourceImage, pixelX - 6, pixelY - 18, 12, 12);
         else { context.fillStyle = resource.color; context.fillRect(pixelX - 3, pixelY - 13, 7, 7); }
+      }
+    }
+  });
+
+  Renderer.addLayer('ui', (context, renderer) => {
+    const tileSize = renderer.tileSize;
+    for (const building of World.buildings) {
+      const x = building.x * tileSize, y = building.y * tileSize;
+      if(building?.workerUnit?.status === "Inga resurser" || building?.workerUnit?.idleCooldown < 0.5) {
+        const icon = Assets.get("images/ui/icons/question_blue.png");
+        if (icon) context.drawImage(icon, x + (tileSize/3), y + (tileSize/3), tileSize / 3, tileSize / 3);
       }
     }
   });

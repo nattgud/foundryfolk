@@ -71,7 +71,7 @@
     // Resursfält
     resourceFavorites: new Set(),
     resourceWindowOpen: false,
-    maxPinnedResources: 5,
+    maxPinnedResources: 10,
 
     init() {
       const resourceBar = byId('top');
