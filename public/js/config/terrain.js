@@ -16,10 +16,10 @@ CityBuilder.Config.terrain = {
 
   // Skog och växter
   tree:             { name: "Tree",           color: '#2f5a35', walkCost: 3, fallbackShape: 'tree', resourceAmount: 5 },
-  apple_tree:       { name: "Apple tree",     color: '#536c38', walkCost: 3, fallbackShape: 'tree', resourceAmount: 15 },
-  berry_bush:       { name: "Berry bush",     color: '#465c35', walkCost: 2, resourceAmount: 25 },
-  herbs:            { name: "Herbs",          color: '#526b40', walkCost: 1, resourceAmount: 30 },
-  mushrooms:        { name: "Mushrooms",      color: '#49354e', walkCost: 1, resourceAmount: 25 }, 
+  apple_tree:       { name: "Apple tree",     color: '#536c38', walkCost: 3, fallbackShape: 'tree', resourceAmount: 10 },
+  berry_bush:       { name: "Berry bush",     color: '#465c35', walkCost: 2, resourceAmount: 10 },
+  herbs:            { name: "Herbs",          color: '#526b40', walkCost: 1, resourceAmount: 5 },
+  mushrooms:        { name: "Mushrooms",      color: '#49354e', walkCost: 1, resourceAmount: 5 }, 
   bog:              { name: "Bog",            color: '#394b3c', walkCost: 20, resourceAmount: 10 }, 
   petrified_wood:   { name: "Petrified wood",  color: '#62594c', walkCost: 5, fallbackShape: 'tree', resourceAmount: 10 }, 
 

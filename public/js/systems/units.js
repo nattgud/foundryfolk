@@ -4,13 +4,14 @@
   const { Config, World, Pathfinder, Jobs, Economy, Logistics, Behaviors, Utils } = CityBuilder;
 
   const DEER = {
-    foodRadius: 3,       // Sök efter mat inom 3 rutor
-    eatSeconds: 1,       // Tid för att äta
-    spreadChance: Config.settings.deerSpreadChance,  // 20 % chans att sprida efter en måltid
-    wanderRadius: 6,     // Maximalt avstånd till vandringsmålet
-    idleCooldown: 0.5,   // Tid mellan nya beslut
-    maxFoodPerTile: 10,
-    maxSpreadDistance: 8,
+    foodRadius: 3, 
+    eatSeconds: 4,
+    eatCooldown: 30,
+    spreadChance: 0.2,
+    wanderRadius: 8,
+    idleCooldown: 1,
+    maxFoodPerTile: 5,
+    maxSpreadDistance: 6,
     breedChancePerSecond: Config.settings.deerBreedChancePerSecond ?? 1500 / 1500, // chans per speltidssekund att få en unge (snitt ca 25 min mellan ungar per hjort)
     breedCooldown: Config.settings.deerBreedCooldown ?? 1,    // speltid i sekunder innan samma hjort (eller ungen) kan få en ny unge
     maxPopulation: Config.settings.deerMaxPopulation ?? 20,     // inga fler hjortar än så här i världen
@@ -25,6 +26,12 @@
 
   const Units = {
     update(unit, deltaSeconds) {
+      if (unit.kind === 'deer' && unit.deerEatCooldown > 0) {
+        unit.deerEatCooldown = Math.max(
+          0,
+          unit.deerEatCooldown - deltaSeconds
+        );
+      }
       if (unit.kind === 'deer' && unit.huntedBy) {
         const hunter = unit.huntedBy;
         const step = hunter.stepQueue[0];
@@ -197,6 +204,11 @@
           return;
         }
 
+        if (unit.deerEatCooldown > 0) {
+          this.queueDeerWander(unit, false);
+          return;
+        }
+
         // Mat inom räckhåll prioriteras framför vandring.
         const food = this.findDeerFood(unit);
 
@@ -215,8 +227,8 @@
               }
 
               const eatenAmount = Math.min(
-                DEER.maxFoodPerTile,
-                tile.remainingAmount
+                tile.remainingAmount,
+                1 + Math.floor(Math.random() * DEER.maxFoodPerTile)
               );
 
               tile.remainingAmount -= eatenAmount;
@@ -232,8 +244,7 @@
               };
 
               unit.deerMustMoveAfterMeal = true;
-              unit.deerSpreadPending =
-                Math.random() < DEER.spreadChance;
+              unit.deerSpreadPending = true;
 
               if (tile.remainingAmount <= 0) {
                 Utils.assign(tile, Config.terrain.grass, {
@@ -256,7 +267,7 @@
 
       if (unit.homeBuilding) { // arbetare planerar nytt arbetspass
         if (!unit.homeBuilding.paused) Behaviors.get(unit.homeBuilding.definition.job.kind).planWork(unit);
-        else unit.status = 'Pausad';
+        else unit.status = 'Paused';
         return;
       }
       if (unit.carriedResource) { // frisläppt bärare med last lämnar in i närmaste lager
@@ -378,7 +389,6 @@
       unit.status = 'Wandering';
     },
     
-    
     tryDeerSpread(unit) {
       if (unit.deerMustMoveAfterMeal) return;
 
@@ -386,16 +396,22 @@
       const y = Math.floor(unit.y);
       const tile = World.getTile(x, y);
 
-      // Skapa aldrig resurser på annat än gräs.
+      // Spridning får bara ske på gräs.
       if (tile.terrainType !== 'grass') return;
 
-      // Trädchans är oberoende av vilken växt hjorten åt.
-      if (Math.random() < Config.settings.deerTreeSpreadChance) {
-        Utils.assign(tile, Config.terrain.tree, {
-          terrainType: "tree",
-          remainingAmount: Math.ceil(Math.random()*2)
+      // 1. Återför alltid den uppätna växten först.
+      if (unit.deerLastEaten) {
+        const eaten = unit.deerLastEaten;
+
+        Utils.assign(tile, Config.terrain[eaten.type], {
+          terrainType: eaten.type,
+          remainingAmount: Math.max(
+            1,
+            Math.round(eaten.amount * 1.2)
+          )
         });
 
+        unit.deerEatCooldown = DEER.eatCooldown;
         unit.deerLastEaten = null;
         unit.deerMealTile = null;
         unit.deerSpreadPending = false;
@@ -405,31 +421,16 @@
         return;
       }
 
-      // Om ingen växtspridning väntar finns inget att plantera.
-      if (!unit.deerSpreadPending || !unit.deerLastEaten) {
-        unit.deerLastEaten = null;
-        unit.deerMealTile = null;
-        unit.deerSpreadPending = false;
-        return;
+      // 2. Träd får spridas separat, även när ingen växtåterföring väntar.
+      if (Math.random() < Config.settings.deerTreeSpreadChance) {
+        Utils.assign(tile, Config.terrain.tree, {
+          terrainType: 'tree',
+          remainingAmount: Math.ceil(Math.random() * 2)
+        });
+
+        Pathfinder.clearCache();
       }
-
-      const eaten = unit.deerLastEaten;
-
-      Utils.assign(tile, Config.terrain[eaten.type], {
-        terrainType: eaten.type,
-        remainingAmount: eaten.amount * 2
-      });
-
-      unit.deerLastEaten = null;
-      unit.deerMealTile = null;
-      unit.deerSpreadPending = false;
-      unit.deerMustMoveAfterMeal = false;
-
-      Pathfinder.clearCache();
     },
-
-
-
 
     // Hjortar får mycket sällan en unge (slumpchans över tid, vilotid efteråt och en övre gräns för antalet).
     tryDeerBreed(unit) {
@@ -455,7 +456,7 @@
     },
 
     handlePathFailure(unit) {
-      unit.stepQueue.length = 0; unit.idleCooldown = 1; unit.status = 'Ingen väg';
+      unit.stepQueue.length = 0; unit.idleCooldown = 1; unit.status = "Can't reach";
       Logistics.abortTask(unit);
     },
   };

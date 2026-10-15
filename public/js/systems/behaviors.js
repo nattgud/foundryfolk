@@ -131,10 +131,10 @@
       // Utdata: outputResource (1 st) eller outputs: { resurs: antal } som i craft-jobb (första posten används)
       const outputResource = job.outputResource || Object.keys(job.outputs || {})[0];
       const outputAmount = job.outputResource ? 1 : ((job.outputs || {})[outputResource] || 1);
-      if (!outputResource) { worker.status = 'Saknar outputResource'; worker.idleCooldown = 5; return; }
+      if (!outputResource) { worker.status = 'Missing export'; worker.idleCooldown = 5; return; }
 
       const prey = Behaviors.findUnitTarget(building, job, worker);
-      if (!prey) { worker.status = 'Inga hjortar i räckvidd'; worker.idleCooldown = job.retrySeconds || 5; return; }
+      if (!prey) { worker.status = 'No deers in range'; worker.idleCooldown = job.retrySeconds || 5; return; }
 
       worker.stepQueue = [
         Jobs.followUnit(prey, job, outputResource),
@@ -155,8 +155,8 @@
 
     planWork(worker) {
       const building = worker.homeBuilding, job = building.definition.job;
-      if (!Behaviors.hasRequiredEquipment(building)) { worker.status = 'Saknar verktyg'; return; }
-      if (Utils.sumValues(building.outputStock) >= Config.settings.outputBufferCapacity) { worker.status = 'Fullt lager'; return; }
+      if (!Behaviors.hasRequiredEquipment(building)) { worker.status = 'Missing tools'; return; }
+      if (Utils.sumValues(building.outputStock) >= Config.settings.outputBufferCapacity) { worker.status = 'Full stock'; return; }
 
       if (job.sourceUnit) return this.planUnitWork(worker, building, job);
 
@@ -164,8 +164,8 @@
       // Närmaste noden vinner alltid: en ring genomsöks färdigt, och hittas inget går sökningen vidare utåt
       // (över flera anrop/bilder) tills searchRadius är nådd.
       const target = Behaviors.searchNearest(worker, building, job);
-      if (target === undefined) { worker.status = 'Söker...'; return; } // fortsätter vid nästa anrop
-      if (target === null) { worker.status = 'Inga resurser'; worker.idleCooldown = 60; return; }
+      if (target === undefined) { worker.status = 'Searching...'; return; } // fortsätter vid nästa anrop
+      if (target === null) { worker.status = 'No resources'; worker.idleCooldown = 60; return; }
 
       const stopBeside = Config.terrain[target.tile.terrainType].gatherersStopBefore;
       worker.stepQueue = [
@@ -209,7 +209,7 @@
 
       if (!building.isCrafting) {
         if (!Behaviors.hasRequiredEquipment(building)) {
-          building.status = 'Tools missing';
+          building.status = 'Missing tools';
           return;
         }
         const missingInputs = Object.entries(inputs)

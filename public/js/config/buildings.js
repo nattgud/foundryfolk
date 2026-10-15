@@ -51,37 +51,6 @@ CityBuilder.Config.buildings = {
   },
 
   // Jordbruk och mat
-  farm: {
-    name: 'Farm',
-    category: 'farming',
-    symbol: 'G',
-    color: '#b8a22e',
-    buildCost: { plank: 3, wood: 2 },
-    job: {
-      kind: 'craft',
-      inputs: { },
-      outputs: { grain: 2, straw: 1, seeds: 1 },
-      craftSeconds: 8
-    },
-    buildDuration: 5
-  },
-  hunters_cottage: {
-    name: 'Hunter',
-    category: 'farming',
-    symbol: 'HU',
-    color: '#be1f1f',
-    buildCost: { plank: 3, wood: 2 },
-    job: {
-      kind: 'gather',
-      sourceUnit: 'deer',
-      searchRadius: 20,
-      workLabel: "Hunting",
-      outputs: { meat: 4 },
-      craftSeconds: 1
-    },
-    buildDuration: 5
-  },
-
   apple_gatherer: {
     name: 'Apple Gatherer',
     category: 'farming',
@@ -144,6 +113,52 @@ CityBuilder.Config.buildings = {
       workSeconds: 5
     },
     buildDuration: 3
+  },
+
+  farm: {
+    name: 'Farm',
+    category: 'farming',
+    symbol: 'G',
+    color: '#b8a22e',
+    buildCost: { plank: 3, wood: 2 },
+    job: {
+      kind: 'craft',
+      inputs: { },
+      outputs: { grain: 2, straw: 1, seeds: 1 },
+      craftSeconds: 8
+    },
+    buildDuration: 5
+  },
+  hunters_cottage: {
+    name: 'Hunters Cottage',
+    category: 'farming',
+    symbol: 'HC',
+    color: '#be1f1f',
+    buildCost: { plank: 3, wood: 2 },
+    job: {
+      kind: 'gather',
+      sourceUnit: 'deer',
+      searchRadius: 20,
+      workLabel: "Hunting",
+      outputs: { meat: 4, leather: 2 },
+      craftSeconds: 1
+    },
+    buildDuration: 5
+  },
+  fishing_hut: {
+    name: 'Fishing Hut',
+    category: 'farming',
+    symbol: 'FH',
+    color: '#1fa6be',
+    buildCost: { plank: 3, wood: 2 },
+    job: {
+      kind: 'gather',
+      sourceTerrain: 'water',
+      searchRadius: 2,
+      outputResource: 'fish',
+      workSeconds: 30
+    },
+    buildDuration: 8
   },
 
   // Insamling av grundmaterial

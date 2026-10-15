@@ -10,7 +10,6 @@ CityBuilder.Config.settings = {
   carriersPerBuilding: 2,
   deerActivationRadius: 2,
   deerPerChunk: 3,
-  deerSpreadChance: 0.1,
   deerTreeSpreadChance: 0.02,
   startingResources: { wood: 12, plank: 10, stone: 10, hammer: 10 },
   gameSpeeds: [1, 2, 4, 64],

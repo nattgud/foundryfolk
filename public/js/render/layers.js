@@ -115,9 +115,63 @@
     const tileSize = renderer.tileSize;
     for (const building of World.buildings) {
       const x = building.x * tileSize, y = building.y * tileSize;
-      if(building?.workerUnit?.status === "Inga resurser" || building?.workerUnit?.idleCooldown < 0.5) {
-        const icon = Assets.get("images/ui/icons/question_blue.png");
-        if (icon) context.drawImage(icon, x + (tileSize/3), y + (tileSize/3), tileSize / 3, tileSize / 3);
+      let icon = null;
+      switch(building?.status) {
+        case "No resources":
+          icon = "images/ui/icons/warning_yellow.png";
+          break;
+        case "Paused":
+          icon = "images/ui/icons/paused.png";
+          break;
+        case "Full stock":
+          icon = "images/ui/icons/warning_yellow.png";
+          break;
+        case "Missing tools":
+          icon = "images/ui/icons/warning_yellow.png";
+          break;
+        case "No deers in range":
+          icon = "images/ui/icons/warning_yellow.png";
+          break;
+        case "No resources":
+          icon = "images/ui/icons/warning_red.png";
+          break;
+        case "Missing export":
+          icon = "images/ui/icons/error.png";
+          break;
+        case "Can't reach":
+          icon = "images/ui/icons/error.png";
+          break;
+      }
+      switch(building?.workerUnit?.status) {
+        case "No resources":
+          icon = "images/ui/icons/warning_yellow.png";
+          break;
+        case "Paused":
+          icon = "images/ui/icons/paused.png";
+          break;
+        case "Full stock":
+          icon = "images/ui/icons/warning_yellow.png";
+          break;
+        case "Missing tools":
+          icon = "images/ui/icons/warning_yellow.png";
+          break;
+        case "No deers in range":
+          icon = "images/ui/icons/warning_yellow.png";
+          break;
+        case "No resources":
+          icon = "images/ui/icons/warning_red.png";
+          break;
+        case "Missing export":
+          icon = "images/ui/icons/error.png";
+          break;
+        case "Can't reach":
+          icon = "images/ui/icons/error.png";
+          break;
+      }
+      if(building?.status.substring(0, 8) === "Missing:") icon = "images/ui/icons/warning_yellow.png";
+      if(icon !== null) {
+        icon = Assets.get(icon);
+        if (icon) context.drawImage(icon, x + (tileSize / 4), y + (tileSize / 4), tileSize / 2, tileSize / 2);
       }
     }
   });
