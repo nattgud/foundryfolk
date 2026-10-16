@@ -6,7 +6,7 @@ CityBuilder.Config.settings = {
   buildDurationSeconds: 1,
   outputBufferCapacity: 20,       // max i utbuffert innan producenten pausar
   flushThreshold: 0,             // överskott över detta skickas till lagret
-  startingCarriers: 20,
+  startingCarriers: 30,
   carriersPerBuilding: 1,
   deerActivationRadius: 2,
   deerPerChunk: 3,

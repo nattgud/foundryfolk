@@ -17,32 +17,151 @@
     }
   });
 
-  // Stigar: ju fler bärare som gått, desto synligare. Bilden är genomskinlig tills slitaget nått 100 %,
-  // då används en egen bild. Saknas bilden ritas de gamla grå rutorna.
+  // Stigar: en mjukt rundad stig med fast bredd, fylld med stigbilden som mönster. Slitaget styr genomskinligheten
+  // (som förut): svagt slitna rutor är genomskinliga, och från 100 % används path_worn-bilden. Den ritas i brickor på
+  // 16x16 rutor som cachas på egna canvaser och bara ritas om när en ruta byter slitagenivå eller en byggnad ändras
+  // (kontrolleras högst 10 gånger per sekund). Varje bildruta kostar alltså bara en drawImage per synlig bricka.
   const PATH_IMAGES = { partial: 'images/paths/path.png', worn: 'images/paths/path_worn.png' };
+  const PATH_CHUNK = 16;                 // rutor per bricka
+  const PATH_CHECK_MS = 100;             // hur ofta en bricka kontrolleras efter ändringar
+  const PATH_KEEP_MS = 20000;            // oanvända brickor släpps efter så här lång tid
+  const PATH_WIDTH = 0.6;                // stigens bredd i rutor
+  const PATH_ALPHA = [0, 0.225, 0.45, 0.675, 0.9, 1]; // nivå 1-4: slitage under 100 %, nivå 5: minst 100 %
+  const GRID = PATH_CHUNK + 2;           // brickan + en ruta runt om, för att se grannarna
+  const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+  const grid = new Uint8Array(GRID * GRID);   // slitagenivå per ruta
+  const built = new Uint8Array(GRID * GRID);  // 1 = byggnad på rutan
+  const pathChunks = new Map();
+  const pathStyle = { tileSize: 0, partialImage: null, wornImage: null, partial: '#655', worn: '#777' };
+
+  const wearLevel = wear => (wear >= 1 ? 5 : Math.round(wear * 4));
+
+  // Mönstren byggs om när bilderna eller rutstorleken ändras (t.ex. "Shapes only")
+  const updatePathStyle = (context, tileSize) => {
+    const config = Object.assign({}, PATH_IMAGES, Config.settings.pathImages); // valfritt i settings.js
+    const partialImage = Assets.get(config.partial) || null, wornImage = Assets.get(config.worn) || null;
+    if (partialImage === pathStyle.partialImage && wornImage === pathStyle.wornImage && tileSize === pathStyle.tileSize) return;
+    const makePattern = (image, fallback) => {
+      if (!image) return fallback;
+      try {
+        const pattern = context.createPattern(image, 'repeat');
+        if (pattern && pattern.setTransform && image.width) pattern.setTransform(new DOMMatrix().scale(tileSize / image.width, tileSize / image.height));
+        return pattern || fallback;
+      } catch (error) { return fallback; }
+    };
+    Object.assign(pathStyle, {
+      tileSize, partialImage, wornImage,
+      partial: makePattern(partialImage, '#655'),
+      worn: makePattern(wornImage, null) || makePattern(partialImage, '#777'),
+    });
+    pathChunks.clear();
+  };
+
+  // Fyller grid (slitagenivåer) och built (byggnader) för brickan och en ruta runt om. Returnerar en checksumma,
+  // eller 0 om brickan saknar stig.
+  const readPathGrid = chunk => {
+    let hash = 1, count = 0;
+    for (let j = 0; j < GRID; j++) for (let i = 0; i < GRID; i++) {
+      const x = chunk.cx * PATH_CHUNK + i - 1, y = chunk.cy * PATH_CHUNK + j - 1, index = j * GRID + i;
+      const isBuilt = World.buildingAt(x, y) ? 1 : 0;
+      const tile = isBuilt ? null : World.getTile(x, y);
+      // Stigar syns bara på gräs (inte på sand, vatten, sten, skog ...) och inte under byggnader
+      const level = tile && tile.terrainType === 'grass' ? wearLevel(tile.wear) : 0;
+      grid[index] = level;
+      built[index] = isBuilt;
+      if (level && i > 0 && j > 0 && i <= PATH_CHUNK && j <= PATH_CHUNK) count++;
+      hash = (Math.imul(hash, 31) + level + isBuilt * 8) | 0;
+    }
+    return count ? hash : 0;
+  };
+
+  // Varje ruta binder ihop mittpunkterna på kanterna mot sina grannar (med rutans mitt som kontrollpunkt, så
+  // hörnen blir rundade). Allt blir en enda form som fylls med mönstret en gång per slitagenivå, begränsad till
+  // rutorna på den nivån. Då får överlappande delar aldrig dubbel genomskinlighet. Mot en byggnad fortsätter
+  // stigen in i byggnadens ruta. Brickan ritas bara inom sin egen yta: grannbrickan fortsätter exakt vid kanten.
+  const drawPathChunk = (chunk, tileSize) => {
+    const size = PATH_CHUNK * tileSize;
+    if (!chunk.canvas) chunk.canvas = document.createElement('canvas');
+    const canvas = chunk.canvas, context = canvas.getContext('2d');
+    if (canvas.width !== size) canvas.width = canvas.height = size; else context.clearRect(0, 0, size, size);
+
+    const shape = new Path2D(), rects = [null, [], [], [], [], []], half = tileSize / 2;
+    const originX = (chunk.cx * PATH_CHUNK - 1) * tileSize, originY = (chunk.cy * PATH_CHUNK - 1) * tileSize; // världsposition för grid[0]
+    const ends = [];
+    for (let j = 1; j <= PATH_CHUNK; j++) for (let i = 1; i <= PATH_CHUNK; i++) {
+      const level = grid[j * GRID + i];
+      if (!level) continue;
+      const x = originX + i * tileSize, y = originY + j * tileSize, cx = x + half, cy = y + half;
+      rects[level].push(x, y);
+
+      ends.length = 0;
+      for (const [dx, dy] of DIRECTIONS) {
+        const neighbor = (j + dy) * GRID + i + dx;
+        if (dx && dy) {
+          // Diagonaler bara när rutorna inte redan hänger ihop via en intilliggande ruta
+          if (grid[neighbor] && !grid[j * GRID + i + dx] && !grid[(j + dy) * GRID + i]) {
+            ends.push(cx + dx * half, cy + dy * half);
+            rects[level].push(x + dx * tileSize, y, x, y + dy * tileSize); // hörnrutorna, så att den breda linjen inte klipps av
+          }
+        } else if (grid[neighbor]) {
+          ends.push(cx + dx * half, cy + dy * half);                 // mitt på kanten
+        } else if (built[neighbor]) {
+          ends.push(cx + dx * tileSize, cy + dy * tileSize);         // in till byggnadens mitt
+          rects[level].push(x + dx * tileSize, y + dy * tileSize);   // byggnadens ruta får också stigen
+        }
+      }
+
+      if (ends.length === 0) { shape.moveTo(cx, cy); shape.lineTo(cx + 0.01, cy); }   // ensam ruta: en prick
+      else if (ends.length === 4) { shape.moveTo(ends[0], ends[1]); shape.quadraticCurveTo(cx, cy, ends[2], ends[3]); }
+      else for (let k = 0; k < ends.length; k += 2) { shape.moveTo(cx, cy); shape.lineTo(ends[k], ends[k + 1]); }
+    }
+
+    // Världskoordinater, så att mönstret fortsätter obrutet mellan brickor
+    context.setTransform(1, 0, 0, 1, -chunk.cx * size, -chunk.cy * size);
+    context.lineCap = context.lineJoin = 'round';
+    context.lineWidth = tileSize * PATH_WIDTH;
+    for (let level = 1; level <= 5; level++) {
+      const list = rects[level];
+      if (!list.length) continue;
+      context.save();
+      context.beginPath();
+      for (let k = 0; k < list.length; k += 2) context.rect(list[k], list[k + 1], tileSize, tileSize);
+      context.clip();
+      context.globalAlpha = PATH_ALPHA[level];
+      context.strokeStyle = level === 5 ? pathStyle.worn : pathStyle.partial;
+      context.stroke(shape);
+      context.restore();
+    }
+  };
+
+  let lastPathPrune = 0;
   Renderer.addLayer('paths', (context, renderer) => {
-    const range = renderer.visibleTileRange(), tileSize = renderer.tileSize;
-    const pathConfig = Object.assign({}, PATH_IMAGES, Config.settings.pathImages); // valfritt i settings.js
-    const partialImage = Assets.get(pathConfig.partial), wornImage = Assets.get(pathConfig.worn);
-    for (let y = range.minY; y <= range.maxY; y++) for (let x = range.minX; x <= range.maxX; x++) {
-      const tile = World.getTile(x, y);
-      // Stigar syns bara på gräs (inte på sand, vatten, sten, skog ...)
-      if (tile.terrainType !== 'grass' || !tile.wear) continue;
+    const range = renderer.visibleTileRange(), tileSize = renderer.tileSize, now = performance.now();
+    updatePathStyle(context, tileSize);
 
-      // Kontrollera om det finns en byggnad på denna plats
-      const isBuildingPresent = World.buildings.some(building => building.x === x && building.y === y);
-      if (isBuildingPresent) continue;
+    for (let cy = Math.floor(range.minY / PATH_CHUNK); cy <= Math.floor(range.maxY / PATH_CHUNK); cy++) {
+      for (let cx = Math.floor(range.minX / PATH_CHUNK); cx <= Math.floor(range.maxX / PATH_CHUNK); cx++) {
+        const key = cx + ',' + cy;
+        let chunk = pathChunks.get(key);
+        if (!chunk) { chunk = { cx, cy, canvas: null, hash: -1, checkedAt: -Infinity }; pathChunks.set(key, chunk); }
+        chunk.usedAt = now;
 
-      const isWorn = tile.wear >= 1;
-      const image = isWorn ? (wornImage || partialImage) : partialImage;
-      context.globalAlpha = isWorn ? 1 : tile.wear * 0.9;
-      if (image) context.drawImage(image, x * tileSize, y * tileSize, tileSize + .5, tileSize + .5);
-      else {
-        context.fillStyle = isWorn ? '#777' : '#655';
-        context.fillRect(x * tileSize, y * tileSize, tileSize + .5, tileSize + .5);
+        if (now - chunk.checkedAt >= PATH_CHECK_MS) {
+          chunk.checkedAt = now;
+          const hash = readPathGrid(chunk);
+          if (hash !== chunk.hash) {
+            chunk.hash = hash;
+            if (hash) drawPathChunk(chunk, tileSize); else chunk.canvas = null; // tom bricka: släpp canvasen
+          }
+        }
+        if (chunk.canvas) context.drawImage(chunk.canvas, cx * PATH_CHUNK * tileSize, cy * PATH_CHUNK * tileSize);
       }
     }
-    context.globalAlpha = 1;
+
+    if (now - lastPathPrune > 5000) {
+      lastPathPrune = now;
+      for (const [key, chunk] of pathChunks) if (now - chunk.usedAt > PATH_KEEP_MS) pathChunks.delete(key);
+    }
   });
 
   Renderer.addLayer('buildings', (context, renderer) => {
@@ -67,7 +186,7 @@
         context.fillStyle = '#000'; context.fillRect(x + 3, y + tileSize - 8, tileSize - 6, 5);
         context.fillStyle = '#5fb55f'; context.fillRect(x + 3, y + tileSize - 8, (tileSize - 6) * building.buildProgress, 5);
       } else if (!building.definition.isStorage) {
-        renderer.drawResourceIcons(context, building.inputStock, x, y + tileSize - 7);
+        renderer.drawResourceIcons(context, building.inputStock, x, y + tileSize - 10);
         renderer.drawResourceIcons(context, building.outputStock, x, y + 1);
       }
       if (building === CityBuilder.Game.selectedBuilding) {

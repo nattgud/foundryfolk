@@ -5,7 +5,7 @@ CityBuilder.Config.units = {
   carrier: {
     isHauler: true, 
     wearsPaths: true, 
-    speedMultiplier: 1, 
+    speedMultiplier: 0.5, 
     color: '#4fd1e8', 
     fallbackShape: 'square', 
     fallbackSize: 8, 
@@ -16,7 +16,7 @@ CityBuilder.Config.units = {
   deer: {
     isHauler: false, 
     wearsPaths: false, 
-    speedMultiplier: 0.5, 
+    speedMultiplier: 0.4, 
     color: '#760', 
     fallbackShape: 'circle', 
     fallbackSize: 6, 

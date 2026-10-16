@@ -49,12 +49,40 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 6
   },
+  sawmill: {
+    name: 'Sawmill',
+    category: 'forestry',
+    symbol: 'SM',
+    color: '#b5875a',
+    buildCost: { wood: 5, stone: 4 },
+    job: {
+      kind: 'craft',
+      inputs: { wood: 1 },
+      outputs: { plank: 2 },
+      craftSeconds: 8
+    },
+    buildDuration: 7
+  },
+  planter: {
+    name: 'Planter',
+    category: 'forestry',
+    symbol: 'SE',
+    color: '#176d22',
+    buildCost: { wood: 5, stone: 4 },
+    job: {
+      kind: 'craft',
+      inputs: { seeds: 3 },
+      outputs: { herbs: 1 },
+      craftSeconds: 8
+    },
+    buildDuration: 7
+  },
 
   // Jordbruk och mat
   apple_gatherer: {
     name: 'Apple Gatherer',
     category: 'farming',
-    symbol: 'AP',
+    symbol: 'AG',
     color: '#536c38',
     buildCost: { plank: 4, wood: 4 },
     job: {
@@ -86,7 +114,7 @@ CityBuilder.Config.buildings = {
   herb_gatherer: {
     name: 'Herb Gatherer',
     category: 'farming',
-    symbol: 'H',
+    symbol: 'HG',
     color: '#526b40',
     buildCost: { plank: 4, wood: 4 },
     job: {
@@ -102,7 +130,7 @@ CityBuilder.Config.buildings = {
   mushroom_gatherer: {
     name: 'Mushroom Gatherer',
     category: 'farming',
-    symbol: 'MU',
+    symbol: 'MG',
     color: '#49354e',
     buildCost: { plank: 4, wood: 4 },
     job: {
@@ -118,7 +146,7 @@ CityBuilder.Config.buildings = {
   farm: {
     name: 'Farm',
     category: 'farming',
-    symbol: 'G',
+    symbol: 'F',
     color: '#b8a22e',
     buildCost: { plank: 6, wood: 5, stone: 4 },
     job: {
@@ -165,7 +193,7 @@ CityBuilder.Config.buildings = {
   well: {
     name: 'Well',
     category: 'gathering',
-    symbol: 'W',
+    symbol: 'WE',
     color: '#00aaff',
     buildCost: { plank: 3, stone: 7 },
     job: {
@@ -173,7 +201,7 @@ CityBuilder.Config.buildings = {
       sourceTerrain: 'water',
       searchRadius: 2,
       outputResource: 'water',
-      workSeconds: 5
+      workSeconds: 1
     },
     buildDuration: 6
   },
@@ -181,7 +209,7 @@ CityBuilder.Config.buildings = {
   sand_collector: {
     name: 'Sand Collector',
     category: 'gathering',
-    symbol: 'SA',
+    symbol: 'SC',
     color: '#c9b887',
     buildCost: { plank: 4 },
     job: {
@@ -197,7 +225,7 @@ CityBuilder.Config.buildings = {
   clay_pit: {
     name: 'Clay Pit',
     category: 'gathering',
-    symbol: 'CL',
+    symbol: 'CP',
     color: '#946b58',
     buildCost: { plank: 4, stone: 3 },
     job: {
@@ -230,7 +258,7 @@ CityBuilder.Config.buildings = {
   quarry: {
     name: 'Quarry',
     category: 'mining',
-    symbol: 'S',
+    symbol: 'Q',
     color: '#7d8790',
     buildCost: { plank: 5, wood: 4 },
     job: {
@@ -381,7 +409,7 @@ CityBuilder.Config.buildings = {
   salt_mine: {
     name: 'Salt Mine',
     category: 'mining',
-    symbol: 'SL',
+    symbol: 'SM',
     color: '#d6d0bd',
     buildCost: { plank: 6, stone: 6 },
     placeOnTerrain: 'salt_ore',
@@ -413,25 +441,11 @@ CityBuilder.Config.buildings = {
   },
 
   // Förädling och materialproduktion
-  sawmill: {
-    name: 'Sawmill',
-    category: 'forestry',
-    symbol: 'V',
-    color: '#b5875a',
-    buildCost: { wood: 5, stone: 4 },
-    job: {
-      kind: 'craft',
-      inputs: { wood: 1 },
-      outputs: { plank: 2 },
-      craftSeconds: 8
-    },
-    buildDuration: 7
-  },
 
   mill: {
     name: 'Mill',
     category: 'processing',
-    symbol: 'K',
+    symbol: 'M',
     color: '#d6d6d6',
     buildCost: { plank: 7, stone: 7 },
     job: {
@@ -476,7 +490,7 @@ CityBuilder.Config.buildings = {
   iron_smelter: {
     name: 'Iron Smelter',
     category: 'processing',
-    symbol: 'J',
+    symbol: 'IS',
     color: '#6b7fa6',
     buildCost: { plank: 7, stone: 8 },
     job: {
@@ -552,7 +566,7 @@ CityBuilder.Config.buildings = {
   hammersmith: {
     name: 'Hammersmith',
     category: 'crafting',
-    symbol: 'F',
+    symbol: 'HS',
     color: '#8a8f99',
     buildCost: { plank: 8, stone: 8 },
     job: {
@@ -567,7 +581,7 @@ CityBuilder.Config.buildings = {
   picksmith: {
     name: 'Picksmith',
     category: 'crafting',
-    symbol: 'F',
+    symbol: 'PS',
     color: '#8a8f99',
     buildCost: { plank: 8, stone: 8 },
     job: {
@@ -582,7 +596,7 @@ CityBuilder.Config.buildings = {
   axesmith: {
     name: 'Axesmith',
     category: 'crafting',
-    symbol: 'F',
+    symbol: 'AS',
     color: '#8a8f99',
     buildCost: { plank: 8, stone: 8 },
     job: {
@@ -597,7 +611,7 @@ CityBuilder.Config.buildings = {
   scythesmith: {
     name: 'Scythesmith',
     category: 'crafting',
-    symbol: 'F',
+    symbol: 'SS',
     color: '#8a8f99',
     buildCost: { plank: 8, stone: 8 },
     job: {
@@ -613,7 +627,7 @@ CityBuilder.Config.buildings = {
   crystal_gatherer: {
     name: 'Crystal Gatherer',
     category: 'magic',
-    symbol: 'CR',
+    symbol: 'CG',
     color: '#675080',
     buildCost: { plank: 10, stone: 10 },
     job: {

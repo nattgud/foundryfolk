@@ -36,7 +36,7 @@
   /* ---------- Brus ---------- */
 
   // world size (0.5 default)
-  const FEATURE_SCALE = 1;
+  const FEATURE_SCALE = 0.4;
 
   // Roterat fraktalbrus i två skalor. Rotationen döljer rutnätsmönstret i värdebruset.
   const fbm = (context, x, y, scale, channel, angle) => {

@@ -192,6 +192,11 @@
           console.warn('Kunde inte återställa byggnaden', saved, error);
         }
       }
+      for (const building of World.buildings) {
+        building.outputReserved = {};
+        building.storedReserved = {};
+        building.incomingCount = {};
+      }
 
       restoreFields(headquarters, data.headquarters);
 

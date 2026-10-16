@@ -1078,6 +1078,22 @@
           color: #e5736f;
         }
 
+        #info .info-resource {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          margin-right: 5px;
+          vertical-align: middle;
+        }
+
+        #info .info-resource img {
+          width: 18px;
+          height: 18px;
+          object-fit: contain;
+          image-rendering: pixelated;
+          vertical-align: middle;
+        }
+
         /* Resursfält */
 
         #top.resource-bar {
@@ -1427,6 +1443,21 @@
         .join(', ');
     },
 
+    formatResourceIcons(amounts) {
+      return Object.entries(amounts || {})
+        .filter(([, amount]) => amount > 0)
+        .map(([resourceId, amount]) => {
+          const resource = Config.resources[resourceId];
+
+          if (resource?.image && Config.settings.useImages !== false) {
+            return `<span class="info-resource" title="${this.resourceName(resourceId)}"><img src="${resource.image}" alt=""><span>${amount}</span></span>`;
+          }
+
+          return `<span class="info-resource">${amount} ${this.resourceName(resourceId)}</span>`;
+        })
+        .join('');
+    },
+
     // Vad en byggnad är till för, som en lista med korta rader
     describeBuilding(definition) {
       const lines = [];
@@ -1643,10 +1674,29 @@
         ? t('Under construction {percent}%', { percent: Math.round(building.buildProgress * 100) })
         : I18n().status(building.status);
 
+      const imports = this.formatResourceIcons(building.inputStock);
+      const exports = this.formatResourceIcons(building.outputStock);
+
+      const tradeInfo = [
+        imports
+          ? t('Import: {list}', { list: imports })
+          : '',
+        exports
+          ? t('Export: {list}', { list: exports })
+          : ''
+      ].filter(Boolean).join(' · ');
+
       byId('infoStatus').innerHTML = building.definition.isStorage
-        ? t('Storage: {list}', { list: this.formatResources(building.storedGoods) || t('empty') })
-        : `${statusText}<br>${t('Import: {list}', { list: this.formatResources(building.inputStock) || '–' })} · ${t('Export: {list}', { list: this.formatResources(building.outputStock) || '–' })}` +
-          (this.getBuildingRange(building.definition) ? `<br>${t('Range: {n} tiles', { n: this.getBuildingRange(building.definition) })}` : '');
+        ? t('Storage: {list}', {
+            list: this.formatResources(building.storedGoods) || t('empty')
+          })
+        : statusText
+          + (tradeInfo ? `<br>${tradeInfo}` : '')
+          + (this.getBuildingRange(building.definition)
+            ? `<br>${t('Range: {n} tiles', {
+                n: this.getBuildingRange(building.definition)
+              })}`
+            : '');
 
       if (byId('pauseButton')) {
         byId('pauseButton').textContent = t(building.paused ? 'Unpause' : 'Pause');

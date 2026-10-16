@@ -56,7 +56,7 @@
 
         const resource = Config.resources[resourceId];
         const image = Assets.get(resource.image);
-        const iconX = x + 2 + iconIndex * 18;
+        const iconX = x + 2 + iconIndex * 10;
 
         if (image) {
           context.drawImage(image, iconX, y, 7, 7);
@@ -70,7 +70,7 @@
           context.font = "8px sans-serif";
           context.textAlign = "left";
           context.textBaseline = "middle";
-          context.fillText(String(count), iconX + 8, y + 4);
+          context.fillText(String(count), iconX, y + 10);
         }
 
         iconIndex++;
