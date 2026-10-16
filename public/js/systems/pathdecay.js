@@ -1,11 +1,13 @@
+/* Stigar slits ner när ingen går på dem. Efter GRACE_SECONDS utan trampning börjar slitaget minska.
+   Units.js anropar touch(tile) varje gång en enhet trampar på en ruta. */
 (function (CityBuilder) {
   'use strict';
 
   const { Config, World } = CityBuilder;
 
-  const GRACE_SECONDS = 10;
-  const DECAY_PER_SECOND = 0.002;
-  const lastTouched = new Map();
+  const GRACE_SECONDS = 60;
+  const DECAY_PER_SECOND = 0.25;
+  const lastTouched = new Map(); // ruta -> sekunder sedan den senast trampades
 
   CityBuilder.Systems = CityBuilder.Systems || {};
 
@@ -22,8 +24,8 @@
             continue;
           }
 
-          const idle = (lastTouched.get(tile) ?? GRACE_SECONDS)
-            + deltaSeconds;
+          // En ruta med slitage som inte setts förut (t.ex. efter laddning) får full vilotid från början
+          const idle = (lastTouched.get(tile) ?? 0) + deltaSeconds;
 
           lastTouched.set(tile, idle);
 

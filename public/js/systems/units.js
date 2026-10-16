@@ -11,10 +11,10 @@
     wanderRadius: 8,
     idleCooldown: 1,
     maxFoodPerTile: 5,
-    maxSpreadDistance: 6,
-    breedChancePerSecond: Config.settings.deerBreedChancePerSecond ?? 1500 / 1500, // chans per speltidssekund att få en unge (snitt ca 25 min mellan ungar per hjort)
-    breedCooldown: Config.settings.deerBreedCooldown ?? 1,    // speltid i sekunder innan samma hjort (eller ungen) kan få en ny unge
-    maxPopulation: Config.settings.deerMaxPopulation ?? 20,     // inga fler hjortar än så här i världen
+    maxSpreadDistance:8,
+    breedChancePerSecond: Config.settings.deerBreedChancePerSecond ?? 1 / 150, 
+    breedCooldown: Config.settings.deerBreedCooldown ?? 120,
+    maxPopulation: Config.settings.deerMaxPopulation ?? 25, 
   };
 
   const DEER_FOOD_TYPES = new Set([
@@ -110,6 +110,7 @@
         if (unit.definition.wearsPaths) { // trampar upp stigen
           const tile = World.getTile(nextTile.x, nextTile.y);
           tile.wear = Math.min(2, tile.wear + Config.settings.wearPerPass);
+          CityBuilder.Systems.pathDecay?.touch(tile); // startar om stigens vilotid (pathdecay.js)
         }
       } else {
         unit.x += dx / distance * stepLength; unit.y += dy / distance * stepLength;

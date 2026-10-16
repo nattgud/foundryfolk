@@ -2,6 +2,7 @@
 (function (CityBuilder) {
   'use strict';
   const { Config, World, Pathfinder, Economy, UI, byId } = CityBuilder;
+  const t = (text, variables) => CityBuilder.t(text, variables);
 
   const Game = {
     selectedBuilding: null,
@@ -10,6 +11,7 @@
     lastFrameTime: 0,
     deltaSeconds: 0,
     paused: false,          // sätts av huvudmenyn medan den är öppen
+    focusPaused: false,     // true när fönstret/fliken inte har fokus. Spelet står ALLTID stilla då (ingen inställning)
 
     get systems() { return Config.settings.systemOrder.map(name => CityBuilder.Systems[name]); },
 
@@ -23,12 +25,22 @@
       World.init();
       CityBuilder.Renderer.init();
       CityBuilder.Input.init();
-        UI.init();
+      UI.init();
       if (CityBuilder.Minimap) CityBuilder.Minimap.init();
       for (let i = 0; i < Config.settings.startingCarriers; i++) World.spawnUnit('carrier', 0, 0);
       const restored = Save ? Save.applyStart() : false;
-      if (level) UI.showToast((restored ? 'Game loaded. ' : '') + 'Level ' + level.level + ': ' + level.name);
+      if (level) UI.showToast((restored ? t('Game loaded.') + ' ' : '') + t('Level {level}: {name}', { level: level.level, name: level.name }));
+      this.installFocusPause();
       requestAnimationFrame(time => { this.lastFrameTime = time; this.frame(time); });
+    },
+
+    // Spelet pausas alltid när fönstret förlorar fokus eller fliken göms
+    installFocusPause() {
+      const update = () => { this.focusPaused = document.hidden || !document.hasFocus(); };
+      addEventListener('focus', update);
+      addEventListener('blur', update);
+      document.addEventListener('visibilitychange', update);
+      update();
     },
 
     setPlacingType(buildingType) { this.placingType = buildingType; this.selectedBuilding = null; },
@@ -41,11 +53,11 @@
     tryBuild(buildingType, x, y) {
       const definition = Config.buildings[buildingType];
       if (!World.canPlace(buildingType, x, y)) {
-        return UI.showToast(definition.placeOnTerrain ? 'Måste byggas på terrängtypen: ' + definition.placeOnTerrain : 'Platsen är upptagen');
+        return UI.showToast(definition.placeOnTerrain ? t('Must be built on: {terrain}', { terrain: UI.terrainName(definition.placeOnTerrain) }) : t('This spot is occupied'));
       }
       Pathfinder.remainingSearches = Math.max(Pathfinder.remainingSearches, 1);
-      if (Pathfinder.findPath(World.headquarters.x, World.headquarters.y, x, y) === null) return UI.showToast('Platsen går inte att nå');
-      if (!Economy.spend(definition.buildCost)) return UI.showToast('Inte nog med resurser');
+      if (Pathfinder.findPath(World.headquarters.x, World.headquarters.y, x, y) === null) return UI.showToast(t('This spot cannot be reached'));
+      if (!Economy.spend(definition.buildCost)) return UI.showToast(t('Not enough resources'));
       World.placeBuilding(buildingType, x, y);
     },
 
@@ -78,12 +90,28 @@
     },
 
     frame(time) {
+      const next = () => requestAnimationFrame(following => this.frame(following));
+
+      // Fönstret har inte fokus: ingen simulering, ingen ritning, och ingen tid som hoppar fram när fokus kommer tillbaka
+      if (this.focusPaused) {
+        this.lastFrameTime = time;
+        return next();
+      }
+
+      // Bildfrekvensgräns (Options). Hoppade bildrutor räknas in i nästa, så speltiden stämmer.
+      const options = CityBuilder.Options;
+      const limit = options ? options.settings.fpsLimit : 0;
+      if (limit && time - this.lastFrameTime < 1000 / limit - 4) return next();
+
+      const started = performance.now();
       const realSeconds = Math.min(.1, (time - this.lastFrameTime) / 1000);
       this.lastFrameTime = time;
-      this.advanceSimulation(this.paused ? 0 : realSeconds * Config.settings.gameSpeeds[this.speedIndex]);
+      const simulatedSeconds = this.paused ? 0 : realSeconds * Config.settings.gameSpeeds[this.speedIndex];
+      this.advanceSimulation(simulatedSeconds);
       CityBuilder.Renderer.draw();
       UI.refresh();
-      requestAnimationFrame(next => this.frame(next));
+      if (options) options.recordFrame(time, performance.now() - started, simulatedSeconds);
+      next();
     },
   };
 

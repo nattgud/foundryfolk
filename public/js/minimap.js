@@ -19,13 +19,14 @@
 (function (CityBuilder) {
   'use strict';
   const { Config, World, Renderer } = CityBuilder;
+  const t = (text, variables) => CityBuilder.t(text, variables);
 
   const DEFAULTS = { size: 176, pixelsPerTile: 2, corner: 'top-right' };
   const ZOOM_STEPS = [1, 1.5, 2, 3, 4];
   const MODES = [
-    { id: 'all', name: 'Allt', icon: '🗺️' },
-    { id: 'resources', name: 'Resurser', icon: '💎' },
-    { id: 'favorites', name: 'Favoriter', icon: '★' },
+    { id: 'all', name: 'All', icon: '🗺️' },
+    { id: 'resources', name: 'Resources', icon: '💎' },
+    { id: 'favorites', name: 'Favorites', icon: '★' },
   ];
   const CHUNK = 16;              // rutor per bricka
   const BUILD_BUDGET_MS = 4;     // högst så här lång tid per bildruta åt att bygga brickor
@@ -89,7 +90,7 @@
 
       this.canvas = document.createElement('canvas');
       this.canvas.id = 'minimap';
-      this.canvas.title = 'Minikarta (scrolla för att zooma)';
+      this.canvas.title = t('Minimap (scroll to zoom)');
       this.context = this.canvas.getContext('2d');
 
       this.modeButton = document.createElement('button');
@@ -110,8 +111,8 @@
         button.onclick = () => this.zoomStep(direction);
         return button;
       };
-      this.zoomInButton = makeZoomButton('minimapZoomIn', '+', 'Zooma in minikartan', 1);
-      this.zoomOutButton = makeZoomButton('minimapZoomOut', '−', 'Zooma ut minikartan', -1);
+      this.zoomInButton = makeZoomButton('minimapZoomIn', '+', t('Zoom in the minimap'), 1);
+      this.zoomOutButton = makeZoomButton('minimapZoomOut', '−', t('Zoom out the minimap'), -1);
 
       this.injectStyles();
       document.body.appendChild(this.canvas);
@@ -132,6 +133,8 @@
         this.zoomStep(event.deltaY < 0 ? 1 : -1);
       }, { passive: false });
 
+      CityBuilder.I18n.onChange(() => this.applyLanguage());
+
       this.layout();
       addEventListener('resize', () => this.layout());
       // Växla storlekar när skärmen blir/slutar vara "mobil" (t.ex. vid rotation)
@@ -143,19 +146,29 @@
       requestAnimationFrame(() => this.frame());
     },
 
+    applyLanguage() {
+      this.canvas.title = t('Minimap (scroll to zoom)');
+      for (const [button, text] of [[this.zoomInButton, 'Zoom in the minimap'], [this.zoomOutButton, 'Zoom out the minimap']]) {
+        button.title = t(text);
+        button.setAttribute('aria-label', button.title);
+      }
+      this.updateModeButton();
+      this.lastDraw = 0;
+    },
+
     get mode() { return MODES[this.modeIndex]; },
 
     cycleMode() {
       this.modeIndex = (this.modeIndex + 1) % MODES.length;
       safe(() => localStorage.setItem(MODE_KEY, this.mode.id));
       this.updateModeButton();
-      if (CityBuilder.UI && CityBuilder.UI.showToast) CityBuilder.UI.showToast('Minikarta: ' + this.mode.name);
+      if (CityBuilder.UI && CityBuilder.UI.showToast) CityBuilder.UI.showToast(t('Minimap: {mode}', { mode: t(this.mode.name) }));
       this.lastDraw = 0; // rita om direkt
     },
 
     updateModeButton() {
       this.modeButton.textContent = this.mode.icon;
-      this.modeButton.title = `Kartläge: ${this.mode.name} (klicka för att byta)`;
+      this.modeButton.title = t('Map mode: {mode} (click to change)', { mode: t(this.mode.name) });
       this.modeButton.setAttribute('aria-label', this.modeButton.title);
     },
 
@@ -409,14 +422,14 @@
           context.font = '12px system-ui, sans-serif';
           context.textAlign = 'center';
           context.textBaseline = 'middle';
-          context.fillText('Inga favoriter', radius, radius - 8);
-          context.fillText('Markera med ★', radius, radius + 8);
+          context.fillText(t('No favorites'), radius, radius - 8);
+          context.fillText(t('Mark with ★'), radius, radius + 8);
         } else if (mode === 'favorites' && shown === 0) {
           context.fillStyle = '#e8e8e8';
           context.font = '12px system-ui, sans-serif';
           context.textAlign = 'center';
           context.textBaseline = 'middle';
-          context.fillText('Inga i närheten', radius, radius);
+          context.fillText(t('None nearby'), radius, radius);
         }
       }
 

@@ -67,9 +67,6 @@
         context.fillStyle = '#000'; context.fillRect(x + 3, y + tileSize - 8, tileSize - 6, 5);
         context.fillStyle = '#5fb55f'; context.fillRect(x + 3, y + tileSize - 8, (tileSize - 6) * building.buildProgress, 5);
       } else if (!building.definition.isStorage) {
-        if (World.buildings.some(b => b.x === x && b.y === y)) {
-          return;
-        }
         renderer.drawResourceIcons(context, building.inputStock, x, y + tileSize - 7);
         renderer.drawResourceIcons(context, building.outputStock, x, y + 1);
       }
@@ -111,68 +108,25 @@
     }
   });
 
+  // Statusikoner. Statustexten görs om till sin engelska grundform (I18n.canonicalStatus), så olika stavningar
+  // och äldre svenska texter ger samma ikon. Arbetarens status går före byggnadens.
+  const ICON_DIR = 'images/ui/icons/';
+  const STATUS_ICONS = {
+    'No resources': 'warning_yellow', 'Full stock': 'warning_yellow', 'Tools missing': 'warning_yellow',
+    'No deer in range': 'warning_yellow', 'Paused': 'paused', 'Missing export': 'error', "Can't reach": 'error',
+  };
+  const statusIcon = status => {
+    if (!status) return null;
+    const key = CityBuilder.I18n.canonicalStatus(status);
+    return key.startsWith('Missing:') ? 'warning_yellow' : STATUS_ICONS[key] || null;
+  };
+
   Renderer.addLayer('ui', (context, renderer) => {
     const tileSize = renderer.tileSize;
     for (const building of World.buildings) {
-      const x = building.x * tileSize, y = building.y * tileSize;
-      let icon = null;
-      switch(building?.status) {
-        case "No resources":
-          icon = "images/ui/icons/warning_yellow.png";
-          break;
-        case "Paused":
-          icon = "images/ui/icons/paused.png";
-          break;
-        case "Full stock":
-          icon = "images/ui/icons/warning_yellow.png";
-          break;
-        case "Missing tools":
-          icon = "images/ui/icons/warning_yellow.png";
-          break;
-        case "No deers in range":
-          icon = "images/ui/icons/warning_yellow.png";
-          break;
-        case "No resources":
-          icon = "images/ui/icons/warning_red.png";
-          break;
-        case "Missing export":
-          icon = "images/ui/icons/error.png";
-          break;
-        case "Can't reach":
-          icon = "images/ui/icons/error.png";
-          break;
-      }
-      switch(building?.workerUnit?.status) {
-        case "No resources":
-          icon = "images/ui/icons/warning_yellow.png";
-          break;
-        case "Paused":
-          icon = "images/ui/icons/paused.png";
-          break;
-        case "Full stock":
-          icon = "images/ui/icons/warning_yellow.png";
-          break;
-        case "Missing tools":
-          icon = "images/ui/icons/warning_yellow.png";
-          break;
-        case "No deers in range":
-          icon = "images/ui/icons/warning_yellow.png";
-          break;
-        case "No resources":
-          icon = "images/ui/icons/warning_red.png";
-          break;
-        case "Missing export":
-          icon = "images/ui/icons/error.png";
-          break;
-        case "Can't reach":
-          icon = "images/ui/icons/error.png";
-          break;
-      }
-      if(building?.status.substring(0, 8) === "Missing:") icon = "images/ui/icons/warning_yellow.png";
-      if(icon !== null) {
-        icon = Assets.get(icon);
-        if (icon) context.drawImage(icon, x + (tileSize / 4), y + (tileSize / 4), tileSize / 2, tileSize / 2);
-      }
+      const name = statusIcon(building.workerUnit?.status) || statusIcon(building.status);
+      const icon = name && Assets.get(ICON_DIR + name + '.png');
+      if (icon) context.drawImage(icon, building.x * tileSize + tileSize / 4, building.y * tileSize + tileSize / 4, tileSize / 2, tileSize / 2);
     }
   });
 
@@ -186,4 +140,3 @@
   });
 
 })(window.CityBuilder);
-

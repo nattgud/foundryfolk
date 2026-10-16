@@ -1,0 +1,735 @@
+/* Språk: alla texter som spelet skriver ut.
+
+   Engelska är standard och själva texten används som nyckel: t('Save game'). Saknas en översättning används
+   den engelska texten. Variabler skrivs {namn}: t('Level {level}: {name}', { level: 3, name: 'X' }).
+
+   Namn på saker i spelet (terräng, byggnader, resurser, enheter) slås upp med nameOf(typ, id, engelskt namn).
+   Först letar den efter nyckeln "typ.id" (t.ex. "terrain.iron_ore"), sedan översätts det engelska namnet.
+
+   Nytt språk: lägg till en rad i LANGUAGES och en ordlista i DICTIONARIES. Språket sparas i localStorage och kan
+   bytas när som helst (I18n.setLanguage); alla som lyssnar (I18n.onChange) får veta och ritar om sig. */
+(function (CityBuilder) {
+  'use strict';
+
+  const STORAGE_KEY = 'citybuilder.language';
+
+  // [kod, namn på språket själv, datumformat]
+  const LANGUAGES = [
+    ['en', 'English', 'en-GB'],
+    ['sv', 'Svenska', 'sv-SE'],
+    ['de', 'Deutsch', 'de-DE'],
+    ['es', 'Español', 'es-ES'],
+  ];
+
+  // Statustexter som äldre kod skriver på svenska. De räknas om till den engelska nyckeln innan de översätts.
+  const STATUS_ALIASES = {
+    'Saknar verktyg': 'Tools missing',
+    'Fullt lager': 'Full stock',
+    'Söker...': 'Searching...',
+    'Inga resurser': 'No resources',
+    'Inga hjortar i räckvidd': 'No deer in range',
+    'Saknar outputResource': 'Missing outputResource',
+    'Pausad': 'Paused',
+    'Ingen väg': "Can't reach",
+    'Fångad': 'Hunted',
+    'Missing tools': 'Tools missing',
+    'No deers in range': 'No deer in range',
+  };
+
+  // Genus för banornas substantiv (index i adjektivens former). sv: en/ett, de: m/f/n, es: m/f
+  const GENDER = {
+    sv: { 'Swamp': 1, 'Cursed land': 1, 'Meteor shower': 1 },
+    de: { 'Valley': 2, 'Stone desert': 1, 'Crag': 1, 'Cursed land': 2, 'Ruin': 1, 'Clay plain': 1, 'Drought': 1 },
+    es: { 'Cursed land': 1, 'Ruin': 1, 'Meteor shower': 1, 'Clay plain': 1, 'Drought': 1 },
+  };
+
+  const DICTIONARIES = {
+    sv: {
+      // Kategorier
+      'Storage & logistics': 'Lager & logistik',
+      'Forestry': 'Skogsbruk',
+      'Farming & food': 'Jordbruk & mat',
+      'Gathering & raw materials': 'Insamling & råvaror',
+      'Mining & quarrying': 'Gruvdrift & stenbrott',
+      'Processing & materials': 'Förädling & material',
+      'Crafting & tools': 'Hantverk & verktyg',
+      'Magic & ancient sites': 'Magi & forntida platser',
+      'Special buildings': 'Specialbyggnader',
+
+      // Resursfält och meny
+      'All resources': 'Alla resurser',
+      'Resources': 'Resurser',
+      'Close resource window': 'Stäng resursfönstret',
+      'Carriers {idle}/{total}': 'Bärare {idle}/{total}',
+      'Remove from favorites': 'Ta bort från favoriter',
+      'Add to favorites': 'Lägg till som favorit',
+      'Free: {amount}': 'Ledigt: {amount}',
+      'Main menu': 'Huvudmeny',
+      'Continue': 'Fortsätt',
+      'Save game': 'Spara spel',
+      'Load game': 'Ladda spel',
+      'New game': 'Nytt spel',
+      'Statistics': 'Statistik',
+      'Settings': 'Inställningar',
+      'Are you sure?': 'Är du säker?',
+      'Close menu': 'Stäng menyn',
+      'Level {level}: {name}': 'Bana {level}: {name}',
+      'Level {level}': 'Bana {level}',
+      'Empty': 'Tom',
+      'Slot {n}': 'Plats {n}',
+      'Autosave': 'Autosparning',
+      'Back': 'Tillbaka',
+      'Cancel': 'Avbryt',
+      'Overwrite': 'Skriv över',
+      '{label} exists. Want to overwrite?': '{label} finns redan. Vill du skriva över?',
+      'Load {label}? Unsaved progress will be gone.': 'Ladda {label}? Osparade framsteg går förlorade.',
+      'Load': 'Ladda',
+      'Unable to load': 'Det gick inte att ladda',
+      'Game saved': 'Spelet sparades',
+      'Unable to save: {reason}': 'Det gick inte att spara: {reason}',
+      'unknown error': 'okänt fel',
+      'Somehow the savesystem is unreachable': 'Sparsystemet går inte att nå',
+      'New game resets the game and autosave, and generates new maps. Manual saves are unchanged.': 'Nytt spel startar om spelet och autosparningen och skapar nya kartor. Manuella sparningar påverkas inte.',
+      'Start a new game': 'Starta nytt spel',
+      'unknown save slot': 'okänd sparplats',
+      'the page is reloading': 'sidan laddas om',
+      'the game has not finished starting': 'spelet har inte startat klart',
+      'could not read the game state': 'kunde inte läsa spelets tillstånd',
+      'browser storage is full or blocked': 'webbläsarens lagring är full eller blockerad',
+
+      // Byggnader och terräng
+      'Stores resources': 'Lagrar resurser',
+      'Build this to win': 'Bygg den för att vinna',
+      'Gathering: {source} → {output}': 'Samlar: {source} → {output}',
+      'Hunting: {source} → {output}': 'Jagar: {source} → {output}',
+      'Range: {n} tiles': 'Räckvidd: {n} rutor',
+      'Processing: {inputs} → {outputs}': 'Förädlar: {inputs} → {outputs}',
+      'Producing: {outputs}': 'Producerar: {outputs}',
+      'Placed on: {terrain}': 'Placeras på: {terrain}',
+      'Requires: {equipment}': 'Kräver: {equipment}',
+      'Cost: {cost}': 'Kostnad: {cost}',
+      'Remaining: {amount} of {total}': 'Kvar: {amount} av {total}',
+      'Blocked terrain': 'Blockerad terräng',
+      'Slow terrain': 'Långsam terräng',
+      'Gathered by: {list}': 'Samlas av: {list}',
+      'Can be built with: {list}': 'Kan byggas med: {list}',
+      'Constructing {percent}%': 'Byggs {percent}%',
+      'Under construction {percent}%': 'Byggs {percent}%',
+      'Demolish': 'Riv',
+      'Pause': 'Pausa',
+      'Unpause': 'Återuppta',
+      'Close': 'Stäng',
+      'Storage: {list}': 'Lager: {list}',
+      'empty': 'tomt',
+      'Import: {list}': 'Import: {list}',
+      'Export: {list}': 'Export: {list}',
+
+      // Meddelanden i spelet
+      'Game loaded.': 'Spelet laddades.',
+      'Must be built on: {terrain}': 'Måste byggas på: {terrain}',
+      'This spot is occupied': 'Platsen är upptagen',
+      'This spot cannot be reached': 'Platsen går inte att nå',
+      'Not enough resources': 'Inte nog med resurser',
+
+      // Statusar
+      'Walking': 'Går',
+      'Eating': 'Äter',
+      'Wandering': 'Strövar',
+      "Can't reach": 'Kan inte nå fram',
+      'Hunted': 'Jagas',
+      'Paused': 'Pausad',
+      'Gathering': 'Samlar',
+      'Hunting': 'Jagar',
+      'Working': 'Arbetar',
+      'Tools missing': 'Verktyg saknas',
+      'Full stock': 'Fullt lager',
+      'Searching...': 'Söker...',
+      'No resources': 'Inga resurser',
+      'No deer in range': 'Inga hjortar inom räckvidd',
+      'Missing outputResource': 'Saknar outputResource',
+      'Missing: {list}': 'Saknas: {list}',
+
+      // Inställningar och statistik
+      'Language': 'Språk',
+      'On': 'På',
+      'Off': 'Av',
+      'FPS counter': 'FPS-räknare',
+      'Shown below the resource bar': 'Visas under resursfältet',
+      'Frame rate': 'Bildfrekvens',
+      'Unlimited': 'Obegränsad',
+      '30 FPS': '30 FPS',
+      '30 FPS saves battery and processing power': '30 FPS sparar batteri och processorkraft',
+      'How often the game saves automatically': 'Hur ofta spelet sparas automatiskt',
+      '30 seconds': '30 sekunder',
+      '1 minute': '1 minut',
+      '2 minutes': '2 minuter',
+      '5 minutes': '5 minuter',
+      '15 minutes': '15 minuter',
+      'Shapes only': 'Bara former',
+      'Draws the map without images (faster)': 'Ritar kartan utan bilder (snabbare)',
+      'The game always pauses when the window loses focus.': 'Spelet pausas alltid när fönstret förlorar fokus.',
+      'Level': 'Bana',
+      'Play time (this session)': 'Speltid (denna session)',
+      'Workers': 'Arbetare',
+      'Carriers': 'Bärare',
+      'Deer': 'Hjortar',
+      'Other units': 'Övriga enheter',
+      'Total units': 'Enheter totalt',
+      'Buildings': 'Byggnader',
+      '{finished} finished': '{finished} färdiga',
+      '{finished} finished, {building} under construction': '{finished} färdiga, {building} under bygge',
+      'Stored resources': 'Resurser i lager',
+      '{total} ({kinds} types)': '{total} ({kinds} sorter)',
+      'Buildings by type': 'Byggnader per typ',
+      '{n} units': '{n} enheter',
+
+      // Namn: enheter
+      // Resurser
+      'resource.wood': 'Trä', 'resource.plank': 'Planka', 'resource.stone': 'Sten', 'resource.clay': 'Lera',
+      'resource.sand': 'Sand', 'resource.limestone': 'Kalksten', 'resource.brick': 'Tegel', 'resource.straw': 'Halm',
+      'resource.tar': 'Tjära', 'resource.charcoal': 'Träkol', 'resource.ash': 'Aska', 'resource.grain': 'Spannmål',
+      'resource.meat': 'Kött', 'resource.seeds': 'Frön', 'resource.flour': 'Mjöl', 'resource.apples': 'Äpplen',
+      'resource.berries': 'Bär', 'resource.mushrooms': 'Svamp', 'resource.herbs': 'Örter', 'resource.water': 'Vatten',
+      'resource.bread': 'Bröd', 'resource.fish': 'Fisk', 'resource.salt': 'Salt', 'resource.animal': 'Djur',
+      'resource.leather': 'Läder', 'resource.bone': 'Ben', 'resource.iron_ore': 'Järnmalm', 'resource.copper_ore': 'Kopparmalm',
+      'resource.tin_ore': 'Tennmalm', 'resource.coal': 'Kol', 'resource.gold_ore': 'Guldmalm', 'resource.silver_ore': 'Silvermalm',
+      'resource.gemstone': 'Ädelsten', 'resource.salt_ore': 'Saltmalm', 'resource.sulfur': 'Svavel', 'resource.iron': 'Järn',
+      'resource.copper': 'Koppar', 'resource.tin': 'Tenn', 'resource.bronze': 'Brons', 'resource.steel': 'Stål',
+      'resource.silver': 'Silver', 'resource.gold': 'Guld', 'resource.hammer': 'Hammare', 'resource.pickaxe': 'Spetshacka',
+      'resource.axe': 'Yxa', 'resource.scythe': 'Lie', 'resource.shovel': 'Spade', 'resource.saw': 'Såg',
+      'resource.knife': 'Kniv', 'resource.potion': 'Dryck', 'resource.crystal': 'Kristall', 'resource.moonstone': 'Månsten',
+      'resource.cursed_ash': 'Förbannad aska', 'resource.ancient_relic': 'Forntida relik', 'resource.fallen_star': 'Fallen stjärna', 'resource.enchanted_wood': 'Förtrollat trä',
+      'resource.coins': 'Mynt',
+      // Byggnader
+      'building.hq': 'Bas', 'building.warehouse': 'Lagerhus', 'building.woodcutter': 'Skogshuggare',
+      'building.apple_gatherer': 'Äppelplockare', 'building.berry_gatherer': 'Bärplockare', 'building.herb_gatherer': 'Örtsamlare',
+      'building.mushroom_gatherer': 'Svampplockare', 'building.farm': 'Gård', 'building.hunters_cottage': 'Jägarstuga',
+      'building.fishing_hut': 'Fiskarstuga', 'building.well': 'Brunn', 'building.sand_collector': 'Sandsamlare',
+      'building.clay_pit': 'Lergrop', 'building.limestone_quarry': 'Kalkstensbrott', 'building.quarry': 'Stenbrott',
+      'building.rock_crusher': 'Stenkross', 'building.iron_mine': 'Järngruva', 'building.copper_mine': 'Koppargruva',
+      'building.tin_mine': 'Tenngruva', 'building.coal_mine': 'Kolgruva', 'building.gold_mine': 'Guldgruva',
+      'building.silver_mine': 'Silvergruva', 'building.gemstone_mine': 'Ädelstensgruva', 'building.salt_mine': 'Saltgruva',
+      'building.sulfur_mine': 'Svavelgruva', 'building.sawmill': 'Sågverk', 'building.mill': 'Kvarn',
+      'building.bakery': 'Bageri', 'building.brickworks': 'Tegelbruk', 'building.iron_smelter': 'Järnsmältverk',
+      'building.copper_smelter': 'Kopparsmältverk', 'building.tin_smelter': 'Tennsmältverk', 'building.bronze_foundry': 'Bronsgjuteri',
+      'building.charcoal_burner': 'Kolmila', 'building.hammersmith': 'Hammarsmed', 'building.picksmith': 'Hackesmed',
+      'building.axesmith': 'Yxsmed', 'building.scythesmith': 'Liesmed', 'building.crystal_gatherer': 'Kristallsamlare',
+      'building.moonstone_gatherer': 'Månstenssamlare', 'building.relic_hunter': 'Relikjägare', 'building.fallen_star_collector': 'Stjärnsamlare',
+      'building.monument': 'Monument',
+      // Banor (adjektiv: former för genus, t.ex. 'Krummer|Krumme|Krummes')
+      'Valley': 'Dal', 'Old forest': 'Urskog', 'Stone desert': 'Stenöken', 'Swamp': 'Träsk', 'Archipelago': 'Skärgård', 'Crag': 'Klippa', 'Cursed land': 'Förbannat land', 'Ruin': 'Ruin', 'Meteor shower': 'Meteorregn', 'Orchard': 'Fruktträdgård', 'Clay plain': 'Lerslätt', 'Drought': 'Torka',
+      'Crooked': 'Krokig|Krokigt', 'Golden': 'Gyllene', 'Forgotten': 'Bortglömd|Bortglömt', 'Windswept': 'Blåsig|Blåsigt',
+      'Dark': 'Mörk|Mörkt', 'Still': 'Stilla', 'Lost': 'Förlorad|Förlorat', 'Hard': 'Hård|Hårt',
+      'Ancient': 'Uråldrig|Uråldrigt', 'Wild': 'Vild|Vilt', 'Frostbitten': 'Frostbiten|Frostbitet', 'Secret': 'Hemlig|Hemligt',
+      'Rusty': 'Rostig|Rostigt', 'Lonely': 'Ensam|Ensamt', 'Mighty': 'Mäktig|Mäktigt', 'Enchanted': 'Förtrollad|Förtrollat',
+      'New Settler Land': 'Nybyggarland', 'End of the World': 'Världens ände', 'Guardian of the {theme}': 'Väktare av {theme}', 'The Trial: {name}': 'Prövningen: {name}', 'The Treasure Chamber: {name}': 'Skattkammaren: {name}', 'Wealth level': 'Rikedomsnivå', 'Trial': 'Prövning', 'Guardian level': 'Väktarnivå', 'Treestorm': 'Trädstorm', 'Iron Scarcity': 'Järnbrist', 'Stone Scarcity': 'Stenbrist', 'Famine': 'Hungersnöd', 'Coal Scarcity': 'Kolbrist', '{adjective} {noun}': '{adjective} {noun}',
+      // Minikarta
+      'All': 'Alla',
+      'Favorites': 'Favoriter',
+      'Minimap (scroll to zoom)': 'Minikarta (scrolla för att zooma)',
+      'Zoom in the minimap': 'Zooma in minikartan',
+      'Zoom out the minimap': 'Zooma ut minikartan',
+      'Map mode: {mode} (click to change)': 'Kartläge: {mode} (klicka för att byta)',
+      'Minimap: {mode}': 'Minikarta: {mode}',
+      'No favorites': 'Inga favoriter',
+      'Mark with ★': 'Markera med ★',
+      'None nearby': 'Inga i närheten',
+      'unit.deer': 'Hjort', 'unit.carrier': 'Bärare', 'unit.worker': 'Arbetare', 'unit.soldier': 'Soldat',
+
+      // Namn: terräng
+      'terrain.grass': 'Gräs', 'terrain.tree': 'Träd', 'terrain.rock': 'Sten', 'terrain.ore': 'Malm',
+      'terrain.water': 'Vatten', 'terrain.sand': 'Sand', 'terrain.clay': 'Lera', 'terrain.bog': 'Träsk',
+      'terrain.mountain': 'Berg', 'terrain.iron_ore': 'Järnmalm', 'terrain.coal': 'Kol',
+      'terrain.copper_ore': 'Kopparmalm', 'terrain.tin_ore': 'Tennmalm', 'terrain.gold_ore': 'Guldmalm',
+      'terrain.silver_ore': 'Silvermalm', 'terrain.salt_ore': 'Salt', 'terrain.sulfur': 'Svavel',
+      'terrain.limestone': 'Kalksten', 'terrain.tar_pit': 'Tjärgrop', 'terrain.crystal': 'Kristall',
+      'terrain.gemstone': 'Ädelsten', 'terrain.moonstone': 'Månsten', 'terrain.petrified_wood': 'Förstenat trä',
+      'terrain.fallen_star': 'Fallen stjärna', 'terrain.meteor_crater': 'Meteorkrater', 'terrain.ruins': 'Ruiner',
+      'terrain.grave': 'Grav', 'terrain.ancient_altar': 'Forntida altare', 'terrain.cursed_ground': 'Förbannad mark',
+      'terrain.apple_tree': 'Äppelträd', 'terrain.berry_bush': 'Bärbuske', 'terrain.herbs': 'Örter',
+      'terrain.mushrooms': 'Svamp',
+    },
+
+    de: {
+      'Storage & logistics': 'Lager & Logistik',
+      'Forestry': 'Forstwirtschaft',
+      'Farming & food': 'Landwirtschaft & Nahrung',
+      'Gathering & raw materials': 'Sammeln & Rohstoffe',
+      'Mining & quarrying': 'Bergbau & Steinbruch',
+      'Processing & materials': 'Verarbeitung & Material',
+      'Crafting & tools': 'Handwerk & Werkzeuge',
+      'Magic & ancient sites': 'Magie & antike Stätten',
+      'Special buildings': 'Spezialgebäude',
+
+      'All resources': 'Alle Ressourcen',
+      'Resources': 'Ressourcen',
+      'Close resource window': 'Ressourcenfenster schließen',
+      'Carriers {idle}/{total}': 'Träger {idle}/{total}',
+      'Remove from favorites': 'Aus Favoriten entfernen',
+      'Add to favorites': 'Zu Favoriten hinzufügen',
+      'Free: {amount}': 'Frei: {amount}',
+      'Main menu': 'Hauptmenü',
+      'Continue': 'Weiter',
+      'Save game': 'Spiel speichern',
+      'Load game': 'Spiel laden',
+      'New game': 'Neues Spiel',
+      'Statistics': 'Statistiken',
+      'Settings': 'Einstellungen',
+      'Are you sure?': 'Bist du sicher?',
+      'Close menu': 'Menü schließen',
+      'Level {level}: {name}': 'Level {level}: {name}',
+      'Level {level}': 'Level {level}',
+      'Empty': 'Leer',
+      'Slot {n}': 'Platz {n}',
+      'Autosave': 'Automatisch speichern',
+      'Back': 'Zurück',
+      'Cancel': 'Abbrechen',
+      'Overwrite': 'Überschreiben',
+      '{label} exists. Want to overwrite?': '{label} ist bereits belegt. Überschreiben?',
+      'Load {label}? Unsaved progress will be gone.': '{label} laden? Nicht gespeicherter Fortschritt geht verloren.',
+      'Load': 'Laden',
+      'Unable to load': 'Laden fehlgeschlagen',
+      'Game saved': 'Spiel gespeichert',
+      'Unable to save: {reason}': 'Speichern fehlgeschlagen: {reason}',
+      'unknown error': 'unbekannter Fehler',
+      'Somehow the savesystem is unreachable': 'Das Speichersystem ist nicht erreichbar',
+      'New game resets the game and autosave, and generates new maps. Manual saves are unchanged.': 'Ein neues Spiel setzt Spiel und automatischen Spielstand zurück und erzeugt neue Karten. Manuelle Spielstände bleiben erhalten.',
+      'Start a new game': 'Neues Spiel starten',
+      'unknown save slot': 'unbekannter Speicherplatz',
+      'the page is reloading': 'die Seite wird neu geladen',
+      'the game has not finished starting': 'das Spiel ist noch nicht fertig gestartet',
+      'could not read the game state': 'Spielzustand konnte nicht gelesen werden',
+      'browser storage is full or blocked': 'Browser-Speicher ist voll oder gesperrt',
+
+      'Stores resources': 'Lagert Ressourcen',
+      'Build this to win': 'Baue dies, um zu gewinnen',
+      'Gathering: {source} → {output}': 'Sammeln: {source} → {output}',
+      'Hunting: {source} → {output}': 'Jagen: {source} → {output}',
+      'Range: {n} tiles': 'Reichweite: {n} Felder',
+      'Processing: {inputs} → {outputs}': 'Verarbeitung: {inputs} → {outputs}',
+      'Producing: {outputs}': 'Produziert: {outputs}',
+      'Placed on: {terrain}': 'Platzierbar auf: {terrain}',
+      'Requires: {equipment}': 'Benötigt: {equipment}',
+      'Cost: {cost}': 'Kosten: {cost}',
+      'Remaining: {amount} of {total}': 'Übrig: {amount} von {total}',
+      'Blocked terrain': 'Blockiertes Gelände',
+      'Slow terrain': 'Langsames Gelände',
+      'Gathered by: {list}': 'Gesammelt von: {list}',
+      'Can be built with: {list}': 'Bebaubar mit: {list}',
+      'Constructing {percent}%': 'Wird gebaut {percent}%',
+      'Under construction {percent}%': 'Im Bau {percent}%',
+      'Demolish': 'Abreißen',
+      'Pause': 'Pausieren',
+      'Unpause': 'Fortsetzen',
+      'Close': 'Schließen',
+      'Storage: {list}': 'Lager: {list}',
+      'empty': 'leer',
+      'Import: {list}': 'Eingang: {list}',
+      'Export: {list}': 'Ausgang: {list}',
+
+      'Game loaded.': 'Spiel geladen.',
+      'Must be built on: {terrain}': 'Muss gebaut werden auf: {terrain}',
+      'This spot is occupied': 'Dieser Platz ist belegt',
+      'This spot cannot be reached': 'Dieser Platz ist nicht erreichbar',
+      'Not enough resources': 'Nicht genug Ressourcen',
+
+      'Walking': 'Läuft',
+      'Eating': 'Frisst',
+      'Wandering': 'Streunt',
+      "Can't reach": 'Nicht erreichbar',
+      'Hunted': 'Wird gejagt',
+      'Paused': 'Pausiert',
+      'Gathering': 'Sammelt',
+      'Hunting': 'Jagt',
+      'Working': 'Arbeitet',
+      'Tools missing': 'Werkzeug fehlt',
+      'Full stock': 'Lager voll',
+      'Searching...': 'Suche...',
+      'No resources': 'Keine Ressourcen',
+      'No deer in range': 'Keine Hirsche in Reichweite',
+      'Missing outputResource': 'outputResource fehlt',
+      'Missing: {list}': 'Fehlt: {list}',
+
+      'Language': 'Sprache',
+      'On': 'An',
+      'Off': 'Aus',
+      'FPS counter': 'FPS-Anzeige',
+      'Shown below the resource bar': 'Wird unter der Ressourcenleiste angezeigt',
+      'Frame rate': 'Bildrate',
+      'Unlimited': 'Unbegrenzt',
+      '30 FPS': '30 FPS',
+      '30 FPS saves battery and processing power': '30 FPS spart Akku und Rechenleistung',
+      'How often the game saves automatically': 'Wie oft das Spiel automatisch speichert',
+      '30 seconds': '30 Sekunden',
+      '1 minute': '1 Minute',
+      '2 minutes': '2 Minuten',
+      '5 minutes': '5 Minuten',
+      '15 minutes': '15 Minuten',
+      'Shapes only': 'Nur Formen',
+      'Draws the map without images (faster)': 'Zeichnet die Karte ohne Bilder (schneller)',
+      'The game always pauses when the window loses focus.': 'Das Spiel pausiert immer, wenn das Fenster den Fokus verliert.',
+      'Level': 'Level',
+      'Play time (this session)': 'Spielzeit (diese Sitzung)',
+      'Workers': 'Arbeiter',
+      'Carriers': 'Träger',
+      'Deer': 'Hirsche',
+      'Other units': 'Sonstige Einheiten',
+      'Total units': 'Einheiten gesamt',
+      'Buildings': 'Gebäude',
+      '{finished} finished': '{finished} fertig',
+      '{finished} finished, {building} under construction': '{finished} fertig, {building} im Bau',
+      'Stored resources': 'Gelagerte Ressourcen',
+      '{total} ({kinds} types)': '{total} ({kinds} Arten)',
+      'Buildings by type': 'Gebäude nach Typ',
+      '{n} units': '{n} Einheiten',
+
+      // Resurser
+      'resource.wood': 'Holz', 'resource.plank': 'Brett', 'resource.stone': 'Stein', 'resource.clay': 'Lehm',
+      'resource.sand': 'Sand', 'resource.limestone': 'Kalkstein', 'resource.brick': 'Ziegel', 'resource.straw': 'Stroh',
+      'resource.tar': 'Teer', 'resource.charcoal': 'Holzkohle', 'resource.ash': 'Asche', 'resource.grain': 'Getreide',
+      'resource.meat': 'Fleisch', 'resource.seeds': 'Samen', 'resource.flour': 'Mehl', 'resource.apples': 'Äpfel',
+      'resource.berries': 'Beeren', 'resource.mushrooms': 'Pilze', 'resource.herbs': 'Kräuter', 'resource.water': 'Wasser',
+      'resource.bread': 'Brot', 'resource.fish': 'Fisch', 'resource.salt': 'Salz', 'resource.animal': 'Tier',
+      'resource.leather': 'Leder', 'resource.bone': 'Knochen', 'resource.iron_ore': 'Eisenerz', 'resource.copper_ore': 'Kupfererz',
+      'resource.tin_ore': 'Zinnerz', 'resource.coal': 'Kohle', 'resource.gold_ore': 'Golderz', 'resource.silver_ore': 'Silbererz',
+      'resource.gemstone': 'Edelstein', 'resource.salt_ore': 'Salzerz', 'resource.sulfur': 'Schwefel', 'resource.iron': 'Eisen',
+      'resource.copper': 'Kupfer', 'resource.tin': 'Zinn', 'resource.bronze': 'Bronze', 'resource.steel': 'Stahl',
+      'resource.silver': 'Silber', 'resource.gold': 'Gold', 'resource.hammer': 'Hammer', 'resource.pickaxe': 'Spitzhacke',
+      'resource.axe': 'Axt', 'resource.scythe': 'Sense', 'resource.shovel': 'Schaufel', 'resource.saw': 'Säge',
+      'resource.knife': 'Messer', 'resource.potion': 'Trank', 'resource.crystal': 'Kristall', 'resource.moonstone': 'Mondstein',
+      'resource.cursed_ash': 'Verfluchte Asche', 'resource.ancient_relic': 'Uraltes Relikt', 'resource.fallen_star': 'Gefallener Stern', 'resource.enchanted_wood': 'Verzaubertes Holz',
+      'resource.coins': 'Münzen',
+      // Byggnader
+      'building.hq': 'Basis', 'building.warehouse': 'Lagerhaus', 'building.woodcutter': 'Holzfäller',
+      'building.apple_gatherer': 'Apfelsammler', 'building.berry_gatherer': 'Beerensammler', 'building.herb_gatherer': 'Kräutersammler',
+      'building.mushroom_gatherer': 'Pilzsammler', 'building.farm': 'Bauernhof', 'building.hunters_cottage': 'Jägerhütte',
+      'building.fishing_hut': 'Fischerhütte', 'building.well': 'Brunnen', 'building.sand_collector': 'Sandsammler',
+      'building.clay_pit': 'Lehmgrube', 'building.limestone_quarry': 'Kalksteinbruch', 'building.quarry': 'Steinbruch',
+      'building.rock_crusher': 'Steinbrecher', 'building.iron_mine': 'Eisenmine', 'building.copper_mine': 'Kupfermine',
+      'building.tin_mine': 'Zinnmine', 'building.coal_mine': 'Kohlemine', 'building.gold_mine': 'Goldmine',
+      'building.silver_mine': 'Silbermine', 'building.gemstone_mine': 'Edelsteinmine', 'building.salt_mine': 'Salzmine',
+      'building.sulfur_mine': 'Schwefelmine', 'building.sawmill': 'Sägewerk', 'building.mill': 'Mühle',
+      'building.bakery': 'Bäckerei', 'building.brickworks': 'Ziegelei', 'building.iron_smelter': 'Eisenschmelze',
+      'building.copper_smelter': 'Kupferschmelze', 'building.tin_smelter': 'Zinnschmelze', 'building.bronze_foundry': 'Bronzegießerei',
+      'building.charcoal_burner': 'Köhlerei', 'building.hammersmith': 'Hammerschmied', 'building.picksmith': 'Hackenschmied',
+      'building.axesmith': 'Axtschmied', 'building.scythesmith': 'Sensenschmied', 'building.crystal_gatherer': 'Kristallsammler',
+      'building.moonstone_gatherer': 'Mondsteinsammler', 'building.relic_hunter': 'Reliktjäger', 'building.fallen_star_collector': 'Sternensammler',
+      'building.monument': 'Denkmal',
+      // Banor (adjektiv: former för genus, t.ex. 'Krummer|Krumme|Krummes')
+      'Valley': 'Tal', 'Old forest': 'Urwald', 'Stone desert': 'Steinwüste', 'Swamp': 'Sumpf', 'Archipelago': 'Archipel', 'Crag': 'Felswand', 'Cursed land': 'Verfluchtes Land', 'Ruin': 'Ruine', 'Meteor shower': 'Meteoritenschauer', 'Orchard': 'Obstgarten', 'Clay plain': 'Lehmebene', 'Drought': 'Dürre',
+      'Crooked': 'Krummer|Krumme|Krummes', 'Golden': 'Goldener|Goldene|Goldenes', 'Forgotten': 'Vergessener|Vergessene|Vergessenes', 'Windswept': 'Windgepeitschter|Windgepeitschte|Windgepeitschtes',
+      'Dark': 'Dunkler|Dunkle|Dunkles', 'Still': 'Stiller|Stille|Stilles', 'Lost': 'Verlorener|Verlorene|Verlorenes', 'Hard': 'Harter|Harte|Hartes',
+      'Ancient': 'Uralter|Uralte|Uraltes', 'Wild': 'Wilder|Wilde|Wildes', 'Frostbitten': 'Eisiger|Eisige|Eisiges', 'Secret': 'Geheimer|Geheime|Geheimes',
+      'Rusty': 'Rostiger|Rostige|Rostiges', 'Lonely': 'Einsamer|Einsame|Einsames', 'Mighty': 'Mächtiger|Mächtige|Mächtiges', 'Enchanted': 'Verzauberter|Verzauberte|Verzaubertes',
+      'New Settler Land': 'Siedlerland', 'End of the World': 'Ende der Welt', 'Guardian of the {theme}': 'Wächter von {theme}', 'The Trial: {name}': 'Die Prüfung: {name}', 'The Treasure Chamber: {name}': 'Die Schatzkammer: {name}', 'Wealth level': 'Reichtumsstufe', 'Trial': 'Prüfung', 'Guardian level': 'Wächterstufe', 'Treestorm': 'Baumsturm', 'Iron Scarcity': 'Eisenmangel', 'Stone Scarcity': 'Steinmangel', 'Famine': 'Hungersnot', 'Coal Scarcity': 'Kohlemangel', '{adjective} {noun}': '{adjective} {noun}',
+      // Minikarta
+      'All': 'Alle',
+      'Favorites': 'Favoriten',
+      'Minimap (scroll to zoom)': 'Minikarte (zum Zoomen scrollen)',
+      'Zoom in the minimap': 'Minikarte vergrößern',
+      'Zoom out the minimap': 'Minikarte verkleinern',
+      'Map mode: {mode} (click to change)': 'Kartenmodus: {mode} (zum Wechseln klicken)',
+      'Minimap: {mode}': 'Minikarte: {mode}',
+      'No favorites': 'Keine Favoriten',
+      'Mark with ★': 'Mit ★ markieren',
+      'None nearby': 'Keine in der Nähe',
+      'unit.deer': 'Hirsch', 'unit.carrier': 'Träger', 'unit.worker': 'Arbeiter', 'unit.soldier': 'Soldat',
+
+      'terrain.grass': 'Gras', 'terrain.tree': 'Baum', 'terrain.rock': 'Stein', 'terrain.ore': 'Erz',
+      'terrain.water': 'Wasser', 'terrain.sand': 'Sand', 'terrain.clay': 'Ton', 'terrain.bog': 'Sumpf',
+      'terrain.mountain': 'Berg', 'terrain.iron_ore': 'Eisenerz', 'terrain.coal': 'Kohle',
+      'terrain.copper_ore': 'Kupfererz', 'terrain.tin_ore': 'Zinnerz', 'terrain.gold_ore': 'Golderz',
+      'terrain.silver_ore': 'Silbererz', 'terrain.salt_ore': 'Salz', 'terrain.sulfur': 'Schwefel',
+      'terrain.limestone': 'Kalkstein', 'terrain.tar_pit': 'Teergrube', 'terrain.crystal': 'Kristall',
+      'terrain.gemstone': 'Edelstein', 'terrain.moonstone': 'Mondstein', 'terrain.petrified_wood': 'Versteinertes Holz',
+      'terrain.fallen_star': 'Gefallener Stern', 'terrain.meteor_crater': 'Meteoritenkrater', 'terrain.ruins': 'Ruinen',
+      'terrain.grave': 'Grab', 'terrain.ancient_altar': 'Uralter Altar', 'terrain.cursed_ground': 'Verfluchter Boden',
+      'terrain.apple_tree': 'Apfelbaum', 'terrain.berry_bush': 'Beerenstrauch', 'terrain.herbs': 'Kräuter',
+      'terrain.mushrooms': 'Pilze',
+    },
+
+    es: {
+      'Storage & logistics': 'Almacenamiento y logística',
+      'Forestry': 'Silvicultura',
+      'Farming & food': 'Agricultura y comida',
+      'Gathering & raw materials': 'Recolección y materias primas',
+      'Mining & quarrying': 'Minería y canteras',
+      'Processing & materials': 'Procesamiento y materiales',
+      'Crafting & tools': 'Artesanía y herramientas',
+      'Magic & ancient sites': 'Magia y lugares antiguos',
+      'Special buildings': 'Edificios especiales',
+
+      'All resources': 'Todos los recursos',
+      'Resources': 'Recursos',
+      'Close resource window': 'Cerrar la ventana de recursos',
+      'Carriers {idle}/{total}': 'Porteadores {idle}/{total}',
+      'Remove from favorites': 'Quitar de favoritos',
+      'Add to favorites': 'Añadir a favoritos',
+      'Free: {amount}': 'Libre: {amount}',
+      'Main menu': 'Menú principal',
+      'Continue': 'Continuar',
+      'Save game': 'Guardar partida',
+      'Load game': 'Cargar partida',
+      'New game': 'Nueva partida',
+      'Statistics': 'Estadísticas',
+      'Settings': 'Ajustes',
+      'Are you sure?': '¿Estás seguro?',
+      'Close menu': 'Cerrar el menú',
+      'Level {level}: {name}': 'Nivel {level}: {name}',
+      'Level {level}': 'Nivel {level}',
+      'Empty': 'Vacío',
+      'Slot {n}': 'Ranura {n}',
+      'Autosave': 'Autoguardado',
+      'Back': 'Atrás',
+      'Cancel': 'Cancelar',
+      'Overwrite': 'Sobrescribir',
+      '{label} exists. Want to overwrite?': '{label} ya existe. ¿Quieres sobrescribirla?',
+      'Load {label}? Unsaved progress will be gone.': '¿Cargar {label}? Se perderá el progreso no guardado.',
+      'Load': 'Cargar',
+      'Unable to load': 'No se pudo cargar',
+      'Game saved': 'Partida guardada',
+      'Unable to save: {reason}': 'No se pudo guardar: {reason}',
+      'unknown error': 'error desconocido',
+      'Somehow the savesystem is unreachable': 'El sistema de guardado no está disponible',
+      'New game resets the game and autosave, and generates new maps. Manual saves are unchanged.': 'Una nueva partida reinicia el juego y el autoguardado, y genera mapas nuevos. Las partidas guardadas manualmente no cambian.',
+      'Start a new game': 'Empezar una nueva partida',
+      'unknown save slot': 'ranura de guardado desconocida',
+      'the page is reloading': 'la página se está recargando',
+      'the game has not finished starting': 'el juego aún no ha terminado de iniciarse',
+      'could not read the game state': 'no se pudo leer el estado del juego',
+      'browser storage is full or blocked': 'el almacenamiento del navegador está lleno o bloqueado',
+
+      'Stores resources': 'Almacena recursos',
+      'Build this to win': 'Constrúyelo para ganar',
+      'Gathering: {source} → {output}': 'Recolecta: {source} → {output}',
+      'Hunting: {source} → {output}': 'Caza: {source} → {output}',
+      'Range: {n} tiles': 'Alcance: {n} casillas',
+      'Processing: {inputs} → {outputs}': 'Procesa: {inputs} → {outputs}',
+      'Producing: {outputs}': 'Produce: {outputs}',
+      'Placed on: {terrain}': 'Se coloca sobre: {terrain}',
+      'Requires: {equipment}': 'Requiere: {equipment}',
+      'Cost: {cost}': 'Coste: {cost}',
+      'Remaining: {amount} of {total}': 'Restante: {amount} de {total}',
+      'Blocked terrain': 'Terreno bloqueado',
+      'Slow terrain': 'Terreno lento',
+      'Gathered by: {list}': 'Recolectado por: {list}',
+      'Can be built with: {list}': 'Se puede construir con: {list}',
+      'Constructing {percent}%': 'En construcción {percent}%',
+      'Under construction {percent}%': 'En construcción {percent}%',
+      'Demolish': 'Demoler',
+      'Pause': 'Pausar',
+      'Unpause': 'Reanudar',
+      'Close': 'Cerrar',
+      'Storage: {list}': 'Almacén: {list}',
+      'empty': 'vacío',
+      'Import: {list}': 'Entrada: {list}',
+      'Export: {list}': 'Salida: {list}',
+
+      'Game loaded.': 'Partida cargada.',
+      'Must be built on: {terrain}': 'Debe construirse sobre: {terrain}',
+      'This spot is occupied': 'Este lugar está ocupado',
+      'This spot cannot be reached': 'No se puede llegar a este lugar',
+      'Not enough resources': 'No hay suficientes recursos',
+
+      'Walking': 'Caminando',
+      'Eating': 'Comiendo',
+      'Wandering': 'Vagando',
+      "Can't reach": 'No puede llegar',
+      'Hunted': 'Cazado',
+      'Paused': 'En pausa',
+      'Gathering': 'Recolectando',
+      'Hunting': 'Cazando',
+      'Working': 'Trabajando',
+      'Tools missing': 'Faltan herramientas',
+      'Full stock': 'Almacén lleno',
+      'Searching...': 'Buscando...',
+      'No resources': 'Sin recursos',
+      'No deer in range': 'Sin ciervos al alcance',
+      'Missing outputResource': 'Falta outputResource',
+      'Missing: {list}': 'Falta: {list}',
+
+      'Language': 'Idioma',
+      'On': 'Activado',
+      'Off': 'Desactivado',
+      'FPS counter': 'Contador de FPS',
+      'Shown below the resource bar': 'Se muestra bajo la barra de recursos',
+      'Frame rate': 'Velocidad de fotogramas',
+      'Unlimited': 'Ilimitada',
+      '30 FPS': '30 FPS',
+      '30 FPS saves battery and processing power': '30 FPS ahorra batería y procesador',
+      'How often the game saves automatically': 'Con qué frecuencia se guarda automáticamente',
+      '30 seconds': '30 segundos',
+      '1 minute': '1 minuto',
+      '2 minutes': '2 minutos',
+      '5 minutes': '5 minutos',
+      '15 minutes': '15 minutos',
+      'Shapes only': 'Solo formas',
+      'Draws the map without images (faster)': 'Dibuja el mapa sin imágenes (más rápido)',
+      'The game always pauses when the window loses focus.': 'El juego siempre se pausa cuando la ventana pierde el foco.',
+      'Level': 'Nivel',
+      'Play time (this session)': 'Tiempo de juego (esta sesión)',
+      'Workers': 'Trabajadores',
+      'Carriers': 'Porteadores',
+      'Deer': 'Ciervos',
+      'Other units': 'Otras unidades',
+      'Total units': 'Unidades en total',
+      'Buildings': 'Edificios',
+      '{finished} finished': '{finished} terminados',
+      '{finished} finished, {building} under construction': '{finished} terminados, {building} en construcción',
+      'Stored resources': 'Recursos almacenados',
+      '{total} ({kinds} types)': '{total} ({kinds} tipos)',
+      'Buildings by type': 'Edificios por tipo',
+      '{n} units': '{n} unidades',
+
+      // Resurser
+      'resource.wood': 'Madera', 'resource.plank': 'Tabla', 'resource.stone': 'Piedra', 'resource.clay': 'Arcilla',
+      'resource.sand': 'Arena', 'resource.limestone': 'Caliza', 'resource.brick': 'Ladrillo', 'resource.straw': 'Paja',
+      'resource.tar': 'Alquitrán', 'resource.charcoal': 'Carbón vegetal', 'resource.ash': 'Ceniza', 'resource.grain': 'Grano',
+      'resource.meat': 'Carne', 'resource.seeds': 'Semillas', 'resource.flour': 'Harina', 'resource.apples': 'Manzanas',
+      'resource.berries': 'Bayas', 'resource.mushrooms': 'Setas', 'resource.herbs': 'Hierbas', 'resource.water': 'Agua',
+      'resource.bread': 'Pan', 'resource.fish': 'Pescado', 'resource.salt': 'Sal', 'resource.animal': 'Animal',
+      'resource.leather': 'Cuero', 'resource.bone': 'Hueso', 'resource.iron_ore': 'Mineral de hierro', 'resource.copper_ore': 'Mineral de cobre',
+      'resource.tin_ore': 'Mineral de estaño', 'resource.coal': 'Carbón', 'resource.gold_ore': 'Mineral de oro', 'resource.silver_ore': 'Mineral de plata',
+      'resource.gemstone': 'Gema', 'resource.salt_ore': 'Mineral de sal', 'resource.sulfur': 'Azufre', 'resource.iron': 'Hierro',
+      'resource.copper': 'Cobre', 'resource.tin': 'Estaño', 'resource.bronze': 'Bronce', 'resource.steel': 'Acero',
+      'resource.silver': 'Plata', 'resource.gold': 'Oro', 'resource.hammer': 'Martillo', 'resource.pickaxe': 'Pico',
+      'resource.axe': 'Hacha', 'resource.scythe': 'Guadaña', 'resource.shovel': 'Pala', 'resource.saw': 'Sierra',
+      'resource.knife': 'Cuchillo', 'resource.potion': 'Poción', 'resource.crystal': 'Cristal', 'resource.moonstone': 'Piedra lunar',
+      'resource.cursed_ash': 'Ceniza maldita', 'resource.ancient_relic': 'Reliquia antigua', 'resource.fallen_star': 'Estrella caída', 'resource.enchanted_wood': 'Madera encantada',
+      'resource.coins': 'Monedas',
+      // Byggnader
+      'building.hq': 'Base', 'building.warehouse': 'Almacén', 'building.woodcutter': 'Leñador',
+      'building.apple_gatherer': 'Recolector de manzanas', 'building.berry_gatherer': 'Recolector de bayas', 'building.herb_gatherer': 'Recolector de hierbas',
+      'building.mushroom_gatherer': 'Recolector de setas', 'building.farm': 'Granja', 'building.hunters_cottage': 'Cabaña de cazador',
+      'building.fishing_hut': 'Cabaña de pescador', 'building.well': 'Pozo', 'building.sand_collector': 'Recolector de arena',
+      'building.clay_pit': 'Pozo de arcilla', 'building.limestone_quarry': 'Cantera de caliza', 'building.quarry': 'Cantera',
+      'building.rock_crusher': 'Trituradora de rocas', 'building.iron_mine': 'Mina de hierro', 'building.copper_mine': 'Mina de cobre',
+      'building.tin_mine': 'Mina de estaño', 'building.coal_mine': 'Mina de carbón', 'building.gold_mine': 'Mina de oro',
+      'building.silver_mine': 'Mina de plata', 'building.gemstone_mine': 'Mina de gemas', 'building.salt_mine': 'Mina de sal',
+      'building.sulfur_mine': 'Mina de azufre', 'building.sawmill': 'Aserradero', 'building.mill': 'Molino',
+      'building.bakery': 'Panadería', 'building.brickworks': 'Ladrillería', 'building.iron_smelter': 'Fundición de hierro',
+      'building.copper_smelter': 'Fundición de cobre', 'building.tin_smelter': 'Fundición de estaño', 'building.bronze_foundry': 'Fundición de bronce',
+      'building.charcoal_burner': 'Carbonera', 'building.hammersmith': 'Herrero de martillos', 'building.picksmith': 'Herrero de picos',
+      'building.axesmith': 'Herrero de hachas', 'building.scythesmith': 'Herrero de guadañas', 'building.crystal_gatherer': 'Recolector de cristales',
+      'building.moonstone_gatherer': 'Recolector de piedra lunar', 'building.relic_hunter': 'Cazador de reliquias', 'building.fallen_star_collector': 'Recolector de estrellas',
+      'building.monument': 'Monumento',
+      // Banor (adjektiv: former för genus, t.ex. 'Krummer|Krumme|Krummes')
+      'Valley': 'Valle', 'Old forest': 'Bosque viejo', 'Stone desert': 'Desierto de piedra', 'Swamp': 'Pantano', 'Archipelago': 'Archipiélago', 'Crag': 'Risco', 'Cursed land': 'Tierra maldita', 'Ruin': 'Ruina', 'Meteor shower': 'Lluvia de meteoritos', 'Orchard': 'Huerto', 'Clay plain': 'Llanura de arcilla', 'Drought': 'Sequía',
+      'Crooked': 'Torcido|Torcida', 'Golden': 'Dorado|Dorada', 'Forgotten': 'Olvidado|Olvidada', 'Windswept': 'Azotado por el viento|Azotada por el viento',
+      'Dark': 'Oscuro|Oscura', 'Still': 'Quieto|Quieta', 'Lost': 'Perdido|Perdida', 'Hard': 'Duro|Dura',
+      'Ancient': 'Antiguo|Antigua', 'Wild': 'Salvaje|Salvaje', 'Frostbitten': 'Helado|Helada', 'Secret': 'Secreto|Secreta',
+      'Rusty': 'Oxidado|Oxidada', 'Lonely': 'Solitario|Solitaria', 'Mighty': 'Poderoso|Poderosa', 'Enchanted': 'Encantado|Encantada',
+      'New Settler Land': 'Tierra de colonos', 'End of the World': 'El fin del mundo', 'Guardian of the {theme}': 'Guardián: {theme}', 'The Trial: {name}': 'La prueba: {name}', 'The Treasure Chamber: {name}': 'La cámara del tesoro: {name}', 'Wealth level': 'Nivel de riqueza', 'Trial': 'Prueba', 'Guardian level': 'Nivel guardián', 'Treestorm': 'Tormenta de árboles', 'Iron Scarcity': 'Escasez de hierro', 'Stone Scarcity': 'Escasez de piedra', 'Famine': 'Hambruna', 'Coal Scarcity': 'Escasez de carbón', '{adjective} {noun}': '{noun} {adjective}',
+      // Minikarta
+      'All': 'Todo',
+      'Favorites': 'Favoritos',
+      'Minimap (scroll to zoom)': 'Minimapa (desplázate para hacer zoom)',
+      'Zoom in the minimap': 'Acercar el minimapa',
+      'Zoom out the minimap': 'Alejar el minimapa',
+      'Map mode: {mode} (click to change)': 'Modo de mapa: {mode} (clic para cambiar)',
+      'Minimap: {mode}': 'Minimapa: {mode}',
+      'No favorites': 'Sin favoritos',
+      'Mark with ★': 'Marca con ★',
+      'None nearby': 'Ninguno cerca',
+      'unit.deer': 'Ciervo', 'unit.carrier': 'Porteador', 'unit.worker': 'Trabajador', 'unit.soldier': 'Soldado',
+
+      'terrain.grass': 'Hierba', 'terrain.tree': 'Árbol', 'terrain.rock': 'Piedra', 'terrain.ore': 'Mineral',
+      'terrain.water': 'Agua', 'terrain.sand': 'Arena', 'terrain.clay': 'Arcilla', 'terrain.bog': 'Pantano',
+      'terrain.mountain': 'Montaña', 'terrain.iron_ore': 'Mineral de hierro', 'terrain.coal': 'Carbón',
+      'terrain.copper_ore': 'Mineral de cobre', 'terrain.tin_ore': 'Mineral de estaño', 'terrain.gold_ore': 'Mineral de oro',
+      'terrain.silver_ore': 'Mineral de plata', 'terrain.salt_ore': 'Sal', 'terrain.sulfur': 'Azufre',
+      'terrain.limestone': 'Caliza', 'terrain.tar_pit': 'Pozo de alquitrán', 'terrain.crystal': 'Cristal',
+      'terrain.gemstone': 'Gema', 'terrain.moonstone': 'Piedra lunar', 'terrain.petrified_wood': 'Madera petrificada',
+      'terrain.fallen_star': 'Estrella caída', 'terrain.meteor_crater': 'Cráter de meteorito', 'terrain.ruins': 'Ruinas',
+      'terrain.grave': 'Tumba', 'terrain.ancient_altar': 'Altar antiguo', 'terrain.cursed_ground': 'Tierra maldita',
+      'terrain.apple_tree': 'Manzano', 'terrain.berry_bush': 'Arbusto de bayas', 'terrain.herbs': 'Hierbas',
+      'terrain.mushrooms': 'Setas',
+    },
+  };
+
+  const fill = (text, variables) => (variables
+    ? text.replace(/\{(\w+)\}/g, (match, name) => (name in variables ? String(variables[name]) : match))
+    : text);
+
+  // "iron_ore" -> "Iron ore" (reserv när ett namn saknas helt)
+  const prettify = id => {
+    const words = String(id).replace(/_/g, ' ');
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  };
+
+  const I18n = {
+    languages: LANGUAGES,
+    language: 'en',
+    listeners: [],
+
+    init() {
+      let saved = null;
+      try { saved = localStorage.getItem(STORAGE_KEY); } catch (error) { /* ingen lagring */ }
+      if (LANGUAGES.some(([code]) => code === saved)) this.language = saved;
+      document.documentElement.lang = this.language;
+    },
+
+    // Statusens engelska grundform (äldre svenska texter och andra stavningar räknas om)
+    canonicalStatus(text) { return STATUS_ALIASES[text] || text; },
+
+    // Översätter en text (engelsk text = nyckel). Saknas översättningen visas den engelska.
+    t(text, variables) {
+      const dictionary = DICTIONARIES[this.language];
+      return fill((dictionary && dictionary[text]) || text, variables);
+    },
+
+    // Adjektiv + substantiv (banornas namn) med rätt genus och ordföljd för språket
+    named(adjective, noun) {
+      const forms = this.t(adjective).split('|');
+      const gender = (GENDER[this.language] || {})[noun] || 0;
+      return this.t('{adjective} {noun}', { adjective: forms[Math.min(gender, forms.length - 1)], noun: this.t(noun) });
+    },
+
+    // Namn på en sak: typ ('terrain', 'building', 'resource', 'unit'), id och det engelska namnet från config.
+    nameOf(kind, id, fallback) {
+      const dictionary = DICTIONARIES[this.language];
+      const key = kind + '.' + id;
+      if (dictionary && dictionary[key]) return dictionary[key];
+      return this.t(fallback !== undefined && fallback !== null ? fallback : prettify(id));
+    },
+
+    // Statustexter från enheter och byggnader (även äldre svenska texter). "Missing: Iron (2)" översätts del för del.
+    status(text) {
+      if (!text) return '';
+      text = this.canonicalStatus(text);
+
+      if (text.startsWith('Missing: ')) {
+        const resources = CityBuilder.Config && CityBuilder.Config.resources || {};
+        const list = text.slice('Missing: '.length).split(', ').map(part => {
+          const match = /^(.*) \((\d+)\)$/.exec(part);
+          const name = match ? match[1] : part;
+          const id = Object.keys(resources).find(resourceId => resources[resourceId].name === name);
+          const translated = id ? this.nameOf('resource', id, name) : this.t(name);
+          return match ? `${translated} (${match[2]})` : translated;
+        }).join(', ');
+        return this.t('Missing: {list}', { list });
+      }
+      return this.t(text);
+    },
+
+    get locale() {
+      const entry = LANGUAGES.find(([code]) => code === this.language);
+      return entry ? entry[2] : 'en-GB';
+    },
+
+    setLanguage(code) {
+      if (!LANGUAGES.some(([known]) => known === code) || code === this.language) return;
+      this.language = code;
+      document.documentElement.lang = code;
+      try { localStorage.setItem(STORAGE_KEY, code); } catch (error) { /* ignoreras */ }
+      for (const listener of this.listeners) listener(code);
+    },
+
+    // Anropas varje gång språket byts
+    onChange(listener) { this.listeners.push(listener); },
+  };
+
+  I18n.init();
+  CityBuilder.I18n = I18n;
+  CityBuilder.t = (text, variables) => I18n.t(text, variables);
+})(window.CityBuilder);

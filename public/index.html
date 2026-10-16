@@ -14,7 +14,7 @@
   <div id="toast"></div>
 
   <script>
-    var version = "0.4.10";
+    var version = "0.4.11";
     function loadAllGameComponents() {
       // Definiera den strikta ordningen av alla filer
       const scriptOrder = [
@@ -33,10 +33,13 @@
         'js/config/world.js',
         'js/config/levels.js',
         'js/config/finalize.js',
-        // 3. Värld
+        // 3. Language and options
+        'js/lang/lang.js',
+        'js/options.js',
+        // 4. Värld
         'js/world/generator.js',
         'js/world/world.js',
-        // 4. Spelsystem
+        // 5. Spelsystem
         'js/systems/pathfinding.js',
         'js/systems/economy.js',
         'js/systems/jobs.js',
@@ -47,14 +50,14 @@
         'js/systems/production.js',
         'js/systems/pathdecay.js',
         'js/systems/deer.js',
-        // 5. Rendering, indata, UI
+        // 6. Rendering, indata, UI
         'js/render/shapes.js',
         'js/render/renderer.js',
         'js/render/layers.js',
         'js/input.js',
         'js/ui.js',
         'js/minimap.js',
-        // 6. Spelloop (Sista steg innan init)
+        // 7. Spelloop (Sista steg innan init)
         'js/game.js'
       ];
 

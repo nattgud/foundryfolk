@@ -14,6 +14,7 @@
   'use strict';
 
   const world = CityBuilder.Config.world;
+  const t = (text, variables) => CityBuilder.t(text, variables); // names and tags are translated when read (see lang.js)
   const baseRules = world.rules.slice();
   const MAX_LEVELS = 120;
   const CHAPTER = 10;
@@ -70,11 +71,11 @@
 
   /* ---------- Themes ---------- */
   const THEMES = [
-    { id: 'valleys', noun: 'Valleys', keep: {}, extras: [] },
-    { id: 'forest', noun: 'OldForest', keep: { berry_bush: 0.5 }, extras: [
+    { id: 'valleys', noun: 'Valley', keep: {}, extras: [] },
+    { id: 'forest', noun: 'Old forest', keep: { berry_bush: 0.5 }, extras: [
       c => (stretch(N(c, 38, 501), 2.2) > 0.62 && R(c, 502) < 0.8 ? 'tree' : undefined),
     ] },
-    { id: 'barren', noun: 'StoneDesert', keep: { tree: 0.25 }, extras: [
+    { id: 'barren', noun: 'Stone desert', keep: { tree: 0.25 }, extras: [
       c => (N(c, 14, 510) > 0.58 && R(c, 511) < 0.5 ? 'rock' : undefined),
       c => (stretch(N(c, 30, 512), 2.2) > 0.7 && R(c, 513) < 0.8 ? 'sand' : undefined),
     ] },
@@ -97,7 +98,7 @@
       c => (N(c, 20, 540) > 0.56 && R(c, 541) < 0.6 ? 'rock' : undefined),
       c => (N(c, 70, 542) > 0.6 && N(c, 9, 543) > 0.7 && R(c, 544) < 0.7 ? 'iron_ore' : undefined),
     ] },
-    { id: 'cursed', noun: 'CursedLand', keep: {}, extras: [
+    { id: 'cursed', noun: 'Cursed land', keep: {}, extras: [
       c => (N(c, 18, 550) > 0.62 && R(c, 551) < 0.5 ? 'cursed_ground' : undefined),
       c => (N(c, 8, 552) > 0.62 && R(c, 553) < 0.3 ? 'mushrooms' : undefined),
     ] },
@@ -110,7 +111,7 @@
         return Math.abs(dx) <= 4 && Math.abs(dy) <= 3 && dx % 2 === 0 && dy % 2 === 0 ? 'grave' : undefined;
       },
     ] },
-    { id: 'meteor', noun: 'MeteorShower', keep: {}, extras: [
+    { id: 'meteor', noun: 'Meteor shower', keep: {}, extras: [
       c => {
         const s = site(c, 36, 600, 0.6);
         if (!s) return undefined;
@@ -124,7 +125,7 @@
       c => (N(c, 9, 572) > 0.55 && R(c, 573) < 0.4 ? 'herbs' : undefined),
       c => (N(c, 9, 574) > 0.58 && R(c, 575) < 0.3 ? 'berry_bush' : undefined),
     ] },
-    { id: 'clay', noun: 'ClayPlain', keep: {}, extras: [
+    { id: 'clay', noun: 'Clay plain', keep: {}, extras: [
       c => (N(c, 14, 580) > 0.6 && R(c, 581) < 0.6 ? 'clay' : undefined),
       c => (N(c, 16, 582) > 0.64 && R(c, 583) < 0.5 ? 'limestone' : undefined),
     ] },
@@ -176,24 +177,28 @@
     twists.forEach(twist => apply(twist.keep));
 
     const adjective = ADJECTIVES[mix(level, 3) % ADJECTIVES.length];
-    let name = level === 1 ? 'NewSettlerLand' : `${adjective} ${theme.noun}`;
-    if (level === 100) name = 'EndOfTheWorld';
-    else if (guardian) name = `Guardian of the ${theme.noun.toLowerCase()}`;
-    else if (trial) name = `The Trial: ${name}`;
-    else if (bounty) name = `The Treasure Chamber: ${name}`;
+    const tagKeys = [];
+    if (bounty) tagKeys.push('Wealth level');
+    if (trial) tagKeys.push('Trial');
+    if (guardian) tagKeys.push('Guardian level');
+    twists.forEach(twist => tagKeys.push(twist.name));
 
-    const tags = [];
-    if (bounty) tags.push('WealthLevel');
-    if (trial) tags.push('Trial');
-    if (guardian) tags.push('GuardianLevel');
-    twists.forEach(twist => tags.push(twist.name));
+    const nameOf = () => {
+      const noun = CityBuilder.I18n.language === 'de' ? t(theme.noun) : t(theme.noun).toLowerCase();
+      let name = level === 1 ? t('New Settler Land') : CityBuilder.I18n.named(adjective, theme.noun);
+      if (level === 100) name = t('End of the World');
+      else if (guardian) name = t('Guardian of the {theme}', { theme: noun });
+      else if (trial) name = t('The Trial: {name}', { name });
+      else if (bounty) name = t('The Treasure Chamber: {name}', { name });
+      return name;
+    };
 
     return {
       level,
-      name,
+      get name() { return nameOf(); },
       theme: theme.id,
       themeObject: theme,
-      tags,
+      get tags() { return tagKeys.map(key => t(key)); },
       difficulty,
       seed: mix(runSeed, level * 7919 + 13) % 1000000,
       keep,
@@ -201,7 +206,7 @@
       // Suggestion for goal, link to the game's own goal system
       goal: { population: Math.round(10 + 3.2 * Math.pow(level, 1.1)) },
       blurb: `${theme.noun}. Gold ${Math.round(keep.gold_ore * 100)}%, Gemstone ${Math.round(keep.gemstone * 100)}%, Iron ${Math.round(keep.iron_ore * 100)}% of normal amount.` +
-        (tags.length ? ' ' + tags.join(', ') + '.' : ''),
+        (tagKeys.length ? ' ' + tagKeys.join(', ') + '.' : ''),
     };
   };
 

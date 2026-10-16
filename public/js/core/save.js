@@ -1,4 +1,4 @@
-/* Spara och ladda: autosparning (var 30:e sekund och när fliken stängs/döljs) och tre manuella platser.
+/* Spara och ladda: autosparning (var 30:e sekund och när fliken stängs/döljs) och fem manuella platser.
    Gränssnittet (ui.js) använder: list(), save(id), load(id), newGame().
 
    Princip: spara bara det som SPELAREN har ändrat. Terrängen genereras ju om exakt likadant från seedet.
@@ -14,7 +14,7 @@
 
   const PREFIX = 'citybuilder.save.';
   const PENDING_KEY = 'citybuilder.pendingLoad';
-  const SLOT_IDS = ['autosave', 'slot1', 'slot2', 'slot3'];
+  const SLOT_IDS = ['autosave', 'slot1', 'slot2', 'slot3', 'slot4', 'slot5'];
   const AUTOSAVE_MS = 30000;
   const FORMAT = 2;
   const BUILDING_SKIP = new Set(['x', 'y', 'id', 'type', 'removed']); // sätts av World när byggnaden skapas
@@ -70,6 +70,7 @@
     suspended: false,           // true när sidan håller på att laddas om (då får inget skrivas)
     lastError: null,
     timer: null,
+    autosaveMs: AUTOSAVE_MS,    // ändras av inställningarna (Options) via setAutosaveInterval
 
     // Kvar så att äldre anrop inte kraschar. Rutor spåras nu automatiskt.
     noteTile() {},
@@ -209,26 +210,36 @@
       }
     },
 
-    fail(reason) {
+    // reason är en engelsk text som ui.js översätter (t.ex. 'unknown save slot'). detail skrivs bara till konsolen.
+    fail(reason, detail) {
       this.lastError = reason;
-      console.error('Spara misslyckades:', reason);
+      console.error('Save failed:', reason, detail || '');
       return false;
+    },
+
+    // Startar om autosparningens timer med ett nytt intervall (millisekunder)
+    setAutosaveInterval(ms) {
+      if (!(ms > 0)) return;
+      this.autosaveMs = ms;
+      if (!this.ready) return; // applyStart startar timern
+      clearInterval(this.timer);
+      this.timer = setInterval(() => this.save('autosave'), this.autosaveMs);
     },
 
     // Returnerar true/false. Vid misslyckande finns orsaken i Save.lastError (och i webbläsarens konsol).
     save(id) {
       this.lastError = null;
-      if (!SLOT_IDS.includes(id)) return this.fail('okänd sparplats: ' + id);
-      if (this.suspended) return this.fail('sidan håller på att laddas om');
-      if (!this.ready) return this.fail('Save.applyStart() har inte körts. Anropas den i Game.init()?');
+      if (!SLOT_IDS.includes(id)) return this.fail('unknown save slot', id);
+      if (this.suspended) return this.fail('the page is reloading');
+      if (!this.ready) return this.fail('the game has not finished starting');
 
       let json;
       try {
         json = JSON.stringify(this.capture());
       } catch (error) {
-        return this.fail('kunde inte läsa spelets tillstånd: ' + (error && error.message));
+        return this.fail('could not read the game state', error);
       }
-      if (!write(PREFIX + id, json)) return this.fail('webbläsarens lagring är full eller blockerad');
+      if (!write(PREFIX + id, json)) return this.fail('browser storage is full or blocked');
       return true;
     },
 
@@ -269,7 +280,7 @@
 
       this.ready = true;
       clearInterval(this.timer);
-      this.timer = setInterval(() => this.save('autosave'), AUTOSAVE_MS);
+      this.timer = setInterval(() => this.save('autosave'), this.autosaveMs);
       addEventListener('pagehide', () => this.save('autosave'));
       document.addEventListener('visibilitychange', () => { if (document.hidden) this.save('autosave'); });
       return restored;

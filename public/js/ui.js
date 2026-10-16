@@ -4,6 +4,10 @@
   'use strict';
 
   const { Config, Utils, World, Economy, byId } = CityBuilder;
+  const t = (text, variables) => CityBuilder.t(text, variables);
+  const I18n = () => CityBuilder.I18n;
+  // Tyska skriver substantiv med stor bokstav, så där används inte gemener
+  const lower = text => (I18n().language === 'de' ? text : text.toLowerCase());
 
   // Kategorier i menyn. Byggnader väljer kategori med building.category.
   const CATEGORIES = {
@@ -80,6 +84,7 @@
       this.injectStyles();
       this.initResourceBar(resourceBar);
       this.createMainMenu();
+      if (CityBuilder.Options) CityBuilder.Options.install(); // inställningar (FPS-räknare, bilder av/på ...)
 
       this.buildBuildMenu(buildMenu);
       this.initMapInspection();
@@ -93,6 +98,47 @@
 
       this.positionInfoPanel();
       addEventListener('resize', this.positionInfoPanel);
+
+      // Språket byts direkt: allt som redan är uppritat ritas om
+      I18n().onChange(() => this.applyLanguage());
+    },
+
+    // Anropas när språket byts (I18n.onChange)
+    applyLanguage() {
+      const toggle = byId('resourceWindowToggle');
+      if (toggle) toggle.textContent = t('All resources');
+
+      const menuButton = byId('mainMenuButton');
+      if (menuButton) {
+        menuButton.title = t('Main menu');
+        menuButton.setAttribute('aria-label', t('Main menu'));
+      }
+
+      const title = byId('resourceWindowTitle');
+      if (title) title.textContent = t('Resources');
+      const closeResources = document.querySelector('#resourceWindowOverlay .resource-window-close');
+      if (closeResources) closeResources.setAttribute('aria-label', t('Close resource window'));
+      const dialog = byId('mainMenuDialog');
+      if (dialog) dialog.setAttribute('aria-label', t('Main menu'));
+
+      const list = byId('resourceWindowList');
+      if (list) {
+        list.replaceChildren(...Object.keys(Config.resources).map(id => this.createResourceItem(id)));
+        this.updateResourceFavoriteButtons();
+      }
+      this.renderPinnedResources();
+
+      // Byggmenyn byggs om. Öppen kategori och vald byggnad behålls.
+      const openCategory = this.openCategoryId;
+      this.buildBuildMenu(byId('bottom'));
+      if (openCategory && this.categorySubmenus.has(openCategory)) this.setOpenCategory(openCategory);
+      else this.openCategoryId = null;
+
+      if (this.mainMenuOpen) this.renderMainMenu(this.mainMenuView === 'confirm' ? 'main' : (this.mainMenuView || 'main'));
+
+      byId('info').dataset.buildingId = ''; // infopanelen byggs om
+      this.hideTooltip();
+      requestAnimationFrame(this.positionInfoPanel);
     },
 
     // Litet versionsnummer längst ner i högra hörnet
@@ -133,7 +179,7 @@
       allButton.type = 'button';
       allButton.id = 'resourceWindowToggle';
       allButton.className = 'resource-window-toggle';
-      allButton.textContent = 'All resources';
+      allButton.textContent = t('All resources');
       allButton.setAttribute('aria-haspopup', 'dialog');
       allButton.setAttribute('aria-expanded', 'false');
       allButton.onclick = () => this.toggleResourceWindow();
@@ -152,8 +198,8 @@
       menuButton.type = 'button';
       menuButton.id = 'mainMenuButton';
       menuButton.textContent = '☰';
-      menuButton.title = 'Main menu';
-      menuButton.setAttribute('aria-label', 'Meny');
+      menuButton.title = t('Main menu');
+      menuButton.setAttribute('aria-label', t('Main menu'));
       menuButton.setAttribute('aria-haspopup', 'dialog');
       menuButton.onclick = () => this.toggleMainMenu();
 
@@ -227,7 +273,7 @@
 
       const name = document.createElement('span');
       name.className = 'resource-name';
-      name.textContent = resource.name;
+      name.textContent = this.resourceName(resourceId);
 
       const amount = document.createElement('span');
       amount.className = 'resource-amount';
@@ -245,9 +291,9 @@
         favorite.dataset.resourceFavorite = resourceId;
         favorite.onclick = () => this.toggleResourceFavorite(resourceId);
         this.attachTooltip(favorite, () => this.tooltipContent(
-          this.resourceFavorites.has(resourceId) ? 'Remove from favorites' : 'Add to favorites',
+          t(this.resourceFavorites.has(resourceId) ? 'Remove from favorites' : 'Add to favorites'),
           null,
-          [Config.resources[resourceId].name]
+          [this.resourceName(resourceId)]
         ));
         item.appendChild(favorite);
       }
@@ -260,9 +306,9 @@
       const total = Economy.totalAmount(resourceId);
       const free = Economy.freeAmount ? Economy.freeAmount(resourceId) : total;
       const details = ['x' + total];
-      if (free !== total) details.push('Free: ' + free);
+      if (free !== total) details.push(t('Free: {amount}', { amount: free }));
       if (resource.description) details.push(resource.description);
-      return this.tooltipContent(resource.name, null, details);
+      return this.tooltipContent(this.resourceName(resourceId), null, details);
     },
 
     // Tooltip under elementet (för resursfältet högst upp). Mus: hover/fokus. Pekskärm: visas en kort stund vid tryck.
@@ -314,13 +360,13 @@
 
       const title = document.createElement('strong');
       title.id = 'resourceWindowTitle';
-      title.textContent = 'Resurser';
+      title.textContent = t('Resources');
 
       const close = document.createElement('button');
       close.type = 'button';
       close.className = 'resource-window-close';
       close.textContent = '×';
-      close.setAttribute('aria-label', 'Close resource window');
+      close.setAttribute('aria-label', t('Close resource window'));
       close.onclick = () => this.toggleResourceWindow(false);
 
       header.append(title, close);
@@ -397,7 +443,7 @@
         button.setAttribute('aria-pressed', String(favorite));
         button.setAttribute(
           'aria-label',
-          favorite ? 'Remove from favorites' : 'Add to favorites'
+          t(favorite ? 'Remove from favorites' : 'Add to favorites')
         );
         button.removeAttribute('title');
       });
@@ -409,7 +455,7 @@
     //   save(id)    → sparar spelet på platsen (true/false)
     //   load(id)    → laddar platsen och bygger om världen (true/false)
     //   newGame()   → rensar autosparningen och startar om (t.ex. genom att ladda om sidan)
-    // Platser: 'autosave' (skrivs bara av autosparningen) och 'slot1'..'slot3' (manuella).
+    // Platser: 'autosave' (skrivs bara av autosparningen) och 'slot1'..'slot5' (manuella).
 
     createMainMenu() {
       this.mainMenuOpen = false;
@@ -424,7 +470,7 @@
       dialog.className = 'resource-window main-menu';
       dialog.setAttribute('role', 'dialog');
       dialog.setAttribute('aria-modal', 'true');
-      dialog.setAttribute('aria-label', 'Huvudmeny');
+      dialog.setAttribute('aria-label', t('Main menu'));
       overlay.appendChild(dialog);
 
       overlay.addEventListener('pointerdown', event => {
@@ -453,11 +499,12 @@
     },
 
     formatSaveTime(savedAt) {
-      return new Date(savedAt).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
+      return new Date(savedAt).toLocaleString(I18n().locale, { dateStyle: 'short', timeStyle: 'short' });
     },
 
-    // view: 'main' | 'save' | 'load' | 'confirm'. confirm tar { text, confirmLabel, danger, onConfirm, back }.
+    // view: 'main' | 'save' | 'load' | 'confirm' | 'options' | 'stats'. confirm tar { text, confirmLabel, danger, onConfirm, back }.
     renderMainMenu(view = 'main', confirm = null) {
+      this.mainMenuView = view;
       const dialog = byId('mainMenuDialog');
       const saveSystem = CityBuilder.Save;
       const level = CityBuilder.Levels?.current;
@@ -481,38 +528,45 @@
         const row = button('', entry || allowEmpty ? onclick : null, 'main-menu-slot');
         row.append(
           make('span', 'main-menu-slot-name', label),
-          make('span', 'main-menu-slot-meta', entry ? `Bana ${entry.level} · ${this.formatSaveTime(entry.savedAt)}` : 'Tom')
+          make('span', 'main-menu-slot-meta', entry
+            ? `${t('Level {level}', { level: entry.level })} · ${this.formatSaveTime(entry.savedAt)}`
+            : t('Empty'))
         );
         return row;
       };
 
-      const titles = { main: 'Main menu', save: 'Save game', load: 'Load game', confirm: 'Are you sure?' };
+      const titles = {
+        main: t('Main menu'), save: t('Save game'), load: t('Load game'), confirm: t('Are you sure?'),
+        options: t('Settings'), stats: t('Statistics'),
+      };
       const header = make('header', 'resource-window-header');
       const close = make('button', 'resource-window-close', '×');
       close.type = 'button';
-      close.setAttribute('aria-label', 'Close menu');
+      close.setAttribute('aria-label', t('Close menu'));
       close.onclick = () => this.toggleMainMenu(false);
       header.append(make('strong', '', titles[view]), close);
 
       const body = make('div', 'main-menu-body');
-      const slotLabels = [['slot1', 'Slot 1'], ['slot2', 'Slot 2'], ['slot3', 'Slot 3'], ['slot4', 'Slot 4'], ['slot5', 'Slot 5']];
+      const slotLabels = [1, 2, 3, 4, 5].map(n => ['slot' + n, t('Slot {n}', { n })]);
 
       const fail = text => this.showToast(text);
       const requireSaveSystem = () => {
         if (saveSystem) return true;
-        fail('Somehow the savesystem is unreachable');
+        fail(t('Somehow the savesystem is unreachable'));
         return false;
       };
 
       if (view === 'main') {
-        if (level) body.append(make('div', 'main-menu-level', `Bana ${level.level}: ${level.name}`));
+        if (level) body.append(make('div', 'main-menu-level', t('Level {level}: {name}', { level: level.level, name: level.name })));
         body.append(
-          button('Continue', () => this.toggleMainMenu(false)),
-          button('Save game', () => this.renderMainMenu('save')),
-          button('Load game', entries.size ? () => this.renderMainMenu('load') : null),
-          button('New game', () => this.renderMainMenu('confirm', {
-            text: 'New game resets the game and autosave, and generates new maps. Manual saves are unchanged.',
-            confirmLabel: 'Start a new game',
+          button(t('Continue'), () => this.toggleMainMenu(false)),
+          button(t('Save game'), () => this.renderMainMenu('save')),
+          button(t('Load game'), entries.size ? () => this.renderMainMenu('load') : null),
+          button(t('Statistics'), () => this.renderMainMenu('stats')),
+          button(t('Settings'), () => this.renderMainMenu('options')),
+          button(t('New game'), () => this.renderMainMenu('confirm', {
+            text: t('New game resets the game and autosave, and generates new maps. Manual saves are unchanged.'),
+            confirmLabel: t('Start a new game'),
             danger: true,
             back: 'main',
             onConfirm: () => {
@@ -526,51 +580,58 @@
       } else if (view === 'save') {
         const doSave = id => {
           if (!requireSaveSystem()) return;
-          if (saveSystem.save(id) === false) return fail('Unable to save: ' + (saveSystem.lastError || 'unknown erro'));
-          this.showToast('Game saved');
+          if (saveSystem.save(id) === false) return fail(t('Unable to save: {reason}', { reason: t(saveSystem.lastError || 'unknown error') }));
+          this.showToast(t('Game saved'));
           this.renderMainMenu('save');
         };
 
         for (const [id, label] of slotLabels) {
           body.append(slotRow(id, label, () => entries.has(id)
             ? this.renderMainMenu('confirm', {
-                text: `${label} exists. Want to overwrite?`,
-                confirmLabel: 'Overwrite',
+                text: t('{label} exists. Want to overwrite?', { label }),
+                confirmLabel: t('Overwrite'),
                 danger: true,
                 back: 'save',
                 onConfirm: () => doSave(id),
               })
             : doSave(id), true));
         }
-        body.append(button('Back', () => this.renderMainMenu('main')));
+        body.append(button(t('Back'), () => this.renderMainMenu('main')));
       } else if (view === 'load') {
         const doLoad = (id, label) => this.renderMainMenu('confirm', {
-          text: `Load ${label.toLowerCase()}? Unsaved progress will be gone.`,
-          confirmLabel: 'Load',
+          text: t('Load {label}? Unsaved progress will be gone.', { label }),
+          confirmLabel: t('Load'),
           danger: true,
           back: 'load',
           onConfirm: () => {
             if (!requireSaveSystem()) return;
-            if (saveSystem.load(id) === false) return fail('Unable to load');
+            if (saveSystem.load(id) === false) return fail(t('Unable to load'));
             this.toggleMainMenu(false);
           },
         });
 
-        body.append(slotRow('autosave', 'Autosave', () => doLoad('autosave', 'Autosave')));
+        body.append(slotRow('autosave', t('Autosave'), () => doLoad('autosave', t('Autosave'))));
         for (const [id, label] of slotLabels) body.append(slotRow(id, label, () => doLoad(id, label)));
-        body.append(button('Back', () => this.renderMainMenu('main')));
+        body.append(button(t('Back'), () => this.renderMainMenu('main')));
       } else if (view === 'confirm') {
         body.append(
           make('div', 'main-menu-note', confirm.text),
           button(confirm.confirmLabel, () => {
             confirm.onConfirm();
           }, confirm.danger ? 'main-menu-danger' : ''),
-          button('Cancel', () => this.renderMainMenu(confirm.back))
+          button(t('Cancel'), () => this.renderMainMenu(confirm.back))
         );
+      } else if (view === 'options') {
+        CityBuilder.Options.fillOptions(body, make);
+        body.append(button(t('Back'), () => this.renderMainMenu('main')));
+      } else if (view === 'stats') {
+        CityBuilder.Options.fillStats(body, make);
+        body.append(button(t('Back'), () => this.renderMainMenu('main')));
       }
 
       dialog.replaceChildren(header, body);
-      (body.querySelector('button:not(:disabled)') || close).focus();
+      // I inställningarna behålls fokus på språkvalet efter ett byte
+      (body.querySelector(view === 'options' ? 'select, button:not(:disabled)' : 'button:not(:disabled)') || close).focus();
     },
 
     // ---- Byggmeny ----------------------------------------------------------------------------
@@ -617,12 +678,12 @@
 
         const toggle = this.createIconButton({
           className: 'build-category-toggle',
-          label: category.name,
+          label: t(category.name),
           icon: {
             image: category.image,
             symbol: category.symbol
           },
-          tooltip: () => this.tooltipContent(category.name),
+          tooltip: () => this.tooltipContent(t(category.name)),
           showOnTouch: true,
         });
 
@@ -647,14 +708,14 @@
           const button = this.createIconButton({
             id: 'build_' + buildingId,
             className: 'building-option',
-            label: building.name,
+            label: this.buildingName(buildingId),
             icon: {
               image: building.image,
               symbol: building.symbol,
               color: building.color
             },
             tooltip: () => this.tooltipContent(
-              building.name,
+              this.buildingName(buildingId),
               building.buildCost,
               this.describeBuilding(building)
             ),
@@ -803,7 +864,7 @@
           const resource = Config.resources[resourceId];
 
           part.textContent = resource
-            ? `${amount} ${resource.name.toLowerCase()}`
+            ? `${amount} ${lower(this.resourceName(resourceId))}`
             : `${amount} ${resourceId}`;
 
           if (Economy.freeAmount(resourceId) < amount) {
@@ -1301,7 +1362,7 @@
       ).length;
 
       byId('carrierCount').textContent =
-        `Carriers ${idleCarriers}/${carriers.length}`;
+        t('Carriers {idle}/{total}', { idle: idleCarriers, total: carriers.length });
 
       for (const buildingId in Config.buildings) {
         const button = byId('build_' + buildingId);
@@ -1335,11 +1396,35 @@
     // ---- Beskrivningar och inspektion (byggnader, terrängnoder) ------------------------------
 
     terrainName(terrainType) {
-      return Config.terrain[terrainType]?.name || TERRAIN_NAMES[terrainType] || terrainType;
+      return I18n().nameOf('terrain', terrainType, Config.terrain[terrainType]?.name || TERRAIN_NAMES[terrainType]);
     },
 
     resourceName(resourceId) {
-      return Config.resources[resourceId]?.name ?? resourceId;
+      return I18n().nameOf('resource', resourceId, Config.resources[resourceId]?.name);
+    },
+
+    unitName(unitId) {
+      return I18n().nameOf('unit', unitId);
+    },
+
+    // Byggnadens id (nyckeln i Config.buildings) för en definition
+    buildingIdOf(definition) {
+      return Object.keys(Config.buildings).find(id => Config.buildings[id] === definition);
+    },
+
+    // Översatt namn från byggnadens id eller definition
+    buildingName(idOrDefinition) {
+      const id = typeof idOrDefinition === 'string' ? idOrDefinition : this.buildingIdOf(idOrDefinition);
+      const definition = typeof idOrDefinition === 'string' ? Config.buildings[idOrDefinition] : idOrDefinition;
+      return I18n().nameOf('building', id, definition?.name);
+    },
+
+    // { wood: 2, stone: 1 } -> "2 wood, 1 stone"
+    formatResources(amounts) {
+      return Object.entries(amounts || {})
+        .filter(([, amount]) => amount > 0)
+        .map(([resourceId, amount]) => `${amount} ${lower(this.resourceName(resourceId))}`)
+        .join(', ');
     },
 
     // Vad en byggnad är till för, som en lista med korta rader
@@ -1347,24 +1432,27 @@
       const lines = [];
       const job = definition.job;
 
-      if (definition.isStorage) lines.push('Stores resources');
-      if (definition.isWinBuilding) lines.push('Bygg den för att vinna');
+      if (definition.isStorage) lines.push(t('Stores resources'));
+      if (definition.isWinBuilding) lines.push(t('Build this to win'));
 
       if (job?.kind === 'gather') {
-        lines.push(`Gathering: ${this.terrainName(job.sourceTerrain)} → ${this.resourceName(job.outputResource)}`);
-        if (this.getBuildingRange(definition)) lines.push(`Range: ${this.getBuildingRange(definition)} tiles`);
+        const output = this.resourceName(job.outputResource ?? Object.keys(job.outputs || {})[0]);
+        lines.push(job.sourceUnit
+          ? t('Hunting: {source} → {output}', { source: this.unitName(job.sourceUnit), output })
+          : t('Gathering: {source} → {output}', { source: this.terrainName(job.sourceTerrain), output }));
+        if (this.getBuildingRange(definition)) lines.push(t('Range: {n} tiles', { n: this.getBuildingRange(definition) }));
       } else if (job?.kind === 'craft') {
-        const inputs = Utils.formatResourceList(job.inputs);
-        const outputs = Utils.formatResourceList(job.outputs);
-        lines.push(inputs ? `Processing: ${inputs} → ${outputs}` : `Producing: ${outputs}`);
+        const inputs = this.formatResources(job.inputs);
+        const outputs = this.formatResources(job.outputs);
+        lines.push(inputs ? t('Processing: {inputs} → {outputs}', { inputs, outputs }) : t('Producing: {outputs}', { outputs }));
       }
 
       if (definition.placeOnTerrain) {
-        lines.push(`Placed on: ${this.terrainName(definition.placeOnTerrain)}`);
+        lines.push(t('Placed on: {terrain}', { terrain: this.terrainName(definition.placeOnTerrain) }));
       }
 
-      const equipment = Utils.formatResourceList(definition.requiredEquipment || {});
-      if (job && equipment) lines.push(`Kräver: ${equipment}`);
+      const equipment = this.formatResources(definition.requiredEquipment);
+      if (job && equipment) lines.push(t('Requires: {equipment}', { equipment }));
 
       return lines;
     },
@@ -1385,19 +1473,19 @@
       const lines = [];
 
       if (terrain.resourceAmount > 0 && terrain.resourceAmount < 10000) {
-        lines.push(`Remaining: ${tile.remainingAmount} av ${terrain.resourceAmount}`);
+        lines.push(t('Remaining: {amount} of {total}', { amount: tile.remainingAmount, total: terrain.resourceAmount }));
       }
 
-      if (terrain.walkCost === Infinity) lines.push('Blocked terrain');
-      else if (terrain.walkCost > 1.5) lines.push('Slow terrain');
+      if (terrain.walkCost === Infinity) lines.push(t('Blocked terrain'));
+      else if (terrain.walkCost > 1.5) lines.push(t('Slow terrain'));
 
       const gatheredBy = [], buildableWith = [];
-      for (const building of Object.values(Config.buildings)) {
-        if (building.job?.kind === 'gather' && building.job.sourceTerrain === tile.terrainType) gatheredBy.push(building.name);
-        if (building.placeOnTerrain === tile.terrainType) buildableWith.push(building.name);
+      for (const [buildingId, building] of Object.entries(Config.buildings)) {
+        if (building.job?.kind === 'gather' && building.job.sourceTerrain === tile.terrainType) gatheredBy.push(this.buildingName(buildingId));
+        if (building.placeOnTerrain === tile.terrainType) buildableWith.push(this.buildingName(buildingId));
       }
-      if (gatheredBy.length) lines.push(`Gathered by: ${gatheredBy.join(', ')}`);
-      if (buildableWith.length) lines.push(`Can be built with: ${buildableWith.join(', ')}`);
+      if (gatheredBy.length) lines.push(t('Gathered by: {list}', { list: gatheredBy.join(', ') }));
+      if (buildableWith.length) lines.push(t('Can be built with: {list}', { list: buildableWith.join(', ') }));
 
       return lines;
     },
@@ -1483,7 +1571,7 @@
       const rect = { left, top, width: size, height: size, right: left + size, bottom: top + size };
 
       const key = (building
-        ? `b${building.id}:${building.status}:${Math.round(building.buildProgress * 100)}`
+        ? `b${building.id}:${I18n().language}:${building.status}:${Math.round(building.buildProgress * 100)}`
         : `t${tile.x},${tile.y}:${node.tile.remainingAmount}`) +
         `@${Math.round(left)},${Math.round(top)},${Math.round(size)}`;
 
@@ -1491,10 +1579,10 @@
 
       const content = building
         ? this.tooltipContent(
-            building.definition.name,
+            this.buildingName(building.definition),
             null,
             [
-              ...(building.buildProgress < 1 ? [`Contructing ${Math.round(building.buildProgress * 100)}%`] : []),
+              ...(building.buildProgress < 1 ? [t('Constructing {percent}%', { percent: Math.round(building.buildProgress * 100) })] : []),
               ...this.describeBuilding(building.definition),
             ]
           )
@@ -1531,11 +1619,11 @@
           : '';
 
         const demolishButton = building !== World.headquarters
-          ? '<button id="demolishButton">Riv</button>'
+          ? `<button id="demolishButton">${t('Demolish')}</button>`
           : '';
 
         panel.innerHTML =
-          `<div><b>${building.definition.name}</b><br><span id="infoStatus"></span></div>` +
+          `<div><b>${this.buildingName(building.definition)}</b><br><span id="infoStatus"></span></div>` +
           `<div style="display:flex;gap:6px">${pauseButton}${demolishButton}</div>`;
 
         if (byId('pauseButton')) {
@@ -1552,16 +1640,16 @@
       }
 
       const statusText = building.buildProgress < 1
-        ? `Byggs ${Math.round(building.buildProgress * 100)}%`
-        : building.status;
+        ? t('Under construction {percent}%', { percent: Math.round(building.buildProgress * 100) })
+        : I18n().status(building.status);
 
       byId('infoStatus').innerHTML = building.definition.isStorage
-        ? `Storage: ${Utils.formatResourceList(building.storedGoods) || 'empty'}`
-        : `${statusText}<br>Import: ${Utils.formatResourceList(building.inputStock) || '–'} · Export: ${Utils.formatResourceList(building.outputStock) || '–'}` +
-          (this.getBuildingRange(building.definition) ? `<br>Range: ${this.getBuildingRange(building.definition)} tiles` : '');
+        ? t('Storage: {list}', { list: this.formatResources(building.storedGoods) || t('empty') })
+        : `${statusText}<br>${t('Import: {list}', { list: this.formatResources(building.inputStock) || '–' })} · ${t('Export: {list}', { list: this.formatResources(building.outputStock) || '–' })}` +
+          (this.getBuildingRange(building.definition) ? `<br>${t('Range: {n} tiles', { n: this.getBuildingRange(building.definition) })}` : '');
 
       if (byId('pauseButton')) {
-        byId('pauseButton').textContent = building.paused ? 'Unpause' : 'Pause';
+        byId('pauseButton').textContent = t(building.paused ? 'Unpause' : 'Pause');
       }
     },
 
@@ -1576,8 +1664,8 @@
         panel.dataset.buildingId = key;
 
         panel.innerHTML =
-          `<div><b>${definition.name}</b><br><span id="infoStatus"></span></div>` +
-          '<div style="display:flex;gap:6px"><button id="cancelPlacementButton">Cancel</button></div>';
+          `<div><b>${this.buildingName(buildingType)}</b><br><span id="infoStatus"></span></div>` +
+          `<div style="display:flex;gap:6px"><button id="cancelPlacementButton">${t('Cancel')}</button></div>`;
 
         byId('cancelPlacementButton').onclick = () => game.setPlacingType(null);
       }
@@ -1585,12 +1673,12 @@
       const cost = Object.entries(definition.buildCost || {})
         .map(([resourceId, amount]) => {
           const short = Economy.freeAmount(resourceId) < amount ? ' class="info-short"' : '';
-          return `<span${short}>${amount} ${this.resourceName(resourceId).toLowerCase()}</span>`;
+          return `<span${short}>${amount} ${lower(this.resourceName(resourceId))}</span>`;
         })
         .join(', ');
 
       byId('infoStatus').innerHTML = [
-        `Cost: ${cost || '–'}`,
+        t('Cost: {cost}', { cost: cost || '–' }),
         ...this.describeBuilding(definition),
       ].join('<br>');
     },
@@ -1605,7 +1693,7 @@
 
         panel.innerHTML =
           `<div><b>${node.name}</b><br><span id="infoStatus"></span></div>` +
-          '<div style="display:flex;gap:6px"><button id="closeInfoButton">Close</button></div>';
+          `<div style="display:flex;gap:6px"><button id="closeInfoButton">${t('Close')}</button></div>`;
 
         byId('closeInfoButton').onclick = () => this.inspectTile(null);
       }

@@ -21,6 +21,7 @@ CityBuilder.Config.units = {
     fallbackShape: 'circle', 
     fallbackSize: 6, 
     imageSize: 16,
+    deerBreedCooldown: 0,
     image: 'images/units/deer.png', 
   },
   // warrior: {
