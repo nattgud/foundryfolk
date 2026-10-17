@@ -170,7 +170,7 @@
     for (const building of World.buildings) {
       const x = building.x * tileSize, y = building.y * tileSize;
       const isFinished = building.buildProgress >= 1, image = Assets.get(building.definition.image);
-      context.globalAlpha = isFinished ? (building.paused ? .55 : 1) : .45;
+      context.globalAlpha = isFinished ? (building.paused ? .5 : 1) : .7;
 
       if (image) context.drawImage(image, x + 2, y + 2, tileSize - 4, tileSize - 4);
       else {
@@ -246,6 +246,11 @@
       const name = statusIcon(building.workerUnit?.status) || statusIcon(building.status);
       const icon = name && Assets.get(ICON_DIR + name + '.png');
       if (icon) context.drawImage(icon, building.x * tileSize + tileSize / 4, building.y * tileSize + tileSize / 4, tileSize / 2, tileSize / 2);
+      if(building.status === "Can't reach") {
+        
+      }
+
+      
     }
   });
 

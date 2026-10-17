@@ -26,11 +26,34 @@ CityBuilder.Config.buildings = {
   warehouse: {
     name: 'Warehouse',
     category: 'storage',
-    symbol: 'WH',
+    symbol: 'W',
     color: '#a88a2a',
-    buildCost: { wood: 4, plank: 2, stone: 1 },
+    buildCost: { wood: 3, plank: 1 },
     isStorage: true,
-    buildDuration: 7
+    capacity: 60, 
+    buildDuration: 3
+  },
+ 
+  large_warehouse: {
+    name: 'Large Warehouse',
+    category: 'storage',
+    symbol: 'LW',
+    color: '#b89a35',
+    buildCost: { plank: 8, stone: 6, brick: 4 },
+    isStorage: true,
+    capacity: 200,
+    buildDuration: 8
+  },
+ 
+  great_depot: {
+    name: 'Great Depot',
+    category: 'storage',
+    symbol: 'GW',
+    color: '#c9ab40',
+    buildCost: { plank: 20, stone: 20, brick: 12, iron: 4 },
+    isStorage: true,
+    capacity: 600,
+    buildDuration: 20
   },
 
   // Skogsbruk
@@ -45,7 +68,7 @@ CityBuilder.Config.buildings = {
       sourceTerrain: 'tree',
       searchRadius: 14,
       outputResource: 'wood',
-      workSeconds: 4
+      workSeconds: 2
     },
     buildDuration: 6
   },

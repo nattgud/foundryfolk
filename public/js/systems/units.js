@@ -11,10 +11,10 @@
     wanderRadius: 8,
     idleCooldown: 1,
     maxFoodPerTile: 5,
-    maxSpreadDistance:8,
-    breedChancePerSecond: Config.settings.deerBreedChancePerSecond ?? 1 / 150, 
-    breedCooldown: Config.settings.deerBreedCooldown ?? 120,
-    maxPopulation: Config.settings.deerMaxPopulation ?? 25, 
+    maxSpreadDistance: 6,
+    breedChancePerSecond: Config.settings.deerBreedChancePerSecond ?? 1500 / 1500, // chans per speltidssekund att få en unge (snitt ca 25 min mellan ungar per hjort)
+    breedCooldown: Config.settings.deerBreedCooldown ?? 1,    // speltid i sekunder innan samma hjort (eller ungen) kan få en ny unge
+    maxPopulation: Config.settings.deerMaxPopulation ?? 200,     // inga fler hjortar än så här i världen
   };
 
   const DEER_FOOD_TYPES = new Set([
@@ -23,6 +23,11 @@
     'herbs',
     'mushrooms',
   ]);
+
+  // Hjortar sprider en mat bara om spelaren kan ta hand om den: både jakt och plockning av just den maten måste vara upplåsta
+  const DEER_FOOD_BUILDING = { apple_tree: 'apple_gatherer', berry_bush: 'berry_gatherer', herbs: 'herb_gatherer', mushrooms: 'mushroom_gatherer' };
+  const huntingUnlocked = () => !CityBuilder.Levels || CityBuilder.Levels.isUnlocked('hunters_cottage');
+  const deerMayEat = type => huntingUnlocked() && (!CityBuilder.Levels || CityBuilder.Levels.isUnlocked(DEER_FOOD_BUILDING[type]));
 
   const Units = {
     update(unit, deltaSeconds) {
@@ -99,7 +104,7 @@
 
       const nextTile = step.path[step.pathIndex], tileCost = Pathfinder.tileCost(nextTile.x, nextTile.y);
       const isTarget = nextTile.x === step.targetX && nextTile.y === step.targetY;
-      if (tileCost === Infinity && !isTarget) { Pathfinder.clearCache(); step.path = null; return; } // vägen blockerades -> räkna om
+      if (tileCost === Infinity && !isTarget) { Pathfinder.drop(step.path); step.path = null; return; } // vägen blockerades -> räkna om
 
       const dx = nextTile.x + .5 - unit.x, dy = nextTile.y + .5 - unit.y, distance = Math.hypot(dx, dy);
       const stepLength = Config.settings.walkSpeed * (unit.definition.speedMultiplier || 1) * deltaSeconds / (tileCost === Infinity ? 1 : tileCost);
@@ -297,7 +302,7 @@
           const y = cy + dy;
           const tile = World.getTile(x, y);
 
-          if (!DEER_FOOD_TYPES.has(tile.terrainType)) continue;
+          if (!DEER_FOOD_TYPES.has(tile.terrainType) || !deerMayEat(tile.terrainType)) continue;
           if (tile.remainingAmount <= 0) continue;
 
           if (distance < nearestDistance) {
@@ -437,7 +442,7 @@
     tryDeerBreed(unit) {
       let population = 0;
       for (const other of World.units) if (other.kind === 'deer') population++;
-      if (population >= DEER.maxPopulation) return;
+      if (population >= DEER.maxPopulation || !huntingUnlocked()) return; // utan jakt får hjortarna inte föröka sig
 
       // Ungen föds på en ledig gräs- eller trädruta alldeles intill (annars på samma ruta)
       const cx = Math.floor(unit.x), cy = Math.floor(unit.y);

@@ -89,10 +89,10 @@
       this.fpsElement = element;
     },
 
-    // Precis under resursfältet, uppe till vänster
+    // Under målpanelen (som ligger under resursfältet), annars direkt under resursfältet
     positionFpsCounter() {
-      const top = document.getElementById('top');
-      if (this.fpsElement && top) this.fpsElement.style.top = (top.getBoundingClientRect().bottom + 4) + 'px';
+      const anchor = document.getElementById('goalPanel') || document.getElementById('top');
+      if (this.fpsElement && anchor) this.fpsElement.style.top = (anchor.getBoundingClientRect().bottom + 4) + 'px';
     },
 
     // time: bildrutans tid (ms), frameMs: hur länge bildrutan tog att beräkna och rita, simulatedSeconds: speltid som gick
@@ -164,6 +164,7 @@
         row(t('Autosave'),
           select(AUTOSAVE_CHOICES, this.settings.autosaveMs, value => this.set('autosaveMs', Number(value))),
           t('How often the game saves automatically')),
+        ...(CityBuilder.Sound ? CityBuilder.Sound.settingRows(row, make) : []),
         row(t('Shapes only'), toggle('shapesOnly'), t('Draws the map without images (faster)')),
         make('div', 'main-menu-note', t('The game always pauses when the window loses focus.'))
       );
@@ -252,7 +253,7 @@
           pointer-events: none;
           font-size: 11px;
           line-height: 1;
-          color: var(--text);
+          color: var(--dim);
           opacity: 0.9;
           font-variant-numeric: tabular-nums;
         }

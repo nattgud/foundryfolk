@@ -7,9 +7,9 @@
 
 CityBuilder.Config.terrain = {
   // Grundterräng
-  grass:            { name: "Grass",      color: '#2f5a35', walkCost: 1, resourceAmount: 1 },
+  grass:            { name: "Grass",      color: '#2f5a35', walkCost: 1 },
   mountain:         { name: "Mountain",   color: '#aaa',    walkCost: Infinity, resourceAmount: 1 },
-  water:            { name: "Water",      color: '#2b5d86', walkCost: 50, resourceAmount: 500 },
+  water:            { name: "Water",      color: '#2b5d86', walkCost: Infinity, gatherersStopBefore: true, resourceAmount: 500 },
   sand:             { name: "Sand",       color: '#c9b887', walkCost: 2, resourceAmount: 25 },
   clay:             { name: "Clay",       color: '#946b58', walkCost: 3, resourceAmount: 25 },
   limestone:        { name: "Limestone",  color: '#b8b4a5', walkCost: 5, resourceAmount: 25 },

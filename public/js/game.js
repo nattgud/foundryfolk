@@ -52,16 +52,26 @@
 
     tryBuild(buildingType, x, y) {
       const definition = Config.buildings[buildingType];
-      if (!World.canPlace(buildingType, x, y)) {
-        return UI.showToast(definition.placeOnTerrain ? t('Must be built on: {terrain}', { terrain: UI.terrainName(definition.placeOnTerrain) }) : t('This spot is occupied'));
+      if (CityBuilder.Levels && !CityBuilder.Levels.isUnlocked(buildingType)) {
+        return this.refuse(t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(buildingType) }));
       }
-      Pathfinder.remainingSearches = Math.max(Pathfinder.remainingSearches, 1);
-      if (Pathfinder.findPath(World.headquarters.x, World.headquarters.y, x, y) === null) return UI.showToast(t('This spot cannot be reached'));
-      if (!Economy.spend(definition.buildCost)) return UI.showToast(t('Not enough resources'));
+      if (!World.canPlace(buildingType, x, y)) {
+        return this.refuse(definition.placeOnTerrain ? t('Must be built on: {terrain}', { terrain: UI.terrainName(definition.placeOnTerrain) }) : t('This spot is occupied'));
+      }
+      if (Pathfinder.findPathNow(World.headquarters.x, World.headquarters.y, x, y) === null) return this.refuse(t('This spot cannot be reached'));
+      if (!Economy.spend(definition.buildCost)) return this.refuse(t('Not enough resources'));
       World.placeBuilding(buildingType, x, y);
+      CityBuilder.Sound?.play('build', { x, y });
+    },
+
+    // Avvisad handling: felljud och meddelande
+    refuse(text) {
+      CityBuilder.Sound?.play('error');
+      UI.showToast(text);
     },
 
     demolish(building) {
+      CityBuilder.Sound?.play('demolish', { x: building.x, y: building.y });
       World.removeBuilding(building);
       Economy.refund(building.definition.buildCost);
       // Lämna tillbaka allt byggnaden höll i
@@ -80,7 +90,7 @@
     // En simuleringsruta (anropas av loopen, och kan anropas direkt av tester)
     advanceSimulation(deltaSeconds) {
       this.deltaSeconds = deltaSeconds;
-      Pathfinder.remainingSearches = Config.settings.maxPathSearchesPerFrame;
+      Pathfinder.update(deltaSeconds);
 
       CityBuilder.Deer.updateActivation();
 

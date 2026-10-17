@@ -85,10 +85,13 @@
       this.initResourceBar(resourceBar);
       this.createMainMenu();
       if (CityBuilder.Options) CityBuilder.Options.install(); // inställningar (FPS-räknare, bilder av/på ...)
+      if (CityBuilder.Sound) CityBuilder.Sound.install();     // ljud (effekter och musik)
 
       this.buildBuildMenu(buildMenu);
       this.initMapInspection();
       this.createVersionLabel();
+      this.createGoalPanel();
+      if (CityBuilder.Levels) CityBuilder.Levels.onComplete(result => this.showLevelComplete(result));
       this.lastBuildingCount = World.buildings.length;
 
       // Infopanelen ligger precis ovanför byggmenyn.
@@ -98,6 +101,7 @@
 
       this.positionInfoPanel();
       addEventListener('resize', this.positionInfoPanel);
+      addEventListener('resize', () => { this.goalCheckedAt = 0; });
 
       // Språket byts direkt: allt som redan är uppritat ritas om
       I18n().onChange(() => this.applyLanguage());
@@ -127,6 +131,7 @@
         this.updateResourceFavoriteButtons();
       }
       this.renderPinnedResources();
+      this.refreshGoals(true);
 
       // Byggmenyn byggs om. Öppen kategori och vald byggnad behålls.
       const openCategory = this.openCategoryId;
@@ -148,6 +153,111 @@
       label.id = 'versionLabel';
       label.textContent = typeof version !== 'undefined' ? 'v' + version : '';
       document.body.appendChild(label);
+    },
+
+    // ---- Mål och banor -----------------------------------------------------------------------
+
+    formatTime(seconds) {
+      const total = Math.max(0, Math.round(seconds));
+      return Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0');
+    },
+
+    createGoalPanel() {
+      if (byId('goalPanel')) return;
+      const panel = document.createElement('div');
+      panel.id = 'goalPanel';
+      panel.addEventListener('click', () => panel.classList.toggle('collapsed'));
+      document.body.appendChild(panel);
+    },
+
+    // Målpanelen under resursfältet. Ritas bara om när texten ändras.
+    refreshGoals(force = false) {
+      const Levels = CityBuilder.Levels, panel = byId('goalPanel');
+      if (!Levels || !panel) return;
+      const now = performance.now();
+      if (!force && now - (this.goalCheckedAt || 0) < 500) return;
+      this.goalCheckedAt = now;
+
+      const level = Levels.current;
+      const lines = Levels.progress().map(item => {
+        const name = item.type === 'build' ? this.buildingName(item.id) : this.resourceName(item.resource);
+        const text = t(item.type === 'build' ? 'Build {name}: {have}/{need}' : 'Store {name}: {have}/{need}', { name, have: item.have, need: item.amount });
+        return `<div class="goal-item${item.done ? ' done' : ''}">${item.done ? '✔' : '☐'} ${text}</div>`;
+      });
+      const unlocks = level.unlocks.map(id => this.buildingName(id)).join(', ');
+      const header = Levels.completed
+        ? `<b>${t('Level complete!')}</b> ${'★'.repeat(Levels.stars)}`
+        : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })} / ${this.formatTime(level.goal.par)}`;
+      const html = `<div class="goal-header">${header}</div>${lines.join('')}` + (unlocks ? `<div class="goal-new">${t('New: {list}', { list: unlocks })}</div>` : '');
+
+      if (panel.dataset.html !== html) {
+        panel.dataset.html = html;
+        panel.innerHTML = html;
+      }
+      this.layoutGoals();
+    },
+
+    // Målpanelen får plats mellan resursfältet och det som ligger längst ner (infopanelen eller byggmenyn).
+    // Lämnar en rad under panelen åt FPS-räknaren. Räknas om vid storleksändring och när byggmenyn öppnas.
+    layoutGoals() {
+      const panel = byId('goalPanel');
+      if (!panel) return;
+      const top = byId('top').getBoundingClientRect().bottom + 8;
+      const info = byId('info');
+      const infoTop = info && info.style.display !== 'none' ? info.getBoundingClientRect().top : Infinity;
+      const limit = Math.min(infoTop, byId('bottom').getBoundingClientRect().top) - 8 - 18;
+      panel.style.top = top + 'px';
+      panel.style.maxHeight = Math.max(40, limit - top) + 'px';
+      if (CityBuilder.Options) CityBuilder.Options.positionFpsCounter();
+    },
+
+    showLevelComplete(result) {
+      const Levels = CityBuilder.Levels;
+      this.hideTooltip();
+      CityBuilder.Sound?.play('levelComplete');
+      let overlay = byId('levelCompleteOverlay');
+      if (overlay) overlay.remove();
+
+      overlay = document.createElement('div');
+      overlay.id = 'levelCompleteOverlay';
+      overlay.className = 'resource-window-overlay';
+
+      const dialog = document.createElement('section');
+      dialog.className = 'resource-window main-menu';
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+
+      const next = Levels.info(result.level + 1);
+      const fresh = next.unlocks.map(id => this.buildingName(id)).join(', ');
+      const body = document.createElement('div');
+      body.className = 'main-menu-body';
+      const line = (className, text) => { const element = document.createElement('div'); element.className = className; element.textContent = text; return element; };
+      const button = (text, onclick, className = '') => {
+        const element = document.createElement('button');
+        element.type = 'button';
+        element.className = 'main-menu-button ' + className;
+        element.textContent = text;
+        element.onclick = onclick;
+        return element;
+      };
+
+      const header = document.createElement('header');
+      header.className = 'resource-window-header';
+      const title = document.createElement('strong');
+      title.textContent = t('Level complete!');
+      header.appendChild(title);
+
+      body.append(
+        line('level-stars', '★'.repeat(result.stars) + '☆'.repeat(3 - result.stars)),
+        line('main-menu-level', t('Time: {time}', { time: this.formatTime(result.seconds) }) + ' · ' + t('Par time: {time}', { time: this.formatTime(result.par) })),
+        ...(fresh ? [line('main-menu-note', t('Next level unlocks: {list}', { list: fresh }))] : []),
+        button(t('Next level'), () => Levels.advance()),
+        button(t('Keep playing'), () => overlay.remove())
+      );
+      dialog.append(header, body);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+      body.querySelector('button').focus();
     },
 
     // ---- Resursfält --------------------------------------------------------------------------
@@ -305,7 +415,7 @@
       const resource = Config.resources[resourceId];
       const total = Economy.totalAmount(resourceId);
       const free = Economy.freeAmount ? Economy.freeAmount(resourceId) : total;
-      const details = ['x' + total];
+      const details = [total + ' / ' + Economy.capacity(resourceId)];
       if (free !== total) details.push(t('Free: {amount}', { amount: free }));
       if (resource.description) details.push(resource.description);
       return this.tooltipContent(this.resourceName(resourceId), null, details);
@@ -558,6 +668,7 @@
 
       if (view === 'main') {
         if (level) body.append(make('div', 'main-menu-level', t('Level {level}: {name}', { level: level.level, name: level.name })));
+        if (CityBuilder.Levels?.completed) body.append(button(t('Next level'), () => CityBuilder.Levels.advance()));
         body.append(
           button(t('Continue'), () => this.toggleMainMenu(false)),
           button(t('Save game'), () => this.renderMainMenu('save')),
@@ -705,9 +816,13 @@
         for (const buildingId of buildingIds) {
           const building = Config.buildings[buildingId];
 
+          const Levels = CityBuilder.Levels;
+          const locked = Levels && !Levels.isUnlocked(buildingId);
+          const lockedLine = locked ? t('Unlocks at level {n}', { n: Levels.unlockLevel(buildingId) }) : null;
+
           const button = this.createIconButton({
             id: 'build_' + buildingId,
-            className: 'building-option',
+            className: 'building-option' + (locked ? ' locked' : ''),
             label: this.buildingName(buildingId),
             icon: {
               image: building.image,
@@ -717,7 +832,7 @@
             tooltip: () => this.tooltipContent(
               this.buildingName(buildingId),
               building.buildCost,
-              this.describeBuilding(building)
+              [...(lockedLine ? [lockedLine] : []), ...this.describeBuilding(building)]
             ),
           });
 
@@ -725,6 +840,8 @@
 
           button.onclick = () => {
             const game = CityBuilder.Game;
+
+            if (locked) return this.showToast(lockedLine);
 
             game.setPlacingType(
               game.placingType === buildingId ? null : buildingId
@@ -761,6 +878,7 @@
       }
 
       this.hideTooltip();
+      this.goalCheckedAt = 0;
       requestAnimationFrame(this.positionInfoPanel);
     },
 
@@ -1074,24 +1192,68 @@
           color: var(--dim);
         }
 
-        #info .info-short {
-          color: #e5736f;
+        #goalPanel {
+          position: fixed;
+          left: 8px;
+          top: 48px;
+          z-index: 30;
+          max-width: min(280px, calc(100vw - 16px));
+          padding: 6px 9px;
+          border: 1px solid var(--line);
+          border-radius: 6px;
+          background: rgb(27 33 39 / 88%);
+          color: var(--text);
+          font-size: 12px;
+          line-height: 1.45;
+          cursor: pointer;
+          overflow-y: auto;
         }
 
-        #info .info-resource {
+        #goalPanel.collapsed .goal-item,
+        #goalPanel.collapsed .goal-new {
+          display: none;
+        }
+
+        #goalPanel .goal-item.done {
+          color: #7bd88f;
+        }
+
+        #goalPanel .goal-new {
+          margin-top: 4px;
+          color: var(--dim);
+        }
+
+        #bottom .building-option.locked .icon {
+          opacity: .35;
+          filter: grayscale(1);
+        }
+
+        .level-stars {
+          font-size: 34px;
+          text-align: center;
+          letter-spacing: 6px;
+          color: #e5bc58;
+        }
+
+        #info .info-res {
           display: inline-flex;
           align-items: center;
-          gap: 3px;
-          margin-right: 5px;
+          gap: 2px;
+          margin-right: 6px;
           vertical-align: middle;
         }
 
-        #info .info-resource img {
-          width: 18px;
-          height: 18px;
+        #info .info-res-icon {
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          border-radius: 3px;
           object-fit: contain;
           image-rendering: pixelated;
-          vertical-align: middle;
+        }
+
+        #info .info-short {
+          color: #e5736f;
         }
 
         /* Resursfält */
@@ -1157,6 +1319,11 @@
 
         .resource-amount {
           font-variant-numeric: tabular-nums;
+        }
+
+        .resource-amount.is-full {
+          color: #f0a040;
+          font-weight: 700;
         }
 
         /* Resursfönster */
@@ -1365,11 +1532,13 @@
       for (const resourceId in Config.resources) {
         const amount = Economy.totalAmount(resourceId);
 
+        const full = amount >= Economy.capacity(resourceId); // lagertaket nått: siffran blir orange
+
         const topAmount = byId('amount_' + resourceId);
-        if (topAmount) topAmount.textContent = amount;
+        if (topAmount) { topAmount.textContent = amount; topAmount.classList.toggle('is-full', full); }
 
         const windowAmount = byId('resourceWindowAmount_' + resourceId);
-        if (windowAmount) windowAmount.textContent = amount;
+        if (windowAmount) { windowAmount.textContent = amount; windowAmount.classList.toggle('is-full', full); }
       }
 
       const carriers = World.units.filter(unit => unit.definition.isHauler);
@@ -1390,7 +1559,7 @@
         button.setAttribute('aria-pressed', String(isSelected));
         button.classList.toggle(
           'unaffordable',
-          !Economy.canAfford(Config.buildings[buildingId].buildCost)
+          !button.classList.contains('locked') && !Economy.canAfford(Config.buildings[buildingId].buildCost)
         );
       }
 
@@ -1403,6 +1572,7 @@
 
       this.lastBuildingCount = buildingCount;
 
+      this.refreshGoals();
       this.updateInspection(game);
       this.refreshInfoPanel(game);
       this.updateMapTooltip(game);
@@ -1443,17 +1613,18 @@
         .join(', ');
     },
 
-    formatResourceIcons(amounts) {
+    // { wood: 2 } -> HTML med resursbild + antal (används i infopanelen). Utan bild: färgruta.
+    resourceIconsHtml(amounts) {
+      const useImages = Config.settings.useImages !== false;
       return Object.entries(amounts || {})
         .filter(([, amount]) => amount > 0)
         .map(([resourceId, amount]) => {
-          const resource = Config.resources[resourceId];
-
-          if (resource?.image && Config.settings.useImages !== false) {
-            return `<span class="info-resource" title="${this.resourceName(resourceId)}"><img src="${resource.image}" alt=""><span>${amount}</span></span>`;
-          }
-
-          return `<span class="info-resource">${amount} ${this.resourceName(resourceId)}</span>`;
+          const resource = Config.resources[resourceId] || {};
+          const name = this.resourceName(resourceId).replace(/"/g, '&quot;');
+          const icon = resource.image && useImages
+            ? `<img class="info-res-icon" src="${resource.image}" alt="${name}" title="${name}" draggable="false">`
+            : `<span class="info-res-icon" title="${name}" style="background:${resource.color || '#3a444d'}"></span>`;
+          return `<span class="info-res">${icon}${amount}</span>`;
         })
         .join('');
     },
@@ -1674,29 +1845,22 @@
         ? t('Under construction {percent}%', { percent: Math.round(building.buildProgress * 100) })
         : I18n().status(building.status);
 
-      const imports = this.formatResourceIcons(building.inputStock);
-      const exports = this.formatResourceIcons(building.outputStock);
+      const range = this.getBuildingRange(building.definition);
+      const imports = building.definition.isStorage ? '' : this.resourceIconsHtml(building.inputStock);
+      const exports = building.definition.isStorage ? '' : this.resourceIconsHtml(building.outputStock);
+      const html = building.definition.isStorage
+        ? t('Storage: {list}', { list: this.resourceIconsHtml(building.storedGoods) || t('empty') })
+        : statusText +
+          (imports ? `<br>${t('Import: {list}', { list: imports })}` : '') +
+          (exports ? `<br>${t('Export: {list}', { list: exports })}` : '') +
+          (range ? `<br>${t('Range: {n} tiles', { n: range })}` : '');
 
-      const tradeInfo = [
-        imports
-          ? t('Import: {list}', { list: imports })
-          : '',
-        exports
-          ? t('Export: {list}', { list: exports })
-          : ''
-      ].filter(Boolean).join(' · ');
-
-      byId('infoStatus').innerHTML = building.definition.isStorage
-        ? t('Storage: {list}', {
-            list: this.formatResources(building.storedGoods) || t('empty')
-          })
-        : statusText
-          + (tradeInfo ? `<br>${tradeInfo}` : '')
-          + (this.getBuildingRange(building.definition)
-            ? `<br>${t('Range: {n} tiles', {
-                n: this.getBuildingRange(building.definition)
-              })}`
-            : '');
+      // Uppdateras bara vid ändring, så att bilderna inte laddas om varje bildruta
+      const status = byId('infoStatus');
+      if (status.dataset.html !== html) {
+        status.dataset.html = html;
+        status.innerHTML = html;
+      }
 
       if (byId('pauseButton')) {
         byId('pauseButton').textContent = t(building.paused ? 'Unpause' : 'Pause');

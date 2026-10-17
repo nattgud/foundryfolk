@@ -6,13 +6,13 @@ CityBuilder.Config.settings = {
   buildDurationSeconds: 1,
   outputBufferCapacity: 20,       // max i utbuffert innan producenten pausar
   flushThreshold: 0,             // överskott över detta skickas till lagret
-  startingCarriers: 30,
-  carriersPerBuilding: 1,
+  baseCarriers: 5,
+  carriersPerBuilding: 1.5,
   deerActivationRadius: 2,
   deerPerChunk: 3,
   deerTreeSpreadChance: 0.02,
   startingResources: { wood: 12, plank: 5, stone: 10, hammer: 10 },
-  gameSpeeds: [1, 2, 4, 64],
+  gameSpeeds: [1, 2, 4, 8],
   defaultEquipment: {}, // utrustning som varje produktionshus måste få (kan åsidosättas med requiredEquipment)
   wearPerPass: 0.1,              // slitage per bärarpassage
   maxWearSpeedBonus: .25,         // max hastighetsökning på helt upptrampad ruta
