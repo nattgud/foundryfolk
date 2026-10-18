@@ -10,7 +10,7 @@
     #loading { position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 14px; background: #14110f; color: #e8dcc8; font: 600 16px system-ui, sans-serif; transition: opacity .4s; }
     #loading.hide { opacity: 0; pointer-events: none; }
-    #loading .title { font-size: 26px; letter-spacing: .04em; }
+    #loading .logo { width: min(500px, 60vw); height: auto; }
     #loading .track { width: min(320px, 70vw); height: 12px; border-radius: 6px; background: #2c2620; overflow: hidden; }
     #loading .fill { height: 100%; width: 0; background: #e0a53a; border-radius: 6px; transition: width .25s ease-out; }
     #loading .text { font-size: 13px; opacity: .75; min-height: 1.2em; text-align: center; padding: 0 16px; }
@@ -18,7 +18,7 @@
   </style>
 </head>
 <body onload="loadAllGameComponents()">
-  <div id="loading"><div class="title">Foundryfolk</div><div class="track"><div class="fill" id="loadingFill"></div></div><div class="text" id="loadingText">Loading…</div></div>
+  <div id="loading"><img class="logo" src="images/foundryfolk_logo_image.png" alt="Foundryfolk" onload="this.nextElementSibling.style.display='none'" onerror="this.style.display='none'"><div class="title">Foundryfolk</div><div class="track"><div class="fill" id="loadingFill"></div></div><div class="text" id="loadingText">Loading…</div></div>
   <canvas id="gameCanvas"></canvas>
   <div id="top"></div>
   <div id="info"></div>
@@ -26,7 +26,7 @@
   <div id="toast"></div>
 
   <script>
-    var version = "0.4.21";
+    var version = "0.4.28";
 
     // Laddningsstapel. set(0-1, text), paint() ger webbläsaren tid att rita, done() döljer rutan.
     window.GameLoading = {
@@ -72,6 +72,7 @@
         'js/config/buildings.js',
         'js/config/world.js',
         'js/config/levels.js',
+        'js/config/changelog.js',
         'js/config/finalize.js',
         // 3. Language and options
         'js/lang/lang.js',

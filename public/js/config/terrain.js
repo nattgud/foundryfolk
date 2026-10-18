@@ -15,7 +15,7 @@ CityBuilder.Config.terrain = {
   limestone:        { name: "Limestone",  color: '#b8b4a5', walkCost: 5, resourceAmount: 25 },
 
   // Skog och växter
-  tree:             { name: "Tree",           color: '#2f5a35', walkCost: 3, fallbackShape: 'tree', resourceAmount: 5 },
+  tree:             { name: "Tree",           color: '#2f5a35', walkCost: 2, fallbackShape: 'tree', resourceAmount: 5 },
   apple_tree:       { name: "Apple tree",     color: '#536c38', walkCost: 3, fallbackShape: 'tree', resourceAmount: 10 },
   berry_bush:       { name: "Berry bush",     color: '#465c35', walkCost: 2, resourceAmount: 10 },
   herbs:            { name: "Herbs",          color: '#526b40', walkCost: 1, resourceAmount: 5 },

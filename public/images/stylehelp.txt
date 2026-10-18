@@ -1,0 +1,32 @@
+Återanvändbar Prompt för Stilbeskrivning
+Kärnbeskrivning (Börja alltid med denna)
+An illustrated, detailed isometric logo or game asset, presented in a "2D/3D hybrid" fantasy-steampunk art style. The asset must have bold, clean, heavy black outlines, making it look like a high-quality hand-drawn piece with tangible, sculpted volume.
+
+Tematisk och Materiell Estetik
+The object must be composed of weathered, hand-chiseled stone masonry and textured, cast-metal gears and components (iron, bronze, copper). The overall theme is a blend of ancient Dwarven stonework, magical power, and primitive industrial engineering. All surfaces must show tactile, rustic wear, but remain clean and defined.
+
+Färgpalett och Textur
+Base Colors: Deep charcoal gray (#2D2D2D), dark chiseled stone gray, rustic cast iron, and aged bronze.
+Accent Colors: Vibrant, glowing magical cyan and teal for particle effects and internal light sources.
+Primary Colors (for focal points): Rich crimson, gold/ochre, and copper.
+Internal Illumination: The core of the object must emit a warm, powerful, pulsing orange-gold glow, contrasting sharply with cool magical light sources. Surfaces must feature intricate, glowing etched runes.
+
+Specifik Detaljnivå (Från logotypen)
+The design must incorporate several specific elements that define the theme: intricate mechanical gears of various sizes; stylized runic filigree etched into stone surfaces; powerful tools like hammers and anvils; small clusters of glowing magical crystals or cyan particle trails; and robust, chiseled stone block text.
+
+Komposition och Ljussättning
+Composition: Symmetrical and centered, with a strong, solid base. Elements must be layered, not flat, to give a sense of deep construction.
+Lighting: Dramatic and focused. Internal light from a forge or crystal core is the primary source, casting defined, high-contrast light and shadow on the metal and stone surfaces.
+Edges: All outlines must be razor-sharp and black, defining every block, gear, and text character without any blur or atmospheric glow.
+Background: A smooth, uniform background with high contrast (e.g., solid gray or a greenscreen-ready color like #00FF00) to emphasize the hard edges.
+
+Hur du återanvänder prompten för nya motiv
+När du vill skapa en ny bild i samma stil, använder du styckena ovan och lägger bara till ditt konkreta motiv och specifika färgförändringar i början.
+
+Exempel 1: En karaktär i stilen
+
+"An illustrated, detailed isometric [character design: a Dwarven master blacksmith wearing heavy, ornate gear-punk goggles and leather apron], presented in a "2D/3D hybrid" fantasy-steampunk art style... [Klipp in resten av kärnbeskrivningen och Paletten, och lägg till 'The blacksmith should hold a hammer that glows with internal cyan magical energy']"
+
+Exempel 2: Ett föremål i stilen
+
+"An illustrated, detailed isometric [object: a powerful magical power coil with an ancient Dwarven runic base], presented in a "2D/3D hybrid" fantasy-steampunk art style... [Klipp in kärnbeskrivningen och byt Palettens crimson/gold till 'with dark copper coils and brilliant magenta electrical pulses', och lägg till 'The runic base should emit a powerful, cool blue internal illumination']"

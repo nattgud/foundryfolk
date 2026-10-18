@@ -89,7 +89,7 @@
 
       this.buildBuildMenu(buildMenu);
       this.initMapInspection();
-      this.createVersionLabel();
+      this.createCopyrightLabel();
       this.createGoalPanel();
       if (CityBuilder.Levels) CityBuilder.Levels.onComplete(result => this.showLevelComplete(result));
       this.lastBuildingCount = World.buildings.length;
@@ -105,6 +105,7 @@
 
       // Språket byts direkt: allt som redan är uppritat ritas om
       I18n().onChange(() => this.applyLanguage());
+      this.showChangelogIfNew();
     },
 
     // Anropas när språket byts (I18n.onChange)
@@ -147,11 +148,11 @@
     },
 
     // Litet versionsnummer längst ner i högra hörnet
-    createVersionLabel() {
-      if (byId('versionLabel')) return;
+    createCopyrightLabel() {
+      if (byId('copyrightLabel')) return;
       const label = document.createElement('div');
-      label.id = 'versionLabel';
-      label.textContent = typeof version !== 'undefined' ? 'v' + version : '';
+      label.id = 'copyrightLabel';
+      label.textContent = '© David Andersson';
       document.body.appendChild(label);
     },
 
@@ -212,6 +213,65 @@
       panel.style.top = top + 'px';
       panel.style.maxHeight = Math.max(40, limit - top) + 'px';
       if (CityBuilder.Options) CityBuilder.Options.positionFpsCounter();
+    },
+
+    // Changelog: visas en gång per ny version (spelet pausas medan rutan är öppen). Texten är bara engelska.
+    showChangelogIfNew() {
+      const current = String(window.version || ''), log = CityBuilder.Changelog || {};
+      let last = null;
+      try { last = localStorage.getItem('citybuilder.version'); } catch (error) {}
+      try { localStorage.setItem('citybuilder.version', current); } catch (error) {}
+      if (!current || last === current) return;
+      if (last === null) { // ingen sparad version: nya spelare får ingen ruta, tidigare spelare (de har framsteg sparade) får de senaste nyheterna
+        let played = false;
+        try { played = !!localStorage.getItem('citybuilder.progress'); } catch (error) {}
+        if (!played) return;
+        last = '0';
+      }
+      // Versionsnummer: de två första delarna är heltal, den sista läses som decimaler (0.4.2 = 0.4.20, och senare än 0.4.18)
+      const number = text => { const part = String(text).split('.'); return [parseInt(part[0], 10) || 0, parseInt(part[1], 10) || 0, parseFloat('0.' + (part[2] || '0'))]; };
+      const newer = (a, b) => { const x = number(a), y = number(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i]; return false; };
+      const versions = Object.keys(log).filter(v => newer(v, last) && !newer(v, current)).sort((a, b) => newer(a, b) ? -1 : 1).slice(0, 5);
+      if (versions.length) this.openChangelog(versions);
+    },
+
+    // Visar changeloggen (alla versioner om inget anges). Spelet pausas medan rutan är öppen.
+    openChangelog(versions) {
+      const log = CityBuilder.Changelog || {};
+      versions = versions || Object.keys(log);
+      this.hideTooltip();
+      CityBuilder.Game.paused = true;
+      const overlay = document.createElement('div');
+      overlay.id = 'changelogOverlay';
+      overlay.className = 'resource-window-overlay';
+      const dialog = document.createElement('section');
+      dialog.className = 'resource-window main-menu';
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+      const header = document.createElement('header');
+      header.className = 'resource-window-header';
+      const title = document.createElement('strong');
+      title.textContent = "What's new";
+      header.appendChild(title);
+      const body = document.createElement('div');
+      body.className = 'main-menu-body';
+      const line = (className, text) => { const element = document.createElement('div'); element.className = className; element.textContent = text; return element; };
+      for (const version of versions) {
+        body.append(line('main-menu-level', 'Version ' + version));
+        for (const entry of log[version]) body.append(line('main-menu-note', '• ' + entry));
+      }
+      const footer = document.createElement('footer');
+      footer.style.cssText = 'padding:10px 12px;border-top:1px solid var(--line);flex:0 0 auto;display:flex;flex-direction:column';
+      const ok = document.createElement('button');
+      ok.type = 'button';
+      ok.className = 'main-menu-button';
+      ok.textContent = 'OK';
+      ok.onclick = () => { overlay.remove(); CityBuilder.Game.paused = !!this.mainMenuOpen; };
+      footer.append(ok);
+      dialog.append(header, body, footer);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+      // ok.focus();
     },
 
     showLevelComplete(result) {
@@ -677,6 +737,7 @@
           button(t('Save game'), () => this.renderMainMenu('save')),
           button(t('Load game'), entries.size ? () => this.renderMainMenu('load') : null),
           button(t('Statistics'), () => this.renderMainMenu('stats')),
+          button('Changelog', () => this.openChangelog()),
           button(t('Settings'), () => this.renderMainMenu('options')),
           button(t('Restart level'), () => this.renderMainMenu('confirm', {
             text: t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
@@ -698,6 +759,7 @@
             },
           }))
         );
+        if (window.version) body.append(make('div', 'main-menu-note', 'Version ' + window.version));
       } else if (view === 'save') {
         const doSave = id => {
           if (!requireSaveSystem()) return;
@@ -1170,7 +1232,7 @@
           line-height: 1.35;
         }
 
-        #versionLabel {
+        #copyrightLabel {
           position: fixed;
           right: 6px;
           bottom: 3px;
@@ -1402,7 +1464,7 @@
         .resource-detail {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 12px;
           min-width: 0;
           padding: 8px;
           border: 1px solid var(--line);
@@ -1420,20 +1482,29 @@
         }
 
         .resource-detail .resource-amount {
-          font-size: 13px;
+          font-size: 24px;
           font-weight: 600;
+        }
+        .resource-detail .resource-icon {
+          width: 64px;
+          height: 64px;
+          flex: 0 0 64px;
         }
 
         .resource-favorite {
-          flex: 0 0 26px;
-          width: 26px;
-          height: 26px;
+          flex: 0 0 64px;
+          width: 64px;
+          height: 64px;
           padding: 0;
           border: 0;
           background: transparent;
           color: var(--dim);
-          font-size: 19px;
+          font-size: 32px;
           cursor: pointer;
+          transition: color 200ms;
+        }
+        .resource-favorite:hover {
+          color: #fff;
         }
 
         .resource-favorite.is-favorite {

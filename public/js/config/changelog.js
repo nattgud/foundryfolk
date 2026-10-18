@@ -1,0 +1,81 @@
+/* Changelog: en rad per version, nyast överst. Texten visas för spelaren (bara engelska) första gången en ny version startas.
+   Versionsnumret jämförs som decimaltal i sista delen (0.4.2 = 0.4.20, och är alltså senare än 0.4.18). */
+(function (CityBuilder) {
+  'use strict';
+
+  CityBuilder.Changelog = {
+    '0.4.28': [
+      "Added background music",
+	  "Cleaned up assets",
+	  "Various bugfixes"
+    ],
+    '0.4.22': [
+      'Grass paths now cut through rough terrain, so carriers can reach far-away places',
+      'Forests, meadows and resources are spread out more evenly across the map',
+      'Worn paths are only drawn on grass',
+      'Added this changelog and the version number in the main menu',
+    ],
+    '0.4.21': [
+      'Loading bar when the game and new levels start',
+    ],
+    '0.4.2': [
+      'Game renamed to Foundryfolk',
+      'Restart level from the main menu, and a Next level button in the goal panel',
+      'Carriers now prioritise scarce resources and buildings with full stock',
+      'Hunters now deliver everything they produce, like both meat and leather',
+      'Custom sounds and music can be configured',
+      'Many bug fixes',
+    ],
+    '0.4.18': [
+      'Sound effects and music, with volume and on/off settings',
+      'Level progression: levels with goals, par time, stars and new buildings that unlock as you advance',
+      'Storage limits per resource, with new Large Warehouse and Great Depot buildings',
+      'Resource counters turn orange when storage is full',
+      'Faster pathfinding for large numbers of units',
+      'Fixes for buildings stuck with full stock',
+    ],
+    '0.4.17': [
+      'New Sawmill and Planter buildings',
+      'Smoother, rounded worn paths',
+      'World generation and terrain fixes',
+    ],
+    '0.4.11': [
+      'Settings menu with statistics, language selection (English, Swedish, German, Spanish) and an FPS limit',
+      'Autosave and five manual save slots',
+      'Status icons above buildings that need attention',
+      'The game pauses when the window loses focus',
+      'Optimizations and balance changes',
+    ],
+    '0.4.09': [
+      'Fishing hut: catch fish from the water',
+      'Deer spread plants more carefully, and only onto grass',
+    ],
+    '0.4.08': [
+      'Hunter cottage: hunt deer for meat and leather',
+    ],
+    '0.4.02': [
+      'Interface fixes',
+    ],
+    '0.4.0': [
+      'Deer roam the world and spread trees and berries, herbs and mushrooms',
+    ],
+    '0.3.86': [
+      'Map fixes',
+      'Level system groundwork',
+    ],
+    '0.3.85': [
+      'Mountains with ore deposits, and better world generation',
+      'New Gemstone mine',
+      'Texture fixes',
+    ],
+    '0.3.8': [
+      'New Rock crusher',
+      'Minimap and interface fixes',
+    ],
+    '0.3.7': [
+      'Minimap',
+      'Worn paths fade when nobody walks on them',
+      'Meteor craters and fallen stars in the world',
+    ],
+  };
+})(window.CityBuilder);

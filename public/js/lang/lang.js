@@ -99,6 +99,8 @@
 
       // Byggnader och terräng
       'Stores resources': 'Lagrar resurser',
+      'Local stock full': 'Lokalt lager fullt',
+      'Central storage full': 'Centrallagret fullt',
       'Choosing level':'Väljer bana',
       'Creating world':'Skapar världen',
       'Preparing graphics':'Förbereder grafik',
@@ -336,6 +338,8 @@
       'browser storage is full or blocked': 'Browser-Speicher ist voll oder gesperrt',
 
       'Stores resources': 'Lagert Ressourcen',
+      'Local stock full': 'Lokales Lager voll',
+      'Central storage full': 'Zentrallager voll',
       'Choosing level':'Level wird gewählt',
       'Creating world':'Welt wird erstellt',
       'Preparing graphics':'Grafik wird vorbereitet',
@@ -568,6 +572,8 @@
       'browser storage is full or blocked': 'el almacenamiento del navegador está lleno o bloqueado',
 
       'Stores resources': 'Almacena recursos',
+      'Local stock full': 'Almacén local lleno',
+      'Central storage full': 'Almacén central lleno',
       'Choosing level':'Eligiendo nivel',
       'Creating world':'Creando el mundo',
       'Preparing graphics':'Preparando gráficos',

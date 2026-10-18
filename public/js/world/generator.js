@@ -26,7 +26,55 @@
       for (const feature of worldConfig.features) {
         if (Math.hypot(x - feature.x, y - feature.y) <= feature.radius && Utils.hash(x, y, 7) < .9) terrainType = feature.terrainType;
       }
+      return this.carve(x, y, distanceFromOrigin, terrainType);
+    },
+
+    // Gräsgångar: krokiga stigar från startområdet och utåt. width = antal rutor (1 = en ruta bred). Vatten gräver de inte igenom.
+    carve(x, y, distance, terrainType) {
+      const settings = CityBuilder.Config.world.corridors || {};
+      const count = settings.count ?? 6, width = settings.width ?? 1, maxRadius = settings.maxRadius ?? 160;
+      if (terrainType === 'grass' || !count || distance > maxRadius || /water|river|lake|sea|ocean|moat/i.test(terrainType)) return terrainType;
+      const table = this.corridorTable(count, maxRadius, Math.min(count, settings.roots ?? 3));
+      const angle = Math.atan2(y, x), step = Math.min(maxRadius, distance | 0), fraction = distance - step;
+      for (let k = 0; k < count; k++) {
+        if (step < this.starts[k]) continue;
+        const row = table[k], slope = row[step + 1] - row[step];            // hur snabbt stigen svänger per ruta
+        const centre = row[step] + slope * fraction;
+        let diff = Math.abs(angle - centre) % (2 * Math.PI);
+        if (diff > Math.PI) diff = 2 * Math.PI - diff;
+        const tilt = distance * slope;                                        // stigens lutning mot riktningen utåt
+        const across = diff * distance / Math.sqrt(1 + tilt * tilt);          // avstånd rakt ut från stigen
+        const direction = centre + Math.atan(tilt);                           // stigens riktning
+        const half = width * (Math.abs(Math.cos(direction)) + Math.abs(Math.sin(direction))) / 2;
+        if (across < half) return 'grass';
+      }
       return terrainType;
+    },
+
+    // Mittlinjen (vinkel) för varje gång vid varje heltalsavstånd. Byggs en gång per bana.
+    corridorTable(count, maxRadius, roots) {
+      const fingerprint = Utils.hash(3, 5, 9) + ':' + count + ':' + maxRadius + ':' + roots;
+      if (this.tableKey === fingerprint) return this.table;
+      this.tableKey = fingerprint;
+      this.table = []; this.starts = [];
+      const noise = (k, i) => (Utils.fractalNoise(i / 16, k * 5.3, 4) - .5) * 1.3;
+      for (let k = 0; k < count; k++) {
+        const row = new Float64Array(maxRadius + 3);
+        if (k < roots) { // huvudgångar från basen
+          const base = (k + .15 + .7 * Utils.hash(k, 91, 5)) * 2 * Math.PI / roots;
+          for (let i = 0; i < row.length; i++) row[i] = base + noise(k, i);
+          this.starts.push(0);
+        } else {         // grenar: börjar på en huvudgång längre ut och svänger av åt ena sidan
+          const parent = this.table[k % roots], start = 25 + 70 * Utils.hash(k, 92, 5) | 0;
+          const side = Utils.hash(k, 93, 5) < .5 ? -1 : 1, spread = .5 + .5 * Utils.hash(k, 94, 5);
+          for (let i = 0; i < row.length; i++) {
+            row[i] = i <= start ? parent[i] : parent[start] + side * spread * (1 - start / i) + noise(k, i) - noise(k, start);
+          }
+          this.starts.push(start);
+        }
+        this.table.push(row);
+      }
+      return this.table;
     },
   };
 

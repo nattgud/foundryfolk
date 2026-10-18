@@ -91,8 +91,8 @@
     const continent = stretch(fbm(context, wx, wy, 190, 103, 0.7), 2.4);
     const hills = fbm(context, wx, wy, 52, 104, 1.1);
     const detail = fbm(context, x, y, 17, 105, 2.4);
-    const mountainZone = smoothstep(0.62, 0.86, stretch(fbm(context, wx, wy, 120, 106, 0.2), 2.6)) * smoothstep(28, 75, origin);
-    const ridge = 1 - Math.abs(2 * fbm(context, wx, wy, 34, 107, 0.9) - 1); // skarpa åsar där bruset korsar 0.5
+    const mountainZone = smoothstep(0.58, 0.82, stretch(fbm(context, wx, wy, 90, 106, 0.2), 2.6)) * smoothstep(28, 75, origin);
+    const ridge = 1 - Math.abs(2 * fbm(context, wx, wy, 34, 107, 0.9) - 1);
     const mountain = mountainZone * (0.18 + 0.62 * ridge * ridge);
 
     const relief = 0.12 + 0.62 * continent + 0.30 * (hills - 0.5) + 0.10 * (detail - 0.5) + mountain * 0.55;
@@ -493,13 +493,13 @@
     // Sedimentära bäcken: kalksten (blockfält) och tjärgropar. (Kol: se malmregeln ovan)
     context => {
       const model = landscapeAt(context);
-      const basin = fbm(context, context.x, context.y, 100, 240, 0.9);
-      if (basin < 0.56) return;
+      const basin = fbm(context, context.x, context.y, 60, 240, 0.9);
+      if (basin < 0.54) return;
 
-      if (model.relief < 0.45 || model.relief > 0.78 || model.mountain > 0.6) return;
+      if (model.relief < 0.4 || model.relief > 0.8 || model.mountain > 0.6) return;
       if (basin > 0.58 && random(context, context.x, context.y, 244) < 0.0025) return 'tar_pit';
       const limeField = fbm(context, context.x, context.y, 16, 245, 0.2);
-      if (basin > 0.56 && limeField > 0.66 && random(context, context.x, context.y, 246) < 0.55) return 'limestone';
+      if (basin > 0.54 && limeField > 0.66 && random(context, context.x, context.y, 246) < 0.55) return 'limestone';
     },
 
     // Torra bäcken: saltpanor och förstenat trä på torr, låg mark.
@@ -531,9 +531,9 @@
     // 24. Fruktlund: lummiga ställen med vilda äppelträd. Mellan träden är marken öppen.
     context => {
       const model = landscapeAt(context);
-      if (model.moisture < 0.45 || model.moisture > 0.78 || model.relief < 0.42 || model.relief > 0.65 || model.mountain > 0.1) return;
-      const orchard = fbm(context, context.x, context.y, 30, 290, 0.4);
-      if (orchard < 0.68) return;
+      if (model.moisture < 0.38 || model.moisture > 0.85 || model.relief < 0.38 || model.relief > 0.7 || model.mountain > 0.1) return;
+      const orchard = fbm(context, context.x, context.y, 20, 290, 0.4);
+      if (orchard < 0.62) return;
       return random(context, context.x, context.y, 291) < 0.3 ? 'apple_tree' : 'grass';
     },
 
@@ -542,16 +542,17 @@
       const model = landscapeAt(context);
       const treeLine = 1 - smoothstep(0.64, 0.8, model.relief);
       const suitability = smoothstep(0.2, 0.5, model.moisture) * treeLine;
-      const stand = 0.6 * stretch(fbm(context, context.x, context.y, 36, 300, 0.6), 2.2) + 0.4 * stretch(fbm(context, context.x, context.y, 12, 301, 1.5), 2.0);
-      const density = stand * suitability + model.startArea * 0.18 * suitability;
-      const probability = smoothstep(0.34, 0.56, density) * 0.9 + 0.09 * suitability; // lite enstaka träd även i ängen
+      const stand = 0.5 * stretch(fbm(context, context.x, context.y, 22, 300, 0.6), 2.2) + 0.5 * stretch(fbm(context, context.x, context.y, 8, 301, 1.5), 2.2);
+      const meadow = smoothstep(0.55, 0.68, fbm(context, context.x, context.y, 60, 303, 0.9)); // stora öppna ängar
+      const density = (stand * (1 - 0.75 * meadow) + model.startArea * 0.18) * suitability;
+      const probability = smoothstep(0.46, 0.66, density) * 0.9 + 0.06 * suitability;
       if (random(context, context.x, context.y, 302) < probability) return 'tree';
     },
 
     // 26. Bärbuskar: i klungor, helst i skogsbrynet.
     context => {
       const model = landscapeAt(context);
-      if (model.moisture < 0.42 || model.mountain > 0.1) return;
+      if (model.moisture < 0.35 || model.mountain > 0.1) return;
       const cluster = fbm(context, context.x, context.y, 9, 310, 0.8);
       const edgeness = smoothstep(0.35, 0.5, fbm(context, context.x, context.y, 36, 300, 0.6)) * (1 - smoothstep(0.55, 0.7, fbm(context, context.x, context.y, 36, 300, 0.6)));
       if (cluster > 0.52 && random(context, context.x, context.y, 311) < 0.25 + 0.5 * edgeness) return 'berry_bush';
@@ -560,7 +561,7 @@
     // 27. Svamp: i skuggan på fuktig mark.
     context => {
       const model = landscapeAt(context);
-      if (model.moisture < 0.62 || model.mountain > 0.1) return;
+      if (model.moisture < 0.52 || model.mountain > 0.1) return;
       const cluster = fbm(context, context.x, context.y, 8, 320, 1.2);
       if (cluster > 0.52 && random(context, context.x, context.y, 321) < 0.5) return 'mushrooms';
     },

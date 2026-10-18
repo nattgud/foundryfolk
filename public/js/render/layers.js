@@ -29,8 +29,9 @@
   const PATH_ALPHA = [0, 0.225, 0.45, 0.675, 0.9, 1]; // nivå 1-4: slitage under 100 %, nivå 5: minst 100 %
   const GRID = PATH_CHUNK + 2;           // brickan + en ruta runt om, för att se grannarna
   const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
-  const grid = new Uint8Array(GRID * GRID);   // slitagenivå per ruta
-  const built = new Uint8Array(GRID * GRID);  // 1 = byggnad på rutan
+  const grid = new Uint8Array(GRID * GRID);
+  const built = new Uint8Array(GRID * GRID);
+  const ground = new Uint8Array(GRID * GRID);
   const pathChunks = new Map();
   const pathStyle = { tileSize: 0, partialImage: null, wornImage: null, partial: '#655', worn: '#777' };
 
@@ -64,13 +65,14 @@
     for (let j = 0; j < GRID; j++) for (let i = 0; i < GRID; i++) {
       const x = chunk.cx * PATH_CHUNK + i - 1, y = chunk.cy * PATH_CHUNK + j - 1, index = j * GRID + i;
       const isBuilt = World.buildingAt(x, y) ? 1 : 0;
-      const tile = isBuilt ? null : World.getTile(x, y);
-      // Stigar syns bara på gräs (inte på sand, vatten, sten, skog ...) och inte under byggnader
-      const level = tile && tile.terrainType === 'grass' ? wearLevel(tile.wear) : 0;
+      const tile = World.getTile(x, y);
+      const isGrass = tile && tile.terrainType === 'grass' ? 1 : 0;
+      const level = isGrass && !isBuilt ? wearLevel(tile.wear) : 0; // stigar bara på gräs, och inte under byggnader
       grid[index] = level;
+      ground[index] = isGrass;
       built[index] = isBuilt;
       if (level && i > 0 && j > 0 && i <= PATH_CHUNK && j <= PATH_CHUNK) count++;
-      hash = (Math.imul(hash, 31) + level + isBuilt * 8) | 0;
+      hash = (Math.imul(hash, 31) + level + isBuilt * 8 + isGrass * 16) | 0;
     }
     return count ? hash : 0;
   };
@@ -101,11 +103,12 @@
           // Diagonaler bara när rutorna inte redan hänger ihop via en intilliggande ruta
           if (grid[neighbor] && !grid[j * GRID + i + dx] && !grid[(j + dy) * GRID + i]) {
             ends.push(cx + dx * half, cy + dy * half);
-            rects[level].push(x + dx * tileSize, y, x, y + dy * tileSize); // hörnrutorna, så att den breda linjen inte klipps av
+            if (ground[j * GRID + i + dx]) rects[level].push(x + dx * tileSize, y);
+            if (ground[(j + dy) * GRID + i]) rects[level].push(x, y + dy * tileSize); // hörnrutorna, bara om de är gräs
           }
         } else if (grid[neighbor]) {
           ends.push(cx + dx * half, cy + dy * half);                 // mitt på kanten
-        } else if (built[neighbor]) {
+        } else if (built[neighbor] && ground[neighbor]) {
           ends.push(cx + dx * tileSize, cy + dy * tileSize);         // in till byggnadens mitt
           rects[level].push(x + dx * tileSize, y + dy * tileSize);   // byggnadens ruta får också stigen
         }
@@ -227,26 +230,45 @@
     }
   });
 
+  Renderer.addLayer('workerLink', (context, renderer) => {
+    const building = CityBuilder.Game.selectedBuilding, worker = building && building.workerUnit;
+    if (!worker || worker.removed || !building.definition.job || building.definition.job.kind !== 'gather') return;
+    const tileSize = renderer.tileSize;
+    context.save();
+    context.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo((building.x + .5) * tileSize, (building.y + .5) * tileSize);
+    context.lineTo(worker.x * tileSize, worker.y * tileSize);
+    context.stroke();
+    context.restore();
+  });
+
   // Statusikoner. Statustexten görs om till sin engelska grundform (I18n.canonicalStatus), så olika stavningar
   // och äldre svenska texter ger samma ikon. Arbetarens status går före byggnadens.
   const ICON_DIR = 'images/ui/icons/';
   const STATUS_ICONS = {
-    'No resources': 'warning_yellow', 'Full stock': 'warning_yellow', 'Tools missing': 'warning_yellow',
-    'No deer in range': 'warning_yellow', 'Paused': 'paused', 'Missing export': 'error', "Can't reach": 'error',
+    'No resources': 'warning_grey', 'Local stock full': 'warning_grey', 'Central storage full': 'warning_red', 'Tools missing': 'warning_grey',
+    'No deer in range': 'warning_grey', 'Paused': 'paused', 'Missing export': 'error', "Can't reach": 'error',
   };
   const statusIcon = status => {
     if (!status) return null;
     const key = CityBuilder.I18n.canonicalStatus(status);
-    return key.startsWith('Missing:') ? 'warning_yellow' : STATUS_ICONS[key] || null;
+    return key.startsWith('Missing:') ? 'warning_grey' : STATUS_ICONS[key] || null;
   };
-
   Renderer.addLayer('ui', (context, renderer) => {
     const tileSize = renderer.tileSize;
+    const time = performance.now() / 1000;
     for (const building of World.buildings) {
       const name = statusIcon(building.workerUnit?.status) || statusIcon(building.status);
       const icon = name && Assets.get(ICON_DIR + name + '.png');
       if (icon) {
-        context.drawImage(icon, building.x * tileSize + tileSize / 4, building.y * tileSize + tileSize / 4, tileSize / 2, tileSize / 2);
+        const urgent = name === 'error', still = name === 'paused';
+        const wave = still ? 0 : (Math.sin(time * (urgent ? 6 : 3.5)) + 1) / 2;
+        const size = tileSize / 2 * (1 + wave * (urgent ? .3 : .15));
+        context.globalAlpha = still ? 1 : .7 + .3 * wave;
+        context.drawImage(icon, (building.x + .5) * tileSize - size / 2, (building.y + .5) * tileSize - size / 2, size, size);
+        context.globalAlpha = 1;
         continue;
       }
       if(building.isCrafting) {

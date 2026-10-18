@@ -6,11 +6,10 @@ CityBuilder.Config.settings = {
   buildDurationSeconds: 1,
   outputBufferCapacity: 20,       // max i utbuffert innan producenten pausar
   flushThreshold: 0,             // överskott över detta skickas till lagret
-  baseCarriers: 5,
-  carriersPerBuilding: 2,
+  carriersPerBuilding: 3,
   deerActivationRadius: 2,
   deerPerChunk: 3,
-  deerTreeSpreadChance: 0.02,
+  deerTreeSpreadChance: 0.01,
   startingResources: { wood: 12, plank: 5, stone: 10, hammer: 10 },
   gameSpeeds: [1, 2, 4, 8],
   defaultEquipment: {}, // utrustning som varje produktionshus måste få (kan åsidosättas med requiredEquipment)
@@ -18,12 +17,20 @@ CityBuilder.Config.settings = {
   maxWearSpeedBonus: .25,         // max hastighetsökning på helt upptrampad ruta
   maxPathSearchesPerFrame: 16,
   pathfinding: { nodeLimit: 3000, margin: 24, maxCells: 160000, maxCachedPaths: 800 },
-  logistics: { planningIntervalSeconds: .25, maxTasks: 8, requestsPerBuilding: 4 },
+  logistics: {
+    planningIntervalSeconds: .25,
+    maxTasks: 8,
+    requestsPerBuilding: 4,
+    baseCarriers: 20,
+    lowStock: 20
+  },
   zoom: { min: .5, max: 2.5 },
   toastDurationMs: 3500,
   useImages: true,
-  logistics: {
-    lowStock: 20
+  corridors: {
+    count: 6, 
+    width: 0.2, 
+    maxRadius: 160
   },
   audio: {  // play('coin', { x: ruta_x, y: ruta_y })
     sounds: {
@@ -35,7 +42,7 @@ CityBuilder.Config.settings = {
       // levelComplete: 'sounds/level_complete.mp3',
       // drop: 'sounds/drop.mp3',
     },
-    music: [],
+    music: ["music/theme.mp3"],
   },
   systemOrder: ['construction', 'production', 'logistics', 'units'],
 };

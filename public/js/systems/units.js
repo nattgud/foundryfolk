@@ -7,13 +7,13 @@
     foodRadius: 3, 
     eatSeconds: 4,
     eatCooldown: 30,
-    spreadChance: 0.2,
+    spreadChance: 0.1,
     wanderRadius: 8,
     idleCooldown: 1,
     maxFoodPerTile: 5,
     maxSpreadDistance: 6,
-    breedChancePerSecond: Config.settings.deerBreedChancePerSecond ?? 1500 / 1500, // chans per speltidssekund att få en unge (snitt ca 25 min mellan ungar per hjort)
-    breedCooldown: Config.settings.deerBreedCooldown ?? 1,    // speltid i sekunder innan samma hjort (eller ungen) kan få en ny unge
+    breedChancePerSecond: Config.settings.deerBreedChancePerSecond ?? 5 / 150, // chans per speltidssekund att få en unge (snitt ca 25 min mellan ungar per hjort)
+    breedCooldown: Config.settings.deerBreedCooldown ?? 60,    // speltid i sekunder innan samma hjort (eller ungen) kan få en ny unge
     maxPopulation: Config.settings.deerMaxPopulation ?? 200,     // inga fler hjortar än så här i världen
   };
 

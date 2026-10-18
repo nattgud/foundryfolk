@@ -102,6 +102,12 @@
       return { ...(behavior.inputCapacities ? behavior.inputCapacities(building) : {}), ...(building.definition.requiredEquipment || {}) };
     },
 
+    // Varför står huset still med fullt utlager? Centrallagret fullt (för en vara i utlagret) eller bara huset eget lager (väntar på bärare)
+    fullStatus(building) {
+      const blocked = Object.keys(building.outputStock).some(id => building.outputStock[id] > 0 && CityBuilder.Economy.isFull(id));
+      return blocked ? 'Central storage full' : 'Local stock full';
+    },
+
     hasRequiredEquipment: building =>
       Object.entries(building.definition.requiredEquipment || {}).every(([resourceId, amount]) => (building.inputStock[resourceId] || 0) >= amount),
   };
@@ -159,7 +165,7 @@
     planWork(worker) {
       const building = worker.homeBuilding, job = building.definition.job;
       if (!Behaviors.hasRequiredEquipment(building)) { worker.status = 'Saknar verktyg'; return; }
-      if (Utils.sumValues(building.outputStock) >= Config.settings.outputBufferCapacity) { worker.status = 'Fullt lager'; return; }
+      if (Utils.sumValues(building.outputStock) >= Config.settings.outputBufferCapacity) { worker.status = Behaviors.fullStatus(building); return; }
 
       if (job.sourceUnit) return this.planUnitWork(worker, building, job);
 
@@ -231,7 +237,7 @@
           Utils.sumValues(job.outputs) >
           Config.settings.outputBufferCapacity
         ) {
-          building.status = 'Full stock';
+          building.status = Behaviors.fullStatus(building);
           return;
         }
         for (const resourceId in inputs) {
@@ -247,7 +253,7 @@
 
       if ((building.craftTimeLeft -= deltaSeconds) <= 0) {
         building.isCrafting = false;
-        building.craftTotalTime = 0;
+
         for (const resourceId in job.outputs) {
           building.outputStock[resourceId] =
             (building.outputStock[resourceId] || 0) + job.outputs[resourceId];
