@@ -51,7 +51,7 @@
         outputReserved: {},   // utbuffert reserverad för pågående leveranser
         storedGoods: {},      // innehåll (endast lager)
         storedReserved: {},   // lagerinnehåll reserverat för pågående leveranser
-        status: '', isCrafting: false, craftTimeLeft: 0, workerUnit: null,
+        status: '', isCrafting: false, craftTimeLeft: 0, craftTotalTime: 0, workerUnit: null,
       };
       this.buildings.push(building);
       this.buildingsByTile.set(Utils.tileKey(x, y), building);

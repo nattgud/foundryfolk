@@ -85,23 +85,11 @@
 
     // Tar bort en enhet ur världen (dödad, fångad, ...)
     removeUnit(unit) {
-      // Markera hjortens sparade post som permanent död.
-      if (unit.kind === 'deer' && unit.deerRecordId && unit.deerChunkKey) {
-        const records = World.deerByChunk.get(unit.deerChunkKey);
-        const record = records?.find(
-          entry => entry.id === unit.deerRecordId
-        );
-
-        if (record) record.dead = true;
-      }
-
-      if (typeof World.removeUnit === 'function') {
-        World.removeUnit(unit);
-      } else if (Array.isArray(World.units)) {
+      if (typeof World.removeUnit === 'function') World.removeUnit(unit);
+      else if (Array.isArray(World.units)) {
         const index = World.units.indexOf(unit);
         if (index >= 0) World.units.splice(index, 1);
       }
-
       unit.removed = true;
       unit.stepQueue = [];
     },
@@ -128,26 +116,41 @@
     // tas det bort ur världen och arbetaren bär hem resursen. Har bytet hunnit iväg avbryts passet och
     // arbetaren planerar om (jagar vidare).
     planUnitWork(worker, building, job) {
-      // Utdata: outputResource (1 st) eller outputs: { resurs: antal } som i craft-jobb (första posten används)
-      const outputResource = job.outputResource || Object.keys(job.outputs || {})[0];
-      const outputAmount = job.outputResource ? 1 : ((job.outputs || {})[outputResource] || 1);
-      if (!outputResource) { worker.status = 'Missing export'; worker.idleCooldown = 5; return; }
+      // Utdata: outputs: { resurs: antal } som i craft-jobb (ALLA ges när jägaren kommer hem), annars outputResource (1 st)
+      const outputs = job.outputs && Object.keys(job.outputs).length ? job.outputs : (job.outputResource ? { [job.outputResource]: 1 } : {});
+      const outputResource = Object.keys(outputs)[0]; // det som visas som burit
+      if (!outputResource) { worker.status = 'Saknar outputResource'; worker.idleCooldown = 5; return; }
 
       const prey = Behaviors.findUnitTarget(building, job, worker);
-      if (!prey) { worker.status = 'No deers in range'; worker.idleCooldown = job.retrySeconds || 5; return; }
+      if (!prey) { worker.status = 'Inga hjortar i räckvidd'; worker.idleCooldown = job.retrySeconds || 5; return; }
 
       worker.stepQueue = [
-        Jobs.followUnit(prey, job, outputResource),
-
+        Jobs.walkTo(Math.floor(prey.x), Math.floor(prey.y), true),
+        // Framme: bytet stannar där det står (frysts av Units.update via heldBy) tills jägaren är klar
+        Jobs.run(() => {
+          const reachable = !prey.removed && Behaviors.unitMatches(prey, job) && !prey.heldBy &&
+            Math.hypot(prey.x - worker.x, prey.y - worker.y) <= (job.reach || 3);
+          if (!reachable) return false; // bytet försvann, är upptaget eller hann iväg: planera om
+          prey.stepQueue = [];
+          prey.heldBy = worker;
+          prey.heldFor = 0;
+          worker.huntTarget = prey;
+        }),
+        Jobs.wait(job.workSeconds || 2, job.workLabel || 'Hunting'),
+        Jobs.run(() => {
+          const target = worker.huntTarget;
+          worker.huntTarget = null;
+          if (!target || target.removed || target.heldBy !== worker) return false;
+          Behaviors.removeUnit(target);
+          worker.carriedResource = outputResource;
+        }),
         Jobs.walkTo(building.x, building.y),
-
         Jobs.run(() => {
           if (worker.carriedResource && !building.removed) {
-            building.outputStock[worker.carriedResource] =
-              (building.outputStock[worker.carriedResource] || 0) +
-              outputAmount;
+            for (const [resourceId, amount] of Object.entries(outputs)) {
+              building.outputStock[resourceId] = (building.outputStock[resourceId] || 0) + amount;
+            }
           }
-
           worker.carriedResource = null;
         }),
       ];
@@ -155,8 +158,8 @@
 
     planWork(worker) {
       const building = worker.homeBuilding, job = building.definition.job;
-      if (!Behaviors.hasRequiredEquipment(building)) { worker.status = 'Missing tools'; return; }
-      if (Utils.sumValues(building.outputStock) >= Config.settings.outputBufferCapacity) { worker.status = 'Full stock'; return; }
+      if (!Behaviors.hasRequiredEquipment(building)) { worker.status = 'Saknar verktyg'; return; }
+      if (Utils.sumValues(building.outputStock) >= Config.settings.outputBufferCapacity) { worker.status = 'Fullt lager'; return; }
 
       if (job.sourceUnit) return this.planUnitWork(worker, building, job);
 
@@ -164,8 +167,8 @@
       // Närmaste noden vinner alltid: en ring genomsöks färdigt, och hittas inget går sökningen vidare utåt
       // (över flera anrop/bilder) tills searchRadius är nådd.
       const target = Behaviors.searchNearest(worker, building, job);
-      if (target === undefined) { worker.status = 'Searching...'; return; } // fortsätter vid nästa anrop
-      if (target === null) { worker.status = 'No resources'; worker.idleCooldown = 60; return; }
+      if (target === undefined) { worker.status = 'Söker...'; return; } // fortsätter vid nästa anrop
+      if (target === null) { worker.status = 'Inga resurser'; worker.idleCooldown = 60; return; }
 
       const stopBeside = Config.terrain[target.tile.terrainType].gatherersStopBefore;
       worker.stepQueue = [
@@ -209,7 +212,7 @@
 
       if (!building.isCrafting) {
         if (!Behaviors.hasRequiredEquipment(building)) {
-          building.status = 'Missing tools';
+          building.status = 'Tools missing';
           return;
         }
         const missingInputs = Object.entries(inputs)
@@ -237,13 +240,14 @@
 
         building.isCrafting = true;
         building.craftTimeLeft = job.craftSeconds;
+        building.craftTotalTime = building.craftTimeLeft;
       }
 
       building.status = 'Working';
 
       if ((building.craftTimeLeft -= deltaSeconds) <= 0) {
         building.isCrafting = false;
-
+        building.craftTotalTime = 0;
         for (const resourceId in job.outputs) {
           building.outputStock[resourceId] =
             (building.outputStock[resourceId] || 0) + job.outputs[resourceId];

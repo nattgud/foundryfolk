@@ -673,6 +673,13 @@
     get stars() { return progress.stars; },
     result: () => ({ level: state.info.level, seconds: progress.seconds, par: state.info.goal.par, stars: progress.stars }),
     onComplete: fn => { completeListeners.push(fn); },
+    // Same level again, from scratch: new world from the same seed, goals and time reset (the autosave is removed)
+    restart() {
+      progress.latched = {}; progress.seconds = 0; progress.complete = false; progress.stars = 0;
+      saveProgress();
+      const save = CityBuilder.Save;
+      if (save && save.newGame) save.newGame(); else location.reload();
+    },
     // Goes to the next level: the world is rebuilt by reloading the page (the autosave is removed)
     advance() {
       const save = CityBuilder.Save;

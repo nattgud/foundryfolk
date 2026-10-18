@@ -166,7 +166,10 @@
       if (byId('goalPanel')) return;
       const panel = document.createElement('div');
       panel.id = 'goalPanel';
-      panel.addEventListener('click', () => panel.classList.toggle('collapsed'));
+      panel.addEventListener('click', event => {
+        if (event.target.closest('[data-next]')) CityBuilder.Levels.advance(); // "Nästa bana" när banan är klar
+        else panel.classList.toggle('collapsed');
+      });
       document.body.appendChild(panel);
     },
 
@@ -186,7 +189,7 @@
       });
       const unlocks = level.unlocks.map(id => this.buildingName(id)).join(', ');
       const header = Levels.completed
-        ? `<b>${t('Level complete!')}</b> ${'★'.repeat(Levels.stars)}`
+        ? `<b>${t('Level complete!')}</b> ${'★'.repeat(Levels.stars)} <button type="button" data-next class="goal-next">${t('Next level')}</button>`
         : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })} / ${this.formatTime(level.goal.par)}`;
       const html = `<div class="goal-header">${header}</div>${lines.join('')}` + (unlocks ? `<div class="goal-new">${t('New: {list}', { list: unlocks })}</div>` : '');
 
@@ -675,6 +678,13 @@
           button(t('Load game'), entries.size ? () => this.renderMainMenu('load') : null),
           button(t('Statistics'), () => this.renderMainMenu('stats')),
           button(t('Settings'), () => this.renderMainMenu('options')),
+          button(t('Restart level'), () => this.renderMainMenu('confirm', {
+            text: t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
+            confirmLabel: t('Restart level'),
+            danger: true,
+            back: 'main',
+            onConfirm: () => CityBuilder.Levels.restart(),
+          })),
           button(t('New game'), () => this.renderMainMenu('confirm', {
             text: t('New game resets the game and autosave, and generates new maps. Manual saves are unchanged.'),
             confirmLabel: t('Start a new game'),
@@ -1216,6 +1226,12 @@
 
         #goalPanel .goal-item.done {
           color: #7bd88f;
+        }
+
+        #goalPanel .goal-next {
+          margin-left: 6px;
+          padding: 2px 8px;
+          font-size: 12px;
         }
 
         #goalPanel .goal-new {

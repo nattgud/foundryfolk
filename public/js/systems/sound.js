@@ -1,8 +1,9 @@
 /* Ljud: små effekter (Web Audio) och bakgrundsmusik (spellista), med två volymer och av/på för vardera.
    Användning från spelkoden:   CityBuilder.Sound?.play('build', { x: tileX, y: tileY })
    - Utan x/y spelas ljudet överallt. Med x/y (rutkoordinater) spelas det bara om platsen syns på skärmen, och panoreras.
-   - Alla effekter har inbyggda syntetiska ljud, så allt fungerar utan ljudfiler. Egna filer:
-       CityBuilder.Sound.define('click', { file: 'sounds/click.mp3' })     // syntetljudet används tills filen laddats
+   - Alla effekter har inbyggda syntetiska ljud, så allt fungerar utan ljudfiler. Egna filer (i Config.settings):
+       audio: { sounds: { click: 'sounds/click.mp3', build: { file: 'sounds/build.mp3', volume: 0.8 } }, music: [...] }
+     Syntetljudet används tills filen har laddats (och om den saknas).
    - Musik: Config.settings.audio = { music: ['music/a.mp3', 'music/b.mp3'] } (spelas i slumpad ordning, strömmas).
    - Nya ljud:  CityBuilder.Sound.define('mitt_ljud', { file: '...' | synth: rate => Float32Array, volume, maxVoices, cooldown, pitch })
    - Webbläsare kräver en användaråtgärd innan ljud får spelas. Ljudet startar vid första tryck/tangent.
@@ -62,7 +63,10 @@
       } catch (error) { /* standardvärden */ }
 
       for (const [id, definition] of Object.entries(DEFAULT_SOUNDS)) this.define(id, definition);
-      this.tracks = (Config.settings.audio && Config.settings.audio.music) || [];
+      // Egna ljud och musik från Config.settings.audio = { sounds: { click: 'sounds/click.mp3' }, music: ['music/a.mp3'] }
+      const custom = Config.settings.audio || {};
+      for (const [id, value] of Object.entries(custom.sounds || {})) this.define(id, typeof value === 'string' ? { file: value } : value);
+      this.tracks = custom.music || [];
       this.injectStyles();
 
       // Ljud får starta först efter en användaråtgärd

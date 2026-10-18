@@ -4,6 +4,9 @@
   'use strict';
   const { Config, World, Utils, Jobs, Economy, Behaviors } = CityBuilder;
 
+  // Standardvärden: saknas en inställning i cfg() används dessa (planeringen stannar annars helt)
+  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, baseCarriers: 5, carriersPerBuilding: 1.5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40 }, Config.settings.logistics);
+
   const Logistics = {
     tasks: [],              // äldsta först
     planningTimer: 0,
@@ -36,16 +39,33 @@
       this.reserve(source, resourceId);
       if (!destination.definition.isStorage) destination.incomingCount[resourceId] = (destination.incomingCount[resourceId] || 0) + 1;
       else Economy.incoming[resourceId] = (Economy.incoming[resourceId] || 0) + 1;
-      this.tasks.push({ source, destination, resource: resourceId });
+      this.tasks.push({ source, destination, resource: resourceId, seq: this.seq = (this.seq || 0) + 1, created: this.time || 0 });
     },
 
     update(deltaSeconds) {
       if ((this.planningTimer -= deltaSeconds) <= 0) {
-        this.planningTimer = Config.settings.logistics.planningIntervalSeconds;
+        this.planningTimer = cfg().planningIntervalSeconds;
         Economy.updateStats();
-        this.balanceCarriers(); this.purgeInvalidTasks(); this.requestMissingInputs(); this.flushSurplusToStorage();
+        this.balanceCarriers(); this.purgeInvalidTasks(); this.rebuildCounters(); this.requestMissingInputs(); this.flushSurplusToStorage();
       }
+      this.time = (this.time || 0) + deltaSeconds;
       this.assignTasksToCarriers();
+    },
+
+    // Räknar om alla reservationer och "på väg"-tal från de verkliga uppdragen, så att inget läckage kan blockera lager.
+    rebuildCounters() {
+      const zero = obj => { if (obj) for (const key in obj) obj[key] = 0; };
+      Economy.incoming = {};
+      for (const building of World.buildings) { zero(building.outputReserved); zero(building.storedReserved); zero(building.incomingCount); }
+      const count = (task, picked) => {
+        if (!picked && !task.source.removed) this.reservationsOf(task.source)[task.resource] = (this.reservationsOf(task.source)[task.resource] || 0) + 1;
+        const destination = task.destination;
+        if (destination.removed) return;
+        if (destination.definition.isStorage) Economy.incoming[task.resource] = (Economy.incoming[task.resource] || 0) + 1;
+        else destination.incomingCount[task.resource] = (destination.incomingCount[task.resource] || 0) + 1;
+      };
+      for (const task of this.tasks) count(task, false);
+      for (const unit of World.units) if (unit.deliveryTask) count(unit.deliveryTask, unit.hasPickedUp);
     },
 
     purgeInvalidTasks() { // släng uppdrag vars källa eller mål rivits
@@ -68,7 +88,7 @@
 
     // Antalet bärare följer antalet byggnader: bas + 1,5 per färdig byggnad. Överskott tas bort när de är lediga.
     balanceCarriers() {
-      const { baseCarriers = 5, carriersPerBuilding = 1.5 } = Config.settings.logistics;
+      const { baseCarriers = 5, carriersPerBuilding = 1.5 } = cfg();
       let buildings = 0;
       for (const building of World.buildings) if (building.buildProgress >= 1 && building !== World.headquarters) buildings++;
       const target = baseCarriers + Math.floor(buildings * carriersPerBuilding);
@@ -84,7 +104,7 @@
     },
 
     requestMissingInputs() { // hus som behöver indata beställer från närmaste källa
-      const { maxTasks, requestsPerBuilding } = Config.settings.logistics;
+      const { maxTasks, requestsPerBuilding } = cfg();
       const buildings = World.buildings, count = buildings.length;
       if (!count) return;
       const start = this.cursor % count;
@@ -104,16 +124,23 @@
       this.cursor = (start + visited) % count; // nästa gång fortsätter planeringen där den slutade
     },
 
-    flushSurplusToStorage() { // överskott i utbuffert -> närmaste lager (om det finns plats)
+    // Överskott i utbuffert -> närmaste lager (om det finns plats). Rutan töms också när bufferten börjar bli full,
+    // även om ingen enskild vara nått tröskeln (annars fastnar hus med flera utdata på "Fullt lager").
+    flushSurplusToStorage() {
+      const { maxTasks } = cfg();
+      const bufferLimit = Config.settings.outputBufferCapacity || 10, threshold = Config.settings.flushThreshold ?? 0;
       const buildings = World.buildings, count = buildings.length;
       for (let i = 0; i < count; i++) {
         const building = buildings[(this.cursor + i) % count];
         if (building.definition.isStorage || building.buildProgress < 1) continue;
+        const job = building.definition.job, produced = job && job.outputs ? Utils.sumValues(job.outputs) : 1, sum = Utils.sumValues(building.outputStock);
+        const pressure = sum >= bufferLimit * 0.5 || sum + produced > bufferLimit; // halvfull, eller kan inte producera mer = töm allt
         for (const resourceId in building.outputStock) {
-          const unreserved = building.outputStock[resourceId] - (building.outputReserved[resourceId] || 0);
-          if (unreserved <= Config.settings.flushThreshold || Economy.isFull(resourceId)) continue;
-          if (this.tasks.length >= Config.settings.logistics.maxTasks) return;
-          this.createTask(building, Economy.nearestStorage(building), resourceId);
+          const surplus = building.outputStock[resourceId] - (building.outputReserved[resourceId] || 0) - (pressure ? 0 : threshold);
+          for (let n = 0; n < surplus && !Economy.isFull(resourceId); n++) {
+            if (this.tasks.length >= maxTasks) return;
+            this.createTask(building, Economy.nearestStorage(building), resourceId);
+          }
         }
       }
     },
@@ -122,9 +149,25 @@
     assignTasksToCarriers() {
       if (!this.tasks.length) return;
       const idle = World.units.filter(unit => unit.definition.isHauler && !unit.stepQueue.length && !unit.carriedResource && !unit.deliveryTask);
+      const bufferLimit = Config.settings.outputBufferCapacity || 10;
+      // 1) stoppade byggnader (full källa, indata saknas) och uppdrag som väntat länge, äldst först
+      // 2) övriga: minst i lager först, sedan äldst
+      const maxWait = cfg().maxWaitSeconds ?? 40, now = this.time || 0;
+      const stock = task => (Economy.stored[task.resource] || 0) + (Economy.incoming[task.resource] || 0);
+      const urgent = task => {
+        if (now - task.created > maxWait) return 0;
+        const { source, destination } = task;
+        if (!source.definition.isStorage && Utils.sumValues(source.outputStock) >= bufferLimit) return 0;
+        if (!destination.definition.isStorage && !destination.inputStock[task.resource]) return 0;
+        return 1;
+      };
+      this.tasks.sort((a, b) => {
+        const ua = urgent(a), ub = urgent(b);
+        return ua - ub || (ua ? stock(a) - stock(b) : 0) || a.seq - b.seq;
+      });
       let assigned = 0;
       for (const task of this.tasks) {
-        if (!idle.length || assigned >= (Config.settings.logistics.maxAssignmentsPerFrame ?? 30)) break;
+        if (!idle.length || assigned >= (cfg().maxAssignmentsPerFrame ?? 30)) break;
         let best = 0, bestDistance = 1e9;
         for (let i = 0; i < idle.length; i++) {
           const distance = Utils.manhattanDistance(idle[i], task.source);

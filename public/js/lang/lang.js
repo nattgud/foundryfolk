@@ -99,6 +99,8 @@
 
       // Byggnader och terräng
       'Stores resources': 'Lagrar resurser',
+      'Restart level': 'Starta om banan',
+      'Restart this level? Progress on this level is lost. Manual saves are unchanged.': 'Starta om banan? Framsteg i den här banan går förlorade. Manuella sparningar rörs inte.',
       'Music': 'Musik',
       'Sound effects': 'Ljudeffekter',
       'Volume': 'Volym',
@@ -328,6 +330,8 @@
       'browser storage is full or blocked': 'Browser-Speicher ist voll oder gesperrt',
 
       'Stores resources': 'Lagert Ressourcen',
+      'Restart level': 'Level neu starten',
+      'Restart this level? Progress on this level is lost. Manual saves are unchanged.': 'Level neu starten? Der Fortschritt in diesem Level geht verloren. Manuelle Spielstände bleiben unverändert.',
       'Music': 'Musik',
       'Sound effects': 'Soundeffekte',
       'Volume': 'Lautstärke',
@@ -552,6 +556,8 @@
       'browser storage is full or blocked': 'el almacenamiento del navegador está lleno o bloqueado',
 
       'Stores resources': 'Almacena recursos',
+      'Restart level': 'Reiniciar nivel',
+      'Restart this level? Progress on this level is lost. Manual saves are unchanged.': '¿Reiniciar este nivel? Se perderá el progreso de este nivel. Las partidas guardadas manualmente no cambian.',
       'Music': 'Música',
       'Sound effects': 'Efectos de sonido',
       'Volume': 'Volumen',

@@ -245,12 +245,30 @@
     for (const building of World.buildings) {
       const name = statusIcon(building.workerUnit?.status) || statusIcon(building.status);
       const icon = name && Assets.get(ICON_DIR + name + '.png');
-      if (icon) context.drawImage(icon, building.x * tileSize + tileSize / 4, building.y * tileSize + tileSize / 4, tileSize / 2, tileSize / 2);
-      if(building.status === "Can't reach") {
-        
+      if (icon) {
+        context.drawImage(icon, building.x * tileSize + tileSize / 4, building.y * tileSize + tileSize / 4, tileSize / 2, tileSize / 2);
+        continue;
       }
+      if(building.isCrafting) {
+        if(building.craftTotalTime > 0) {
+          context.strokeStyle = "#000";
+          context.lineWidth = 2;
+          context.beginPath();
+          context.moveTo(building.x*tileSize, (building.y*tileSize)+tileSize-2.5);
+          context.lineTo((building.x*tileSize)+tileSize, (building.y*tileSize)+tileSize-2.5);
+          context.stroke();
+          context.closePath();
 
-      
+          const craftProgress = tileSize - ((building.craftTimeLeft/building.craftTotalTime) * tileSize);
+          context.strokeStyle = "#0a0";
+          context.lineWidth = 2;
+          context.beginPath();
+          context.moveTo(building.x*tileSize, (building.y*tileSize)+tileSize-2.5);
+          context.lineTo((building.x*tileSize)+craftProgress, (building.y*tileSize)+tileSize-2.5);
+          context.stroke();
+          context.closePath();
+        }
+      }
     }
   });
 
