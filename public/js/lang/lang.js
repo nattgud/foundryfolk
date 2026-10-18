@@ -99,6 +99,12 @@
 
       // Byggnader och terräng
       'Stores resources': 'Lagrar resurser',
+      'Choosing level':'Väljer bana',
+      'Creating world':'Skapar världen',
+      'Preparing graphics':'Förbereder grafik',
+      'Building interface':'Bygger gränssnittet',
+      'Almost ready':'Nästan klart',
+      'Loading':'Laddar',
       'Restart level': 'Starta om banan',
       'Restart this level? Progress on this level is lost. Manual saves are unchanged.': 'Starta om banan? Framsteg i den här banan går förlorade. Manuella sparningar rörs inte.',
       'Music': 'Musik',
@@ -330,6 +336,12 @@
       'browser storage is full or blocked': 'Browser-Speicher ist voll oder gesperrt',
 
       'Stores resources': 'Lagert Ressourcen',
+      'Choosing level':'Level wird gewählt',
+      'Creating world':'Welt wird erstellt',
+      'Preparing graphics':'Grafik wird vorbereitet',
+      'Building interface':'Oberfläche wird aufgebaut',
+      'Almost ready':'Fast fertig',
+      'Loading':'Lädt',
       'Restart level': 'Level neu starten',
       'Restart this level? Progress on this level is lost. Manual saves are unchanged.': 'Level neu starten? Der Fortschritt in diesem Level geht verloren. Manuelle Spielstände bleiben unverändert.',
       'Music': 'Musik',
@@ -556,6 +568,12 @@
       'browser storage is full or blocked': 'el almacenamiento del navegador está lleno o bloqueado',
 
       'Stores resources': 'Almacena recursos',
+      'Choosing level':'Eligiendo nivel',
+      'Creating world':'Creando el mundo',
+      'Preparing graphics':'Preparando gráficos',
+      'Building interface':'Construyendo la interfaz',
+      'Almost ready':'Casi listo',
+      'Loading':'Cargando',
       'Restart level': 'Reiniciar nivel',
       'Restart this level? Progress on this level is lost. Manual saves are unchanged.': '¿Reiniciar este nivel? Se perderá el progreso de este nivel. Las partidas guardadas manualmente no cambian.',
       'Music': 'Música',

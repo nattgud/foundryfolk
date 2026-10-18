@@ -15,23 +15,34 @@
 
     get systems() { return Config.settings.systemOrder.map(name => CityBuilder.Systems[name]); },
 
-    init() {
-      // Välj bana innan världen genereras: sparad bana, annars bana 1.
-      // (Levels.start() sätter världens seed, så World.init() bygger rätt värld.)
-      // Finns en sparning (laddad plats eller autosparning) ställs banan in efter den, annars sparad bana / bana 1.
-      const Save = CityBuilder.Save;
-      if (Save) Save.prepareStart();
-      const level = CityBuilder.Levels ? CityBuilder.Levels.start() : null;
-      World.init();
-      CityBuilder.Renderer.init();
-      CityBuilder.Input.init();
-      UI.init();
-      if (CityBuilder.Minimap) CityBuilder.Minimap.init();
-      for (let i = 0; i < Config.settings.startingCarriers; i++) World.spawnUnit('carrier', 0, 0);
-      const restored = Save ? Save.applyStart() : false;
-      if (level) UI.showToast((restored ? t('Game loaded.') + ' ' : '') + t('Level {level}: {name}', { level: level.level, name: level.name }));
-      this.installFocusPause();
-      requestAnimationFrame(time => { this.lastFrameTime = time; this.frame(time); });
+    // Start i steg med laddningsstapel (GameLoading finns i index.html). Mellan stegen får webbläsaren rita om.
+    async init() {
+      const L = window.GameLoading || { set() {}, paint: () => Promise.resolve(), done() {}, fail() {} };
+      const step = async (fraction, text) => { L.set(fraction, text); await L.paint(); };
+      try {
+        // Välj bana innan världen genereras: sparad bana, annars bana 1.
+        // (Levels.start() sätter världens seed, så World.init() bygger rätt värld.)
+        const Save = CityBuilder.Save;
+        await step(.40, t('Choosing level'));
+        if (Save) Save.prepareStart();
+        const level = CityBuilder.Levels ? CityBuilder.Levels.start() : null;
+        await step(.45, t('Creating world'));
+        // World.init får en rapportfunktion (fraction 0-1, valfri text) och får returnera ett löfte om den delar upp arbetet
+        await World.init((fraction, text) => { L.set(.45 + .35 * fraction, text || t('Creating world')); return L.paint(); });
+        await step(.82, t('Preparing graphics'));
+        CityBuilder.Renderer.init();
+        CityBuilder.Input.init();
+        await step(.90, t('Building interface'));
+        UI.init();
+        if (CityBuilder.Minimap) CityBuilder.Minimap.init();
+        await step(.96, t('Almost ready'));
+        for (let i = 0; i < Config.settings.startingCarriers; i++) World.spawnUnit('carrier', 0, 0);
+        const restored = Save ? Save.applyStart() : false;
+        if (level) UI.showToast((restored ? t('Game loaded.') + ' ' : '') + t('Level {level}: {name}', { level: level.level, name: level.name }));
+        this.installFocusPause();
+        L.set(1, t('Almost ready'));
+        requestAnimationFrame(time => { this.lastFrameTime = time; this.frame(time); L.done(); });
+      } catch (error) { L.fail(error); throw error; }
     },
 
     // Spelet pausas alltid när fönstret förlorar fokus eller fliken göms

@@ -5,8 +5,20 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <title>Foundryfolk</title>
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Laddningsruta: syns direkt, före alla skript */
+    #loading { position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 14px; background: #14110f; color: #e8dcc8; font: 600 16px system-ui, sans-serif; transition: opacity .4s; }
+    #loading.hide { opacity: 0; pointer-events: none; }
+    #loading .title { font-size: 26px; letter-spacing: .04em; }
+    #loading .track { width: min(320px, 70vw); height: 12px; border-radius: 6px; background: #2c2620; overflow: hidden; }
+    #loading .fill { height: 100%; width: 0; background: #e0a53a; border-radius: 6px; transition: width .25s ease-out; }
+    #loading .text { font-size: 13px; opacity: .75; min-height: 1.2em; text-align: center; padding: 0 16px; }
+    #loading.error .fill { background: #c0392b; }
+  </style>
 </head>
 <body onload="loadAllGameComponents()">
+  <div id="loading"><div class="title">Foundryfolk</div><div class="track"><div class="fill" id="loadingFill"></div></div><div class="text" id="loadingText">Loading…</div></div>
   <canvas id="gameCanvas"></canvas>
   <div id="top"></div>
   <div id="info"></div>
@@ -14,7 +26,35 @@
   <div id="toast"></div>
 
   <script>
-    var version = "0.4.2";
+    var version = "0.4.21";
+
+    // Laddningsstapel. set(0-1, text), paint() ger webbläsaren tid att rita, done() döljer rutan.
+    window.GameLoading = {
+      shown: 0,
+      set(fraction, text) {
+        this.shown = Math.max(this.shown, Math.min(1, fraction)); // stapeln går aldrig bakåt
+        document.getElementById('loadingFill').style.width = (this.shown * 100).toFixed(1) + '%';
+        if (text) document.getElementById('loadingText').textContent = text + '…';
+      },
+      paint() {
+        return new Promise(resolve => {
+          let finished = false;
+          const finish = () => { if (!finished) { finished = true; resolve(); } };
+          requestAnimationFrame(() => setTimeout(finish, 0));
+          setTimeout(finish, 80); // om fliken är dold ritas inget, vänta inte i onödan
+        });
+      },
+      done() {
+        const box = document.getElementById('loading');
+        box.classList.add('hide');
+        setTimeout(() => box.remove(), 500);
+      },
+      fail(error) {
+        document.getElementById('loading').classList.add('error');
+        document.getElementById('loadingText').textContent = 'Error: ' + (error && error.message || error);
+      }
+    };
+
     function loadAllGameComponents() {
       // Definiera den strikta ordningen av alla filer
       const scriptOrder = [
@@ -66,6 +106,7 @@
       const totalScripts = scriptOrder.length;
 
       function loadNextScript() {
+        GameLoading.set(.4 * loadIndex / totalScripts, 'Loading');
         if (loadIndex < totalScripts) {
           const scriptPath = scriptOrder[loadIndex]+"?v="+version;
           const script = document.createElement('script');
@@ -78,6 +119,7 @@
 
           script.onerror = (error) => {
             console.error(`FATAL ERROR: Failed to load script at step ${loadIndex + 1}: ${scriptPath}`, error);
+            GameLoading.fail(new Error('Failed to load ' + scriptOrder[loadIndex]));
             // Stoppa laddningen vid ett fel
           };
 
@@ -88,9 +130,10 @@
           // SÄKERHETSKONTROLL: Anropa init endast om vi tror att CityBuilder är redo
           if (window.CityBuilder && window.CityBuilder.Game && typeof window.CityBuilder.Game.init === 'function') {
              window.CityBuilder.Game.init();
-             console.log('CityBuilder.Game.init() executed.');
+             console.log('CityBuilder.Game.init() started.');
           } else {
              console.warn('Initialization failed: CityBuilder.Game.init() is not defined.');
+             GameLoading.fail(new Error('Game.init is not defined'));
           }
         }
       }
