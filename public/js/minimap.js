@@ -318,6 +318,8 @@
       if (mode === 'favorites') {
         if (resourceIds) for (const id of resourceIds) if (favorites.has(id)) { resourceId = id; break; }
         if (!resourceId) { cache.set(type, null); return null; }
+      } else if (mode === 'filter' && !this.filter.has(type)) {
+        cache.set(type, null); return null;
       } else if (resourceIds) {
         resourceId = resourceIds.values().next().value;
       }
@@ -326,6 +328,18 @@
       const color = (resource && resource.color) || (terrain && terrain.color) || '#fff';
       cache.set(type, color);
       return color;
+    },
+
+    // Vald gather-byggnad (placingType) -> mängd av terrängtyper den samlar från, annars null. Bara typer som syns som noder.
+    placingFilter() {
+      const id = CityBuilder.Game && CityBuilder.Game.placingType;
+      if (id !== this.filterId) {
+        this.filterId = id;
+        const job = id && Config.buildings[id] && Config.buildings[id].job;
+        const types = job && job.kind === 'gather' && job.sourceTerrain ? [].concat(job.sourceTerrain).filter(type => isNode(Config.terrain[type])) : [];
+        this.filter = types.length ? new Set(types) : null;
+      }
+      return this.filter;
     },
 
     // ---- Ritning ----
@@ -341,7 +355,8 @@
 
     draw(now) {
       const size = this.size, scale = this.scale, radius = size / 2, context = this.context;
-      const mode = this.mode.id;
+      this.filter = this.placingFilter();
+      const mode = this.filter ? 'filter' : this.mode.id; // vald gather-byggnad går före vanligt läge
       const range = Renderer.visibleTileRange();
       const centerX = Math.round((range.minX + range.maxX + 1) / 2);
       const centerY = Math.round((range.minY + range.maxY + 1) / 2);
@@ -402,7 +417,7 @@
         // Varje nod fyller exakt sin egen ruta (samma kantlinjer som terrängen under), utan kant
         const limit = (radius + 2 * scale + 2) * (radius + 2 * scale + 2);
         let shown = 0, lastColor = null;
-		const grow = mode === 'favorites' ? 1 : 0; // extra pixlar åt varje håll, bara i Favoriter
+		    const grow = mode === 'favorites' || mode === 'filter' ? 1 : 0; 
         for (const chunk of visible) {
           for (const node of chunk.nodes) {
             const color = this.nodeColor(node.type, mode, favorites, cache);
@@ -424,7 +439,7 @@
           context.textBaseline = 'middle';
           context.fillText(t('No favorites'), radius, radius - 8);
           context.fillText(t('Mark with ★'), radius, radius + 8);
-        } else if (mode === 'favorites' && shown === 0) {
+        } else if ((mode === 'favorites' || mode === 'filter') && shown === 0) {
           context.fillStyle = '#e8e8e8';
           context.font = '12px system-ui, sans-serif';
           context.textAlign = 'center';

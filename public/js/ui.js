@@ -162,6 +162,10 @@
       const total = Math.max(0, Math.round(seconds));
       return Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0');
     },
+    timeLeft(building) {
+      const s = Math.ceil((1 - building.buildProgress) * building.definition.buildDuration);
+      return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
+    },
 
     createGoalPanel() {
       if (byId('goalPanel')) return;
@@ -1169,6 +1173,23 @@
           place-items: center;
         }
 
+        #bottom .building-option { position: relative; }
+
+        /* Antal byggda av byggnaden, i nedre högra hörnet av knappen */
+        #bottom .build-count {
+          position: absolute;
+          right: 2px;
+          bottom: 2px;
+          min-width: 15px;
+          padding: 0 3px;
+          border-radius: 8px;
+          background: rgb(0 0 0 / 70%);
+          color: #fff;
+          font: 700 11px/15px system-ui, sans-serif;
+          text-align: center;
+          pointer-events: none;
+        }
+
         #bottom .build-category-toggle[aria-expanded="true"] {
           border-color: var(--accent);
           background: #26402b;
@@ -1636,9 +1657,23 @@
       byId('carrierCount').textContent =
         t('Carriers {idle}/{total}', { idle: idleCarriers, total: carriers.length });
 
+      const builtCounts = {};
+      for (const placed of World.buildings) builtCounts[placed.type] = (builtCounts[placed.type] || 0) + 1;
+
       for (const buildingId in Config.buildings) {
         const button = byId('build_' + buildingId);
         if (!button) continue;
+
+        // Antal byggnader av typen (inklusive de som byggs). Siffran ritas om bara när den ändras.
+        let badge = button.countBadge;
+        if (!badge || !badge.isConnected) {
+          badge = button.countBadge = document.createElement('span');
+          badge.className = 'build-count';
+          badge.hidden = true;
+          button.appendChild(badge);
+        }
+        const builtCount = builtCounts[buildingId] || 0;
+        if (badge.count !== builtCount) { badge.count = builtCount; badge.textContent = builtCount; badge.hidden = !builtCount; }
 
         const isSelected = game.placingType === buildingId;
 
@@ -1860,7 +1895,7 @@
       const rect = { left, top, width: size, height: size, right: left + size, bottom: top + size };
 
       const key = (building
-        ? `b${building.id}:${I18n().language}:${building.status}:${Math.round(building.buildProgress * 100)}`
+        ? `b${building.id}:${I18n().language}:${building.status}:${building.buildProgress < 1 ? this.timeLeft(building) : 'done'}`
         : `t${tile.x},${tile.y}:${node.tile.remainingAmount}`) +
         `@${Math.round(left)},${Math.round(top)},${Math.round(size)}`;
 
@@ -1871,7 +1906,7 @@
             this.buildingName(building.definition),
             null,
             [
-              ...(building.buildProgress < 1 ? [t('Constructing {percent}%', { percent: Math.round(building.buildProgress * 100) })] : []),
+              ...(building.buildProgress < 1 ? [t('Constructing {time}', { time: this.timeLeft(building) })] : []),
               ...this.describeBuilding(building.definition),
             ]
           )
@@ -1929,7 +1964,7 @@
       }
 
       const statusText = building.buildProgress < 1
-        ? t('Under construction {percent}%', { percent: Math.round(building.buildProgress * 100) })
+        ? t('Under construction {time}', { time: this.timeLeft(building) })
         : I18n().status(building.status);
 
       const range = this.getBuildingRange(building.definition);

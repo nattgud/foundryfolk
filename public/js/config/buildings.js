@@ -31,7 +31,7 @@ CityBuilder.Config.buildings = {
     buildCost: { wood: 3, plank: 1 },
     isStorage: true,
     capacity: 60, 
-    buildDuration: 3
+    buildDuration: 10
   },
  
   large_warehouse: {
@@ -42,7 +42,7 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 8, stone: 6, brick: 4 },
     isStorage: true,
     capacity: 200,
-    buildDuration: 8
+    buildDuration: 20
   },
  
   great_depot: {
@@ -53,7 +53,7 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 20, stone: 20, brick: 12, iron: 4 },
     isStorage: true,
     capacity: 600,
-    buildDuration: 20
+    buildDuration: 45
   },
 
   // Skogsbruk
@@ -70,7 +70,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'wood',
       workSeconds: 2
     },
-    buildDuration: 6
+    buildDuration: 10
   },
   sawmill: {
     name: 'Sawmill',
@@ -84,7 +84,7 @@ CityBuilder.Config.buildings = {
       outputs: { plank: 2 },
       craftSeconds: 8
     },
-    buildDuration: 7
+    buildDuration: 15
   },
   planter: {
     name: 'Planter',
@@ -98,7 +98,7 @@ CityBuilder.Config.buildings = {
       outputs: { herbs: 1 },
       craftSeconds: 8
     },
-    buildDuration: 7
+    buildDuration: 30
   },
 
   // Jordbruk och mat
@@ -115,7 +115,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'apples',
       workSeconds: 5
     },
-    buildDuration: 5
+    buildDuration: 15
   },
 
   berry_gatherer: {
@@ -131,7 +131,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'berries',
       workSeconds: 5
     },
-    buildDuration: 5
+    buildDuration: 15
   },
 
   herb_gatherer: {
@@ -147,7 +147,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'herbs',
       workSeconds: 5
     },
-    buildDuration: 5
+    buildDuration: 15
   },
 
   mushroom_gatherer: {
@@ -163,7 +163,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'mushrooms',
       workSeconds: 5
     },
-    buildDuration: 5
+    buildDuration: 15
   },
 
   farm: {
@@ -178,7 +178,7 @@ CityBuilder.Config.buildings = {
       outputs: { grain: 2, straw: 1, seeds: 1 },
       craftSeconds: 8
     },
-    buildDuration: 8
+    buildDuration: 20
   },
   hunters_cottage: {
     name: 'Hunters Cottage',
@@ -191,10 +191,10 @@ CityBuilder.Config.buildings = {
       sourceUnit: 'deer',
       searchRadius: 20,
       workLabel: "Hunting",
-      outputs: { meat: 4, leather: 2 },
+      outputs: { meat: 1, leather: 1 },
       craftSeconds: 1
     },
-    buildDuration: 8
+    buildDuration: 15
   },
   fishing_hut: {
     name: 'Fishing Hut',
@@ -209,7 +209,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'fish',
       workSeconds: 30
     },
-    buildDuration: 10
+    buildDuration: 20
   },
 
   // Insamling av grundmaterial
@@ -226,7 +226,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'water',
       workSeconds: 1
     },
-    buildDuration: 6
+    buildDuration: 25
   },
 
   sand_collector: {
@@ -242,7 +242,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'sand',
       workSeconds: 5
     },
-    buildDuration: 5
+    buildDuration: 30
   },
 
   clay_pit: {
@@ -258,7 +258,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'clay',
       workSeconds: 6
     },
-    buildDuration: 6
+    buildDuration: 30
   },
 
   limestone_quarry: {
@@ -274,7 +274,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'limestone',
       workSeconds: 6
     },
-    buildDuration: 6
+    buildDuration: 40
   },
 
   // Gruvbrytning och stenbrott
@@ -291,7 +291,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'stone',
       workSeconds: 5
     },
-    buildDuration: 7
+    buildDuration: 15
   },
   // Gruvbrytning och stenbrott
   rock_crusher: {
@@ -307,7 +307,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'sand',
       workSeconds: 60
     },
-    buildDuration: 12
+    buildDuration: 45
   },
 
   iron_mine: {
@@ -324,7 +324,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'iron_ore',
       workSeconds: 20
     },
-    buildDuration: 8
+    buildDuration: 30
   },
 
   copper_mine: {
@@ -341,7 +341,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'copper_ore',
       workSeconds: 20
     },
-    buildDuration: 8
+    buildDuration: 30
   },
 
   tin_mine: {
@@ -358,7 +358,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'tin_ore',
       workSeconds: 30
     },
-    buildDuration: 8
+    buildDuration: 30
   },
 
   coal_mine: {
@@ -375,7 +375,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'coal',
       workSeconds: 20
     },
-    buildDuration: 8
+    buildDuration: 30
   },
 
   gold_mine: {
@@ -392,7 +392,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'gold_ore',
       workSeconds: 30
     },
-    buildDuration: 10
+    buildDuration: 40
   },
 
   silver_mine: {
@@ -409,7 +409,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'silver_ore',
       workSeconds: 30
     },
-    buildDuration: 10
+    buildDuration: 40
   },
 
   gemstone_mine: {
@@ -426,7 +426,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'gemstone',
       workSeconds: 30
     },
-    buildDuration: 12
+    buildDuration: 50
   },
 
   salt_mine: {
@@ -443,7 +443,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'salt',
       workSeconds: 30
     },
-    buildDuration: 8
+    buildDuration: 20
   },
 
   sulfur_mine: {
@@ -460,7 +460,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'sulfur',
       workSeconds: 30
     },
-    buildDuration: 8
+    buildDuration: 45
   },
 
   // Förädling och materialproduktion
@@ -477,7 +477,7 @@ CityBuilder.Config.buildings = {
       outputs: { flour: 1 },
       craftSeconds: 8
     },
-    buildDuration: 8
+    buildDuration: 20
   },
 
   bakery: {
@@ -492,7 +492,7 @@ CityBuilder.Config.buildings = {
       outputs: { bread: 2 },
       craftSeconds: 10
     },
-    buildDuration: 10
+    buildDuration: 30
   },
 
   brickworks: {
@@ -507,7 +507,7 @@ CityBuilder.Config.buildings = {
       outputs: { brick: 2 },
       craftSeconds: 10
     },
-    buildDuration: 9
+    buildDuration: 40
   },
 
   iron_smelter: {
@@ -522,7 +522,7 @@ CityBuilder.Config.buildings = {
       outputs: { iron: 1 },
       craftSeconds: 10
     },
-    buildDuration: 9
+    buildDuration: 45
   },
 
   copper_smelter: {
@@ -537,7 +537,7 @@ CityBuilder.Config.buildings = {
       outputs: { copper: 1 },
       craftSeconds: 10
     },
-    buildDuration: 9
+    buildDuration: 45
   },
 
   tin_smelter: {
@@ -552,7 +552,7 @@ CityBuilder.Config.buildings = {
       outputs: { tin: 1 },
       craftSeconds: 10
     },
-    buildDuration: 9
+    buildDuration: 45
   },
 
   bronze_foundry: {
@@ -567,7 +567,7 @@ CityBuilder.Config.buildings = {
       outputs: { bronze: 3 },
       craftSeconds: 12
     },
-    buildDuration: 11
+    buildDuration: 45
   },
 
   charcoal_burner: {
@@ -582,7 +582,7 @@ CityBuilder.Config.buildings = {
       outputs: { charcoal: 1 },
       craftSeconds: 10
     },
-    buildDuration: 7
+    buildDuration: 30
   },
 
   // Verktygstillverkning
@@ -598,7 +598,7 @@ CityBuilder.Config.buildings = {
       outputs: { hammer: 1 },
       craftSeconds: 12
     },
-    buildDuration: 11
+    buildDuration: 45
   },
 
   picksmith: {
@@ -613,7 +613,7 @@ CityBuilder.Config.buildings = {
       outputs: { pickaxe: 1 },
       craftSeconds: 12
     },
-    buildDuration: 11
+    buildDuration: 45
   },
 
   axesmith: {
@@ -628,7 +628,7 @@ CityBuilder.Config.buildings = {
       outputs: { axe: 1 },
       craftSeconds: 12
     },
-    buildDuration: 11
+    buildDuration: 45
   },
 
   scythesmith: {
@@ -643,7 +643,7 @@ CityBuilder.Config.buildings = {
       outputs: { scythe: 1 },
       craftSeconds: 12
     },
-    buildDuration: 11
+    buildDuration: 45
   },
 
   // Magiska och forntida fynd
@@ -660,7 +660,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'crystal',
       workSeconds: 10
     },
-    buildDuration: 12
+    buildDuration: 60
   },
 
   moonstone_gatherer: {
@@ -676,7 +676,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'moonstone',
       workSeconds: 11
     },
-    buildDuration: 13
+    buildDuration: 70
   },
 
   relic_hunter: {
@@ -692,7 +692,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'ancient_relic',
       workSeconds: 12
     },
-    buildDuration: 13
+    buildDuration: 80
   },
 
   fallen_star_collector: {
@@ -708,7 +708,7 @@ CityBuilder.Config.buildings = {
       outputResource: 'fallen_star',
       workSeconds: 35
     },
-    buildDuration: 20
+    buildDuration: 90
   },
 
   // Slutbyggnad
@@ -719,6 +719,6 @@ CityBuilder.Config.buildings = {
     color: '#e8c547',
     buildCost: { plank: 10, stone: 10, fallen_star: 5, ancient_relic: 5, moonstone: 10, crystal: 20 },
     isWinBuilding: true,
-    buildDuration: 1200
+    buildDuration: 300
   }
 };

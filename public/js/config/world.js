@@ -36,7 +36,7 @@
   /* ---------- Brus ---------- */
 
   // world size (0.5 default)
-  const FEATURE_SCALE = 0.4;
+  const FEATURE_SCALE = 0.25;
 
   // Roterat fraktalbrus i två skalor. Rotationen döljer rutnätsmönstret i värdebruset.
   const fbm = (context, x, y, scale, channel, angle) => {
@@ -69,10 +69,10 @@
   // Berg (terrängtypen 'mountain'): ruta med relief över nivån, med ojämn kant. Justera här för mer/mindre berg.
   const MOUNTAIN_LEVEL = 0.76;
   // Malm utanför berg: enstaka fynd på en eller två rutor, väldigt utspridda och helst intill vanlig sten.
-  const SCATTERED_ORE_CHANCE = 0.006;      // chans per ruta att vara ett fynd (före stenvillkoret). Lägre = färre fynd
+  const SCATTERED_ORE_CHANCE = 0.01;      // chans per ruta att vara ett fynd (före stenvillkoret). Lägre = färre fynd
   const SCATTERED_ORE_FAR_CHANCE = 0.2;    // andel av fynden som får ligga utan sten i närheten (1 = överallt, 0 = bara intill sten)
   const SCATTERED_ORE_PAIR_CHANCE = 0.4;   // chans att ett fynd är två rutor i stället för en
-  const SCATTERED_ORE_MIN_ORIGIN = 30;     // inga spridda fynd närmare startpunkten än så här (startområdet har egna)
+  const SCATTERED_ORE_MIN_ORIGIN = 8;     // inga spridda fynd närmare startpunkten än så här (startområdet har egna)
   const modelCache = new WeakMap();
 
   const landscapeAt = context => {
@@ -80,7 +80,7 @@
     if (model) return model;
 
     const { x, y, distanceFromOrigin: origin } = context;
-    const startArea = clamp01(1 - origin / 55); // 1 vid huvudlagret, 0 långt bort
+    const startArea = clamp01(1 - origin / 28); // 1 vid huvudlagret, 0 långt bort
 
     // Förvrängning av koordinaterna: ger slingrande kuster, dalar och floder
     const warpX = (fbm(context, x, y, 75, 101, 0.3) - 0.5) * 70 * FEATURE_SCALE;
@@ -91,14 +91,14 @@
     const continent = stretch(fbm(context, wx, wy, 190, 103, 0.7), 2.4);
     const hills = fbm(context, wx, wy, 52, 104, 1.1);
     const detail = fbm(context, x, y, 17, 105, 2.4);
-    const mountainZone = smoothstep(0.58, 0.82, stretch(fbm(context, wx, wy, 90, 106, 0.2), 2.6)) * smoothstep(28, 75, origin);
-    const ridge = 1 - Math.abs(2 * fbm(context, wx, wy, 34, 107, 0.9) - 1);
+    const mountainZone = smoothstep(0.62, 0.86, stretch(fbm(context, wx, wy, 120, 106, 0.2), 2.6)) * smoothstep(14, 38, origin);
+    const ridge = 1 - Math.abs(2 * fbm(context, wx, wy, 34, 107, 0.9) - 1); // skarpa åsar där bruset korsar 0.5
     const mountain = mountainZone * (0.18 + 0.62 * ridge * ridge);
 
     const relief = 0.12 + 0.62 * continent + 0.30 * (hills - 0.5) + 0.10 * (detail - 0.5) + mountain * 0.55;
     // Startlandet: runt huvudlagret lyfts marken över havet, så spelet aldrig börjar i vattnet. Det blir en
     // lugn slätt (inga sjöar) som går över i naturligt landskap. Klimat och berggrund använder relief.
-    const startLand = 1 - smoothstep(48, 90, origin);
+    const startLand = 1 - smoothstep(24, 45, origin);
     const landFloor = SEA_LEVEL + 0.05 + 0.1 * hills;
     const elevation = relief + startLand * Math.max(0, landFloor - relief);
 
@@ -106,7 +106,7 @@
     const regionalMoisture = 0.55 * stretch(fbm(context, wx, wy, 85, 108, 0.5), 2.2) + 0.45 * stretch(fbm(context, x, y, 26, 109, 1.3), 2.0);
 
     // Floder: slingrande ådror i ett lågfrekvent fält. Inga floder nära start, och inte uppe i bergen.
-    const riverBlocked = smoothstep(26, 44, origin) * (1 - smoothstep(0.66, 0.8, relief));
+    const riverBlocked = smoothstep(13, 22, origin) * (1 - smoothstep(0.66, 0.8, relief));
     const riverHalfWidth = 0.9 + 1.0 * fbm(context, x, y, 70, 110, 0.4);
     const riverCenterDistance = veinDistance(x, y, 95, 111, 0.45, warpX * 0.7, warpY * 0.7);
     const tributaryDistance = veinDistance(x, y, 60, 112, 1.2, warpX * 0.5, warpY * 0.5);
@@ -126,7 +126,7 @@
     // Bergruta: högt relief, ojämn kant och aldrig nära start
     const mountainEdge = (fbm(context, x, y, 10, 265, 0.5) - 0.5) * 0.06;
     const mountainDepth = relief + mountainEdge - MOUNTAIN_LEVEL; // > 0 = bergsruta, högre = längre in/upp
-    const inMountain = origin > 40 && mountainDepth > 0;
+    const inMountain = origin > 20 && mountainDepth > 0;
     // Bergskärna: marginellt högre upp än bergets kant. Malm i berg ligger bara här, så den är alltid omsluten av berg.
     const coreMountain = inMountain && mountainDepth > MOUNTAIN_ORE_MARGIN;
 
@@ -186,7 +186,7 @@
   // Träsk: returnerar 'water' (pöl), 'bog' eller undefined. Egen funktion så att kratrarna kan undvika träsk.
   const bogAt = (context, model) => {
     const aboveSea = -model.seaDepth;
-    if (aboveSea < 0.015 || aboveSea > 0.2 || model.moisture < 0.62 || model.origin < 30) return; // inget träsk vid starten
+    if (aboveSea < 0.015 || aboveSea > 0.2 || model.moisture < 0.62 || model.origin < 15) return; // inget träsk vid starten
     const bogness = stretch(fbm(context, context.x, context.y, 38, 170, 0.5), 2.4) * smoothstep(0.6, 0.78, model.moisture);
     if (bogness < 0.42) return;
     if (fbm(context, context.x, context.y, 5, 171, 1.1) > 0.74) return 'water';
@@ -227,7 +227,8 @@
   // har en granne med samma malm: aldrig mer än två rutor (fynden är så glesa att de inte hinner klumpa ihop sig).
   const NEIGHBORS_4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
-  const scatteredAnchorGate = (context, x, y) => random(context, x, y, 430) < SCATTERED_ORE_CHANCE;
+  // Fler fynd nära start (upp till 3x), glesnar ut mot 60 rutor
+  const scatteredAnchorGate = (context, x, y) => random(context, x, y, 430) < SCATTERED_ORE_CHANCE * (1 + 2 * (1 - smoothstep(8, 34, Math.hypot(x, y))));
 
   // Ankarruta som duger? (öppen mark, inte sten, intill sten eller en slumpad andel)
   const scatteredAnchorValid = (context, x, y) => {
@@ -264,7 +265,11 @@
     }
     if (anchorX === null) return;
 
-    const ore = pickOre(context, anchorX, anchorY);
+    let ore = pickOre(context, anchorX, anchorY);
+    // Nära start: bara vanliga malmer (sällsynta hör hemma längre bort)
+    if (Math.hypot(anchorX, anchorY) < 34 && !['iron_ore', 'coal', 'copper_ore', 'tin_ore'].includes(ore)) {
+      ore = ['copper_ore', 'tin_ore', 'iron_ore', 'coal'][Math.floor(random(context, anchorX, anchorY, 434) * 4) % 4];
+    }
     return ore === 'gemstone' ? 'crystal' : ore; // ädelsten finns bara i berg
   };
 
@@ -277,14 +282,14 @@
     const span = cellSize - margin * 2;
     const centerX = cellX * cellSize + margin + Math.floor(random(context, cellX, cellY, salt + 1) * span);
     const centerY = cellY * cellSize + margin + Math.floor(random(context, cellX, cellY, salt + 2) * span);
-    if (Math.hypot(centerX, centerY) < 40) return null; // inte vid starten
+    if (Math.hypot(centerX, centerY) < 20) return null; // inte vid starten
     return { centerX, centerY, roll: random(context, cellX, cellY, salt + 3), cellX, cellY };
   };
 
   /* ---------- Startområdet: lagom nära rikedomar, annars blir spelet omöjligt ---------- */
   let starterCache = null;
   const STARTER_ORE_FINDS = 8;     // antal malmfynd (järn och kol var för sig) runt startområdet
-  const STARTER_ORE_SPREAD = 9;    // hur långt från mittpunkten de sprids (rutor)
+  const STARTER_ORE_SPREAD = 6;    // hur långt från mittpunkten de sprids (rutor)
   const STARTER_ORE_MIN_GAP = 3;   // minsta avstånd mellan två fynd
   const starterDeposits = () => {
     const seed = currentSeed();
@@ -316,13 +321,15 @@
         }
       }
     };
-    const pond = add('water', 21, 3.4, 6); // en damm med sandstrand, så brunnar går att bygga från start
+    const pond = add('water', 12, 3.4, 6); // en damm med sandstrand, så brunnar går att bygga från start
     list.push({ terrainType: 'sand', x: pond.x, y: pond.y, radius: pond.radius + 2.2 });
-    add('rock', 15, 3.3, 1);
-    addFinds('iron_ore', 27, 2);
-    addFinds('coal', 29, 3);
-    add('clay', 24, 2.6, 4);
-    add('limestone', 30, 2.8, 5);
+    add('rock', 9, 3.3, 1);
+    addFinds('iron_ore', 13, 2);
+    addFinds('coal', 15, 3);
+    addFinds('copper_ore', 17, 7);
+    addFinds('tin_ore', 19, 8);
+    add('clay', 11, 2.6, 4);
+    add('limestone', 14, 2.8, 5);
     starterCache = { seed, list, tiles };
     return list;
   };
@@ -418,11 +425,11 @@
 
     // 6. Startområdets rikedomar (oregelbundna fläckar nära huvudlagret).
     context => {
-      if (context.distanceFromOrigin > 55) return;
+      if (context.distanceFromOrigin > 28) return;
       starterDeposits();
       const find = starterCache.tiles.get(context.x + ',' + context.y);
       if (find) return find;
-      if (context.distanceFromOrigin > 45) return;
+      if (context.distanceFromOrigin > 23) return;
       for (const deposit of starterDeposits()) {
         const edgeNoise = (fbm(context, context.x, context.y, 6, 140, 0.9) - 0.5) * 3.2;
         if (Math.hypot(context.x - deposit.x, context.y - deposit.y) + edgeNoise < deposit.radius &&
@@ -493,13 +500,13 @@
     // Sedimentära bäcken: kalksten (blockfält) och tjärgropar. (Kol: se malmregeln ovan)
     context => {
       const model = landscapeAt(context);
-      const basin = fbm(context, context.x, context.y, 60, 240, 0.9);
-      if (basin < 0.54) return;
+      const basin = fbm(context, context.x, context.y, 100, 240, 0.9);
+      if (basin < 0.56) return;
 
-      if (model.relief < 0.4 || model.relief > 0.8 || model.mountain > 0.6) return;
+      if (model.relief < 0.45 || model.relief > 0.78 || model.mountain > 0.6) return;
       if (basin > 0.58 && random(context, context.x, context.y, 244) < 0.0025) return 'tar_pit';
       const limeField = fbm(context, context.x, context.y, 16, 245, 0.2);
-      if (basin > 0.54 && limeField > 0.66 && random(context, context.x, context.y, 246) < 0.55) return 'limestone';
+      if (basin > 0.56 && limeField > 0.66 && random(context, context.x, context.y, 246) < 0.55) return 'limestone';
     },
 
     // Torra bäcken: saltpanor och förstenat trä på torr, låg mark.
@@ -523,7 +530,7 @@
     // 23. Förbannad mark: djupt inne i gammal skog och i träsk, aldrig nära start.
     context => {
       const model = landscapeAt(context);
-      if (model.origin < 50 || model.moisture < 0.62) return;
+      if (model.origin < 25 || model.moisture < 0.62) return;
       const patch = fbm(context, context.x, context.y, 18, 280, 0.3);
       if (patch > 0.74 && random(context, context.x, context.y, 281) < 0.45) return 'cursed_ground';
     },
@@ -531,8 +538,8 @@
     // 24. Fruktlund: lummiga ställen med vilda äppelträd. Mellan träden är marken öppen.
     context => {
       const model = landscapeAt(context);
-      if (model.moisture < 0.38 || model.moisture > 0.85 || model.relief < 0.38 || model.relief > 0.7 || model.mountain > 0.1) return;
-      const orchard = fbm(context, context.x, context.y, 20, 290, 0.4);
+      if (model.moisture < 0.45 || model.moisture > 0.78 || model.relief < 0.42 || model.relief > 0.65 || model.mountain > 0.1) return;
+      const orchard = fbm(context, context.x, context.y, 30, 290, 0.4);
       if (orchard < 0.62) return;
       return random(context, context.x, context.y, 291) < 0.3 ? 'apple_tree' : 'grass';
     },
@@ -542,17 +549,16 @@
       const model = landscapeAt(context);
       const treeLine = 1 - smoothstep(0.64, 0.8, model.relief);
       const suitability = smoothstep(0.2, 0.5, model.moisture) * treeLine;
-      const stand = 0.5 * stretch(fbm(context, context.x, context.y, 22, 300, 0.6), 2.2) + 0.5 * stretch(fbm(context, context.x, context.y, 8, 301, 1.5), 2.2);
-      const meadow = smoothstep(0.55, 0.68, fbm(context, context.x, context.y, 60, 303, 0.9)); // stora öppna ängar
-      const density = (stand * (1 - 0.75 * meadow) + model.startArea * 0.18) * suitability;
-      const probability = smoothstep(0.46, 0.66, density) * 0.9 + 0.06 * suitability;
+      const stand = 0.6 * stretch(fbm(context, context.x, context.y, 36, 300, 0.6), 2.2) + 0.4 * stretch(fbm(context, context.x, context.y, 12, 301, 1.5), 2.0);
+      const density = stand * suitability + model.startArea * 0.18 * suitability;
+      const probability = smoothstep(0.34, 0.56, density) * 0.9 + 0.09 * suitability; // lite enstaka träd även i ängen
       if (random(context, context.x, context.y, 302) < probability) return 'tree';
     },
 
     // 26. Bärbuskar: i klungor, helst i skogsbrynet.
     context => {
       const model = landscapeAt(context);
-      if (model.moisture < 0.35 || model.mountain > 0.1) return;
+      if (model.moisture < 0.42 || model.mountain > 0.1) return;
       const cluster = fbm(context, context.x, context.y, 9, 310, 0.8);
       const edgeness = smoothstep(0.35, 0.5, fbm(context, context.x, context.y, 36, 300, 0.6)) * (1 - smoothstep(0.55, 0.7, fbm(context, context.x, context.y, 36, 300, 0.6)));
       if (cluster > 0.52 && random(context, context.x, context.y, 311) < 0.25 + 0.5 * edgeness) return 'berry_bush';
@@ -561,7 +567,7 @@
     // 27. Svamp: i skuggan på fuktig mark.
     context => {
       const model = landscapeAt(context);
-      if (model.moisture < 0.52 || model.mountain > 0.1) return;
+      if (model.moisture < 0.62 || model.mountain > 0.1) return;
       const cluster = fbm(context, context.x, context.y, 8, 320, 1.2);
       if (cluster > 0.52 && random(context, context.x, context.y, 321) < 0.5) return 'mushrooms';
     },

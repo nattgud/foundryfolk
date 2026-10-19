@@ -85,7 +85,8 @@
     const size = PATH_CHUNK * tileSize;
     if (!chunk.canvas) chunk.canvas = document.createElement('canvas');
     const canvas = chunk.canvas, context = canvas.getContext('2d');
-    if (canvas.width !== size) canvas.width = canvas.height = size; else context.clearRect(0, 0, size, size);
+    if (canvas.width !== size) canvas.width = canvas.height = size;
+    else { context.setTransform(1, 0, 0, 1, 0, 0); context.clearRect(0, 0, size, size); } // nollställ förskjutningen från förra ritningen först
 
     const shape = new Path2D(), rects = [null, [], [], [], [], []], half = tileSize / 2;
     const originX = (chunk.cx * PATH_CHUNK - 1) * tileSize, originY = (chunk.cy * PATH_CHUNK - 1) * tileSize; // världsposition för grid[0]
