@@ -162,13 +162,17 @@
 
     // ---- Mål och banor -----------------------------------------------------------------------
 
+    // 1:05 under en timme, annars 1:02:05
     formatTime(seconds) {
-      const total = Math.max(0, Math.round(seconds));
-      return Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0');
+      const total = Math.max(0, Math.round(seconds)), hours = Math.floor(total / 3600);
+      const two = value => String(value).padStart(2, '0');
+      return hours ? `${hours}:${two(Math.floor(total % 3600 / 60))}:${two(total % 60)}` : `${Math.floor(total / 60)}:${two(total % 60)}`;
     },
+    // 45s, 3m 05s eller 1h 02m
     timeLeft(building) {
       const s = Math.ceil((1 - building.buildProgress) * building.definition.buildDuration);
-      return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
+      if (s < 60) return `${s}s`;
+      return s < 3600 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${Math.floor(s / 3600)}h ${Math.floor(s % 3600 / 60)}m`;
     },
 
     createGoalPanel() {
@@ -182,6 +186,19 @@
       document.body.appendChild(panel);
     },
 
+    // Texten för ett mål, t.ex. "Bygg Såg: 1/2"
+    goalText(item) {
+      const numbers = { have: item.have, need: item.amount };
+      switch (item.type) {
+        case 'build': return t('Build {name}: {have}/{need}', { name: this.buildingName(item.id), ...numbers });
+        case 'soldiers': return t('Train soldiers: {have}/{need}', numbers);
+        case 'kills': return t('Defeat enemy units: {have}/{need}', numbers);
+        case 'destroy': return item.id === 'any' ? t('Destroy enemy buildings: {have}/{need}', numbers) : t('Destroy enemy {name}: {have}/{need}', { name: lower(this.buildingName(item.id)), ...numbers });
+        case 'eliminate': return t('Destroy the enemy base');
+        default: return t('Store {name}: {have}/{need}', { name: this.resourceName(item.resource), ...numbers });
+      }
+    },
+
     // Målpanelen under resursfältet. Ritas bara om när texten ändras.
     refreshGoals(force = false) {
       const Levels = CityBuilder.Levels, panel = byId('goalPanel');
@@ -192,8 +209,7 @@
 
       const level = Levels.current;
       const lines = Levels.progress().map(item => {
-        const name = item.type === 'build' ? this.buildingName(item.id) : this.resourceName(item.resource);
-        const text = t(item.type === 'build' ? 'Build {name}: {have}/{need}' : 'Store {name}: {have}/{need}', { name, have: item.have, need: item.amount });
+        const text = this.goalText(item);
         return `<div class="goal-item${item.done ? ' done' : ''}">${item.done ? '✔' : '☐'} ${text}</div>`;
       });
       const unlocks = level.unlocks.map(id => this.buildingName(id)).join(', ');
@@ -280,6 +296,36 @@
       overlay.appendChild(dialog);
       document.body.appendChild(overlay);
       // ok.focus();
+    },
+
+    // Spelarens bas är förstörd: spelet står stilla tills banan startas om
+    showDefeat() {
+      this.hideTooltip();
+      CityBuilder.Game.paused = true;
+      if (byId('defeatOverlay')) return;
+      const overlay = document.createElement('div');
+      overlay.id = 'defeatOverlay';
+      overlay.className = 'resource-window-overlay';
+      const dialog = document.createElement('section');
+      dialog.className = 'resource-window main-menu';
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+      const header = document.createElement('header');
+      header.className = 'resource-window-header';
+      const title = document.createElement('strong');
+      title.textContent = t('Your base was destroyed');
+      header.appendChild(title);
+      const body = document.createElement('div');
+      body.className = 'main-menu-body';
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'main-menu-button';
+      retry.textContent = t('Try the level again');
+      retry.onclick = () => CityBuilder.Levels.restart();
+      body.appendChild(retry);
+      dialog.append(header, body);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
     },
 
     showLevelComplete(result) {
@@ -1695,7 +1741,7 @@
       // Avmarkera vald byggnad när en ny byggnad skapats.
       const buildingCount = Utils.sumValues(builtCounts); // bara spelarens egna byggnader
 
-      if (buildingCount > this.lastBuildingCount && game.placingType) {
+      if (buildingCount > this.lastBuildingCount && game.placingType && !Config.buildings[game.placingType].repeatPlacement) {
         game.setPlacingType(null);
       }
 

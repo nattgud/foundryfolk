@@ -71,6 +71,7 @@
         return this.refuse({
           terrain: () => t('Must be built on: {terrain}', { terrain: UI.terrainName(definition.placeOnTerrain) }),
           occupied: () => t('This spot is occupied'),
+          far: () => t('Too far from your buildings'),
           unreachable: () => t('This spot cannot be reached'),
           cost: () => t('Not enough resources'),
         }[problem]());
@@ -86,15 +87,12 @@
 
     demolish(building) {
       CityBuilder.Sound?.play('demolish', { x: building.x, y: building.y });
-      CityBuilder.Behaviors.forBuilding(building)?.onDemolished?.(building); // t.ex. en garnison som släpper ut sina soldater
-      World.removeBuilding(building);
-      Economy.refund(building.definition.buildCost);
-      // Lämna tillbaka allt byggnaden höll i
-      for (const stock of [building.inputStock, building.outputStock, building.storedGoods]) {
-        for (const resourceId in stock) if (stock[resourceId] > 0) Economy.addToNearestStorage(resourceId, stock[resourceId], building);
-      }
+      CityBuilder.Construction.dismantle(building, true);
       this.selectBuilding(null);
     },
+
+    // Spelarens bas är förstörd
+    defeat() { UI.showDefeat(); },
 
     cycleSpeed() {
       const speeds = Config.settings.gameSpeeds;

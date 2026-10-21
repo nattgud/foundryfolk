@@ -18,7 +18,7 @@
    enabled: false för att stänga av } */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Renderer } = CityBuilder;
+  const { Config, World, Renderer, Players } = CityBuilder;
   const t = (text, variables) => CityBuilder.t(text, variables);
 
   const DEFAULTS = { size: 176, pixelsPerTile: 2, corner: 'top-right' };
@@ -452,6 +452,7 @@
 
       // Byggnader: tydlig färg med mörk kant (ofärdiga är genomskinliga)
       const marker = Math.max(4, Math.round(scale * 2));
+      const rivalColor = '#e5534b';  // andra spelares byggnader och soldater: röda
       for (const building of World.buildings) {
         if (building === World.headquarters) continue;
         const x = toX(building.x + 0.5), y = toY(building.y + 0.5);
@@ -459,10 +460,22 @@
         context.globalAlpha = building.buildProgress >= 1 ? 1 : 0.55;
         context.fillStyle = '#05080a';
         context.fillRect(Math.round(x - marker / 2) - 1, Math.round(y - marker / 2) - 1, marker + 2, marker + 2);
-        context.fillStyle = (building.definition && building.definition.color) || '#e8e8e8';
+        context.fillStyle = building.player !== Players.HUMAN ? rivalColor : (building.definition && building.definition.color) || '#e8e8e8';
         context.fillRect(Math.round(x - marker / 2), Math.round(y - marker / 2), marker, marker);
       }
       context.globalAlpha = 1;
+
+      // Soldater: små cirklar (röda för andra spelare, blå för dina egna)
+      const dot = Math.max(2, Math.round(scale * 1.2));
+      for (const unit of World.units) {
+        if (!unit.definition.isSoldier) continue;
+        const x = toX(unit.x), y = toY(unit.y);
+        if (Math.hypot(x - radius, y - radius) > radius) continue;
+        context.fillStyle = unit.player === Players.HUMAN ? '#4aa3ff' : rivalColor;
+        context.beginPath();
+        context.arc(x, y, dot, 0, Math.PI * 2);
+        context.fill();
+      }
 
       // Huvudlagret: större, guld med vit ring
       const hq = World.headquarters;

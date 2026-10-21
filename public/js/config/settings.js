@@ -12,6 +12,7 @@ CityBuilder.Config.settings = {
   deerTreeSpreadChance: 0.005,
   startingResources: { wood: 10, plank: 10, stone: 10, hammer: 10 },
   gameSpeeds: [1, 2, 4, 8],
+  maxBuildDistance: 35,          // längst avstånd (rutor) från en egen byggnad som man får bygga på
   defaultEquipment: {}, // utrustning som varje produktionshus måste få (kan åsidosättas med requiredEquipment)
   wearPerPass: 0.1,              // slitage per bärarpassage
   maxWearSpeedBonus: .25,         // max hastighetsökning på helt upptrampad ruta

@@ -4,12 +4,40 @@
   'use strict';
   const { World, Behaviors, Economy, Pathfinder, Players, Config } = CityBuilder;
 
-  // Försöker bygga. Returnerar null om det gick, annars orsaken: 'occupied' | 'terrain' | 'unreachable' | 'cost'.
+  // Försöker bygga. Returnerar null om det gick, annars orsaken: 'occupied' | 'terrain' | 'far' | 'unreachable' | 'cost'.
   const Construction = {
+    // Närmaste egna byggnad inom maxBuildDistance rutor (luftlinje), eller undefined. Ingen får bygga var som helst.
+    nearestOwnBuilding(x, y, player) {
+      const limit = Config.settings.maxBuildDistance;
+      let best, bestDistance = limit;
+      for (const building of World.buildings) {
+        const distance = Math.hypot(building.x - x, building.y - y);
+        if (building.player === player && building.buildProgress >= 1 && distance <= bestDistance) { best = building; bestDistance = distance; }
+      }
+      return best;
+    },
+    isNearOwnBuilding(x, y, player) { return Boolean(this.nearestOwnBuilding(x, y, player)); },
+
+    // Tar bort en byggnad. Soldater som bor där blir fria (de söker sig till en annan garnison eller vaktar platsen).
+    // salvage = riven av ägaren: halva byggkostnaden och allt byggnaden höll (lager, in- och utbuffert, det arbetaren bär)
+    // går till närmaste lager. Förstörd i strid (salvage = false): innehållet går förlorat.
+    dismantle(building, salvage) {
+      Behaviors.forBuilding(building)?.onDemolished?.(building);
+      World.removeBuilding(building);
+      const player = building.player;
+      if (!salvage) return;
+      Economy.refund(building.definition.buildCost, player);
+      const give = (resourceId, amount) => { if (amount > 0) Economy.addToNearestStorage(resourceId, amount, building, player); };
+      for (const stock of [building.inputStock, building.outputStock, building.storedGoods]) for (const resourceId in stock) give(resourceId, stock[resourceId]);
+      if (typeof building.workerUnit?.carriedResource === 'string') give(building.workerUnit.carriedResource, 1);
+    },
+
     build(buildingType, x, y, player = Players.HUMAN) {
-      const definition = Config.buildings[buildingType], hq = World.hqOf(player);
+      const definition = Config.buildings[buildingType];
       if (!World.canPlace(buildingType, x, y)) return definition.placeOnTerrain ? 'terrain' : 'occupied';
-      if (Pathfinder.findPathNow(hq.x, hq.y, x, y) === null) return 'unreachable';
+      const from = this.nearestOwnBuilding(x, y, player);   // vägen räknas från närmaste egna byggnad, så att utposter långt från basen går att bygga
+      if (!from) return 'far';
+      if (Pathfinder.findPathNow(from.x, from.y, x, y) === null) return 'unreachable';
       if (!Economy.spend(definition.buildCost, player)) return 'cost';
       World.placeBuilding(buildingType, x, y, false, player);
       return null;

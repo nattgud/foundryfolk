@@ -48,7 +48,21 @@
       for (const feature of worldConfig.features) {
         if (Math.hypot(x - feature.x, y - feature.y) <= feature.radius && Utils.hash(x, y, 7) < .9) terrainType = feature.terrainType;
       }
+      if (terrainType === 'water' || terrainType === 'mountain') terrainType = this.bridge(x, y, terrainType);
       return this.carve(x, y, distanceFromOrigin, terrainType);
+    },
+
+    // Landväg mellan spelarnas baser (Config.world.roads): vatten och berg längs vägen blir gräs så att basernas arméer alltid kan mötas.
+    // Vägen följer en lätt slingrande linje mellan två punkter.
+    bridge(x, y, terrainType) {
+      for (const road of CityBuilder.Config.world.roads) {
+        const dx = road.x2 - road.x1, dy = road.y2 - road.y1, length = Math.hypot(dx, dy);
+        const along = ((x - road.x1) * dx + (y - road.y1) * dy) / length;            // rutor längs linjen
+        if (along < -road.width || along > length + road.width) continue;
+        const across = ((x - road.x1) * -dy + (y - road.y1) * dx) / length;          // rutor vid sidan av linjen
+        if (Math.abs(across - road.wobble * Math.sin(along / road.wavelength + road.phase)) < road.width / 2) return 'grass';
+      }
+      return terrainType;
     },
 
     // Gräsgångar: krokiga stigar från startområdet och utåt. width = antal rutor (1 = en ruta bred). Vatten gräver de inte igenom.

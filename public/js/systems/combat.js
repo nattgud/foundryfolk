@@ -6,7 +6,7 @@
      och stiger in i byggnaden igen. Fria soldater (utan byggnad) vaktar sin post och söker sig till en ledig garnison.
    - Alla enheter och byggnader med hp kan skadas. Fiendens soldater går först, sedan övriga enheter och sist byggnader.
      Dör en bärare ersätts den av Logistics.balanceCarriers, en arbetare av sin byggnad (efter workerRespawnSeconds).
-     En förstörd byggnad lämnar inget tillbaka. Spelarens eget HQ går inte att angripa än.
+     En förstörd byggnad lämnar inget tillbaka. Förstörs en bas är spelaren utslagen (eliminate).
    - Garnisonsbyggnadens läge (building.stance): 'defend' vaktar inom job.searchRadius, 'attack' söker upp fiender inom
      settings.attackRadius och jagar dem dit.
 
@@ -41,7 +41,7 @@
     // Enheter och byggnader som kan bli mål: levande och tillhör någon riktig spelare. En lista per simuleringsruta.
     targets() {
       return this.targetCache || (this.targetCache = [...World.units, ...World.buildings].filter(target =>
-        target.hp != null && target.player !== Players.NEUTRAL && target.type !== 'hq')); // baserna kan inte angripas än
+        target.hp != null && target.player !== Players.NEUTRAL));
     },
 
     // Bästa fiende till 'player' inom radius från (x, y): lägst prioritet först, sedan närmast.
@@ -64,17 +64,20 @@
       const definition = attacker.definition;
       attacker.attackCooldownLeft = definition.attackCooldown;
       this.effects.push({ x1: attacker.x, y1: attacker.y, x2: centreX(target), y2: centreY(target), ranged: definition.attackRange > 2, life: 0.18 });
-      this.damage(target, Math.max(1, definition.attackDamage - (target.definition.armor || 0)));
+      this.damage(target, Math.max(1, definition.attackDamage - (target.definition.armor || 0)), attacker);
     },
 
-    damage(target, amount) {
+    // attacker (valfri) är den som gav sista slaget: bara spelarens egna segrar räknas mot banans mål
+    damage(target, amount, attacker) {
       if (target.hp == null || target.removed) return;
       target.hp -= amount;
-      if (target.hp <= 0) this.kill(target);
+      if (target.hp <= 0) this.kill(target, attacker);
     },
 
-    kill(target) {
+    kill(target, attacker) {
       if (target.removed) return;
+      const Levels = CityBuilder.Levels;
+      if (attacker?.player === Players.HUMAN && Players.isHostile(Players.HUMAN, target.player)) Levels?.onDefeated?.(target);
       if (isBuilding(target)) return this.destroyBuilding(target);
       const unit = target;
       CityBuilder.Logistics.abortTask(unit); // en bärare som dör släpper sina reservationer
@@ -84,10 +87,19 @@
 
     // En förstörd byggnad är som en riven, men inget lämnas tillbaka (innehållet går förlorat)
     destroyBuilding(building) {
-      CityBuilder.Behaviors.forBuilding(building)?.onDemolished?.(building);
-      World.removeBuilding(building);
+      CityBuilder.Construction.dismantle(building, false);
       const game = CityBuilder.Game;
       if (game?.selectedBuilding === building) game.selectBuilding(null);
+      if (building.type === 'hq') this.eliminate(building.player);
+    },
+
+    // En spelare utan bas är utslagen: allt hens byggnader och enheter försvinner. Utslagen spelare = förlust, sista datorspelaren = seger.
+    eliminate(player) {
+      for (const building of [...World.buildings]) if (building.player === player) CityBuilder.Construction.dismantle(building, false);
+      for (const unit of [...World.units]) if (unit.player === player) this.kill(unit);
+      if (player !== Players.HUMAN) Players.active = Players.active.filter(other => other !== player);
+      if (player === Players.HUMAN) CityBuilder.Game?.defeat?.();
+      else if (!Players.active.some(Players.isAI)) CityBuilder.Levels?.win?.();
     },
 
     // ---- Skapa soldater ------------------------------------------------------------------------

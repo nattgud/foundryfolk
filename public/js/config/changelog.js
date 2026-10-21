@@ -4,6 +4,15 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.397': [
+      'Rival bases can now be attacked: destroy a rival\'s base to win the level, lose yours and the level is lost',
+      'Levels 10-15 train you for combat, levels 16 and up are attack missions (destroy buildings, defeat units, wipe out the rival)',
+      'The rival attacks from level 16 and gets a little faster on every level',
+      'New building: Wall. Buildings can only be placed within 35 tiles of your other buildings',
+      'Rival soldiers and buildings are shown in red on the minimap',
+      'Bases are placed with similar resource distances for every player, joined by a land road',
+      'The clock now shows hours',
+    ],
     '0.4.396': [
       'Every level now has a computer-controlled rival with its own base about 100-150 tiles away',
       'The rival builds, gathers, crafts and trains soldiers with the same rules and resource chains as you',

@@ -817,6 +817,19 @@ CityBuilder.Config.buildings = {
     buildDuration: 80
   },
 
+  // Mur: ett block som ingen enhet kan gå igenom (byggnader blockerar all gång). Fienden måste slå sig igenom den.
+  // repeatPlacement: placeringsläget stannar kvar efter varje bygge så att en hel mur kan läggas i ett svep.
+  wall: {
+    name: 'Wall',
+    category: 'military',
+    symbol: 'W',
+    color: '#8a8f98',
+    buildCost: { stone: 3 },
+    maxHp: 250,
+    repeatPlacement: true,
+    buildDuration: 6
+  },
+
   // Slutbyggnad
   monument: {
     name: 'Monument',

@@ -48,28 +48,55 @@
       return hq;
     },
 
-    // Var en datorspelares bas ligger: 100–150 rutor från starten, i en riktning som slumpas av bana och spelarnummer.
-    // Provar flera riktningar och väljer den med mest land runt basen. En gräsplan runt basen läggs in i terrängen (clearings).
+    // Avstånd (rutor) från (x, y) till närmaste ruta av varje nyckelresurs, avsökt grovt (sampling). Saknas den inom FAIR_RADIUS räknas FAIR_RADIUS + 10.
+    profile(x, y) {
+      const { fairResources, fairRadius, fairStep } = Config.world;
+      const nearest = Object.fromEntries(fairResources.map(type => [type, fairRadius + 10]));
+      for (let dy = -fairRadius; dy <= fairRadius; dy += fairStep) for (let dx = -fairRadius; dx <= fairRadius; dx += fairStep) {
+        const distance = Math.hypot(dx, dy);
+        if (distance > fairRadius) continue;
+        const type = CityBuilder.Generator.terrainTypeAt(x + dx, y + dy);
+        if (type in nearest && distance < nearest[type]) nearest[type] = distance;
+      }
+      return nearest;
+    },
+
+    // Var en datorspelares bas ligger: 100-150 rutor från starten. Av 16 riktningar (den första slumpas av bana och spelarnummer)
+    // väljs den där basen har land runt sig och ungefär samma avstånd till resurserna som spelarens start (rättvist).
+    // En gräsplan läggs in runt basen (clearings), och en liten malmfyndighet om järn saknas i närheten (se endow).
     rivalSite(player) {
-      const { rivalDistance: [near, far], rivalClearRadius: clear } = Config.world;
+      const { rivalDistance: [near, far], rivalClearRadius: clear, fairResources } = Config.world;
       const salt = Config.world.seed * 131 + player * 977;
       const base = Utils.hash(player, 11, salt) * 2 * Math.PI, distance = near + (far - near) * Utils.hash(player, 12, salt);
-      let best = null, bestScore = -1;
-      for (let i = 0; i < 16; i++) { // 16 riktningar, första är den slumpade
+      const reference = this.profile(0, 0);
+      let best = null, bestScore = Infinity;
+      for (let i = 0; i < 16; i++) {
         const angle = base + i * Math.PI / 8 * (i % 2 ? 1 : -1), x = Math.round(Math.cos(angle) * distance), y = Math.round(Math.sin(angle) * distance);
         let land = 0, total = 0;
-        for (let dy = -12; dy <= 12; dy += 2) for (let dx = -12; dx <= 12; dx += 2, total++) {
+        for (let dy = -12; dy <= 12; dy += 3) for (let dx = -12; dx <= 12; dx += 3, total++) {
           const type = CityBuilder.Generator.terrainTypeAt(x + dx, y + dy);
           if (type !== 'water' && type !== 'mountain') land++;
         }
-        const score = land / total - i * .005; // lika bra: hellre den slumpade riktningen
-        if (score > bestScore) { bestScore = score; best = [x, y]; }
+        if (land / total < .7) continue;
+        const candidate = this.profile(x, y);
+        // skillnad i avstånd, i procent: 10 mot 20 rutor väger lika tungt som 40 mot 80
+        const score = fairResources.reduce((sum, type) => sum + Math.abs(Math.log((candidate[type] + 3) / (reference[type] + 3))), 0) + i * .02;
+        if (score < bestScore) { bestScore = score; best = { x, y, profile: candidate }; }
       }
-      Config.world.clearings.push({ x: best[0], y: best[1], radius: clear });
-      // Lite järnmalm nära varje bas så att datorn alltid kan tillverka vapen (annars beror det på kartans tur)
-      const ore = Utils.hash(player, 13, salt) * 2 * Math.PI;
-      Config.world.features.push({ x: best[0] + Math.round(Math.cos(ore) * (clear + 4)), y: best[1] + Math.round(Math.sin(ore) * (clear + 4)), radius: 2, terrainType: 'iron_ore' });
-      return best;
+      best = best || { x: Math.round(Math.cos(base) * distance), y: Math.round(Math.sin(base) * distance), profile: this.profile(0, 0) };
+      Config.world.clearings.push({ x: best.x, y: best.y, radius: clear });
+      Config.world.roads.push({ x1: 0, y1: 0, x2: best.x, y2: best.y, width: 4, wobble: 10, wavelength: 9, phase: Utils.hash(player, 14, salt) * 6.28 });
+      if (player === Players.ENEMY) this.endow(Players.HUMAN, 0, 0, reference, salt); // spelarens start, en gång
+      this.endow(player, best.x, best.y, best.profile, salt);
+      return [best.x, best.y];
+    },
+
+    // Lite järnmalm nära en bas som saknar det, så att varje spelare kan tillverka vapen (annars beror det på kartans tur)
+    endow(player, x, y, profile, salt) {
+      const { fairRadius, rivalClearRadius: clear } = Config.world;
+      if (profile.iron_ore <= fairRadius * .7) return;
+      const angle = Utils.hash(player, 13, salt) * 2 * Math.PI, reach = clear + 4;
+      Config.world.features.push({ x: x + Math.round(Math.cos(angle) * reach), y: y + Math.round(Math.sin(angle) * reach), radius: 2, terrainType: 'iron_ore' });
     },
 
     canPlace(buildingType, x, y) {
@@ -105,6 +132,7 @@
       building.removed = true;
       this.buildingsByTile.delete(Utils.tileKey(building.x, building.y));
       CityBuilder.Pathfinder.clearCache();
+      if (this.hqs[building.player] === building) delete this.hqs[building.player];
       this.buildings = this.buildings.filter(other => other !== building);
       this.units = this.units.filter(unit => unit.homeBuilding !== building);
     },

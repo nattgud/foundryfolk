@@ -6,7 +6,7 @@
    placeras sedan nära basen (eller nära resursen, för gatherers och gruvor). */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Players, Economy, Construction, Utils } = CityBuilder;
+  const { Config, World, Players, Economy, Construction, Garrison, Utils } = CityBuilder;
 
   const WAIT = 'wait', BLOCKED = 'blocked';   // need() kan inte ge någon byggnad just nu: vänta på resurser / ingen plats
   const MAX_CHAIN = 6;                        // längsta kedjan av förkunskaper
@@ -58,6 +58,14 @@
       return this.producers[resourceId];
     },
 
+    level: () => CityBuilder.Levels?.current?.level ?? 1,
+
+    // Tid mellan besluten: långsam på de första banorna och en aning snabbare för varje bana
+    interval() {
+      const { startSeconds, perLevel, minSeconds } = Config.ai.pace;
+      return Math.max(minSeconds, startSeconds * Math.pow(perLevel, this.level() - 1));
+    },
+
     supplied: resourceId => Economy.freeAmount(resourceId, AI.current) > 0,   // finns resursen i lagret just nu?
 
     update(deltaSeconds) {
@@ -67,15 +75,36 @@
         const state = this.players.get(player) || { timer: 0, blocked: {}, short: {} };
         this.players.set(player, state);
         if ((state.timer -= deltaSeconds) > 0) continue;
-        state.timer = Config.ai.thinkSeconds;
+        state.timer = this.interval();
         this.think(player, state);
       }
     },
 
     think(player, state) {
       this.current = player;
+      state.starved = new Set();
+      this.decide(player, state);
+      this.pauseConsumers(player, state.starved);
+    },
+
+    // Som en människa: saknas en byggresurs pausas de byggnader som förbrukar den (annars hinner den aldrig samlas i lagret)
+    pauseConsumers(player, starved) {
+      for (const building of World.buildings) {
+        if (building.player !== player || !building.definition.job) continue;
+        const consumes = inputsOf(building.definition).some(resourceId => starved.has(resourceId));
+        if (consumes && !building.paused) { building.paused = true; building.pausedByAI = true; }
+        else if (!consumes && building.pausedByAI) { building.paused = false; building.pausedByAI = false; }
+      }
+    },
+
+    decide(player, state) {
       const census = this.census(player);
-      if (census.unfinished >= Config.ai.maxUnderConstruction) return;
+      const attacking = this.attacking(player);
+      this.setStance(player, attacking ? 'attack' : 'defend');
+
+      const [base, every, cap] = Config.ai.maxUnderConstruction;
+      if (census.unfinished >= Math.min(cap, base + Math.floor((this.level() - 1) / every))) return;
+      if (attacking && this.advance(player, state, census)) return;
 
       const decide = (type, trail = []) => this.need(player, state, census, type, trail);
       for (const [type, target] of Config.ai.build) {
@@ -116,7 +145,10 @@
 
       const short = Object.keys(definition.buildCost).filter(resourceId => Economy.freeAmount(resourceId, player) < definition.buildCost[resourceId]);
       if (!short.length) return type;
-      return first(short) ?? this.expand(player, state, census, short, path) ?? WAIT;
+      const producer = first(short) ?? this.expand(player, state, census, short, path);
+      if (producer) return producer;
+      short.forEach(resourceId => state.starved.add(resourceId));
+      return WAIT;
     },
 
     // Producenterna finns men resursen tar slut: räcker det inte efter en stund byggs ytterligare en producent
@@ -144,8 +176,57 @@
       return producer;
     },
 
-    place(player, state, type) {
-      for (const [x, y] of this.sites(player, type)) {
+    // ---- Anfall: samma sätt som spelaren (utposter av vakttorn nära fienden, sedan attackläge) --------
+
+    // Från en viss bana, och när armén är stor nog
+    attacking(player) {
+      const { fromLevel, soldiers: [base, extra, cap] } = Config.ai.attack, level = this.level();
+      return level >= fromLevel && Garrison.soldiersOf(player) >= Math.min(cap, base + extra * (level - fromLevel));
+    },
+
+    setStance(player, stance) {
+      for (const building of World.buildings) if (building.player === player && Garrison.isGarrison(building)) Garrison.setStance(building, stance);
+    },
+
+    // Närmaste fiendebyggnad till datorns bas
+    enemyTarget(player) {
+      const hq = World.hqOf(player);
+      let best, bestDistance = Infinity;
+      for (const building of World.buildings) {
+        const distance = Math.hypot(building.x - hq.x, building.y - hq.y);
+        if (Players.isHostile(player, building.player) && distance < bestDistance) { best = building; bestDistance = distance; }
+      }
+      return best;
+    },
+
+    // Bygger ett vakttorn närmare fienden tills någon garnison når den med sitt attackläge. Returnerar true om något byggdes (eller väntas på).
+    advance(player, state, census) {
+      const target = this.enemyTarget(player);
+      if (!target) return false;
+      const reach = Config.settings.military.attackRadius * .8;
+      let from, fromDistance = Infinity;                       // egna färdiga garnisoner och torn är utgångspunkter
+      for (const building of World.buildings) {
+        const distance = Math.hypot(building.x - target.x, building.y - target.y);
+        if (building.player === player && building.buildProgress >= 1 && distance < fromDistance) { from = building; fromDistance = distance; }
+      }
+      if (!from || fromDistance <= reach) return false;
+      if ((census.count.guard_tower || 0) + (census.count.garrison || 0) >= Config.ai.attack.maxTowers) return false;
+
+      const next = this.need(player, state, census, 'guard_tower', []);
+      if (next === WAIT) return true;                          // spara resurserna åt utposten
+      if (next === BLOCKED) return false;
+      if (next !== 'guard_tower') { this.place(player, state, next); return true; }
+      const step = Math.min(Config.settings.maxBuildDistance - 5, fromDistance - reach * .5);
+      const point = { x: Math.round(from.x + (target.x - from.x) / fromDistance * step), y: Math.round(from.y + (target.y - from.y) / fromDistance * step) };
+      this.place(player, state, next, this.free(point, Config.buildings.guard_tower, 8));
+      return true;
+    },
+
+    // Placerar byggnaden på första platsen som fungerar (sites = kandidater, annars de vanliga)
+    place(player, state, type, sites = this.sites(player, type)) {
+      let attempts = 0;
+      for (const [x, y] of sites) {
+        if (++attempts > SITE_ATTEMPTS) break;
         const problem = Construction.build(type, x, y, player);
         if (!problem) return;
         if (problem === 'cost') return;        // någon annan hann före: försök igen nästa varv
@@ -153,7 +234,7 @@
       state.blocked[type] = this.time + Config.ai.blockedSeconds;
     },
 
-    // Kandidatplatser för en byggnad, bästa först (högst SITE_ATTEMPTS stycken)
+    // Kandidatplatser för en byggnad, bästa först
     * sites(player, type) {
       const hq = World.hqOf(player), definition = Config.buildings[type], job = definition.job;
       let yielded = 0;

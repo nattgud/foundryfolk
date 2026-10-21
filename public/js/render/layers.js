@@ -418,7 +418,7 @@
     const placingType = CityBuilder.Game.placingType;
     if (!placingType || !renderer.hoverTile) return;
     const { x, y } = renderer.hoverTile;
-    const isValid = World.canPlace(placingType, x, y) && Economy.canAfford(Config.buildings[placingType].buildCost);
+    const isValid = World.canPlace(placingType, x, y) && CityBuilder.Construction.isNearOwnBuilding(x, y, CityBuilder.Players.HUMAN) && Economy.canAfford(Config.buildings[placingType].buildCost);
     context.fillStyle = isValid ? 'rgba(95,181,95,.5)' : 'rgba(217,83,79,.5)';
     context.fillRect(x * renderer.tileSize, y * renderer.tileSize, renderer.tileSize, renderer.tileSize);
   });

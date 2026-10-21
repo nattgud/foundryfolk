@@ -21,6 +21,8 @@
   const t = (text, variables) => CityBuilder.t(text, variables); // names and tags are translated when read (see lang.js)
   const baseRules = world.rules.slice();
   const MAX_LEVELS = 120;
+  const MISSION_START = 16;     // levels 1-15 train for combat, from here the goals are attack missions
+  const ELIMINATE_START = 26;   // from here the rival's base must be destroyed
   const CHAPTER = 10;
   const LEVEL_KEY = 'citybuilder.level';
   const RUN_KEY = 'citybuilder.runSeed';
@@ -66,11 +68,11 @@
     apple_gatherer: 7, mushroom_gatherer: 7, sand_collector: 7,
     bakery: 8,
     coal_mine: 9, leatherworker: 9,
-    large_warehouse: 10, limestone_quarry: 10, bowyer: 10, guard_tower: 10,
-    horse_breeder: 11,
+    large_warehouse: 10, limestone_quarry: 10, bowyer: 10, guard_tower: 10, wall: 9,
+    stables: 11,
     iron_mine: 12, iron_smelter: 13,
     axesmith: 14, picksmith: 14, hammersmith: 15, scythesmith: 15,
-    swordsmith: 16, garrison: 17, armorsmith: 19,
+    swordsmith: 14, garrison: 15, armorsmith: 17,
     copper_mine: 18, tin_mine: 18, copper_smelter: 20, tin_smelter: 20,
     bronze_foundry: 22, rock_crusher: 22,
     salt_mine: 25, sulfur_mine: 25,
@@ -363,15 +365,38 @@
     return best === Infinity ? 60 : best;
   };
 
+  const MILITARY_SECONDS = { soldiers: 60, kills: 25, destroy: 150, eliminate: 900 };   // rough par time per unit of a military goal
+
   // Par time: what a decent player needs. Grows with the goals (stock amounts, chain depth, number of buildings) and the level.
   const parSeconds = (items, level) => {
     const workers = 2 + Math.floor(level / 10);   // producers a player typically runs at once
     let seconds = 240 + 6 * level;
     for (const item of items) {
       if (item.type === 'build') seconds += item.amount * ((CityBuilder.Config.buildings[item.id].buildDuration || 5) + 40);
+      else if (MILITARY_SECONDS[item.type]) seconds += item.amount * MILITARY_SECONDS[item.type];
       else seconds += item.amount * unitSeconds(item.resource, level) / workers;
     }
     return Math.round(seconds / 10) * 10;
+  };
+
+  // Military goals (types 'soldiers', 'kills', 'destroy', 'eliminate'; see evaluate)
+  const TRAINING_ARMY = [2, 3, 4, 6, 8, 10];                       // soldiers wanted on levels 10-15
+  const TARGET_BUILDINGS = ['woodcutter', 'sawmill', 'quarry', 'warehouse', 'guard_tower'];   // what the rival always builds
+  const militaryGoals = (level, rand) => {
+    const items = [];
+    if (level >= 10 && level < MISSION_START) items.push({ key: 'm:soldiers', type: 'soldiers', amount: TRAINING_ARMY[level - 10] });
+    if (level === MISSION_START - 1) items.push({ key: 'm:destroy:any', type: 'destroy', id: 'any', amount: 1 });
+    if (level >= MISSION_START && level < ELIMINATE_START) {
+      const first = TARGET_BUILDINGS[Math.floor(rand(60) * TARGET_BUILDINGS.length)];
+      const second = TARGET_BUILDINGS[(TARGET_BUILDINGS.indexOf(first) + 1 + Math.floor(rand(61) * (TARGET_BUILDINGS.length - 1))) % TARGET_BUILDINGS.length];
+      const amount = 1 + Math.floor((level - MISSION_START) / 4);
+      items.push({ key: 'm:kills', type: 'kills', amount: 6 + 2 * (level - MISSION_START) });
+      items.push({ key: 'm:destroy:' + first, type: 'destroy', id: first, amount });
+      if (level >= MISSION_START + 3) items.push({ key: 'm:destroy:' + second, type: 'destroy', id: second, amount });
+      if (level >= MISSION_START + 5) items.push({ key: 'm:destroy:any', type: 'destroy', id: 'any', amount: 3 + (level - MISSION_START - 5) });
+    }
+    if (level >= ELIMINATE_START) items.push({ key: 'm:eliminate', type: 'eliminate', amount: 1 });
+    return items;
   };
 
   // A level's goals: { items: [{ key, type: 'build'|'stock', id|resource, amount }], par (seconds) }
@@ -419,6 +444,12 @@
 
     // 3. Late trials: build the monument (the only building goal)
     if (info.trial && level >= 60 && buildings.monument) add({ key: 'b:monument', type: 'build', id: 'monument', amount: 1 });
+
+    // 4. Military. 1-15: practice for fighting a rival (an army, later a first strike). 16-25: only attack missions.
+    // From 26 the economy goals stay and the rival must be wiped out. (Destroying the rival's base always wins at once.)
+    const military = militaryGoals(level, rand);
+    if (level >= MISSION_START && level < ELIMINATE_START) items.length = 0;
+    military.forEach(add);
 
     return { items, par: parSeconds(items, level) };
   };
@@ -573,7 +604,7 @@
 
   /* ---------- Goal progress ---------- */
   const Economy = () => CityBuilder.Economy;
-  const progress = { run: null, level: null, latched: {}, seconds: 0, complete: false, stars: 0 };
+  const progress = { run: null, level: null, latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, destroyed: {}, won: false };
   const completeListeners = [];
   let checkTimer = 0, saveTimer = 0;
 
@@ -581,8 +612,9 @@
     let saved = null;
     try { saved = JSON.parse(store.get(PROGRESS_KEY)); } catch (e) { /* ignore */ }
     const same = saved && saved.run === runSeed && saved.level === state.info.level;
-    Object.assign(progress, { run: runSeed, level: state.info.level, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0 });
+    Object.assign(progress, { run: runSeed, level: state.info.level, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, won: same ? !!saved.won : false });
   };
+  const resetProgress = () => Object.assign(progress, { latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, destroyed: {}, won: false });
   const saveProgress = () => store.set(PROGRESS_KEY, JSON.stringify(progress));
 
   const countBuilt = id => {
@@ -594,9 +626,21 @@
     return count;
   };
 
+  // How far a goal has come
+  const haveOf = item => {
+    switch (item.type) {
+      case 'build': return countBuilt(item.id);
+      case 'soldiers': return CityBuilder.Garrison.soldiersOf(CityBuilder.Players.HUMAN);
+      case 'kills': return progress.kills;
+      case 'destroy': return progress.destroyed[item.id] || 0;
+      case 'eliminate': return progress.won ? 1 : 0;
+      default: return Economy() ? Economy().totalAmount(item.resource) : 0;
+    }
+  };
+
   // [{ ...item, have, done }] for the current level
   const evaluate = () => state.info.goal.items.map(item => {
-    const have = item.type === 'build' ? countBuilt(item.id) : (Economy() ? Economy().totalAmount(item.resource) : 0);
+    const have = haveOf(item);
     if (have >= item.amount) progress.latched[item.key] = true;
     return { ...item, have: Math.min(have, item.amount), done: !!progress.latched[item.key] };
   });
@@ -610,7 +654,7 @@
       checkTimer += deltaSeconds; saveTimer += deltaSeconds;
       if (checkTimer >= 1) {
         checkTimer = 0;
-        if (!progress.complete && evaluate().every(item => item.done)) {
+        if (!progress.complete && (progress.won || evaluate().every(item => item.done))) {
           progress.complete = true;
           progress.stars = starsFor(progress.seconds);
           saveProgress();
@@ -663,7 +707,7 @@
     newRun: (seed) => {
       runSeed = Number.isFinite(seed) ? seed : Math.floor(Math.random() * 1000000) + 1;
       store.set(RUN_KEY, runSeed);
-      progress.latched = {}; progress.seconds = 0; progress.complete = false; progress.stars = 0;
+      resetProgress();
       return setLevel(1);
     },
     // Call e.g., CityBuilder.Levels.onChange(info => regenerate world)
@@ -672,6 +716,15 @@
     // Unlocks
     unlockLevel: unlockLevelOf,
     isUnlocked: id => unlockLevelOf(id) <= state.info.level,
+
+    // Combat results for the goals: the player defeated an enemy unit or destroyed an enemy building
+    onDefeated(target) {
+      if (target.buildProgress === undefined) { progress.kills++; return; }
+      progress.destroyed.any = (progress.destroyed.any || 0) + 1;
+      progress.destroyed[target.type] = (progress.destroyed[target.type] || 0) + 1;
+    },
+    // The last rival is gone: the level is won, whatever the other goals say
+    win() { progress.won = true; },
 
     // Goals
     progress: evaluate,                                   // [{ key, type, id|resource, amount, have, done }]
@@ -682,7 +735,7 @@
     onComplete: fn => { completeListeners.push(fn); },
     // Same level again, from scratch: new world from the same seed, goals and time reset (the autosave is removed)
     restart() {
-      progress.latched = {}; progress.seconds = 0; progress.complete = false; progress.stars = 0;
+      resetProgress();
       saveProgress();
       const save = CityBuilder.Save;
       if (save && save.newGame) save.newGame(); else location.reload();

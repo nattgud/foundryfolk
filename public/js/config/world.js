@@ -596,9 +596,13 @@
   CityBuilder.Config.world = {
     seed: Math.floor(Math.random() * 1000000), // ny värld vid varje start. Skriv ett fast tal här för en bestämd värld
     clearRadius: 4,
+    roads: [],                 // landvägar { x1, y1, x2, y2, width, wobble, wavelength, phase } som ersätter vatten och berg med gräs (World.rivalSite lägger till en till varje bas)
     clearings: [],             // fler gräsplaner { x, y, radius } (datorspelarnas baser läggs in av World.rivalSite)
     rivalDistance: [100, 150], // hur långt från starten en datorspelares bas ligger (rutor)
     rivalClearRadius: 5,
+    fairResources: ['tree', 'rock', 'water', 'clay', 'iron_ore', 'coal', 'sand', 'limestone'], // avstånden hit ska vara ungefär lika för alla spelare
+    fairRadius: 36,            // så långt från basen mäts avstånden (rutor)
+    fairStep: 3,               // och så glest samplas rutorna
     features: [],
     rules,
   };

@@ -39,6 +39,13 @@
 
     trains: building => building.definition.job.trains,
 
+    // Alla en spelares soldater: inne i byggnader, utskickade och fria
+    soldiersOf(player) {
+      let count = World.units.filter(unit => unit.definition.isSoldier && unit.player === player).length;
+      for (const building of World.buildings) if (building.player === player && building.garrison) count += Utils.sumValues(building.garrison);
+      return count;
+    },
+
     isAttacking: building => building.stance === 'attack',
     setStance(building, stance) { building.stance = stance === 'attack' ? 'attack' : 'defend'; },
 
