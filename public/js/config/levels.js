@@ -125,8 +125,8 @@
     { id: 'archipelago', noun: 'Archipelago', keep: {}, extras: [
       c => {
         const lake = stretch(N(c, 24, 530), 2.2);
-        if (lake > 0.66) return 'water';
-        if (lake > 0.6 && R(c, 531) < 0.7) return 'sand';
+        if (lake > 0.76) return 'water';
+        if (lake > 0.7 && R(c, 531) < 0.7) return 'sand';
       },
     ] },
     { id: 'crag', noun: 'Crag', keep: { tree: 0.6 }, extras: [
@@ -246,7 +246,7 @@
     { id: 'ponds', name: 'Pond country',         // lots of small ponds
       near(c, p) {
         if (c.distanceFromOrigin < 16) return undefined;
-        const s = site(c, 20 + Math.floor(p.a * 8), 760, 0.8);
+        const s = site(c, 20 + Math.floor(p.a * 8), 760, 0.45);
         if (!s) return undefined;
         const d = Math.hypot(c.x - s.x, c.y - s.y), radius = 2 + 3.2 * s.roll + p.b;
         if (d < radius) return 'water';
@@ -345,6 +345,33 @@
       }
     }
     return have;
+  };
+
+  // Terrain behind what a level teaches or asks for. The world gives every base some of it within reach (World.endow).
+  // Only common terrain: rare and epic finds stay scarce and far away on purpose.
+  const ENDOWABLE = new Set(['tree', 'rock', 'clay', 'sand', 'limestone', 'coal', 'iron_ore', 'copper_ore', 'tin_ore', 'salt_ore',
+    'berry_bush', 'apple_tree', 'herbs', 'mushrooms']);
+
+  // Terrain that the first producer chain of a resource starts from (e.g. bread: farm, mill, bakery, so the farm's terrain)
+  const sourcesOf = (resourceId, level, guard = []) => {
+    if (guard.includes(resourceId)) return [];
+    for (const [id, definition] of Object.entries(CityBuilder.Config.buildings)) {
+      const job = definition.job;
+      if (!job || unlockLevelOf(id) > level || !outputsOf(definition).includes(resourceId)) continue;
+      if (job.kind === 'gather') return job.sourceTerrain ? [job.sourceTerrain] : [];
+      return Object.keys(job.inputs || {}).flatMap(input => sourcesOf(input, level, [...guard, resourceId]));
+    }
+    return [];
+  };
+
+  // Iron on every level (weapons), plus the terrain of the new buildings and of the stock goals
+  const needsOf = info => {
+    const needs = new Set(['iron_ore']);
+    for (const [id, definition] of Object.entries(CityBuilder.Config.buildings)) {
+      if (unlockLevelOf(id) === info.level && definition.job?.kind === 'gather') needs.add(definition.job.sourceTerrain);
+    }
+    for (const item of info.goal.items) if (item.type === 'stock') sourcesOf(item.resource, info.level).forEach(terrain => needs.add(terrain));
+    return [...needs].filter(terrain => ENDOWABLE.has(terrain));
   };
 
   const storageFactor = resourceId => (CityBuilder.Economy && CityBuilder.Economy.factorOf ? CityBuilder.Economy.factorOf(resourceId) : 1);
@@ -535,6 +562,7 @@
       get unlocks() { return Object.keys(CityBuilder.Config.buildings).filter(id => unlockLevelOf(id) === level && id !== 'hq' && !CityBuilder.Config.buildings[id].hiddenInMenu); },
       // Goals are built on first use, when all configs are loaded
       get goal() { return goals || (goals = makeGoals(info)); },
+      get needs() { return needsOf(info); },
       blurb: `${theme.noun}${signatureDef ? ' / ' + signatureDef.name : ''}. Gold ${Math.round(keep.gold_ore * 100)}%, Gemstone ${Math.round(keep.gemstone * 100)}%, Iron ${Math.round(keep.iron_ore * 100)}% of normal amount.` +
         (tagKeys.length ? ' ' + tagKeys.join(', ') + '.' : ''),
     };
@@ -574,8 +602,15 @@
     return c.hash(c.x, c.y, 9100 + world.seed * 131) < k ? terrain : undefined;
   };
 
+  // Distance to the nearest base (the player's start and every rival's), so that all players get the same protection
+  const homeDistance = c => {
+    let nearest = Infinity;
+    for (const base of world.meadows) nearest = Math.min(nearest, Math.hypot(c.x - base.x, c.y - base.y));
+    return nearest;
+  };
+
   const themeRule = context => {
-    if (context.distanceFromOrigin < 42) return undefined; // never at the start
+    if (homeDistance(context) < 42) return undefined; // never at a base
     const c = seeded(context);
     for (const extra of state.info.themeObject.extras) {
       const terrain = extra(c);
@@ -587,12 +622,12 @@
   // "near" fills what ore and rock left free, and shapes the start area from 12 tiles out.
   const signatureEarly = c => {
     const signature = state.info.signature;
-    if (!signature || !signature.def.early || c.distanceFromOrigin < 42) return undefined;
+    if (!signature || !signature.def.early || homeDistance(c) < 42) return undefined;
     return signature.def.early(c, signature.params);
   };
   const signatureNear = c => {
     const signature = state.info.signature;
-    if (!signature || !signature.def.near || c.distanceFromOrigin < 12) return undefined;
+    if (!signature || !signature.def.near || homeDistance(c) < 12) return undefined;
     return signature.def.near(c, signature.params);
   };
 

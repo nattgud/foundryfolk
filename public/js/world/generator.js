@@ -49,7 +49,22 @@
         if (Math.hypot(x - feature.x, y - feature.y) <= feature.radius && Utils.hash(x, y, 7) < .9) terrainType = feature.terrainType;
       }
       if (terrainType === 'water' || terrainType === 'mountain') terrainType = this.bridge(x, y, terrainType);
-      return this.carve(x, y, distanceFromOrigin, terrainType);
+      return this.meadow(x, y, this.carve(x, y, distanceFromOrigin, terrainType));
+    },
+
+    // Hemmaäng: byggnader kan bara stå på gräs, så runt varje bas (Config.world.meadows) blir skog och träsk gräs i stora fläckar.
+    // Mest nära basen och inget alls vid kanten, så skogen finns kvar på lagom avstånd. Träsk försvinner helt närmast basen.
+    meadow(x, y, terrainType) {
+      if (terrainType !== 'tree' && terrainType !== 'bog') return terrainType;
+      const { meadows, meadowRadius: radius } = CityBuilder.Config.world;
+      let open = 0;
+      for (const base of meadows) {
+        const t = Math.min(1, Math.max(0, (Math.hypot(x - base.x, y - base.y) - 6) / (radius - 6)));
+        open = Math.max(open, 1 - t * t * (3 - 2 * t));
+      }
+      if (!open) return terrainType;
+      const patch = Utils.fractalNoise(x / 8, y / 8, 41);
+      return (patch - .5) * 2.2 + .5 < open * (terrainType === 'bog' ? 1.2 : .5) ? 'grass' : terrainType;
     },
 
     // Landväg mellan spelarnas baser (Config.world.roads): vatten och berg längs vägen blir gräs så att basernas arméer alltid kan mötas.

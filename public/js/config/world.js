@@ -77,7 +77,7 @@
   };
 
   /* ---------- Landskapsmodell (beräknas en gång per ruta) ---------- */
-  const SEA_LEVEL = 0.4;
+  const SEA_LEVEL = 0.2;
   // Berg (terrängtypen 'mountain'): ruta med relief över nivån, med ojämn kant. Justera här för mer/mindre berg.
   const MOUNTAIN_LEVEL = 0.76;
   // Malm utanför berg: enstaka fynd på en eller två rutor, väldigt utspridda och helst intill vanlig sten.
@@ -598,6 +598,8 @@
     clearRadius: 4,
     roads: [],                 // landvägar { x1, y1, x2, y2, width, wobble, wavelength, phase } som ersätter vatten och berg med gräs (World.rivalSite lägger till en till varje bas)
     clearings: [],             // fler gräsplaner { x, y, radius } (datorspelarnas baser läggs in av World.rivalSite)
+    meadows: [{ x: 0, y: 0 }], // baserna: runt var och en glesas skog och träsk ut till gräs (World.rivalSite lägger till datorspelarnas)
+    meadowRadius: 28,          // hur långt ut den öppna marken når (rutor). Mest gräs nära basen, ingenting vid kanten
     rivalDistance: [100, 150], // hur långt från starten en datorspelares bas ligger (rutor)
     rivalClearRadius: 5,
     fairResources: ['tree', 'rock', 'water', 'clay', 'iron_ore', 'coal', 'sand', 'limestone'], // avstånden hit ska vara ungefär lika för alla spelare
