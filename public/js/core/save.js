@@ -137,6 +137,19 @@
         snapshot.fields.outputStock[unit.carriedResource] = (snapshot.fields.outputStock[unit.carriedResource] || 0) + 1;
       }
 
+      // Utskickade soldater räknas som hemma i sin byggnad (de går ut igen om fienden finns kvar). Fria soldater sparas var för sig.
+      const soldiers = [];
+      for (const unit of World.units) {
+        if (!unit.definition.isSoldier) continue;
+        const snapshot = unit.quarters && snapshots.get(unit.quarters);
+        if (snapshot) {
+          const garrison = snapshot.fields.garrison = snapshot.fields.garrison || {};
+          garrison[unit.kind] = (garrison[unit.kind] || 0) + 1;
+        } else {
+          soldiers.push({ kind: unit.kind, player: unit.player, x: unit.x, y: unit.y, hp: unit.hp });
+        }
+      }
+
       const haulers = World.units.filter(unit => unit.definition.isHauler);
       const carried = {};
       for (const unit of haulers) {
@@ -152,6 +165,7 @@
         speedIndex: Game ? Game.speedIndex : 0,
         headquarters: captureFields(headquarters, BUILDING_SKIP),
         buildings,
+        soldiers,
         carriers: haulers.length,
         carried,
         tiles: this.collectTileChanges(),
@@ -199,6 +213,14 @@
       }
 
       restoreFields(headquarters, data.headquarters);
+
+      for (const saved of data.soldiers || []) {
+        if (!Config.units[saved.kind]?.isSoldier) continue;
+        const unit = CityBuilder.Combat.spawnSoldier(saved.kind, 0, 0, saved.player);
+        unit.x = saved.x;
+        unit.y = saved.y;
+        unit.hp = saved.hp ?? unit.hp;
+      }
 
       const haulers = World.units.filter(unit => unit.definition.isHauler).length;
       for (let i = haulers; i < (data.carriers || 0); i++) World.spawnUnit('carrier', 0, 0);

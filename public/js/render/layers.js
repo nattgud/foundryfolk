@@ -279,6 +279,55 @@
     }
   });
 
+  // Strid: lagfärgad ring runt soldater, livsmätare på skadade enheter, attackstreck och soldaträknare på garnisoner
+  Renderer.addLayer('combat', (context, renderer) => {
+    const tileSize = renderer.tileSize, colors = Config.settings.playerColors;
+
+    for (const unit of World.units) {
+      const definition = unit.definition, pixelX = unit.x * tileSize, pixelY = unit.y * tileSize;
+
+      if (definition.isSoldier) {
+        context.beginPath();
+        context.arc(pixelX, pixelY, definition.imageSize / 2 + 1, 0, Math.PI * 2);
+        context.lineWidth = 2;
+        context.strokeStyle = colors[unit.player] || '#fff';
+        context.stroke();
+      }
+
+      if (unit.hp != null && unit.hp < definition.maxHp) {
+        const width = 14, top = pixelY - definition.imageSize / 2 - 5;
+        context.fillStyle = '#000';
+        context.fillRect(pixelX - width / 2 - 1, top - 1, width + 2, 4);
+        context.fillStyle = '#5fb55f';
+        context.fillRect(pixelX - width / 2, top, width * Math.max(0, unit.hp) / definition.maxHp, 2);
+      }
+    }
+
+    context.lineWidth = 2;
+    for (const effect of CityBuilder.Combat.effects) {
+      context.strokeStyle = effect.ranged ? '#c9a15a' : '#fff';
+      context.globalAlpha = Math.min(1, effect.life / 0.18);
+      context.beginPath();
+      context.moveTo(effect.x1 * tileSize, effect.y1 * tileSize);
+      context.lineTo(effect.x2 * tileSize, effect.y2 * tileSize);
+      context.stroke();
+    }
+    context.globalAlpha = 1;
+
+    context.font = 'bold 10px system-ui';
+    context.textAlign = 'right';
+    context.textBaseline = 'top';
+    for (const building of World.buildings) {
+      if (building.buildProgress < 1 || !CityBuilder.Garrison.isGarrison(building)) continue;
+      const text = CityBuilder.Garrison.count(building) + '/' + CityBuilder.Garrison.capacity(building);
+      const right = (building.x + 1) * tileSize - 3, top = building.y * tileSize + 2;
+      context.fillStyle = '#000';
+      context.fillText(text, right + 1, top + 1);
+      context.fillStyle = '#fff';
+      context.fillText(text, right, top);
+    }
+  });
+
   Renderer.addLayer('workerLink', (context, renderer) => {
     const building = CityBuilder.Game.selectedBuilding, worker = building && building.workerUnit;
     if (!worker || worker.removed || !building.definition.job || building.definition.job.kind !== 'gather') return;

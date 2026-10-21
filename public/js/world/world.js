@@ -1,7 +1,7 @@
 /* Världstillstånd: oändlig terräng i chunks, byggnader och enheter. */
 (function (CityBuilder) {
   'use strict';
-  const { Utils, Config } = CityBuilder;
+  const { Utils, Config, Players } = CityBuilder;
 
   const World = {
     chunks: new Map(),          // chunkNyckel -> lista av rutor
@@ -41,9 +41,10 @@
       return !this.buildingAt(x, y) && this.getTile(x, y).terrainType === requiredTerrain;
     },
 
-    placeBuilding(buildingType, x, y, isInstant) {
+    // player = vem byggnaden tillhör (se core/players.js)
+    placeBuilding(buildingType, x, y, isInstant, player = Players.HUMAN) {
       const building = {
-        id: this.nextBuildingId++, type: buildingType, definition: Config.buildings[buildingType], x, y,
+        id: this.nextBuildingId++, type: buildingType, definition: Config.buildings[buildingType], x, y, player,
         buildProgress: isInstant ? 1 : 0, paused: false, removed: false,
         inputStock: {},       // levererade insatser
         outputStock: {},      // färdiga produkter i utbufferten
@@ -67,10 +68,14 @@
       this.units = this.units.filter(unit => unit.homeBuilding !== building);
     },
 
-    // homeBuilding = byggnaden enheten arbetar åt (endast arbetare)
-    spawnUnit(kind, x, y, homeBuilding) {
+    // homeBuilding = byggnaden enheten arbetar åt (endast arbetare).
+    // player = vem enheten tillhör: det som anges, annars byggnadens ägare, enhetstypens standard eller spelaren.
+    spawnUnit(kind, x, y, homeBuilding, player) {
+      const definition = Config.units[kind];
       const unit = {
-        kind, definition: Config.units[kind], x: x + .5, y: y + .5, homeBuilding,
+        kind, definition, x: x + .5, y: y + .5, homeBuilding,
+        player: player ?? homeBuilding?.player ?? definition.player ?? Players.HUMAN,
+        hp: definition.maxHp ?? null,   // null = går inte att skada
         stepQueue: [], carriedResource: null, idleCooldown: 0, status: '',
         deliveryTask: null, hasPickedUp: false,
       };

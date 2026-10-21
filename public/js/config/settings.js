@@ -45,5 +45,14 @@ CityBuilder.Config.settings = {
     },
     music: ["music/theme.mp3"],
   },
-  systemOrder: ['construction', 'production', 'logistics', 'units'],
+  playerColors: { 1: '#4aa3ff', 2: '#e5534b' }, // lagfärg per spelare (ring runt soldater), se core/players.js
+  military: {
+    searchRadius: 20,          // standardräckvidd (rutor) för att upptäcka fiender
+    leashFactor: 1.25,         // en soldat jagar inte längre bort än searchRadius * detta från sin byggnad eller post
+    scanIntervalSeconds: 0.5,  // hur ofta byggnader och soldater letar efter fiender
+    repathSeconds: 0.5,        // minsta tid mellan omräkningar av vägen mot ett rörligt mål
+    retrySeconds: 2,           // väntetid innan en soldat försöker igen efter att något inte gick att nå
+    workerRespawnSeconds: 10,  // tid innan en dödad arbetare ersätts
+  },
+  systemOrder: ['construction', 'production', 'logistics', 'combat', 'units'],
 };

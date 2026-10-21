@@ -12,6 +12,7 @@ Build a growing production network, gather resources, process materials, and exp
 - **Manage resources:** Balance resource production, consumption, and storage capacity.
 - **Automate logistics:** Carriers transport resources between buildings and warehouses.
 - **Develop production chains:** Turn raw materials into processed goods, metals, tools, and other products.
+- **Defend your settlement:** Build Guard Towers and Garrisons that train Swordsmen, Archers and Knights from weapons, armor and horses made in your workshops. Soldiers wait inside and march out when enemies come within range.
 - **Unlock new buildings:** Progress through levels to gain access to more advanced production.
 - **Complete objectives:** Each level has its own goals. Complete them to progress and earn stars based on your completion time.
 - **Explore new maps:** Levels feature procedurally generated landscapes, different terrain layouts, and varying resource availability.

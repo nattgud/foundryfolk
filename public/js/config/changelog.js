@@ -4,6 +4,12 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.393': [
+      'Military: build Guard Towers and Garrisons that train Swordsmen, Archers and Knights',
+      'Soldiers wait inside their building, attack enemies that come within range, and return when the area is clear',
+      'New workshops for weapons and armor (Swordsmith, Bowyer, Leatherworker, Armorsmith) and a Horse Breeder for Knights',
+      'Every unit and building now belongs to a player',
+    ],
     '0.4.28': [
       "Added background music",
 	  "Cleaned up assets",

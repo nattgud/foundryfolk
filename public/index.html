@@ -26,7 +26,7 @@
   <div id="toast"></div>
 
   <script>
-    var version = "0.4.392";
+    var version = "0.4.393";
 
     // Laddningsstapel. set(0-1, text), paint() ger webbläsaren tid att rita, done() döljer rutan.
     window.GameLoading = {
@@ -61,6 +61,7 @@
         // 1. Kärna
         'js/core/namespace.js',
         'js/core/util.js',
+        'js/core/players.js',
         'js/core/heap.js',
         'js/core/assets.js',
         'js/core/save.js',
@@ -85,12 +86,14 @@
         'js/systems/economy.js',
         'js/systems/jobs.js',
         'js/systems/behaviors.js',
+        'js/systems/garrison.js',
         'js/systems/logistics.js',
         'js/systems/units.js',
         'js/systems/construction.js',
         'js/systems/production.js',
         'js/systems/pathdecay.js',
         'js/systems/deer.js',
+        'js/systems/combat.js',
         // 6. Rendering, indata, UI
         'js/render/shapes.js',
         'js/render/renderer.js',

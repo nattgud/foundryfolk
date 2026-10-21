@@ -184,7 +184,19 @@
   Behaviors.register('gather', {
     onBuilt(building) { building.workerUnit = World.spawnUnit('worker', building.x, building.y, building); },
 
-    update(building) { building.status = building.workerUnit ? building.workerUnit.status : ''; },
+    update(building, deltaSeconds) {
+      // En arbetare som dödats i strid ersätts efter en stund
+      if (building.workerUnit && building.workerUnit.removed) {
+        building.workerUnit = null;
+        building.workerRespawn = Config.settings.military.workerRespawnSeconds;
+      }
+      if (!building.workerUnit && building.workerRespawn != null && (building.workerRespawn -= deltaSeconds) <= 0) {
+        building.workerRespawn = null;
+        this.onBuilt(building);
+      }
+
+      building.status = building.workerUnit ? building.workerUnit.status : '';
+    },
 
     // Jakt/fångst: arbetaren går till närmaste enhet av rätt typ, väntar, och om bytet fortfarande är nära
     // tas det bort ur världen och arbetaren bär hem resursen. Har bytet hunnit iväg avbryts passet och

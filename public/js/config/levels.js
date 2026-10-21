@@ -65,10 +65,12 @@
     mill: 6, brickworks: 6,
     apple_gatherer: 7, mushroom_gatherer: 7, sand_collector: 7,
     bakery: 8,
-    coal_mine: 9,
-    large_warehouse: 10, limestone_quarry: 10,
+    coal_mine: 9, leatherworker: 9,
+    large_warehouse: 10, limestone_quarry: 10, bowyer: 10, guard_tower: 10,
+    horse_breeder: 11,
     iron_mine: 12, iron_smelter: 13,
     axesmith: 14, picksmith: 14, hammersmith: 15, scythesmith: 15,
+    swordsmith: 16, garrison: 17, armorsmith: 19,
     copper_mine: 18, tin_mine: 18, copper_smelter: 20, tin_smelter: 20,
     bronze_foundry: 22, rock_crusher: 22,
     salt_mine: 25, sulfur_mine: 25,
@@ -314,7 +316,9 @@
     'Ancient', 'Wild', 'Frostbitten', 'Secret', 'Rusty', 'Lonely', 'Mighty', 'Enchanted'];
 
   /* ---------- Goals ---------- */
-  const SKIP_GOAL_RESOURCES = new Set(['water', 'seeds', 'straw', 'bone', 'animal', 'ash', 'cursed_ash', 'coins']);
+  // Militära resurser (vapen, rustningar, hästar) går åt till soldater och ingår inte i banmålen
+  const SKIP_GOAL_RESOURCES = new Set(['water', 'seeds', 'straw', 'bone', 'animal', 'ash', 'cursed_ash', 'coins',
+    'sword', 'bow', 'leather_armor', 'iron_armor', 'horse']);
 
   const outputsOf = definition => {
     const job = definition.job;

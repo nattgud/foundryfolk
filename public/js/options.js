@@ -182,12 +182,14 @@
         stats.buildingTypes.set(name, (stats.buildingTypes.get(name) || 0) + 1);
       }
 
-      stats.workers = 0; stats.carriers = 0; stats.deer = 0; stats.otherUnits = 0; stats.units = 0;
+      stats.workers = 0; stats.carriers = 0; stats.deer = 0; stats.otherUnits = 0; stats.units = 0; stats.soldiers = 0;
+      for (const building of World.buildings) if (building.garrison) stats.soldiers += Object.values(building.garrison).reduce((a, b) => a + b, 0);
       for (const unit of World.units) {
         if (unit.removed) continue;
         stats.units++;
         if (unit.definition && unit.definition.isHauler) stats.carriers++;
         else if (unit.kind === 'deer') stats.deer++;
+        else if (unit.definition && unit.definition.isSoldier) stats.soldiers++;
         else if (unit.homeBuilding) stats.workers++;
         else stats.otherUnits++;
       }
@@ -223,6 +225,7 @@
         row(t('Carriers'), stats.carriers),
         row(t('Deer'), stats.deer)
       );
+      if (stats.soldiers) body.append(row(t('Soldiers'), stats.soldiers));
       if (stats.otherUnits) body.append(row(t('Other units'), stats.otherUnits));
       body.append(
         row(t('Total units'), stats.units),

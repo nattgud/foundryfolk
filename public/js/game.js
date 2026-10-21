@@ -71,7 +71,7 @@
       }
       if (Pathfinder.findPathNow(World.headquarters.x, World.headquarters.y, x, y) === null) return this.refuse(t('This spot cannot be reached'));
       if (!Economy.spend(definition.buildCost)) return this.refuse(t('Not enough resources'));
-      World.placeBuilding(buildingType, x, y);
+      World.placeBuilding(buildingType, x, y, false, CityBuilder.Players.HUMAN);
       CityBuilder.Sound?.play('build', { x, y });
     },
 
@@ -83,6 +83,7 @@
 
     demolish(building) {
       CityBuilder.Sound?.play('demolish', { x: building.x, y: building.y });
+      CityBuilder.Behaviors.forBuilding(building)?.onDemolished?.(building); // t.ex. en garnison som släpper ut sina soldater
       World.removeBuilding(building);
       Economy.refund(building.definition.buildCost);
       // Lämna tillbaka allt byggnaden höll i

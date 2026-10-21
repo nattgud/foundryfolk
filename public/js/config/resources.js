@@ -68,6 +68,15 @@ CityBuilder.Config.resources = {
 
   potion:           { name: 'Potion',               color: '#895ba6' },
 
+  // Vapen och rustningar (används för att träna soldater, se config/units.js)
+  sword:            { name: 'Sword',                color: '#d5dbe1' },
+  bow:              { name: 'Bow',                  color: '#9a6b3c' },
+  leather_armor:    { name: 'Leather Armor',        color: '#8a5a38' },
+  iron_armor:       { name: 'Iron Armor',           color: '#8f9bb0' },
+
+  // Hästar föds upp och krävs för riddare
+  horse:            { name: 'Horse',                color: '#7a5636' },
+
   // Magiska och förbannade resurser
   crystal:          { name: 'Crystal',              color: '#675080' },
   moonstone:        { name: 'Moonstone',            color: '#8b91b8' },

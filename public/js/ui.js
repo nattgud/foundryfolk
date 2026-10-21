@@ -39,6 +39,10 @@
       name: 'Crafting & tools',
       symbol: '🔨'
     },
+    military: {
+      name: 'Military',
+      symbol: '⚔️'
+    },
     magic: {
       name: 'Magic & ancient sites',
       symbol: '✦'
@@ -1746,8 +1750,9 @@
         .map(([resourceId, amount]) => {
           const resource = Config.resources[resourceId] || {};
           const name = this.resourceName(resourceId).replace(/"/g, '&quot;');
+          // Saknas bildfilen (t.ex. nya resurser utan grafik än) visas resursens färgruta i stället
           const icon = resource.image && useImages
-            ? `<img class="info-res-icon" src="${resource.image}" alt="${name}" title="${name}" draggable="false">`
+            ? `<img class="info-res-icon" src="${resource.image}" alt="${name}" title="${name}" draggable="false" style="background:${resource.color || '#3a444d'}" onerror="this.removeAttribute('src');this.removeAttribute('alt')">`
             : `<span class="info-res-icon" title="${name}" style="background:${resource.color || '#3a444d'}"></span>`;
           return `<span class="info-res">${icon}${amount}</span>`;
         })
@@ -1780,6 +1785,10 @@
         const inputs = this.formatResources(job.inputs);
         const outputs = this.formatResources(job.outputs);
         lines.push(inputs ? t('Processing: {inputs} → {outputs}', { inputs, outputs }) : t('Producing: {outputs}', { outputs }));
+      } else if (job?.kind === 'garrison') {
+        lines.push(t('Houses up to {n} soldiers', { n: job.capacity }));
+        lines.push(t('Trains: {list}', { list: job.trains.map(kind => this.unitName(kind)).join(', ') }));
+        lines.push(t('Range: {n} tiles', { n: this.getBuildingRange(definition) }));
       }
 
       if (definition.placeOnTerrain) {
@@ -1882,7 +1891,7 @@
     // Hur många rutor en byggnad når (0 om den inte har någon räckvidd)
     getBuildingRange(definition) {
       const job = definition && definition.job;
-      return job && job.kind === 'gather' && job.searchRadius > 0 ? job.searchRadius : 0;
+      return job && (job.kind === 'gather' || job.kind === 'garrison') && job.searchRadius > 0 ? job.searchRadius : 0;
     },
 
     // Hover-tooltip för byggnader och terrängnoder under musen (inte på pekskärm, inte vid panorering)
@@ -1959,9 +1968,18 @@
           ? `<button id="demolishButton">${t('Demolish')}</button>`
           : '';
 
+        // Garnisoner: en knapp per soldattyp som byggnaden kan träna
+        const trainButtons = CityBuilder.Garrison.isGarrison(building)
+          ? building.definition.job.trains.map(kind => `<button class="train-button" data-kind="${kind}">${this.unitName(kind)}</button>`).join('')
+          : '';
+
         panel.innerHTML =
           `<div><b>${this.buildingName(building.definition)}</b><br><span id="infoStatus"></span></div>` +
-          `<div style="display:flex;gap:6px">${pauseButton}${demolishButton}</div>`;
+          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${trainButtons}${pauseButton}${demolishButton}</div>`;
+
+        for (const button of panel.querySelectorAll('.train-button')) {
+          button.onclick = () => CityBuilder.Garrison.setTrainingType(building, button.dataset.kind);
+        }
 
         if (byId('pauseButton')) {
           byId('pauseButton').onclick = () => {
@@ -1983,10 +2001,27 @@
       const range = this.getBuildingRange(building.definition);
       const imports = building.definition.isStorage ? '' : this.resourceIconsHtml(building.inputStock);
       const exports = building.definition.isStorage ? '' : this.resourceIconsHtml(building.outputStock);
+
+      // Garnison: soldater (inne + ute), vald träning och vad den kostar, och markering av vald soldattyp
+      let garrisonHtml = '';
+      if (building.buildProgress >= 1 && CityBuilder.Garrison.isGarrison(building)) {
+        const Garrison = CityBuilder.Garrison, chosen = Garrison.trainingType(building);
+        const roster = Object.entries(Garrison.ensure(building).garrison)
+          .map(([kind, count]) => `${count} ${lower(this.unitName(kind))}`).join(', ');
+        const outside = building.deployed.length ? ` (${t('{n} out fighting', { n: building.deployed.length })})` : '';
+        const training = building.isCrafting ? `${t('Training: {unit}', { unit: this.unitName(building.trainingUnit) })}<br>` : '';
+        const cost = this.resourceIconsHtml(Config.units[chosen].training.inputs);
+        garrisonHtml =
+          `<br>${t('Soldiers: {n}/{max}', { n: Garrison.count(building), max: Garrison.capacity(building) })}${roster ? ' – ' + roster : ''}${outside}` +
+          `<br>${training}${t('Next soldier: {unit}', { unit: this.unitName(chosen) })} ${cost}`;
+        for (const button of byId('info').querySelectorAll('.train-button')) button.classList.toggle('on', button.dataset.kind === chosen);
+      }
+
       const html = building.definition.isStorage
         ? t('Storage: {list}', { list: this.resourceIconsHtml(building.storedGoods) || t('empty') })
         : statusText +
           (this.efficiencyText(building) ? `<br>${this.efficiencyText(building)}` : '') +
+          garrisonHtml +
           (imports ? `<br>${t('Import: {list}', { list: imports })}` : '') +
           (exports ? `<br>${t('Export: {list}', { list: exports })}` : '') +
           (range ? `<br>${t('Range: {n} tiles', { n: range })}` : '');

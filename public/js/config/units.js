@@ -1,6 +1,13 @@
 /* Enhetstyper.
    isHauler: tar logistikuppdrag. wearsPaths: trampar upp stigar. speedMultiplier: gånghastighet.
-   fallbackShape/fallbackSize/color = reservgrafik, imageSize = bildstorlek i pixlar. */
+   fallbackShape/fallbackSize/color = reservgrafik, imageSize = bildstorlek i pixlar.
+   player: vem enheten tillhör (se core/players.js). Utelämnat = den som äger byggnaden som skapar den, annars spelaren.
+   maxHp: livspoäng. Enheter utan maxHp går inte att skada.
+
+   Soldater (isSoldier) har dessutom:
+   attackDamage, attackRange (rutor), attackCooldown (sekunder mellan slag), armor (dras från skadan, minst 1 går alltid igenom),
+   searchRadius (hur långt från sin post eller byggnad en soldat upptäcker fiender),
+   training: { inputs, seconds } = vad en ny soldat kostar och hur lång tid träningen tar i en garnisonsbyggnad. */
 
   // SPRITE SHEETS (frame: 64 on a unit = sheet; without frame the whole image is drawn as one picture)
   // Cells are frame x frame px. Rows = state/direction, columns = animation frames.
@@ -17,9 +24,10 @@
   // If the art faces left by default: imageFacesLeft: true. Custom row order: rows: { idle: 0, up: 1, ... }
 CityBuilder.Config.units = {
   carrier: {
-    isHauler: true, 
-    wearsPaths: true, 
-    speedMultiplier: 0.5, 
+    isHauler: true,
+    wearsPaths: true,
+    maxHp: 8,
+    speedMultiplier: 0.5,
     color: '#4fd1e8', 
     fallbackShape: 'square', 
     fallbackSize: 8, 
@@ -30,6 +38,7 @@ CityBuilder.Config.units = {
     imageCarrying: 'images/units/carrier_loaded.png',
   },
   deer: {
+    player: CityBuilder.Players.NEUTRAL,
     isHauler: false, 
     wearsPaths: false, 
     speedMultiplier: 0.3, 
@@ -40,24 +49,53 @@ CityBuilder.Config.units = {
     deerBreedCooldown: 0,
     image: 'images/units/deer.png', 
   },
-  // warrior: {
-  //   isHauler: false,
-  //   wearsPaths: true,
-  //   speedMultiplier: 1,
-  //   color: '#4fd1e8',
-  //   fallbackShape: 'square',
-  //   fallbackSize: 8,
-  //   imageSize: 16,
-  //   image: 'images/units/carrier.png',
-  //   imageCarrying: 'images/units/carrier_loaded.png',
-
-  //   isSoldier: true,
-  //   searchRadius: 10,
-  //   attackRange: 1,
-  //   attackDamage: 1,
-  //   attackCooldown: 1,
-  // },
+  swordsman: {
+    isSoldier: true,
+    maxHp: 30,
+    armor: 1,
+    attackDamage: 5,
+    attackRange: 1.5,
+    attackCooldown: 1,
+    searchRadius: 20,
+    training: { inputs: { sword: 1, leather_armor: 1 }, seconds: 20 },
+    speedMultiplier: 1,
+    color: '#cfd6dd',
+    fallbackShape: 'circle',
+    fallbackSize: 6,
+    imageSize: 16,
+  },
+  archer: {
+    isSoldier: true,
+    maxHp: 18,
+    armor: 0,
+    attackDamage: 4,
+    attackRange: 8,
+    attackCooldown: 1.2,
+    searchRadius: 20,
+    training: { inputs: { bow: 1, leather_armor: 1 }, seconds: 15 },
+    speedMultiplier: 1,
+    color: '#8fbf6a',
+    fallbackShape: 'circle',
+    fallbackSize: 6,
+    imageSize: 16,
+  },
+  knight: {
+    isSoldier: true,
+    maxHp: 50,
+    armor: 3,
+    attackDamage: 8,
+    attackRange: 1.5,
+    attackCooldown: 1,
+    searchRadius: 20,
+    training: { inputs: { sword: 1, iron_armor: 1, horse: 1 }, seconds: 30 },
+    speedMultiplier: 1.6,   // till häst
+    color: '#e0b44a',
+    fallbackShape: 'circle',
+    fallbackSize: 7,
+    imageSize: 16,
+  },
   worker:  {
+    maxHp: 10,
     speedMultiplier: 1,
     color: '#ffffff',
     fallbackShape: 'circle',
