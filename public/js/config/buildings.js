@@ -168,6 +168,20 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 20
   },
+  stables: {
+    name: 'Stables',
+    category: 'farming',
+    symbol: 'HB',
+    color: '#8b5e3c',
+    buildCost: { plank: 8, wood: 6, stone: 4 },
+    job: {
+      kind: 'craft',
+      inputs: { grain: 3, water: 1 },
+      outputs: { horse: 1 },
+      craftSeconds: 40
+    },
+    buildDuration: 40
+  },
   hunters_cottage: {
     name: 'Hunters Cottage',
     category: 'farming',
@@ -643,6 +657,67 @@ CityBuilder.Config.buildings = {
     buildDuration: 45
   },
 
+  
+  swordsmith: {
+    name: 'Swordsmith',
+    category: 'crafting',
+    symbol: 'SW',
+    color: '#9aa4b2',
+    buildCost: { plank: 8, stone: 8 },
+    job: {
+      kind: 'craft',
+      inputs: { iron: 2, wood: 1 },
+      outputs: { sword: 1 },
+      craftSeconds: 15
+    },
+    buildDuration: 45
+  },
+
+  bowyer: {
+    name: 'Bowyer',
+    category: 'crafting',
+    symbol: 'BY',
+    color: '#a8784a',
+    buildCost: { plank: 8, stone: 4 },
+    job: {
+      kind: 'craft',
+      inputs: { wood: 2, leather: 1 },
+      outputs: { bow: 1 },
+      craftSeconds: 12
+    },
+    buildDuration: 35
+  },
+
+  leatherworker: {
+    name: 'Leatherworker',
+    category: 'crafting',
+    symbol: 'LT',
+    color: '#7a4e32',
+    buildCost: { plank: 6, stone: 4 },
+    job: {
+      kind: 'craft',
+      inputs: { leather: 3 },
+      outputs: { leather_armor: 1 },
+      craftSeconds: 12
+    },
+    buildDuration: 30
+  },
+
+  armorsmith: {
+    name: 'Armorsmith',
+    category: 'crafting',
+    symbol: 'AM',
+    color: '#8794ad',
+    buildCost: { plank: 8, stone: 8 },
+    job: {
+      kind: 'craft',
+      inputs: { iron: 4, leather: 1 },
+      outputs: { iron_armor: 1 },
+      craftSeconds: 20
+    },
+    buildDuration: 45
+  },
+
   // Magiska och forntida fynd
   crystal_gatherer: {
     name: 'Crystal Gatherer',
@@ -708,83 +783,6 @@ CityBuilder.Config.buildings = {
     buildDuration: 90
   },
 
-  // Militär: vapen, rustningar och hästar tillverkas som vanliga resurser (kind: 'craft').
-  // Vakttorn och garnison (kind: 'garrison', se systems/garrison.js) tränar soldater av dem. capacity = antal soldater,
-  // trains = vilka soldattyper byggnaden kan träna (receptet finns på enheten i config/units.js), searchRadius = räckvidd för fiender.
-  swordsmith: {
-    name: 'Swordsmith',
-    category: 'military',
-    symbol: 'SW',
-    color: '#9aa4b2',
-    buildCost: { plank: 8, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { iron: 2, wood: 1 },
-      outputs: { sword: 1 },
-      craftSeconds: 15
-    },
-    buildDuration: 45
-  },
-
-  bowyer: {
-    name: 'Bowyer',
-    category: 'military',
-    symbol: 'BY',
-    color: '#a8784a',
-    buildCost: { plank: 8, stone: 4 },
-    job: {
-      kind: 'craft',
-      inputs: { wood: 2, leather: 1 },
-      outputs: { bow: 1 },
-      craftSeconds: 12
-    },
-    buildDuration: 35
-  },
-
-  leatherworker: {
-    name: 'Leatherworker',
-    category: 'military',
-    symbol: 'LT',
-    color: '#7a4e32',
-    buildCost: { plank: 6, stone: 4 },
-    job: {
-      kind: 'craft',
-      inputs: { leather: 3 },
-      outputs: { leather_armor: 1 },
-      craftSeconds: 12
-    },
-    buildDuration: 30
-  },
-
-  armorsmith: {
-    name: 'Armorsmith',
-    category: 'military',
-    symbol: 'AM',
-    color: '#8794ad',
-    buildCost: { plank: 8, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { iron: 4, leather: 1 },
-      outputs: { iron_armor: 1 },
-      craftSeconds: 20
-    },
-    buildDuration: 45
-  },
-
-  horse_breeder: {
-    name: 'Horse Breeder',
-    category: 'military',
-    symbol: 'HB',
-    color: '#8b5e3c',
-    buildCost: { plank: 8, wood: 6, stone: 4 },
-    job: {
-      kind: 'craft',
-      inputs: { grain: 3, water: 1 },
-      outputs: { horse: 1 },
-      craftSeconds: 40
-    },
-    buildDuration: 40
-  },
 
   guard_tower: {
     name: 'Guard Tower',
