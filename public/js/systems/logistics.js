@@ -6,19 +6,23 @@
   const { Config, World, Utils, Jobs, Economy, Behaviors, Players } = CityBuilder;
 
   // Standardvärden: saknas en inställning i cfg() används dessa (planeringen stannar annars helt)
-  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, baseCarriers: 5, carriersPerBuilding: 1.5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40 }, Config.settings.logistics);
+  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, baseCarriers: 5, carriersPerBuilding: 1.5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40, unreachableSeconds: 30 }, Config.settings.logistics);
 
   const Logistics = {
     tasks: [],              // äldsta först
     planningTimer: 0,
     cursor: 0,              // var nästa planering börjar i byggnadslistan (så att inga byggnader alltid kommer sist)
     load: {},               // spelare -> antal väntande uppdrag (maxTasks gäller per spelare)
+    unreachable: new Map(), // "källa>mål" -> tid då paret får provas igen (efter att en bärare inte hittade någon väg)
+
+    pairKey: (source, destination) => source.id + '>' + destination.id,
+    isUnreachable(source, destination) { return (this.unreachable.get(this.pairKey(source, destination)) ?? 0) > (this.time || 0); },
 
     // Närmaste källa (hus eller lager) med ledigt innehåll av resursen
     findSupplier(resourceId, nearBuilding) {
       let best = null, bestDistance = 1e9;
       for (const candidate of World.buildings) {
-        if (candidate === nearBuilding || candidate.buildProgress < 1 || candidate.player !== nearBuilding.player) continue;
+        if (candidate === nearBuilding || candidate.buildProgress < 1 || candidate.player !== nearBuilding.player || this.isUnreachable(candidate, nearBuilding)) continue;
         const available = candidate.definition.isStorage
           ? (candidate.storedGoods[resourceId] || 0) - (candidate.storedReserved[resourceId] || 0)
           : (candidate.outputStock[resourceId] || 0) - (candidate.outputReserved[resourceId] || 0);
@@ -93,6 +97,7 @@
     },
 
     purgeInvalidTasks() { // släng uppdrag vars källa eller mål rivits
+      for (const [key, until] of this.unreachable) if (until <= (this.time || 0)) this.unreachable.delete(key);
       this.tasks = this.tasks.filter(task => {
         if (task.destination.removed) { this.releaseReservation(task.source, task.resource); this.releaseIncoming(task); return false; }
         if (task.source.removed) {
@@ -176,7 +181,9 @@
           const surplus = building.outputStock[resourceId] - (building.outputReserved[resourceId] || 0) - (pressure ? 0 : threshold);
           for (let n = 0; n < surplus && !Economy.isFull(resourceId, building.player); n++) {
             if (this.full(building.player)) break;
-            this.createTask(building, Economy.nearestStorage(building), resourceId);
+            const storage = Economy.nearestStorage(building);
+            if (this.isUnreachable(building, storage)) break;
+            this.createTask(building, storage, resourceId);
           }
         }
       }
@@ -253,6 +260,13 @@
         destination.incomingCount[task.resource]--;
       }
       carrier.carriedResource = null; carrier.deliveryTask = null; carrier.hasPickedUp = false;
+    },
+
+    // Bäraren hittade ingen väg: uppdraget bryts och paret källa-mål provas inte om på en stund (annars pendlar bärare i evighet)
+    failTask(carrier) {
+      const task = carrier.deliveryTask;
+      if (task) this.unreachable.set(this.pairKey(task.source, task.destination), (this.time || 0) + cfg().unreachableSeconds);
+      this.abortTask(carrier);
     },
 
     abortTask(carrier) { // bryt uppdrag och släpp reservationer

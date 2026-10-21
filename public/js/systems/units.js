@@ -463,7 +463,7 @@
 
     handlePathFailure(unit) {
       unit.stepQueue.length = 0; unit.idleCooldown = 1; unit.status = "Can't reach";
-      Logistics.abortTask(unit);
+      Logistics.failTask(unit);
       if (unit.definition.isSoldier) CityBuilder.Combat.onPathFailure(unit);
     },
   };

@@ -191,6 +191,8 @@
         startIndex: (startY - minY) * width + (startX - minX),
         goalIndex: (goalY - minY) * width + (goalX - minX),
         heuristicScale: cheapest * wearFactor * (settings.heuristicWeight ?? 1.3),
+        // Långa vägar behöver fler noder (kring sjöar och berg): gränsen växer med avståndet, annars blir fjärran utposter onåbara
+        nodeLimit: Math.max(settings.nodeLimit, (Math.abs(startX - goalX) + Math.abs(startY - goalY)) * (settings.nodeLimitPerTile ?? 80)),
       };
       this.gCost[s.startIndex] = 0; this.gStamp[s.startIndex] = this.searchId; this.parent[s.startIndex] = -1;
       this.push(this.heuristic(s, startX, startY), s.startIndex);
@@ -212,7 +214,7 @@
       const s = this.s, request = this.active, id = this.searchId;
       const { minX, minY, width, goalIndex } = s, maxX = minX + width, maxY = minY + s.height;
       const { gCost, gStamp, closed, parent } = this;
-      const nodeLimit = this.settings().nodeLimit;
+      const nodeLimit = s.nodeLimit;
 
       while (this.heapSize) {
         if (budget-- <= 0) return 0;

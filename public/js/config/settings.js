@@ -17,7 +17,7 @@ CityBuilder.Config.settings = {
   wearPerPass: 0.1,              // slitage per bärarpassage
   maxWearSpeedBonus: .25,         // max hastighetsökning på helt upptrampad ruta
   maxPathSearchesPerFrame: 16,
-  pathfinding: { nodeLimit: 3000, margin: 24, maxCells: 160000, maxCachedPaths: 800 },
+  pathfinding: { nodeLimit: 3000, nodeLimitPerTile: 80, margin: 24, maxCells: 160000, maxCachedPaths: 800 },
   logistics: {
     planningIntervalSeconds: .25,
     maxTasks: 8,

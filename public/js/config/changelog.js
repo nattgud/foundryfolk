@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.398': [
+      'Fixed carriers failing to deliver to far-away buildings such as outpost guard towers',
+    ],
     '0.4.397': [
       'Rival bases can now be attacked: destroy a rival\'s base to win the level, lose yours and the level is lost',
       'Levels 10-15 train you for combat, levels 16 and up are attack missions (destroy buildings, defeat units, wipe out the rival)',
