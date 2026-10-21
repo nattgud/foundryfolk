@@ -598,6 +598,8 @@
     clearRadius: 4,
     roads: [],                 // landvägar { x1, y1, x2, y2, width, wobble, wavelength, phase } som ersätter vatten och berg med gräs (World.rivalSite lägger till en till varje bas)
     clearings: [],             // fler gräsplaner { x, y, radius } (datorspelarnas baser läggs in av World.rivalSite)
+    deposits: ['iron_ore', 'copper_ore', 'tin_ore', 'silver_ore', 'gold_ore', 'coal', 'salt_ore', 'sulfur', 'gemstone', 'crystal', 'moonstone'], // fyndigheter som inte får ligga på små holmar (Generator.settle)
+    isletSize: 30,             // gångbar mark som hänger ihop med färre rutor än så här räknas som holme
     meadows: [{ x: 0, y: 0 }], // baserna: runt var och en glesas skog och träsk ut till gräs (World.rivalSite lägger till datorspelarnas)
     meadowRadius: 28,          // hur långt ut den öppna marken når (rutor). Mest gräs nära basen, ingenting vid kanten
     rivalDistance: [100, 150], // hur långt från starten en datorspelares bas ligger (rutor)

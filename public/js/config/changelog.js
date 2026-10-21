@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.405': [
+      'No more ore stranded on tiny islands or in water, and one-tile-wide streams now have shallow crossings',
+    ],
     '0.4.402': [
       'Faster simulation: path wear only visits worn tiles, deer activation and terrain noise are cheaper',
     ],

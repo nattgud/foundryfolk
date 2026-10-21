@@ -7,22 +7,56 @@
   const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
   const Generator = {
-    // Slutlig terräng. Enstaka berg- eller vattenrutor (inga grannar av samma slag) ersätts av grannarnas vanligaste typ,
-    // så att tröskeleffekter i bruset inte ger ensamma rutor mitt i en annan terräng.
+    // Slutlig terräng: utjämning av enstaka rutor, vadställen över smala vattendrag och holmar utan fyndigheter.
     terrainTypeAt(x, y) {
-      const terrainType = this.baseTypeAt(x, y);
-      if (terrainType !== 'mountain' && terrainType !== 'water') return terrainType;
+      const base = this.baseTypeAt(x, y);
+      if (base !== 'mountain' && base !== 'water') return this.settle(x, y, base);
+      const around = [];   // grannarnas terräng i NEIGHBOURS-ordning, hämtas först när den behövs
+      const at = i => around[i] ??= this.baseTypeAt(x + NEIGHBOURS[i][0], y + NEIGHBOURS[i][1]);
+      const type = this.despeckle(x, y, base, at);
+      return type === 'water' ? this.ford(at) : type;
+    },
+
+    // Enstaka berg- eller vattenrutor (inga grannar av samma slag) ersätts av grannarnas vanligaste typ,
+    // så att tröskeleffekter i bruset inte ger ensamma rutor mitt i en annan terräng.
+    despeckle(x, y, terrainType, at) {
       if (Math.hypot(x, y) < CityBuilder.Config.world.clearRadius) return terrainType;
-      const neighbours = [];
-      for (const [dx, dy] of NEIGHBOURS) {
-        const neighbour = this.baseTypeAt(x + dx, y + dy);
-        if (neighbour === terrainType) return terrainType;   // de flesta rutor avgörs redan av första grannen
-        neighbours.push(neighbour);
-      }
       const votes = {};
-      let best = neighbours[0];
-      for (const neighbour of neighbours) if ((votes[neighbour] = (votes[neighbour] || 0) + 1) > votes[best]) best = neighbour;
+      let best;
+      for (let i = 0; i < NEIGHBOURS.length; i++) {
+        const neighbour = at(i);
+        if (neighbour === terrainType) return terrainType;   // de flesta rutor avgörs redan av första grannen
+        if (best === undefined) best = neighbour;
+        if ((votes[neighbour] = (votes[neighbour] || 0) + 1) > votes[best]) best = neighbour;
+      }
       return best;
+    },
+
+    // Vatten som bara är en ruta brett, med gångbar mark på båda sidor, är grunt: sand. Då är mark på andra sidan av en bäck
+    // eller en smal vik aldrig helt avskuren. Två rutor eller bredare vatten är fortfarande ett hinder.
+    ford(at) {
+      const land = i => Number.isFinite(CityBuilder.Config.terrain[at(i)].walkCost);
+      return (land(0) && land(1)) || (land(2) && land(3)) ? 'sand' : 'water';
+    },
+
+    // Fyndigheter (Config.world.deposits) på en liten holme, t.ex. mitt i en damm, går inte att nå och blir sand. Bara fyndigheter med
+    // vatten intill kontrolleras: gångbar mark som hänger ihop med fler än isletSize rutor räknas som fastland.
+    settle(x, y, terrainType) {
+      const { deposits, isletSize } = CityBuilder.Config.world;
+      if (!deposits.includes(terrainType) || !NEIGHBOURS.some(([dx, dy]) => this.baseTypeAt(x + dx, y + dy) === 'water')) return terrainType;
+      const seen = new Set([Utils.tileKey(x, y)]), stack = [[x, y]];
+      while (stack.length) {
+        const [fromX, fromY] = stack.pop();
+        for (const [dx, dy] of NEIGHBOURS) {
+          const nextX = fromX + dx, nextY = fromY + dy, key = Utils.tileKey(nextX, nextY);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          if (!Number.isFinite(CityBuilder.Config.terrain[this.baseTypeAt(nextX, nextY)].walkCost)) continue;
+          if (seen.size > isletSize) return terrainType;
+          stack.push([nextX, nextY]);
+        }
+      }
+      return 'sand';
     },
 
     // Terräng före utjämning: regler, särdrag och gångar.
@@ -46,7 +80,7 @@
         if (result !== undefined) { terrainType = result; break; }
       }
       for (const feature of worldConfig.features) {
-        if (Math.hypot(x - feature.x, y - feature.y) <= feature.radius && Utils.hash(x, y, 7) < .9) terrainType = feature.terrainType;
+        if (terrainType !== 'water' && Math.hypot(x - feature.x, y - feature.y) <= feature.radius && Utils.hash(x, y, 7) < .9) terrainType = feature.terrainType;  // aldrig ut i vatten
       }
       if (terrainType === 'water' || terrainType === 'mountain') terrainType = this.bridge(x, y, terrainType);
       return this.meadow(x, y, this.carve(x, y, distanceFromOrigin, terrainType));
