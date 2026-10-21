@@ -193,6 +193,10 @@
         renderer.drawResourceIcons(context, building.inputStock, x, y + tileSize - 10);
         renderer.drawResourceIcons(context, building.outputStock, x, y + 1);
       }
+      if (building.player !== CityBuilder.Players.HUMAN) { // andra spelares byggnader: ram i spelarens färg
+        context.strokeStyle = CityBuilder.Config.settings.playerColors[building.player] || '#fff'; context.lineWidth = 2;
+        context.strokeRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
+      }
       if (building.hp < building.maxHp) { // skadad byggnad: livsmätare
         context.fillStyle = '#000'; context.fillRect(x + 3, y + 1, tileSize - 6, 4);
         context.fillStyle = '#d65a4a'; context.fillRect(x + 3, y + 2, (tileSize - 6) * Math.max(0, building.hp) / building.maxHp, 2);

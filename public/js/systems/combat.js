@@ -41,7 +41,7 @@
     // Enheter och byggnader som kan bli mål: levande och tillhör någon riktig spelare. En lista per simuleringsruta.
     targets() {
       return this.targetCache || (this.targetCache = [...World.units, ...World.buildings].filter(target =>
-        target.hp != null && target.player !== Players.NEUTRAL && target !== World.headquarters));
+        target.hp != null && target.player !== Players.NEUTRAL && target.type !== 'hq')); // baserna kan inte angripas än
     },
 
     // Bästa fiende till 'player' inom radius från (x, y): lägst prioritet först, sedan närmast.

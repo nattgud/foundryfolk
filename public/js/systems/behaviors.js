@@ -104,7 +104,7 @@
 
     // Varför står huset still med fullt utlager? Centrallagret fullt (för en vara i utlagret) eller bara huset eget lager (väntar på bärare)
     fullStatus(building) {
-      const blocked = Object.keys(building.outputStock).some(id => building.outputStock[id] > 0 && CityBuilder.Economy.isFull(id));
+      const blocked = Object.keys(building.outputStock).some(id => building.outputStock[id] > 0 && CityBuilder.Economy.isFull(id, building.player));
       return blocked ? 'Central storage full' : 'Local stock full';
     },
 

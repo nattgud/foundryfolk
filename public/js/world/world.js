@@ -8,7 +8,8 @@
     buildingsByTile: new Map(), // rutnyckel -> byggnad
     buildings: [],
     units: [],
-    headquarters: null,
+    headquarters: null,         // den mänskliga spelarens bas (alla spelares baser finns i hqs)
+    hqs: {},                    // spelare -> bas
     nextBuildingId: 1,
     deerByChunk: new Map(),
 
@@ -31,9 +32,44 @@
 
     buildingAt: (x, y) => World.buildingsByTile.get(Utils.tileKey(x, y)),
 
+    hqOf(player) { return this.hqs[player]; },
+
     init() {
-      this.headquarters = this.placeBuilding('hq', 0, 0, true);
-      Object.assign(this.headquarters.storedGoods, Config.settings.startingResources);
+      this.addPlayer(Players.HUMAN, 0, 0);
+      const rivals = CityBuilder.Levels?.current?.rivals ?? 1;
+      for (let i = 0; i < rivals; i++) this.addPlayer(Players.ENEMY + i, ...this.rivalSite(Players.ENEMY + i));
+    },
+
+    // Ny spelare med egen bas och startresurser (samma för alla spelare)
+    addPlayer(player, x, y) {
+      if (!Players.active.includes(player)) Players.active.push(player);
+      const hq = this.placeBuilding('hq', x, y, true, player);
+      Object.assign(hq.storedGoods, Config.settings.startingResources);
+      return hq;
+    },
+
+    // Var en datorspelares bas ligger: 100–150 rutor från starten, i en riktning som slumpas av bana och spelarnummer.
+    // Provar flera riktningar och väljer den med mest land runt basen. En gräsplan runt basen läggs in i terrängen (clearings).
+    rivalSite(player) {
+      const { rivalDistance: [near, far], rivalClearRadius: clear } = Config.world;
+      const salt = Config.world.seed * 131 + player * 977;
+      const base = Utils.hash(player, 11, salt) * 2 * Math.PI, distance = near + (far - near) * Utils.hash(player, 12, salt);
+      let best = null, bestScore = -1;
+      for (let i = 0; i < 16; i++) { // 16 riktningar, första är den slumpade
+        const angle = base + i * Math.PI / 8 * (i % 2 ? 1 : -1), x = Math.round(Math.cos(angle) * distance), y = Math.round(Math.sin(angle) * distance);
+        let land = 0, total = 0;
+        for (let dy = -12; dy <= 12; dy += 2) for (let dx = -12; dx <= 12; dx += 2, total++) {
+          const type = CityBuilder.Generator.terrainTypeAt(x + dx, y + dy);
+          if (type !== 'water' && type !== 'mountain') land++;
+        }
+        const score = land / total - i * .005; // lika bra: hellre den slumpade riktningen
+        if (score > bestScore) { bestScore = score; best = [x, y]; }
+      }
+      Config.world.clearings.push({ x: best[0], y: best[1], radius: clear });
+      // Lite järnmalm nära varje bas så att datorn alltid kan tillverka vapen (annars beror det på kartans tur)
+      const ore = Utils.hash(player, 13, salt) * 2 * Math.PI;
+      Config.world.features.push({ x: best[0] + Math.round(Math.cos(ore) * (clear + 4)), y: best[1] + Math.round(Math.sin(ore) * (clear + 4)), radius: 2, terrainType: 'iron_ore' });
+      return best;
     },
 
     canPlace(buildingType, x, y) {
@@ -55,6 +91,10 @@
         status: '', isCrafting: false, craftTimeLeft: 0, craftTotalTime: 0, workerUnit: null,
       };
       building.maxHp = building.hp = building.definition.maxHp ?? Config.settings.military.buildingHp;
+      if (buildingType === 'hq') {
+        this.hqs[player] = building;
+        if (player === Players.HUMAN) this.headquarters = building;
+      }
       this.buildings.push(building);
       this.buildingsByTile.set(Utils.tileKey(x, y), building);
       CityBuilder.Pathfinder.clearCache();

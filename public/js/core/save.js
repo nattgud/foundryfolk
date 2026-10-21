@@ -120,7 +120,8 @@
       const buildings = [];
       const snapshots = new Map();
       for (const building of World.buildings) {
-        if (building === headquarters) continue;
+        if (building.type === 'hq') continue; // baserna skapas av World.init (även datorspelarnas) och sparas separat
+
         const type = typeOf(building);
         if (!type) continue;
         const snapshot = { type, x: building.x, y: building.y, fields: captureFields(building, BUILDING_SKIP) };
@@ -150,7 +151,19 @@
         }
       }
 
-      const haulers = World.units.filter(unit => unit.definition.isHauler);
+      // Datorspelarnas baser. Det deras bärare bär läggs tillbaka i basens lager. Bärarna skapas på nytt av Logistics.
+      const rivals = World.buildings.filter(building => building.type === 'hq' && building !== headquarters).map(hq => {
+        const fields = captureFields(hq, BUILDING_SKIP);
+        for (const unit of World.units) {
+          if (unit.player === hq.player && unit.definition.isHauler && typeof unit.carriedResource === 'string') {
+            fields.storedGoods = fields.storedGoods || {};
+            fields.storedGoods[unit.carriedResource] = (fields.storedGoods[unit.carriedResource] || 0) + 1;
+          }
+        }
+        return { player: hq.player, fields };
+      });
+
+      const haulers = World.units.filter(unit => unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN);
       const carried = {};
       for (const unit of haulers) {
         if (typeof unit.carriedResource === 'string') carried[unit.carriedResource] = (carried[unit.carriedResource] || 0) + 1;
@@ -164,6 +177,7 @@
         runSeed: levels ? levels.runSeed : null,
         speedIndex: Game ? Game.speedIndex : 0,
         headquarters: captureFields(headquarters, BUILDING_SKIP),
+        rivals,
         buildings,
         soldiers,
         carriers: haulers.length,
@@ -189,8 +203,8 @@
 
       for (const saved of data.buildings || []) {
         try {
-          const building = World.placeBuilding(saved.type, saved.x, saved.y) || World.buildingAt(saved.x, saved.y);
-          if (!building || building === headquarters) continue;
+          const building = World.placeBuilding(saved.type, saved.x, saved.y, false, saved.fields.player) || World.buildingAt(saved.x, saved.y);
+          if (!building || building.type === 'hq') continue;
 
           if (saved.fields.buildProgress !== undefined) building.buildProgress = saved.fields.buildProgress;
 
@@ -213,6 +227,10 @@
       }
 
       restoreFields(headquarters, data.headquarters);
+      for (const rival of data.rivals || []) {
+        const hq = World.hqOf(rival.player);
+        if (hq) restoreFields(hq, rival.fields);
+      }
 
       for (const saved of data.soldiers || []) {
         if (!Config.units[saved.kind]?.isSoldier) continue;
@@ -222,7 +240,7 @@
         unit.hp = saved.hp ?? unit.hp;
       }
 
-      const haulers = World.units.filter(unit => unit.definition.isHauler).length;
+      const haulers = World.units.filter(unit => unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN).length;
       for (let i = haulers; i < (data.carriers || 0); i++) World.spawnUnit('carrier', 0, 0);
 
       // Det bärarna hade i famnen när det sparades lämnas tillbaka i lagret

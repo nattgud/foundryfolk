@@ -66,12 +66,15 @@
       if (CityBuilder.Levels && !CityBuilder.Levels.isUnlocked(buildingType)) {
         return this.refuse(t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(buildingType) }));
       }
-      if (!World.canPlace(buildingType, x, y)) {
-        return this.refuse(definition.placeOnTerrain ? t('Must be built on: {terrain}', { terrain: UI.terrainName(definition.placeOnTerrain) }) : t('This spot is occupied'));
+      const problem = CityBuilder.Construction.build(buildingType, x, y);
+      if (problem) {
+        return this.refuse({
+          terrain: () => t('Must be built on: {terrain}', { terrain: UI.terrainName(definition.placeOnTerrain) }),
+          occupied: () => t('This spot is occupied'),
+          unreachable: () => t('This spot cannot be reached'),
+          cost: () => t('Not enough resources'),
+        }[problem]());
       }
-      if (Pathfinder.findPathNow(World.headquarters.x, World.headquarters.y, x, y) === null) return this.refuse(t('This spot cannot be reached'));
-      if (!Economy.spend(definition.buildCost)) return this.refuse(t('Not enough resources'));
-      World.placeBuilding(buildingType, x, y, false, CityBuilder.Players.HUMAN);
       CityBuilder.Sound?.play('build', { x, y });
     },
 

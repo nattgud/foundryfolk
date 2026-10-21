@@ -4,6 +4,11 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.396': [
+      'Every level now has a computer-controlled rival with its own base about 100-150 tiles away',
+      'The rival builds, gathers, crafts and trains soldiers with the same rules and resource chains as you',
+      'Each player now has separate storage, carriers and supplies',
+    ],
     '0.4.395': [
       'Guard Towers and Garrisons can now be set to Attack mode: soldiers hunt down enemies up to 75 tiles away',
       'Buildings now have health and can be destroyed in combat',

@@ -596,6 +596,9 @@
   CityBuilder.Config.world = {
     seed: Math.floor(Math.random() * 1000000), // ny värld vid varje start. Skriv ett fast tal här för en bestämd värld
     clearRadius: 4,
+    clearings: [],             // fler gräsplaner { x, y, radius } (datorspelarnas baser läggs in av World.rivalSite)
+    rivalDistance: [100, 150], // hur långt från starten en datorspelares bas ligger (rutor)
+    rivalClearRadius: 5,
     features: [],
     rules,
   };

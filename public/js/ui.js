@@ -96,7 +96,7 @@
       this.createCopyrightLabel();
       this.createGoalPanel();
       if (CityBuilder.Levels) CityBuilder.Levels.onComplete(result => this.showLevelComplete(result));
-      this.lastBuildingCount = World.buildings.length;
+      this.lastBuildingCount = World.buildings.filter(placed => placed.player === CityBuilder.Players.HUMAN).length;
 
       // Infopanelen ligger precis ovanför byggmenyn.
       this.positionInfoPanel = () => {
@@ -1656,7 +1656,7 @@
         if (windowAmount) { windowAmount.textContent = amount; windowAmount.classList.toggle('is-full', full); }
       }
 
-      const carriers = World.units.filter(unit => unit.definition.isHauler);
+      const carriers = World.units.filter(unit => unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN);
       const idleCarriers = carriers.filter(
         unit => !unit.deliveryTask && !unit.carriedResource
       ).length;
@@ -1665,7 +1665,7 @@
         t('Carriers {idle}/{total}', { idle: idleCarriers, total: carriers.length });
 
       const builtCounts = {};
-      for (const placed of World.buildings) builtCounts[placed.type] = (builtCounts[placed.type] || 0) + 1;
+      for (const placed of World.buildings) if (placed.player === CityBuilder.Players.HUMAN) builtCounts[placed.type] = (builtCounts[placed.type] || 0) + 1;
 
       for (const buildingId in Config.buildings) {
         const button = byId('build_' + buildingId);
@@ -1693,7 +1693,7 @@
       }
 
       // Avmarkera vald byggnad när en ny byggnad skapats.
-      const buildingCount = World.buildings.length;
+      const buildingCount = Utils.sumValues(builtCounts); // bara spelarens egna byggnader
 
       if (buildingCount > this.lastBuildingCount && game.placingType) {
         game.setPlacingType(null);
@@ -1960,20 +1960,22 @@
       if (panel.dataset.buildingId !== key) {
         panel.dataset.buildingId = key;
 
-        const pauseButton = building.definition.job
+        // Andra spelares byggnader går bara att titta på
+        const own = building.player === CityBuilder.Players.HUMAN;
+        const pauseButton = own && building.definition.job
           ? '<button id="pauseButton"></button>'
           : '';
 
-        const demolishButton = building !== World.headquarters
+        const demolishButton = own && building !== World.headquarters
           ? `<button id="demolishButton">${t('Demolish')}</button>`
           : '';
 
         // Garnisoner: en knapp per soldattyp som byggnaden kan träna
-        const trainButtons = CityBuilder.Garrison.isGarrison(building)
+        const trainButtons = own && CityBuilder.Garrison.isGarrison(building)
           ? building.definition.job.trains.map(kind => `<button class="train-button" data-kind="${kind}">${this.unitName(kind)}</button>`).join('')
           : '';
 
-        const stanceButton = CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton"></button>' : '';
+        const stanceButton = own && CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton"></button>' : '';
 
         panel.innerHTML =
           `<div><b>${this.buildingName(building.definition)}</b><br><span id="infoStatus"></span></div>` +

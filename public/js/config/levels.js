@@ -496,6 +496,7 @@
       get tags() { return tagKeys.map(key => t(key)); },
       trial, bounty, guardian,
       difficulty,
+      rivals: 1,   // antal datorspelare (minst en per bana)
       seed,
       keep,
       twists,
@@ -587,7 +588,9 @@
   const countBuilt = id => {
     const definition = CityBuilder.Config.buildings[id];
     let count = 0;
-    for (const building of CityBuilder.World.buildings) if (building.definition === definition && building.buildProgress >= 1) count++;
+    for (const building of CityBuilder.World.buildings) {
+      if (building.player === CityBuilder.Players.HUMAN && building.definition === definition && building.buildProgress >= 1) count++;
+    }
     return count;
   };
 

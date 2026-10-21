@@ -1,9 +1,9 @@
 /* Ekonomi: lagrens innehåll. storedReserved = reserverat för pågående leveranser.
-   Alla lager räknas som ett gemensamt lager: antal och tak är gemensamma, varorna ligger fysiskt i de enskilda lagren.
+   Varje spelare har sitt eget gemensamma lager: alla spelarens lager räknas som ett. Antal och tak är gemensamma, varorna ligger fysiskt i de enskilda lagren.
    Taket per resurs = summan av lagrens capacity * resursens storageFactor (ovanliga resurser tar mer plats). */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Utils } = CityBuilder;
+  const { Config, World, Utils, Players } = CityBuilder;
 
   // Hur stor del av ett lagers capacity en resurs får. Allt som inte står här = 1. Kan åsidosättas med resource.storageFactor.
   const STORAGE_FACTOR = {};
@@ -17,50 +17,57 @@
   const MIN_CAPACITY = 5;
 
   const Economy = {
-    incoming: {},          // resurs -> antal enheter på väg till ett lager (sätts av Logistics)
-    baseCapacity: 0,       // summan av lagrens capacity (uppdateras av updateStats)
-    stored: {},            // resurs -> totalt antal i lagren (uppdateras av updateStats)
+    // Lager, tak och "på väg" räknas per spelare. Alla funktioner tar spelare som sista parameter (standard = den mänskliga spelaren).
+    // Funktioner som får en position (nearestStorage m.fl.) tar spelaren från positionen om den är en enhet eller byggnad.
+    playerStats: {},       // spelare -> { baseCapacity, stored, incoming } (uppdateras av updateStats; incoming sätts av Logistics)
 
-    storages: () => World.buildings.filter(building => building.definition.isStorage && building.buildProgress >= 1),
+    stats(player = Players.HUMAN) {
+      return this.playerStats[player] || (this.playerStats[player] = { baseCapacity: 0, stored: {}, incoming: {} });
+    },
+
+    storages: (player = Players.HUMAN) => World.buildings.filter(building => building.player === player && building.definition.isStorage && building.buildProgress >= 1),
 
     // Räknas om då och då (Logistics, vid planering) så att kontroller i loopar blir billiga
     updateStats() {
-      this.baseCapacity = 0;
-      this.stored = {};
-      for (const storage of this.storages()) {
-        this.baseCapacity += storage.definition.capacity ?? 50;
-        for (const resourceId in storage.storedGoods) this.stored[resourceId] = (this.stored[resourceId] || 0) + storage.storedGoods[resourceId];
+      for (const player in this.playerStats) Object.assign(this.playerStats[player], { baseCapacity: 0, stored: {} });
+      for (const storage of World.buildings) {
+        if (!storage.definition.isStorage || storage.buildProgress < 1) continue;
+        const stats = this.stats(storage.player);
+        stats.baseCapacity += storage.definition.capacity ?? 50;
+        for (const resourceId in storage.storedGoods) stats.stored[resourceId] = (stats.stored[resourceId] || 0) + storage.storedGoods[resourceId];
       }
     },
 
     factorOf: resourceId => Config.resources[resourceId]?.storageFactor ?? STORAGE_FACTOR[resourceId] ?? 1,
 
-    capacity(resourceId) {
-      return Math.max(MIN_CAPACITY, Math.floor(this.baseCapacity * this.factorOf(resourceId)));
+    capacity(resourceId, player) {
+      return Math.max(MIN_CAPACITY, Math.floor(this.stats(player).baseCapacity * this.factorOf(resourceId)));
     },
     // Finns det plats för en till (inklusive leveranser på väg)?
-    isFull(resourceId) {
-      return (this.stored[resourceId] || 0) + (this.incoming[resourceId] || 0) >= this.capacity(resourceId);
+    isFull(resourceId, player) {
+      const { stored, incoming } = this.stats(player);
+      return (stored[resourceId] || 0) + (incoming[resourceId] || 0) >= this.capacity(resourceId, player);
     },
 
-    freeAmount(resourceId) {
+    freeAmount(resourceId, player) {
       let total = 0;
-      for (const storage of this.storages()) total += (storage.storedGoods[resourceId] || 0) - (storage.storedReserved[resourceId] || 0);
+      for (const storage of this.storages(player)) total += (storage.storedGoods[resourceId] || 0) - (storage.storedReserved[resourceId] || 0);
       return total;
     },
-    totalAmount(resourceId) {
+    totalAmount(resourceId, player) {
       let total = 0;
-      for (const storage of this.storages()) total += storage.storedGoods[resourceId] || 0;
+      for (const storage of this.storages(player)) total += storage.storedGoods[resourceId] || 0;
       return total;
     },
-    canAfford(cost) { return Object.entries(cost).every(([resourceId, amount]) => this.freeAmount(resourceId) >= amount); },
+    canAfford(cost, player) { return Object.entries(cost).every(([resourceId, amount]) => this.freeAmount(resourceId, player) >= amount); },
 
     // Drar kostnaden från lagren. Returnerar false (utan att ta något) om resurserna inte räcker.
-    spend(cost) {
-      if (!this.canAfford(cost)) return false;
+    spend(cost, player) {
+      if (!this.canAfford(cost, player)) return false;
+      const storages = this.storages(player);
       for (const resourceId in cost) {
         let remaining = cost[resourceId];
-        for (const storage of this.storages()) {
+        for (const storage of storages) {
           const taken = Math.min(remaining, (storage.storedGoods[resourceId] || 0) - (storage.storedReserved[resourceId] || 0));
           if (taken > 0) { storage.storedGoods[resourceId] -= taken; remaining -= taken; }
         }
@@ -68,21 +75,23 @@
       return true;
     },
 
-    nearestStorage(position) {
-      let best = World.headquarters, bestDistance = 1e9;
-      for (const storage of this.storages()) {
+    // Närmaste lager åt 'player' (standard: positionens ägare, annars den mänskliga spelaren)
+    nearestStorage(position, player = position.player ?? Players.HUMAN) {
+      let best = World.hqOf(player), bestDistance = 1e9;
+      for (const storage of this.storages(player)) {
         const distance = Utils.manhattanDistance(storage, position);
         if (distance < bestDistance) { bestDistance = distance; best = storage; }
       }
       return best;
     },
     // Tillbakalämning (rivning m.m.) tas alltid emot, även över taket, så att inget försvinner
-    addToNearestStorage(resourceId, amount, nearPosition) {
-      const storage = this.nearestStorage(nearPosition || World.headquarters);
+    addToNearestStorage(resourceId, amount, nearPosition, player) {
+      const near = nearPosition || World.headquarters;
+      const storage = this.nearestStorage(near, player ?? near.player ?? Players.HUMAN);
       storage.storedGoods[resourceId] = (storage.storedGoods[resourceId] || 0) + amount;
     },
-    // Halva byggkostnaden tillbaka vid rivning
-    refund(cost) { for (const resourceId in cost) this.addToNearestStorage(resourceId, Math.floor(cost[resourceId] / 2)); },
+    // Halva byggnadskostnaden tillbaka vid rivning
+    refund(cost, player = Players.HUMAN) { for (const resourceId in cost) this.addToNearestStorage(resourceId, Math.floor(cost[resourceId] / 2), World.hqOf(player), player); },
   };
 
   CityBuilder.Economy = Economy;

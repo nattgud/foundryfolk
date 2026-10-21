@@ -77,6 +77,7 @@
       World.deerByChunk.set(key, deer);
     },
 	
+    // Hjortar finns bara i världen nära kameran och nära datorspelarnas baser (så att deras jägare har något att jaga)
     updateActivation() {
       const renderer = CityBuilder.Renderer;
       const size = Config.settings.chunkSize;
@@ -85,55 +86,52 @@
       // Kamerans centrum i rutkoordinater.
       const width = renderer.canvas.width / renderer.pixelRatio;
       const height = renderer.canvas.height / renderer.pixelRatio;
-
-      const centerTileX = Math.floor(
-        (renderer.camera.x + width / (2 * renderer.zoom)) /
-        renderer.tileSize
-      );
-      const centerTileY = Math.floor(
-        (renderer.camera.y + height / (2 * renderer.zoom)) /
-        renderer.tileSize
-      );
-
-      const centerChunkX = Math.floor(centerTileX / size);
-      const centerChunkY = Math.floor(centerTileY / size);
+      const centres = [{
+        x: Math.floor((renderer.camera.x + width / (2 * renderer.zoom)) / renderer.tileSize),
+        y: Math.floor((renderer.camera.y + height / (2 * renderer.zoom)) / renderer.tileSize),
+      }];
+      for (const player of CityBuilder.Players.active) if (CityBuilder.Players.isAI(player)) centres.push(World.hqOf(player));
 
       const activeKeys = new Set();
 
       // Skapa data och aktivera hjortar i närliggande chunks.
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          const chunkX = centerChunkX + dx;
-          const chunkY = centerChunkY + dy;
-          const key = Utils.tileKey(chunkX, chunkY);
+      for (const centre of centres) {
+        const centerChunkX = Math.floor(centre.x / size), centerChunkY = Math.floor(centre.y / size);
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            const chunkX = centerChunkX + dx;
+            const chunkY = centerChunkY + dy;
+            const key = Utils.tileKey(chunkX, chunkY);
+            if (activeKeys.has(key)) continue;
 
-          activeKeys.add(key);
-          this.ensureChunk(chunkX, chunkY);
+            activeKeys.add(key);
+            this.ensureChunk(chunkX, chunkY);
 
-          for (const record of World.deerByChunk.get(key)) {
-            if (record.dead) continue;
+            for (const record of World.deerByChunk.get(key)) {
+              if (record.dead) continue;
 
-            let unit = World.units.find(
-              candidate => candidate.deerRecordId === record.id
-            );
+              let unit = World.units.find(
+                candidate => candidate.deerRecordId === record.id
+              );
 
-            if (unit) continue;
+              if (unit) continue;
 
-            // spawnUnit lägger till 0.5 till koordinaterna.
-            unit = World.spawnUnit(
-              'deer',
-              record.x - 0.5,
-              record.y - 0.5
-            );
+              // spawnUnit lägger till 0.5 till koordinaterna.
+              unit = World.spawnUnit(
+                'deer',
+                record.x - 0.5,
+                record.y - 0.5
+              );
 
-            unit.deerRecordId = record.id;
-            unit.deerChunkKey = key;
+              unit.deerRecordId = record.id;
+              unit.deerChunkKey = key;
 
-            unit.deerLastEaten = record.deerLastEaten;
-            unit.deerMealTile = record.deerMealTile;
-            unit.deerMustMoveAfterMeal =
-              record.deerMustMoveAfterMeal;
-            unit.deerSpreadPending = record.deerSpreadPending;
+              unit.deerLastEaten = record.deerLastEaten;
+              unit.deerMealTile = record.deerMealTile;
+              unit.deerMustMoveAfterMeal =
+                record.deerMustMoveAfterMeal;
+              unit.deerSpreadPending = record.deerSpreadPending;
+            }
           }
         }
       }

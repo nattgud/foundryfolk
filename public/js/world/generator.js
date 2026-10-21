@@ -30,6 +30,7 @@
       const worldConfig = CityBuilder.Config.world;
       const distanceFromOrigin = Math.hypot(x, y);
       if (distanceFromOrigin < worldConfig.clearRadius) return 'grass';
+      for (const clearing of worldConfig.clearings) if (Math.hypot(x - clearing.x, y - clearing.y) < clearing.radius) return 'grass';
 
       const context = {
         x, y, distanceFromOrigin,
