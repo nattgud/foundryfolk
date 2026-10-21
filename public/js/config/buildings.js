@@ -308,7 +308,7 @@ CityBuilder.Config.buildings = {
       sourceTerrain: 'mountain',
       searchRadius: 25,
       outputResource: 'sand',
-      workSeconds: 60
+      workSeconds: 20
     },
     buildDuration: 45
   },
