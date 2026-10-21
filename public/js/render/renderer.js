@@ -39,6 +39,16 @@
       };
     },
 
+    // Synfältet i världspixlar, utökat med margin pixlar (så att ikoner och bilder som sticker utanför sin ruta inte klipps bort)
+    viewBounds(margin = 0) {
+      return {
+        left: this.camera.x - margin,
+        top: this.camera.y - margin,
+        right: this.camera.x + innerWidth / this.zoom + margin,
+        bottom: this.camera.y + innerHeight / this.zoom + margin,
+      };
+    },
+
     screenToTile(screenX, screenY) {
       return {
         x: Math.floor((screenX / this.zoom + this.camera.x) / this.tileSize),

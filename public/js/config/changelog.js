@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.401': [
+      'Buildings and units outside the screen are no longer drawn',
+    ],
     '0.4.400': [
       'World generation: less water and more open grass around both bases, and rival bases are placed on buildable land',
       'Each level now makes sure both bases have the raw materials its new buildings and goals need within reach',

@@ -3,6 +3,9 @@
   'use strict';
   const { Config, World, Assets, Economy, Renderer } = CityBuilder;
 
+  // Utanför synfältet (Renderer.viewBounds)? Byggnader och enheter utanför bild hoppas över, så ritkostnaden följer vad som syns.
+  const outside = (view, x, y) => x < view.left || x > view.right || y < view.top || y > view.bottom;
+
   Renderer.addLayer('terrain', (context, renderer) => {
     const range = renderer.visibleTileRange(), tileSize = renderer.tileSize;
     for (let y = range.minY; y <= range.maxY; y++) for (let x = range.minX; x <= range.maxX; x++) {
@@ -169,10 +172,10 @@
   });
 
   Renderer.addLayer('buildings', (context, renderer) => {
-    const tileSize = renderer.tileSize;
-    let first = 1;
+    const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize);
     for (const building of World.buildings) {
       const x = building.x * tileSize, y = building.y * tileSize;
+      if (outside(view, x, y)) continue;
       const isFinished = building.buildProgress >= 1, image = Assets.get(building.definition.image);
       context.globalAlpha = isFinished ? (building.paused ? .5 : 1) : .7;
 
@@ -238,7 +241,9 @@
   Renderer.addLayer('units', (context, renderer) => {
     const tileSize = renderer.tileSize, now = performance.now(); // animationen går på verklig tid: lika snabb vid 30 som vid 144 fps
     context.imageSmoothingQuality = 'high';
+    const view = renderer.viewBounds(tileSize * 2);
     for (const unit of World.units) {
+      if (outside(view, unit.x * tileSize, unit.y * tileSize)) { unit.lastX = unit.x; unit.lastY = unit.y; continue; } // förflyttningen utanför bild ger ingen riktning
       const definition = unit.definition, image = findUnitImage(unit);
       const frameW = image && (definition.frame || image.naturalWidth), frameH = image && (definition.frame || image.naturalHeight);
       const cols = image ? Math.max(1, Math.floor(image.naturalWidth / frameW)) : 1, rows = image ? Math.max(1, Math.floor(image.naturalHeight / frameH)) : 1;
@@ -289,10 +294,11 @@
 
   // Strid: lagfärgad ring runt soldater, livsmätare på skadade enheter, attackstreck och soldaträknare på garnisoner
   Renderer.addLayer('combat', (context, renderer) => {
-    const tileSize = renderer.tileSize, colors = Config.settings.playerColors;
+    const tileSize = renderer.tileSize, colors = Config.settings.playerColors, view = renderer.viewBounds(tileSize * 2);
 
     for (const unit of World.units) {
       const definition = unit.definition, pixelX = unit.x * tileSize, pixelY = unit.y * tileSize;
+      if (outside(view, pixelX, pixelY)) continue;
 
       if (definition.isSoldier) {
         context.beginPath();
@@ -326,7 +332,7 @@
     context.textAlign = 'right';
     context.textBaseline = 'top';
     for (const building of World.buildings) {
-      if (building.buildProgress < 1 || !CityBuilder.Garrison.isGarrison(building)) continue;
+      if (building.buildProgress < 1 || !CityBuilder.Garrison.isGarrison(building) || outside(view, building.x * tileSize, building.y * tileSize)) continue;
       const text = CityBuilder.Garrison.count(building) + '/' + CityBuilder.Garrison.capacity(building);
       const right = (building.x + 1) * tileSize - 3, top = building.y * tileSize + 2;
       context.fillStyle = '#000';
@@ -363,9 +369,10 @@
     return key.startsWith('Missing:') ? 'warning_grey' : STATUS_ICONS[key] || null;
   };
   Renderer.addLayer('ui', (context, renderer) => {
-    const tileSize = renderer.tileSize;
+    const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize);
     const time = performance.now() / 1000;
     for (const building of World.buildings) {
+      if (outside(view, building.x * tileSize, building.y * tileSize)) continue;
       // Ineffektiv en längre tid: liten ikon uppe till höger (Config.settings.efficiency: minSeconds, warnBelow, badBelow)
       const summary = building.eff && building.eff.summary, limits = Object.assign({ minSeconds: 30, warnBelow: .6, badBelow: .3 }, Config.settings.efficiency);
       if (summary && !building.paused && summary.seconds >= limits.minSeconds && summary.ratio < limits.warnBelow) {
