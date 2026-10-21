@@ -577,7 +577,7 @@
   const Utils = CityBuilder.Utils;
   if (Utils && Utils.smoothNoise && !Utils.smoothNoise.__levels) {
     const original = Utils.smoothNoise;
-    const shifted = (u, v, ...rest) => original.call(Utils, u + offset.x, v + offset.y, ...rest);
+    const shifted = (u, v, channel) => original(u + offset.x, v + offset.y, channel);
     shifted.__levels = true;
     Utils.smoothNoise = shifted;
   }
@@ -586,7 +586,7 @@
     let w = wrappers.get(c);
     if (!w) {
       w = Object.create(c);
-      w.fractalNoise = (u, v, ...rest) => c.fractalNoise(u + offset.x, v + offset.y, ...rest);
+      w.fractalNoise = (u, v, channel) => c.fractalNoise(u + offset.x, v + offset.y, channel);
       wrappers.set(c, w);
     }
     return w;

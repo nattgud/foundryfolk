@@ -2,6 +2,13 @@
 (function (CityBuilder) {
   'use strict';
 
+  // Själva blandningen i Utils.hash, med de tre produkterna färdigräknade
+  const hashTerms = (xTerm, yTerm, saltTerm) => {
+    let value = (xTerm + yTerm + saltTerm) | 0;
+    value = Math.imul(value ^ (value >>> 13), 1274126177);
+    return ((value ^ (value >>> 16)) >>> 0) / 4294967296;
+  };
+
   const Utils = {
     // Deterministisk pseudoslump i [0, 1) för en ruta. salt ger olika "kanaler" för olika ändamål.
     hash(x, y, salt = 0) {
@@ -10,16 +17,17 @@
       return ((value ^ (value >>> 16)) >>> 0) / 4294967296;
     },
 
-    // Mjukt interpolerat värdebrus
+    // Mjukt interpolerat värdebrus (samma värden som hash-hörnen ger, men utan allokeringar: anropas tiotals gånger per genererad ruta)
     smoothNoise(x, y, channel) {
       const cellX = Math.floor(x), cellY = Math.floor(y);
       const fractionX = x - cellX, fractionY = y - cellY;
       const smoothX = fractionX * fractionX * (3 - 2 * fractionX);
       const smoothY = fractionY * fractionY * (3 - 2 * fractionY);
-      const seedOffset = CityBuilder.Config.world.seed * 97;
-      const corner = (offsetX, offsetY) => Utils.hash(cellX + offsetX, cellY + offsetY, channel + seedOffset);
-      const top = corner(0, 0) * (1 - smoothX) + corner(1, 0) * smoothX;
-      const bottom = corner(0, 1) * (1 - smoothX) + corner(1, 1) * smoothX;
+      const saltTerm = Math.imul(channel + CityBuilder.Config.world.seed * 97, 1442695041);
+      const rowTop = Math.imul(cellY, 668265263), rowBottom = Math.imul(cellY + 1, 668265263);
+      const left = Math.imul(cellX, 374761393), right = Math.imul(cellX + 1, 374761393);
+      const top = hashTerms(left, rowTop, saltTerm) * (1 - smoothX) + hashTerms(right, rowTop, saltTerm) * smoothX;
+      const bottom = hashTerms(left, rowBottom, saltTerm) * (1 - smoothX) + hashTerms(right, rowBottom, saltTerm) * smoothX;
       return top * (1 - smoothY) + bottom * smoothY;
     },
     assign(target, source, overrides = {}) {

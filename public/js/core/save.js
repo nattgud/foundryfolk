@@ -197,7 +197,9 @@
       // Terrängen först: byggnader och arbetare kan bero på den
       for (const [x, y, changed] of data.tiles || []) {
         const tile = World.getTile(x, y);
-        if (tile) Object.assign(tile, changed);
+        if (!tile) continue;
+        Object.assign(tile, changed);
+        if (changed.wear > 0) CityBuilder.Systems.pathDecay?.touch(tile); // slitna stigar börjar om sin vilotid (pathdecay.js)
       }
       World.deerByChunk = new Map(data.deerChunks || []);
 

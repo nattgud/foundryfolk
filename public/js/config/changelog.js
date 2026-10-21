@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.402': [
+      'Faster simulation: path wear only visits worn tiles, deer activation and terrain noise are cheaper',
+    ],
     '0.4.401': [
       'Buildings and units outside the screen are no longer drawn',
     ],

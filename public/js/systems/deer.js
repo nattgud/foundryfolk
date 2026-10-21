@@ -93,6 +93,8 @@
       for (const player of CityBuilder.Players.active) if (CityBuilder.Players.isAI(player)) centres.push(World.hqOf(player));
 
       const activeKeys = new Set();
+      const spawned = new Set(); // hjortposter som redan har en enhet i världen
+      for (const unit of World.units) if (unit.deerRecordId) spawned.add(unit.deerRecordId);
 
       // Skapa data och aktivera hjortar i närliggande chunks.
       for (const centre of centres) {
@@ -110,14 +112,10 @@
             for (const record of World.deerByChunk.get(key)) {
               if (record.dead) continue;
 
-              let unit = World.units.find(
-                candidate => candidate.deerRecordId === record.id
-              );
-
-              if (unit) continue;
+              if (spawned.has(record.id)) continue;
 
               // spawnUnit lägger till 0.5 till koordinaterna.
-              unit = World.spawnUnit(
+              const unit = World.spawnUnit(
                 'deer',
                 record.x - 0.5,
                 record.y - 0.5
