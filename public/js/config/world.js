@@ -47,6 +47,18 @@
            0.3 * context.fractalNoise(v * 4.3 + 17, u * 4.3 - 9, channel + 19);
   };
 
+  // Landskapsformande brus (kuster, berg, floder, klimat). Som fbm, men utan de fina lagren och med en nedre gräns för
+  // hur små cellerna får bli. FEATURE_SCALE krymper alla skalor, så fbm:s fina lager (4,3x och 9x tätare än grundskalan)
+  // hamnar under en ruta per cell: bruset aliasas till slumpbrus från ruta till ruta. Då hoppar höjden flera tiondelar
+  // mellan grannrutor och trösklarna för hav, flod och berg ger enstaka rutor (berg mitt i en flod, öar på en ruta).
+  // Växtlighet och malm använder fortfarande fbm: där är kornigt brus önskvärt.
+  const MACRO_MIN_SCALE = 8;   // minsta grundskala i rutor (cellen i det grövsta lagret). Det finare lagret blir ca 3,8 rutor
+  const macro = (context, x, y, scale, channel, angle) => {
+    scale = Math.max(scale * FEATURE_SCALE, MACRO_MIN_SCALE);
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    return context.fractalNoise((x * cos - y * sin) / scale, (x * sin + y * cos) / scale, channel);
+  };
+
   // Avstånd i rutor till närmaste "ådra" i ett brusfält (där fältet korsar 0.5). Genom att dela med
   // fältets lutning blir ådrorna lika breda överallt, i stället för breda på plana ställen och
   // avbrutna där fältet lutar kraftigt.
@@ -83,16 +95,16 @@
     const startArea = clamp01(1 - origin / 28); // 1 vid huvudlagret, 0 långt bort
 
     // Förvrängning av koordinaterna: ger slingrande kuster, dalar och floder
-    const warpX = (fbm(context, x, y, 75, 101, 0.3) - 0.5) * 70 * FEATURE_SCALE;
-    const warpY = (fbm(context, x, y, 75, 102, 1.9) - 0.5) * 70 * FEATURE_SCALE;
+    const warpX = (macro(context, x, y, 75, 101, 0.3) - 0.5) * 70 * FEATURE_SCALE;
+    const warpY = (macro(context, x, y, 75, 102, 1.9) - 0.5) * 70 * FEATURE_SCALE;
     const wx = x + warpX, wy = y + warpY;
 
     // Höjd
-    const continent = stretch(fbm(context, wx, wy, 190, 103, 0.7), 2.4);
-    const hills = fbm(context, wx, wy, 52, 104, 1.1);
-    const detail = fbm(context, x, y, 17, 105, 2.4);
-    const mountainZone = smoothstep(0.62, 0.86, stretch(fbm(context, wx, wy, 120, 106, 0.2), 2.6)) * smoothstep(14, 38, origin);
-    const ridge = 1 - Math.abs(2 * fbm(context, wx, wy, 34, 107, 0.9) - 1); // skarpa åsar där bruset korsar 0.5
+    const continent = stretch(macro(context, wx, wy, 190, 103, 0.7), 2.4);
+    const hills = macro(context, wx, wy, 52, 104, 1.1);
+    const detail = macro(context, x, y, 17, 105, 2.4);
+    const mountainZone = smoothstep(0.62, 0.86, stretch(macro(context, wx, wy, 120, 106, 0.2), 2.6)) * smoothstep(14, 38, origin);
+    const ridge = 1 - Math.abs(2 * macro(context, wx, wy, 34, 107, 0.9) - 1); // skarpa åsar där bruset korsar 0.5
     const mountain = mountainZone * (0.18 + 0.62 * ridge * ridge);
 
     const relief = 0.12 + 0.62 * continent + 0.30 * (hills - 0.5) + 0.10 * (detail - 0.5) + mountain * 0.55;
@@ -103,14 +115,14 @@
     const elevation = relief + startLand * Math.max(0, landFloor - relief);
 
     // Fuktighet: regionala mönster, torrare på höga höjder och uppe i bergen
-    const regionalMoisture = 0.55 * stretch(fbm(context, wx, wy, 85, 108, 0.5), 2.2) + 0.45 * stretch(fbm(context, x, y, 26, 109, 1.3), 2.0);
+    const regionalMoisture = 0.55 * stretch(macro(context, wx, wy, 85, 108, 0.5), 2.2) + 0.45 * stretch(macro(context, x, y, 26, 109, 1.3), 2.0);
 
     // Floder: slingrande ådror i ett lågfrekvent fält. Inga floder nära start, och inte uppe i bergen.
     const riverBlocked = smoothstep(13, 22, origin) * (1 - smoothstep(0.66, 0.8, relief));
-    const riverHalfWidth = 0.9 + 1.0 * fbm(context, x, y, 70, 110, 0.4);
+    const riverHalfWidth = 0.9 + 1.0 * macro(context, x, y, 70, 110, 0.4);
     const riverCenterDistance = veinDistance(x, y, 95, 111, 0.45, warpX * 0.7, warpY * 0.7);
     const tributaryDistance = veinDistance(x, y, 60, 112, 1.2, warpX * 0.5, warpY * 0.5);
-    const tributaryActive = fbm(context, x, y, 140, 113, 0.8) > 0.52;
+    const tributaryActive = macro(context, x, y, 140, 113, 0.8) > 0.52;
     const riverDistance = riverBlocked > 0.5
       ? Math.min(riverCenterDistance - riverHalfWidth, tributaryActive ? tributaryDistance - riverHalfWidth * 0.7 : Infinity)
       : Infinity; // tiles from riverbank (negative = i floden)
@@ -124,7 +136,7 @@
     );
 
     // Bergruta: högt relief, ojämn kant och aldrig nära start
-    const mountainEdge = (fbm(context, x, y, 10, 265, 0.5) - 0.5) * 0.06;
+    const mountainEdge = (macro(context, x, y, 10, 265, 0.5) - 0.5) * 0.06;
     const mountainDepth = relief + mountainEdge - MOUNTAIN_LEVEL; // > 0 = bergsruta, högre = längre in/upp
     const inMountain = origin > 20 && mountainDepth > 0;
     // Bergskärna: marginellt högre upp än bergets kant. Malm i berg ligger bara här, så den är alltid omsluten av berg.

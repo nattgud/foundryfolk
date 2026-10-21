@@ -4,8 +4,29 @@
   'use strict';
   const { Utils } = CityBuilder;
 
+  const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
   const Generator = {
+    // Slutlig terräng. Enstaka berg- eller vattenrutor (inga grannar av samma slag) ersätts av grannarnas vanligaste typ,
+    // så att tröskeleffekter i bruset inte ger ensamma rutor mitt i en annan terräng.
     terrainTypeAt(x, y) {
+      const terrainType = this.baseTypeAt(x, y);
+      if (terrainType !== 'mountain' && terrainType !== 'water') return terrainType;
+      if (Math.hypot(x, y) < CityBuilder.Config.world.clearRadius) return terrainType;
+      const neighbours = [];
+      for (const [dx, dy] of NEIGHBOURS) {
+        const neighbour = this.baseTypeAt(x + dx, y + dy);
+        if (neighbour === terrainType) return terrainType;   // de flesta rutor avgörs redan av första grannen
+        neighbours.push(neighbour);
+      }
+      const votes = {};
+      let best = neighbours[0];
+      for (const neighbour of neighbours) if ((votes[neighbour] = (votes[neighbour] || 0) + 1) > votes[best]) best = neighbour;
+      return best;
+    },
+
+    // Terräng före utjämning: regler, särdrag och gångar.
+    baseTypeAt(x, y) {
       const worldConfig = CityBuilder.Config.world;
       const distanceFromOrigin = Math.hypot(x, y);
       if (distanceFromOrigin < worldConfig.clearRadius) return 'grass';
