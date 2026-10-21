@@ -179,7 +179,7 @@
       const isFinished = building.buildProgress >= 1, image = Assets.get(building.definition.image);
       context.globalAlpha = isFinished ? (building.paused ? .5 : 1) : .7;
 
-      if (image) context.drawImage(image, x + 2, y + 2, tileSize - 4, tileSize - 4);
+      if (image) context.drawImage(image, x, y, tileSize, tileSize);
       else {
         context.fillStyle = building.definition.color;
         context.fillRect(x + 3, y + 3, tileSize - 6, tileSize - 6);

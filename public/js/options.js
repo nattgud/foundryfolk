@@ -256,7 +256,8 @@
           pointer-events: none;
           font-size: 11px;
           line-height: 1;
-          color: var(--dim);
+          color: #fff;
+          text-shadow: 0 0 3px #000, 0 0 3px #000;
           opacity: 0.9;
           font-variant-numeric: tabular-nums;
         }
