@@ -11,6 +11,7 @@
         if (building.buildProgress < 1 || !building.definition.job) continue;
         const behavior = Behaviors.forBuilding(building);
         if (behavior.update) behavior.update(building, deltaSeconds);
+        Behaviors.trackEfficiency(building, deltaSeconds);
       }
     },
   };

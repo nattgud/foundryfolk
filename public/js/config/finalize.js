@@ -25,6 +25,7 @@
 
     const job = building.job;
     if (!job) continue;
+    for (const group of [].concat(job.eats || [])) for (const resourceId of group.any || []) if (!Config.resources[resourceId]) warn(`${id}: okänd resurs '${resourceId}' i eats`);
     if (job.kind === 'gather') {
       if (!Config.terrain[job.sourceTerrain]) warn(`${id}: okänd terräng '${job.sourceTerrain}'`);
       if (!Config.resources[job.outputResource]) warn(`${id}: okänd resurs '${job.outputResource}'`);

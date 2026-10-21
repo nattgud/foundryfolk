@@ -1136,6 +1136,9 @@
       style.id = 'buildMenuStyles';
 
       style.textContent = `
+        body {
+          --resursIconSize: 32px;
+        }
         #bottom.build-menu {
           display: flex;
           flex-direction: column;
@@ -1507,15 +1510,15 @@
           font-weight: 600;
         }
         .resource-detail .resource-icon {
-          width: 64px;
-          height: 64px;
-          flex: 0 0 64px;
+          width: var(--resursIconSize);
+          height: var(--resursIconSize);
+          flex: 0 0 var(--resursIconSize);
         }
 
         .resource-favorite {
-          flex: 0 0 64px;
-          width: 64px;
-          height: 64px;
+          flex: 0 0 var(--resursIconSize);
+          width: var(--resursIconSize);
+          height: var(--resursIconSize);
           padding: 0;
           border: 0;
           background: transparent;
@@ -1751,6 +1754,14 @@
         .join('');
     },
 
+    // Effektivitet senaste minuten: "Efficiency 62% · Missing: Iron 25%, Local stock full 13%". Tom tills det finns data.
+    efficiencyText(building) {
+      const summary = building.eff && building.eff.summary;
+      if (!summary || building.buildProgress < 1 || !building.definition.job) return '';
+      const reasons = summary.reasons.slice(0, 3).map(([reason, share]) => `${I18n().status(reason)} ${Math.round(share * 100)}%`).join(', ');
+      return t('Efficiency {percent}%', { percent: Math.round(summary.ratio * 100) }) + (reasons ? ' · ' + reasons : '');
+    },
+
     // Vad en byggnad är till för, som en lista med korta rader
     describeBuilding(definition) {
       const lines = [];
@@ -1777,6 +1788,7 @@
 
       const equipment = this.formatResources(definition.requiredEquipment);
       if (job && equipment) lines.push(t('Requires: {equipment}', { equipment }));
+      for (const group of [].concat(job?.eats || [])) lines.push(t('Needs: {food}', { food: group.any.map(id => this.resourceName(id)).join(' / ') }));
 
       return lines;
     },
@@ -1895,7 +1907,7 @@
       const rect = { left, top, width: size, height: size, right: left + size, bottom: top + size };
 
       const key = (building
-        ? `b${building.id}:${I18n().language}:${building.status}:${building.buildProgress < 1 ? this.timeLeft(building) : 'done'}`
+        ? `b${building.id}:${I18n().language}:${building.status}:${building.buildProgress < 1 ? this.timeLeft(building) : 'done'}:${this.efficiencyText(building)}`
         : `t${tile.x},${tile.y}:${node.tile.remainingAmount}`) +
         `@${Math.round(left)},${Math.round(top)},${Math.round(size)}`;
 
@@ -1907,6 +1919,7 @@
             null,
             [
               ...(building.buildProgress < 1 ? [t('Constructing {time}', { time: this.timeLeft(building) })] : []),
+              ...(this.efficiencyText(building) ? [this.efficiencyText(building)] : []),
               ...this.describeBuilding(building.definition),
             ]
           )
@@ -1973,6 +1986,7 @@
       const html = building.definition.isStorage
         ? t('Storage: {list}', { list: this.resourceIconsHtml(building.storedGoods) || t('empty') })
         : statusText +
+          (this.efficiencyText(building) ? `<br>${this.efficiencyText(building)}` : '') +
           (imports ? `<br>${t('Import: {list}', { list: imports })}` : '') +
           (exports ? `<br>${t('Export: {list}', { list: exports })}` : '') +
           (range ? `<br>${t('Range: {n} tiles', { n: range })}` : '');

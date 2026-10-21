@@ -150,6 +150,7 @@
       'Gathered by: {list}': 'Samlas av: {list}',
       'Can be built with: {list}': 'Kan byggas med: {list}',
       'Constructing {time}': 'Byggs, {time} kvar',
+      'Efficiency {percent}%': 'Effektivitet {percent}%',
       'Under construction {time}': 'Byggs, {time} kvar',
       'Demolish': 'Riv',
       'Pause': 'Pausa',
@@ -159,6 +160,7 @@
       'empty': 'tomt',
       'Import: {list}': 'Import: {list}',
       'Export: {list}': 'Export: {list}',
+      'Needs: {food}': 'Behöver: {food}',
 
       // Meddelanden i spelet
       'Game loaded.': 'Spelet laddades.',
@@ -389,6 +391,7 @@
       'Gathered by: {list}': 'Gesammelt von: {list}',
       'Can be built with: {list}': 'Bebaubar mit: {list}',
       'Constructing {time}': 'Wird gebaut, noch {time}',
+      'Efficiency {percent}%': 'Effizienz {percent}%',
       'Under construction {time}': 'Im Bau, noch {time}',
       'Demolish': 'Abreißen',
       'Pause': 'Pausieren',
@@ -398,6 +401,7 @@
       'empty': 'leer',
       'Import: {list}': 'Eingang: {list}',
       'Export: {list}': 'Ausgang: {list}',
+      'Needs: {food}': 'Braucht: {food}',
 
       'Game loaded.': 'Spiel geladen.',
       'Must be built on: {terrain}': 'Muss gebaut werden auf: {terrain}',
@@ -623,6 +627,7 @@
       'Gathered by: {list}': 'Recolectado por: {list}',
       'Can be built with: {list}': 'Se puede construir con: {list}',
       'Constructing {time}': 'En construcción, quedan {time}',
+      'Efficiency {percent}%': 'Eficiencia {percent}%',
       'Under construction {time}': 'En construcción, quedan {time}',
       'Demolish': 'Demoler',
       'Pause': 'Pausar',
@@ -632,6 +637,7 @@
       'empty': 'vacío',
       'Import: {list}': 'Entrada: {list}',
       'Export: {list}': 'Salida: {list}',
+      'Needs: {food}': 'Necesita: {food}',
 
       'Game loaded.': 'Partida cargada.',
       'Must be built on: {terrain}': 'Debe construirse sobre: {terrain}',
@@ -811,8 +817,8 @@
         const list = text.slice('Missing: '.length).split(', ').map(part => {
           const match = /^(.*) \((\d+)\)$/.exec(part);
           const name = match ? match[1] : part;
-          const id = Object.keys(resources).find(resourceId => resources[resourceId].name === name);
-          const translated = id ? this.nameOf('resource', id, name) : this.t(name);
+          const tr = n => { const id = Object.keys(resources).find(r => resources[r].name === n); return id ? this.nameOf('resource', id, n) : this.t(n); };
+          const translated = name.split(' / ').map(tr).join(' / ');
           return match ? `${translated} (${match[2]})` : translated;
         }).join(', ');
         return this.t('Missing: {list}', { list });

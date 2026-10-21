@@ -1,6 +1,20 @@
 /* Enhetstyper.
    isHauler: tar logistikuppdrag. wearsPaths: trampar upp stigar. speedMultiplier: gånghastighet.
    fallbackShape/fallbackSize/color = reservgrafik, imageSize = bildstorlek i pixlar. */
+
+  // SPRITE SHEETS (frame: 64 on a unit = sheet; without frame the whole image is drawn as one picture)
+  // Cells are frame x frame px. Rows = state/direction, columns = animation frames.
+  //   Row 0  idle
+  //   Row 1  up            Row 5  up/right
+  //   Row 2  right         Row 6  down/right
+  //   Row 3  down          Row 7  down/left
+  //   Row 4  left          Row 8  up/left
+  // The number of rows in the sheet decides what is used:
+  //   9+ rows  8 directions     5-8 rows  4 directions (diagonals fall back to left/right)
+  //   2-4 rows  row 1 for all walking (mirrored when going left)     1 row  row 0 for everything (mirrored when going left)
+  // Columns: 1 = no animation, more = animated automatically (idle row too). Time-based: animFps frames/second (default 8)
+  // Carry images (imageCarrying, imagesByBuilding) must use the same frame size and layout.
+  // If the art faces left by default: imageFacesLeft: true. Custom row order: rows: { idle: 0, up: 1, ... }
 CityBuilder.Config.units = {
   carrier: {
     isHauler: true, 
@@ -10,13 +24,15 @@ CityBuilder.Config.units = {
     fallbackShape: 'square', 
     fallbackSize: 8, 
     imageSize: 16,
-    image: 'images/units/carrier.png', 
-    imageCarrying: 'images/units/carrier_loaded.png', 
+    frame: 64,   // rutstorlek i arket (px). Utan frame ritas hela bilden som en enda bild, som förut
+    animFps: 8,  // valfritt: animationsbilder per sekund (standard 8)
+    image: 'images/units/carrier.png',
+    imageCarrying: 'images/units/carrier_loaded.png',
   },
   deer: {
     isHauler: false, 
     wearsPaths: false, 
-    speedMultiplier: 0.4, 
+    speedMultiplier: 0.3, 
     color: '#760', 
     fallbackShape: 'circle', 
     fallbackSize: 6, 

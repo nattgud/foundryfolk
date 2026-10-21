@@ -202,6 +202,8 @@
 
   // Väljer bild: byggnadsspecifik (med last) -> byggnadsspecifik -> enhetens lastbild -> enhetens bild.
   // Fält som saknas, eller filer som inte laddas, hoppas över. Slutar det med null ritas reservgrafik.
+    // Väljer bild (kan vara ett ark, se definition.frame): byggnadsspecifik (med last) -> byggnadsspecifik -> enhetens lastbild -> enhetens bild.
+  // Fält som saknas, eller filer som inte laddas, hoppas över. Slutar det med null ritas reservgrafik.
   const getImage = source => source ? Assets.get(source) : null;
   const findUnitImage = unit => {
     const definition = unit.definition, isCarrying = !!unit.carriedResource;
@@ -212,12 +214,58 @@
       || null;
   };
 
+  // Rader i arket: 0 stilla, 1 upp, 2 höger, 3 ner, 4 vänster, 5 upp/höger, 6 ner/höger, 7 ner/vänster, 8 upp/vänster (kan åsidosättas med definition.rows)
+  const ROWS = { idle: 0, up: 1, right: 2, down: 3, left: 4, up_right: 5, down_right: 6, down_left: 7, up_left: 8 };
+
+  // Rörelsens riktning: 4 (eller 8 om arket har diagonalrader)
+  const directionOf = (moveX, moveY, eight) => {
+    const horizontal = moveX < 0 ? 'left' : 'right', vertical = moveY < 0 ? 'up' : 'down';
+    if (eight) {
+      const steep = Math.abs(moveY) / (Math.abs(moveX) + Math.abs(moveY)); // 0 = rakt i sidled, 1 = rakt upp/ner
+      if (steep > .29 && steep < .71) return vertical + '_' + horizontal;
+    }
+    return Math.abs(moveX) >= Math.abs(moveY) ? horizontal : vertical;
+  };
+
   Renderer.addLayer('units', (context, renderer) => {
-    const tileSize = renderer.tileSize;
+    const tileSize = renderer.tileSize, now = performance.now(); // animationen går på verklig tid: lika snabb vid 30 som vid 144 fps
+    context.imageSmoothingQuality = 'high';
     for (const unit of World.units) {
       const definition = unit.definition, image = findUnitImage(unit);
+      const frameW = image && (definition.frame || image.naturalWidth), frameH = image && (definition.frame || image.naturalHeight);
+      const cols = image ? Math.max(1, Math.floor(image.naturalWidth / frameW)) : 1, rows = image ? Math.max(1, Math.floor(image.naturalHeight / frameH)) : 1;
+
+      // Rörelse sedan förra bilden: riktning (står enheten still behålls den) och tidpunkt för senaste rörelse
+      const moveX = unit.x - (unit.lastX ?? unit.x), moveY = unit.y - (unit.lastY ?? unit.y);
+      if (Math.abs(moveX) > 1e-4) unit.faceLeft = moveX < 0;
+      if (Math.abs(moveX) + Math.abs(moveY) > 1e-4) { unit.direction = directionOf(moveX, moveY, rows >= 9); unit.lastMoveAt = now; }
+      unit.lastX = unit.x; unit.lastY = unit.y;
+
       const pixelX = unit.x * tileSize, pixelY = unit.y * tileSize;
-      if (image) context.drawImage(image, pixelX - definition.imageSize / 2, pixelY - definition.imageSize / 2, definition.imageSize, definition.imageSize);
+      if (image) {
+        const size = definition.imageSize;
+        // 150 ms eftersläp så att enheten inte växlar mellan gå och stå mellan bildrutor
+        const moving = now - (unit.lastMoveAt ?? -1e9) < 150;
+        // Flera kolumner = animation (både stilla och gående), annars kolumn 0
+        const column = cols > 1 ? Math.floor(now / 1000 * (definition.animFps || 8) + (unit.animOffset ??= Math.random() * 100)) % cols : 0;
+
+        // Rad: 9+ rader = 8 riktningar, 5+ = 4 riktningar (diagonal -> sidoriktning), 2+ = rad 1 för all gång, 1 = rad 0 för allt
+        const map = definition.rows || ROWS;
+        let row = 0;
+        if (moving && rows > 1) {
+          const direction = unit.direction || 'right';
+          row = rows >= 5 ? (map[rows >= 9 ? direction : direction.split('_').pop()] ?? 1) : 1;
+        } else if (rows > 1) row = map.idle ?? 0;
+        row = Math.min(row, rows - 1);
+
+        // Utan vänsterrad (färre än 5 rader) speglas bilden åt vänster. imageFacesLeft: true om bilden ser åt vänster.
+        const mirror = rows < 5 && !!unit.faceLeft !== !!definition.imageFacesLeft;
+        if (mirror) {
+          context.save(); context.translate(pixelX, pixelY); context.scale(-1, 1);
+          context.drawImage(image, column * frameW, row * frameH, frameW, frameH, -size / 2, -size / 2, size, size);
+          context.restore();
+        } else context.drawImage(image, column * frameW, row * frameH, frameW, frameH, pixelX - size / 2, pixelY - size / 2, size, size);
+      }
       else {
         context.fillStyle = definition.color;
         if (definition.fallbackShape === 'circle') { context.beginPath(); context.arc(pixelX, pixelY, definition.fallbackSize, 0, 7); context.fill(); }
@@ -261,6 +309,20 @@
     const tileSize = renderer.tileSize;
     const time = performance.now() / 1000;
     for (const building of World.buildings) {
+      // Ineffektiv en längre tid: liten ikon uppe till höger (Config.settings.efficiency: minSeconds, warnBelow, badBelow)
+      const summary = building.eff && building.eff.summary, limits = Object.assign({ minSeconds: 30, warnBelow: .6, badBelow: .3 }, Config.settings.efficiency);
+      if (summary && !building.paused && summary.seconds >= limits.minSeconds && summary.ratio < limits.warnBelow) {
+        const bad = summary.ratio < limits.badBelow;
+        const efficiencyIcon = Assets.get(ICON_DIR + (bad ? 'efficiency_bad' : 'efficiency_warn') + '.png') || Assets.get(ICON_DIR + (bad ? 'warning_red' : 'warning_grey') + '.png');
+        if (efficiencyIcon) {
+          // Pulserar som statusikonerna (röd = snabbare och kraftigare, som "error"). Mittpunkten ligger fast i hörnet.
+          const wave = (Math.sin(time * (bad ? 6 : 3.5)) + 1) / 2, iconSize = tileSize * .36 * (1 + wave * (bad ? .3 : .15));
+          const centerX = (building.x + 1) * tileSize - tileSize * .18 - 1, centerY = building.y * tileSize + tileSize * .18 + 1;
+          context.globalAlpha = .7 + .3 * wave;
+          context.drawImage(efficiencyIcon, centerX - iconSize / 2, centerY - iconSize / 2, iconSize, iconSize);
+          context.globalAlpha = 1;
+        }
+      }
       const name = statusIcon(building.workerUnit?.status) || statusIcon(building.status);
       const icon = name && Assets.get(ICON_DIR + name + '.png');
       if (icon) {

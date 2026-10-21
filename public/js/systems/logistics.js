@@ -28,6 +28,18 @@
       return best;
     },
 
+    // Bästa källa bland alternativa varor: den det finns mest av i lagret, därefter närmast
+    findAlternativeSupplier(resourceIds, nearBuilding) {
+      let best = null;
+      for (const resourceId of resourceIds) {
+        const source = this.findSupplier(resourceId, nearBuilding);
+        if (!source) continue;
+        const stock = Economy.stored[resourceId] || 0, distance = Utils.manhattanDistance(source, nearBuilding);
+        if (!best || stock > best.stock || (stock === best.stock && distance < best.distance)) best = { source, resource: resourceId, stock, distance };
+      }
+      return best;
+    },
+
     reservationsOf: building => building.definition.isStorage ? building.storedReserved : building.outputReserved,
     reserve(source, resourceId) {
       const reservations = this.reservationsOf(source);
@@ -120,8 +132,18 @@
             this.createTask(supplier, building, resourceId);
           }
         }
+        for (const group of Behaviors.eatGroups(building)) {
+          const incoming = group.any.reduce((sum, id) => sum + (building.incomingCount[id] || 0), 0);
+          const missing = (group.capacity || 2) - Behaviors.eatStock(building, group) - incoming;
+          for (let requested = 0; requested < Math.min(requestsPerBuilding, missing) && this.tasks.length < maxTasks; requested++) {
+            const pick = this.findAlternativeSupplier(group.any, building);
+            if (!pick) break;
+            this.createTask(pick.source, building, pick.resource);
+          }
+        }
       }
-      this.cursor = (start + visited) % count; // nästa gång fortsätter planeringen där den slutade
+      this.cursor = (start + visited) % count;
+
     },
 
     // Överskott i utbuffert -> närmaste lager (om det finns plats). Rutan töms också när bufferten börjar bli full,

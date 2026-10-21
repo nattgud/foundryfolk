@@ -92,6 +92,8 @@
       this.canvas.id = 'minimap';
       this.canvas.title = t('Minimap (scroll to zoom)');
       this.context = this.canvas.getContext('2d');
+      this.background = new Image();
+      this.background.src = 'images/minimap_bg.jpg';
 
       this.modeButton = document.createElement('button');
       this.modeButton.type = 'button';
@@ -397,8 +399,8 @@
 
       context.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
       context.clearRect(0, 0, size, size);
-      context.fillStyle = '#0d1115';
-      context.fillRect(0, 0, size, size);
+      if (this.background && this.background.complete && this.background.naturalWidth) context.drawImage(this.background, 0, 0, size, size);
+      else { context.fillStyle = '#0d1115'; context.fillRect(0, 0, size, size); }
       context.imageSmoothingEnabled = false;
       for (const chunk of visible) {
         if (!chunk.builtAt) continue;

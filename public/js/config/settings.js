@@ -9,8 +9,8 @@ CityBuilder.Config.settings = {
   carriersPerBuilding: 3,
   deerActivationRadius: 2,
   deerPerChunk: 3,
-  deerTreeSpreadChance: 0.01,
-  startingResources: { wood: 12, plank: 5, stone: 10, hammer: 10 },
+  deerTreeSpreadChance: 0.005,
+  startingResources: { wood: 10, plank: 10, stone: 10, hammer: 10 },
   gameSpeeds: [1, 2, 4, 8],
   defaultEquipment: {}, // utrustning som varje produktionshus måste få (kan åsidosättas med requiredEquipment)
   wearPerPass: 0.1,              // slitage per bärarpassage
@@ -24,6 +24,7 @@ CityBuilder.Config.settings = {
     baseCarriers: 20,
     lowStock: 20
   },
+  efficiency: { windowSeconds: 60, minSeconds: 5, warnBelow: .6, badBelow: .3 },
   zoom: { min: .5, max: 2.5 },
   toastDurationMs: 3500,
   useImages: true,

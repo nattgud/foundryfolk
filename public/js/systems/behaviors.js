@@ -108,6 +108,74 @@
       return blocked ? 'Central storage full' : 'Local stock full';
     },
 
+    // Alternativa importer: job.eats = { any: ['meat','fish','bread'], every: 2 } (eller en lista av sådana)
+    eatGroups(building) { const eats = building.definition.job && building.definition.job.eats; return !eats ? [] : [].concat(eats); },
+    eatStock: (building, group) => group.any.reduce((sum, id) => sum + (building.inputStock[id] || 0), 0),
+    eatsReady(building) {
+      return this.eatGroups(building).every((group, i) => (building.meals && building.meals[i] > 0) || this.eatStock(building, group) > 0);
+    },
+    eat(building) { // förbrukar en omgång: tar en vara (den det finns mest av) när förra är slutäten
+      building.meals = building.meals || [];
+      this.eatGroups(building).forEach((group, i) => {
+        if (!(building.meals[i] > 0)) {
+          const id = group.any.reduce((best, r) => (building.inputStock[r] || 0) > (building.inputStock[best] || 0) ? r : best);
+          building.inputStock[id]--;
+          building.meals[i] = group.every || 1;
+        }
+        building.meals[i]--;
+      });
+    },
+    eatStatus(building) {
+      const missing = this.eatGroups(building).filter((group, i) => !(building.meals && building.meals[i] > 0) && !this.eatStock(building, group));
+      return 'Missing: ' + missing.map(group => group.any.map(id => Config.resources[id].name).join(' / ')).join(', ');
+    },
+
+    // Effektivitet: andel av de senaste ~60 s (speltid) som huset inte stått still, med orsaker till stilleståndet.
+    // Statusar som räknas som stillestånd; allt annat (Working, Walking, Gathering, ...) räknas som arbete.
+    // Byggnader som spelaren pausat räknas inte alls.
+    IDLE_STATUSES: new Set(['Local stock full', 'Central storage full', 'No resources', 'No deer in range', 'Tools missing', "Can't reach", 'Missing outputResource']),
+    idleReason(building) {
+      const status = CityBuilder.I18n.canonicalStatus(building.status || '');
+      return status.startsWith('Missing:') ? status.replace(/\s*\(\d+\)/g, '') : this.IDLE_STATUSES.has(status) ? status : null;
+    },
+    trackEfficiency(building, deltaSeconds) {
+      if (building.paused) return;
+      const BUCKET = 10, count = Math.max(1, Math.ceil(((Config.settings.efficiency && Config.settings.efficiency.windowSeconds) || 60) / BUCKET));
+      const eff = building.eff || (building.eff = { time: 0, buckets: [], timer: 0, summary: null });
+      eff.time += deltaSeconds;
+      const slot = Math.floor(eff.time / BUCKET);
+      let bucket = eff.buckets[slot % count];
+      if (!bucket || bucket.slot !== slot) bucket = eff.buckets[slot % count] = { slot, total: 0, work: 0, reasons: {} };
+      // Tom status eller sökning = arbetaren planerar: räknas varken som arbete eller stillestånd
+      const status = CityBuilder.I18n.canonicalStatus(building.status || '');
+      if (status && status !== 'Searching...') {
+        const reason = this.idleReason(building);
+        bucket.total += deltaSeconds;
+        if (reason) bucket.reasons[reason] = (bucket.reasons[reason] || 0) + deltaSeconds; else bucket.work += deltaSeconds;
+      }
+      if ((eff.timer -= deltaSeconds) > 0) return;
+      eff.timer = 1; // sammanfattningen uppdateras en gång per sekund
+      let total = 0, work = 0;
+      const reasons = {};
+      for (const b of eff.buckets) {
+        if (!b || slot - b.slot >= count) continue;
+        total += b.total; work += b.work;
+        for (const r in b.reasons) reasons[r] = (reasons[r] || 0) + b.reasons[r];
+      }
+      eff.summary = total >= 5 ? { seconds: total, ratio: work / total, reasons: Object.entries(reasons).map(([r, s]) => [r, s / total]).sort((a, b) => b[1] - a[1]) } : null;
+    },
+
+    // Lämnar det arbetaren bär i huset (jägarens alla varor, annars en)
+    deposit(worker, building) {
+      if (worker.carriedResource && !building.removed) {
+        for (const [resourceId, amount] of Object.entries(worker.carriedOutputs || { [worker.carriedResource]: 1 })) {
+          building.outputStock[resourceId] = (building.outputStock[resourceId] || 0) + amount;
+        }
+      }
+      worker.carriedResource = null;
+      worker.carriedOutputs = null;
+    },
+
     hasRequiredEquipment: building =>
       Object.entries(building.definition.requiredEquipment || {}).every(([resourceId, amount]) => (building.inputStock[resourceId] || 0) >= amount),
   };
@@ -130,6 +198,8 @@
       const prey = Behaviors.findUnitTarget(building, job, worker);
       if (!prey) { worker.status = 'Inga hjortar i räckvidd'; worker.idleCooldown = job.retrySeconds || 5; return; }
 
+      Behaviors.eat(building);
+
       worker.stepQueue = [
         Jobs.walkTo(Math.floor(prey.x), Math.floor(prey.y), true),
         // Framme: bytet stannar där det står (frysts av Units.update via heldBy) tills jägaren är klar
@@ -149,23 +219,24 @@
           if (!target || target.removed || target.heldBy !== worker) return false;
           Behaviors.removeUnit(target);
           worker.carriedResource = outputResource;
+          worker.carriedOutputs = outputs;
         }),
         Jobs.walkTo(building.x, building.y),
-        Jobs.run(() => {
-          if (worker.carriedResource && !building.removed) {
-            for (const [resourceId, amount] of Object.entries(outputs)) {
-              building.outputStock[resourceId] = (building.outputStock[resourceId] || 0) + amount;
-            }
-          }
-          worker.carriedResource = null;
-        }),
+        Jobs.run(() => Behaviors.deposit(worker, building)),
       ];
     },
 
     planWork(worker) {
       const building = worker.homeBuilding, job = building.definition.job;
+      // Bär redan en vara (t.ex. vägen hem blockerades): försök bara lämna den, samla inte mer
+      if (worker.carriedResource) {
+        worker.stepQueue = [Jobs.walkTo(building.x, building.y), Jobs.run(() => Behaviors.deposit(worker, building))];
+        return;
+      }
       if (!Behaviors.hasRequiredEquipment(building)) { worker.status = 'Saknar verktyg'; return; }
       if (Utils.sumValues(building.outputStock) >= Config.settings.outputBufferCapacity) { worker.status = Behaviors.fullStatus(building); return; }
+
+      if (!Behaviors.eatsReady(building)) { worker.status = Behaviors.eatStatus(building); worker.idleCooldown = 1; return; }
 
       if (job.sourceUnit) return this.planUnitWork(worker, building, job);
 
@@ -177,6 +248,9 @@
       if (target === null) { worker.status = 'Inga resurser'; worker.idleCooldown = 60; return; }
 
       const stopBeside = Config.terrain[target.tile.terrainType].gatherersStopBefore;
+
+      Behaviors.eat(building);
+
       worker.stepQueue = [
         Jobs.walkTo(target.x, target.y, stopBeside),
         Jobs.wait(job.workSeconds, 'Gathering'),
@@ -186,12 +260,7 @@
           worker.carriedResource = job.outputResource;
         }),
         Jobs.walkTo(building.x, building.y),
-        Jobs.run(() => {
-          if (worker.carriedResource && !building.removed) {
-            building.outputStock[worker.carriedResource] = (building.outputStock[worker.carriedResource] || 0) + 1;
-          }
-          worker.carriedResource = null;
-        }),
+        Jobs.run(() => Behaviors.deposit(worker, building)),
       ];
     },
   });
@@ -221,6 +290,7 @@
           building.status = 'Tools missing';
           return;
         }
+        if (!Behaviors.eatsReady(building)) { building.status = Behaviors.eatStatus(building); return; }
         const missingInputs = Object.entries(inputs)
           .filter(([id, amount]) => (building.inputStock[id] || 0) < amount)
           .map(([id, amount]) =>
@@ -240,6 +310,7 @@
           building.status = Behaviors.fullStatus(building);
           return;
         }
+        Behaviors.eat(building);
         for (const resourceId in inputs) {
           building.inputStock[resourceId] -= inputs[resourceId];
         }

@@ -319,6 +319,7 @@ CityBuilder.Config.buildings = {
     placeOnTerrain: 'iron_ore',
     job: {
       kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
       sourceTerrain: 'iron_ore',
       searchRadius: 10,
       outputResource: 'iron_ore',
@@ -336,6 +337,7 @@ CityBuilder.Config.buildings = {
     placeOnTerrain: 'copper_ore',
     job: {
       kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
       sourceTerrain: 'copper_ore',
       searchRadius: 10,
       outputResource: 'copper_ore',
@@ -353,6 +355,7 @@ CityBuilder.Config.buildings = {
     placeOnTerrain: 'tin_ore',
     job: {
       kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
       sourceTerrain: 'tin_ore',
       searchRadius: 10,
       outputResource: 'tin_ore',
@@ -370,6 +373,7 @@ CityBuilder.Config.buildings = {
     placeOnTerrain: 'coal',
     job: {
       kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
       sourceTerrain: 'coal',
       searchRadius: 10,
       outputResource: 'coal',
@@ -387,6 +391,7 @@ CityBuilder.Config.buildings = {
     placeOnTerrain: 'gold_ore',
     job: {
       kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
       sourceTerrain: 'gold_ore',
       searchRadius: 10,
       outputResource: 'gold_ore',
@@ -404,6 +409,7 @@ CityBuilder.Config.buildings = {
     placeOnTerrain: 'silver_ore',
     job: {
       kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
       sourceTerrain: 'silver_ore',
       searchRadius: 10,
       outputResource: 'silver_ore',
@@ -421,6 +427,7 @@ CityBuilder.Config.buildings = {
     placeOnTerrain: 'gemstone',
     job: {
       kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
       sourceTerrain: 'gemstone',
       searchRadius: 10,
       outputResource: 'gemstone',
@@ -438,6 +445,7 @@ CityBuilder.Config.buildings = {
     placeOnTerrain: 'salt_ore',
     job: {
       kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
       sourceTerrain: 'salt_ore',
       searchRadius: 10,
       outputResource: 'salt',
@@ -455,6 +463,7 @@ CityBuilder.Config.buildings = {
     placeOnTerrain: 'sulfur',
     job: {
       kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
       sourceTerrain: 'sulfur',
       searchRadius: 10,
       outputResource: 'sulfur',

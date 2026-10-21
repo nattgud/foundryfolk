@@ -12,9 +12,9 @@
     idleCooldown: 1,
     maxFoodPerTile: 5,
     maxSpreadDistance: 6,
-    breedChancePerSecond: Config.settings.deerBreedChancePerSecond ?? 5 / 150, // chans per speltidssekund att få en unge (snitt ca 25 min mellan ungar per hjort)
+    breedChancePerSecond: Config.settings.deerBreedChancePerSecond ?? 2 / 1000, // chans per speltidssekund att få en unge (snitt ca 25 min mellan ungar per hjort)
     breedCooldown: Config.settings.deerBreedCooldown ?? 60,    // speltid i sekunder innan samma hjort (eller ungen) kan få en ny unge
-    maxPopulation: Config.settings.deerMaxPopulation ?? 200,     // inga fler hjortar än så här i världen
+    maxPopulation: Config.settings.deerMaxPopulation ?? 50,     // inga fler hjortar än så här i världen
   };
 
   const DEER_FOOD_TYPES = new Set([
@@ -455,8 +455,8 @@
         }
       }
       const spot = spots.length ? spots[Math.floor(Math.random() * spots.length)] : { x: cx, y: cy };
-
       const fawn = World.spawnUnit('deer', spot.x, spot.y);
+      console.log("spawn", spot.x, spot.y);
       unit.deerBreedCooldown = DEER.breedCooldown;
       if (fawn) fawn.deerBreedCooldown = DEER.breedCooldown;
     },
