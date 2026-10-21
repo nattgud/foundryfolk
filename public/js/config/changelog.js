@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.399': [
+      'Carriers that cannot reach a far-away building now leave the goods in a closer warehouse, or skip the delivery',
+    ],
     '0.4.398': [
       'Fixed carriers failing to deliver to far-away buildings such as outpost guard towers',
     ],

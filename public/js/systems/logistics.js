@@ -262,11 +262,31 @@
       carrier.carriedResource = null; carrier.deliveryTask = null; carrier.hasPickedUp = false;
     },
 
-    // Bäraren hittade ingen väg: uppdraget bryts och paret källa-mål provas inte om på en stund (annars pendlar bärare i evighet)
+    // Bäraren hittade ingen väg. Paret källa-mål provas inte om på en stund (annars pendlar bärare i evighet).
+    // Bär den redan varan lämnar den den i ett lager närmare målet om det finns ett (nästa leverans går då därifrån),
+    // annars läggs uppdraget ner och bäraren gör något annat.
     failTask(carrier) {
       const task = carrier.deliveryTask;
-      if (task) this.unreachable.set(this.pairKey(task.source, task.destination), (this.time || 0) + cfg().unreachableSeconds);
-      this.abortTask(carrier);
+      if (!task) return;
+      this.unreachable.set(this.pairKey(task.source, task.destination), (this.time || 0) + cfg().unreachableSeconds);
+      const relay = carrier.hasPickedUp && !task.destination.definition.isStorage ? this.findRelay(task) : null;
+      if (!relay) return this.abortTask(carrier);
+
+      this.releaseIncoming(task);
+      this.addIncoming(relay, task.resource, 1);
+      carrier.deliveryTask = { source: task.source, destination: relay, resource: task.resource, seq: ++this.seq, created: this.time || 0 };
+      carrier.stepQueue = [Jobs.walkTo(relay.x, relay.y), Jobs.run(unit => this.dropOff(unit))];
+    },
+
+    // Egna färdiga lager som ligger närmare målet än källan och som går att nå från källan. Det närmast målet vinner.
+    findRelay({ source, destination }) {
+      let best = null, bestDistance = Utils.manhattanDistance(source, destination);
+      for (const storage of Economy.storages(source.player)) {
+        const distance = Utils.manhattanDistance(storage, destination);
+        if (storage === source || distance >= bestDistance || this.isUnreachable(source, storage)) continue;
+        best = storage; bestDistance = distance;
+      }
+      return best;
     },
 
     abortTask(carrier) { // bryt uppdrag och släpp reservationer
