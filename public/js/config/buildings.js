@@ -8,6 +8,7 @@ CityBuilder.Config.buildings = {
     buildCost: {},
     hiddenInMenu: true,
     isStorage: true,
+    maxHp: 400,
     buildDuration: 5
   },
 
@@ -796,6 +797,7 @@ CityBuilder.Config.buildings = {
       trains: ['swordsman', 'archer'],
       searchRadius: 20
     },
+    maxHp: 200,
     buildDuration: 40
   },
 
@@ -811,6 +813,7 @@ CityBuilder.Config.buildings = {
       trains: ['swordsman', 'archer', 'knight'],
       searchRadius: 20
     },
+    maxHp: 300,
     buildDuration: 80
   },
 

@@ -265,7 +265,7 @@
       'Training: {unit}': 'Tränar: {unit}',
       'Soldiers: {n}/{max}': 'Soldater: {n}/{max}',
       'Next soldier: {unit}': 'Nästa soldat: {unit}',
-      'Defending': 'Försvarar', 'Garrison full': 'Garnisonen full', 'Training': 'Tränar',
+      'Defending': 'Försvarar', 'Attack mode': 'Attackläge', 'Defence mode': 'Försvarsläge', 'Health: {hp}': 'Hälsa: {hp}', 'Garrison full': 'Garnisonen full', 'Training': 'Tränar',
       'Fighting': 'Slåss', 'Attacking': 'Anfaller', 'Returning': 'Återvänder',
       // Banor (adjektiv: former för genus, t.ex. 'Krummer|Krumme|Krummes')
       'Valley': 'Dal', 'Old forest': 'Urskog', 'Stone desert': 'Stenöken', 'Swamp': 'Träsk', 'Archipelago': 'Skärgård', 'Crag': 'Klippa', 'Cursed land': 'Förbannat land', 'Ruin': 'Ruin', 'Meteor shower': 'Meteorregn', 'Orchard': 'Fruktträdgård', 'Clay plain': 'Lerslätt', 'Drought': 'Torka',
@@ -515,7 +515,7 @@
       'Training: {unit}': 'Ausbildung: {unit}',
       'Soldiers: {n}/{max}': 'Soldaten: {n}/{max}',
       'Next soldier: {unit}': 'Nächster Soldat: {unit}',
-      'Defending': 'Verteidigt', 'Garrison full': 'Garnison voll', 'Training': 'Ausbildung',
+      'Defending': 'Verteidigt', 'Attack mode': 'Angriffsmodus', 'Defence mode': 'Verteidigungsmodus', 'Health: {hp}': 'Gesundheit: {hp}', 'Garrison full': 'Garnison voll', 'Training': 'Ausbildung',
       'Fighting': 'Kämpft', 'Attacking': 'Greift an', 'Returning': 'Kehrt zurück',
       // Banor (adjektiv: former för genus, t.ex. 'Krummer|Krumme|Krummes')
       'Valley': 'Tal', 'Old forest': 'Urwald', 'Stone desert': 'Steinwüste', 'Swamp': 'Sumpf', 'Archipelago': 'Archipel', 'Crag': 'Felswand', 'Cursed land': 'Verfluchtes Land', 'Ruin': 'Ruine', 'Meteor shower': 'Meteoritenschauer', 'Orchard': 'Obstgarten', 'Clay plain': 'Lehmebene', 'Drought': 'Dürre',
@@ -764,7 +764,7 @@
       'Training: {unit}': 'Entrenando: {unit}',
       'Soldiers: {n}/{max}': 'Soldados: {n}/{max}',
       'Next soldier: {unit}': 'Próximo soldado: {unit}',
-      'Defending': 'Defendiendo', 'Garrison full': 'Guarnición llena', 'Training': 'Entrenando',
+      'Defending': 'Defendiendo', 'Attack mode': 'Modo ataque', 'Defence mode': 'Modo defensa', 'Health: {hp}': 'Salud: {hp}', 'Garrison full': 'Guarnición llena', 'Training': 'Entrenando',
       'Fighting': 'Luchando', 'Attacking': 'Atacando', 'Returning': 'Regresando',
       // Banor (adjektiv: former för genus, t.ex. 'Krummer|Krumme|Krummes')
       'Valley': 'Valle', 'Old forest': 'Bosque viejo', 'Stone desert': 'Desierto de piedra', 'Swamp': 'Pantano', 'Archipelago': 'Archipiélago', 'Crag': 'Risco', 'Cursed land': 'Tierra maldita', 'Ruin': 'Ruina', 'Meteor shower': 'Lluvia de meteoritos', 'Orchard': 'Huerto', 'Clay plain': 'Llanura de arcilla', 'Drought': 'Sequía',

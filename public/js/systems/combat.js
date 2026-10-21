@@ -4,7 +4,11 @@
    - Garnisonsbyggnader (garrison.js) letar efter fiender inom sin räckvidd. Hittas en skickas alla soldater därinne ut.
    - Soldater (definition.isSoldier) väljer själva mål, går fram och slår eller skjuter. Finns inga fiender kvar går de hem
      och stiger in i byggnaden igen. Fria soldater (utan byggnad) vaktar sin post och söker sig till en ledig garnison.
-   - Alla enheter med maxHp kan skadas. Dör en bärare ersätts den av Logistics.balanceCarriers, en arbetare av sin byggnad.
+   - Alla enheter och byggnader med hp kan skadas. Fiendens soldater går först, sedan övriga enheter och sist byggnader.
+     Dör en bärare ersätts den av Logistics.balanceCarriers, en arbetare av sin byggnad (efter workerRespawnSeconds).
+     En förstörd byggnad lämnar inget tillbaka. Spelarens eget HQ går inte att angripa än.
+   - Garnisonsbyggnadens läge (building.stance): 'defend' vaktar inom job.searchRadius, 'attack' söker upp fiender inom
+     settings.attackRadius och jagar dem dit.
 
    En soldat har dessa fält utöver vanliga enhetsfält (alla sätts i spawnSoldier):
      quarters   byggnaden den hör till (null = fri soldat)    post     fri soldats vaktplats { x, y }
@@ -18,6 +22,13 @@
   const TIMERS = ['attackCooldownLeft', 'scanTimer', 'repathTimer', 'orderCooldown', 'homeSearchTimer'];
   const HOME_SEARCH_SECONDS = 2;      // hur ofta en fri soldat letar efter en ledig garnison
   const POST_TOLERANCE = 1.5;         // så nära posten räknas en fri soldat som på plats
+  const BUILDING_REACH = 0.6;         // en byggnad är en hel ruta: räckhållet räknas från kanten, inte mitten
+
+  // Mål är enheter (x, y = mitten) eller byggnader (x, y = rutan). Mittpunkt och prioritet (lägre = angrips först):
+  const isBuilding = target => target.buildProgress !== undefined;
+  const centreX = target => target.x + (isBuilding(target) ? .5 : 0);
+  const centreY = target => target.y + (isBuilding(target) ? .5 : 0);
+  const priority = target => isBuilding(target) ? 2 : target.definition.isSoldier ? 0 : 1;
 
   const Combat = {
     effects: [],                      // korta attackstreck för renderingen: { x1, y1, x2, y2, ranged, life }
@@ -27,21 +38,22 @@
 
     // ---- Sökning -------------------------------------------------------------------------------
 
-    // Enheter som kan bli mål: levande och tillhör någon riktig spelare. En lista per simuleringsruta.
+    // Enheter och byggnader som kan bli mål: levande och tillhör någon riktig spelare. En lista per simuleringsruta.
     targets() {
-      return this.targetCache || (this.targetCache = World.units.filter(unit => unit.hp != null && unit.player !== Players.NEUTRAL));
+      return this.targetCache || (this.targetCache = [...World.units, ...World.buildings].filter(target =>
+        target.hp != null && target.player !== Players.NEUTRAL && target !== World.headquarters));
     },
 
-    // Närmaste fiende till 'player' inom radius från (x, y). Beväpnade fiender går före obeväpnade.
+    // Bästa fiende till 'player' inom radius från (x, y): lägst prioritet först, sedan närmast.
     findEnemy(player, x, y, radius, ignore) {
-      let best = null, bestArmed = false, bestDistance = Infinity;
-      for (const unit of this.targets()) {
-        if (unit.removed || unit === ignore || !Players.isHostile(player, unit.player)) continue;
-        const distance = Math.hypot(unit.x - x, unit.y - y);
+      let best = null, bestPriority = Infinity, bestDistance = Infinity;
+      for (const target of this.targets()) {
+        if (target.removed || target === ignore || !Players.isHostile(player, target.player)) continue;
+        const distance = Math.hypot(centreX(target) - x, centreY(target) - y);
         if (distance > radius) continue;
-        const armed = Boolean(unit.definition.isSoldier);
-        if (best && (armed !== bestArmed ? !armed : distance >= bestDistance)) continue;
-        best = unit; bestArmed = armed; bestDistance = distance;
+        const rank = priority(target);
+        if (rank > bestPriority || (rank === bestPriority && distance >= bestDistance)) continue;
+        best = target; bestPriority = rank; bestDistance = distance;
       }
       return best;
     },
@@ -51,21 +63,31 @@
     attack(attacker, target) {
       const definition = attacker.definition;
       attacker.attackCooldownLeft = definition.attackCooldown;
-      this.effects.push({ x1: attacker.x, y1: attacker.y, x2: target.x, y2: target.y, ranged: definition.attackRange > 2, life: 0.18 });
+      this.effects.push({ x1: attacker.x, y1: attacker.y, x2: centreX(target), y2: centreY(target), ranged: definition.attackRange > 2, life: 0.18 });
       this.damage(target, Math.max(1, definition.attackDamage - (target.definition.armor || 0)));
     },
 
-    damage(unit, amount) {
-      if (unit.hp == null || unit.removed) return;
-      unit.hp -= amount;
-      if (unit.hp <= 0) this.kill(unit);
+    damage(target, amount) {
+      if (target.hp == null || target.removed) return;
+      target.hp -= amount;
+      if (target.hp <= 0) this.kill(target);
     },
 
-    kill(unit) {
-      if (unit.removed) return;
+    kill(target) {
+      if (target.removed) return;
+      if (isBuilding(target)) return this.destroyBuilding(target);
+      const unit = target;
       CityBuilder.Logistics.abortTask(unit); // en bärare som dör släpper sina reservationer
       Garrison.release(unit);
       Behaviors.removeUnit(unit);
+    },
+
+    // En förstörd byggnad är som en riven, men inget lämnas tillbaka (innehållet går förlorat)
+    destroyBuilding(building) {
+      CityBuilder.Behaviors.forBuilding(building)?.onDemolished?.(building);
+      World.removeBuilding(building);
+      const game = CityBuilder.Game;
+      if (game?.selectedBuilding === building) game.selectBuilding(null);
     },
 
     // ---- Skapa soldater ------------------------------------------------------------------------
@@ -123,8 +145,7 @@
         if (left > 0) { this.alertTimers.set(building, left); continue; }
         this.alertTimers.set(building, settings().scanIntervalSeconds);
 
-        const radius = building.definition.job.searchRadius ?? settings().searchRadius;
-        const enemy = this.findEnemy(building.player, building.x + .5, building.y + .5, radius);
+        const enemy = this.findEnemy(building.player, building.x + .5, building.y + .5, Garrison.radius(building));
         if (enemy) Garrison.deploy(building, enemy);
       }
     },
@@ -151,7 +172,7 @@
     anchorOf(unit) {
       const home = unit.quarters;
       if (home && !home.removed) {
-        return { x: home.x + .5, y: home.y + .5, radius: home.definition.job.searchRadius ?? settings().searchRadius };
+        return { x: home.x + .5, y: home.y + .5, radius: Garrison.radius(home) };
       }
       if (home) Garrison.release(unit); // byggnaden finns inte längre
       unit.post = unit.post || { x: unit.x, y: unit.y };
@@ -162,14 +183,15 @@
     isValidTarget(unit, anchor) {
       const target = unit.target;
       return !target.removed && Players.isHostile(unit.player, target.player) &&
-        Math.hypot(target.x - anchor.x, target.y - anchor.y) <= anchor.radius * settings().leashFactor;
+        Math.hypot(centreX(target) - anchor.x, centreY(target) - anchor.y) <= anchor.radius * settings().leashFactor;
     },
 
     // Slå om målet är inom räckhåll, annars gå mot det
     engage(unit) {
       const target = unit.target, definition = unit.definition;
 
-      if (Math.hypot(target.x - unit.x, target.y - unit.y) <= definition.attackRange) {
+      const reach = definition.attackRange + (isBuilding(target) ? BUILDING_REACH : 0);
+      if (Math.hypot(centreX(target) - unit.x, centreY(target) - unit.y) <= reach) {
         unit.stepQueue.length = 0;
         unit.mode = 'idle';
         unit.status = 'Fighting';
@@ -179,7 +201,7 @@
 
       // Vägen räknas om bara när målet bytt ruta, och inte oftare än repathSeconds (sökningar kostar).
       // Byte från ett annat uppdrag (t.ex. på väg hem) sker direkt.
-      const tileX = Math.floor(target.x), tileY = Math.floor(target.y);
+      const tileX = Math.floor(centreX(target)), tileY = Math.floor(centreY(target));
       const switching = unit.mode !== 'chase';
       const stale = !unit.stepQueue.length || tileX !== unit.chaseX || tileY !== unit.chaseY;
       if (unit.orderCooldown > 0 || (!switching && !(stale && unit.repathTimer <= 0))) return;

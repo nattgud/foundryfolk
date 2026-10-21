@@ -1973,9 +1973,18 @@
           ? building.definition.job.trains.map(kind => `<button class="train-button" data-kind="${kind}">${this.unitName(kind)}</button>`).join('')
           : '';
 
+        const stanceButton = CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton"></button>' : '';
+
         panel.innerHTML =
           `<div><b>${this.buildingName(building.definition)}</b><br><span id="infoStatus"></span></div>` +
-          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${trainButtons}${pauseButton}${demolishButton}</div>`;
+          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${trainButtons}${stanceButton}${pauseButton}${demolishButton}</div>`;
+
+        if (byId('stanceButton')) {
+          byId('stanceButton').onclick = () => {
+            const Garrison = CityBuilder.Garrison;
+            Garrison.setStance(building, Garrison.isAttacking(building) ? 'defend' : 'attack');
+          };
+        }
 
         for (const button of panel.querySelectorAll('.train-button')) {
           button.onclick = () => CityBuilder.Garrison.setTrainingType(building, button.dataset.kind);
@@ -2024,7 +2033,8 @@
           garrisonHtml +
           (imports ? `<br>${t('Import: {list}', { list: imports })}` : '') +
           (exports ? `<br>${t('Export: {list}', { list: exports })}` : '') +
-          (range ? `<br>${t('Range: {n} tiles', { n: range })}` : '');
+          (range ? `<br>${t('Range: {n} tiles', { n: range })}` : '') +
+          (building.hp < building.maxHp ? `<br>${t('Health: {hp}', { hp: Math.ceil(building.hp) })}` : '');
 
       // Uppdateras bara vid ändring, så att bilderna inte laddas om varje bildruta
       const status = byId('infoStatus');
@@ -2035,6 +2045,12 @@
 
       if (byId('pauseButton')) {
         byId('pauseButton').textContent = t(building.paused ? 'Unpause' : 'Pause');
+      }
+
+      if (byId('stanceButton')) {
+        const attacking = CityBuilder.Garrison.isAttacking(building);
+        byId('stanceButton').textContent = t(attacking ? 'Attack mode' : 'Defence mode');
+        byId('stanceButton').classList.toggle('on', attacking);
       }
     },
 

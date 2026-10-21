@@ -54,6 +54,7 @@
         storedReserved: {},   // lagerinnehåll reserverat för pågående leveranser
         status: '', isCrafting: false, craftTimeLeft: 0, craftTotalTime: 0, workerUnit: null,
       };
+      building.maxHp = building.hp = building.definition.maxHp ?? Config.settings.military.buildingHp;
       this.buildings.push(building);
       this.buildingsByTile.set(Utils.tileKey(x, y), building);
       CityBuilder.Pathfinder.clearCache();

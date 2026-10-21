@@ -4,6 +4,11 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.395': [
+      'Guard Towers and Garrisons can now be set to Attack mode: soldiers hunt down enemies up to 75 tiles away',
+      'Buildings now have health and can be destroyed in combat',
+      'Soldiers also attack enemy workers and carriers, which are replaced after a while',
+    ],
     '0.4.393': [
       'Military: build Guard Towers and Garrisons that train Swordsmen, Archers and Knights',
       'Soldiers wait inside their building, attack enemies that come within range, and return when the area is clear',

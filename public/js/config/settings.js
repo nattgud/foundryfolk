@@ -47,7 +47,9 @@ CityBuilder.Config.settings = {
   },
   playerColors: { 1: '#4aa3ff', 2: '#e5534b' }, // lagfärg per spelare (ring runt soldater), se core/players.js
   military: {
-    searchRadius: 20,          // standardräckvidd (rutor) för att upptäcka fiender
+    searchRadius: 20,          // standardräckvidd (rutor) för att upptäcka fiender (försvarsläge)
+    attackRadius: 75,          // räckvidd (rutor) i attackläge: soldaterna söker upp fiender så här långt bort
+    buildingHp: 100,           // livspoäng för en byggnad som saknar eget maxHp
     leashFactor: 1.25,         // en soldat jagar inte längre bort än searchRadius * detta från sin byggnad eller post
     scanIntervalSeconds: 0.5,  // hur ofta byggnader och soldater letar efter fiender
     repathSeconds: 0.5,        // minsta tid mellan omräkningar av vägen mot ett rörligt mål
