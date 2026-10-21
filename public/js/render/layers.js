@@ -6,17 +6,112 @@
   // Utanför synfältet (Renderer.viewBounds)? Byggnader och enheter utanför bild hoppas över, så ritkostnaden följer vad som syns.
   const outside = (view, x, y) => x < view.left || x > view.right || y < view.top || y > view.bottom;
 
-  Renderer.addLayer('terrain', (context, renderer) => {
-    const range = renderer.visibleTileRange(), tileSize = renderer.tileSize;
-    for (let y = range.minY; y <= range.maxY; y++) for (let x = range.minX; x <= range.maxX; x++) {
-      const terrain = Config.terrain[World.getTile(x, y).terrainType];
+  // Terräng: ritas i brickor på 8x8 rutor som cachas på egna canvaser, så varje bildruta bara kostar en drawImage per
+  // synlig bricka. Rutnätet snappas till hela skärmpixlar (grannrutor delar kantpixel, så det blir inga skarvar), och
+  // brickorna ritas i skärmupplösning, så det blir ingen omsampling. Kontrolleras högst 10 gånger per sekund; en
+  // bricka ritas om när en ruta byter terräng eller när bilderna ändras (t.ex. "Shapes only"). Under zoomning
+  // (skalan ändras) ritas rutorna direkt med samma geometri tills skalan stått still en stund.
+  const TERRAIN_CHUNK = 8;               // rutor per bricka
+  const TERRAIN_CHECK_MS = 100;          // hur ofta en bricka kontrolleras efter ändringar
+  const TERRAIN_SETTLE_MS = 150;         // så länge måste skalan stå still innan brickor cachas
+  const TERRAIN_KEEP_MS = 20000;         // oanvända brickor släpps efter så här lång tid
+  const TERRAIN_BUILDS = 6;              // nya brickor per bildruta (resten ritas direkt tills de hinner cachas)
+  const terrainChunks = new Map();
+  const terrainView = { scale: 0, since: 0, images: '', checkedAt: 0, pruneAt: 0 };
+
+  const edge = (k, scale) => Math.round(k * scale); // skärmpixel för rutkoordinat k, scale = pixlar per ruta
+
+  // Vilka terrängbilder som är laddade (en ändring ritar om alla brickor)
+  const loadedTerrainImages = () => {
+    let key = '';
+    for (const id in Config.terrain) {
+      const image = Config.terrain[id].image;
+      for (const source of Array.isArray(image) ? image : [image]) key += Assets.get(source) ? 1 : 0;
+    }
+    return key;
+  };
+
+  // Ritar brickan med sitt övre vänstra hörn i origo; types (valfri) får rutornas terrängtyper
+  const paintTerrainChunk = (context, cx, cy, scale, tileSize, types) => {
+    const N = TERRAIN_CHUNK, x0 = edge(cx * N, scale), y0 = edge(cy * N, scale), factor = scale / tileSize;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const x = cx * N + i, y = cy * N + j, type = World.getTile(x, y).terrainType, terrain = Config.terrain[type];
+      const left = edge(x, scale) - x0, top = edge(y, scale) - y0;
+      const width = edge(x + 1, scale) - x0 - left, height = edge(y + 1, scale) - y0 - top;
+      if (types) types[j * N + i] = type;
       context.fillStyle = terrain.color;
-      context.fillRect(x * tileSize, y * tileSize, tileSize + .5, tileSize + .5);
+      context.fillRect(left, top, width, height);
       const image = Assets.getVariant(terrain.image, x, y);
-      if (image) context.drawImage(image, x * tileSize, y * tileSize, tileSize + .5, tileSize + .5);
+      if (image) context.drawImage(image, left, top, width, height);
       else if (terrain.fallbackShape && CityBuilder.Shapes[terrain.fallbackShape]) {
-        CityBuilder.Shapes[terrain.fallbackShape](context, x * tileSize, y * tileSize, tileSize);
+        context.save();
+        context.translate(left, top);
+        context.scale(factor, factor);
+        CityBuilder.Shapes[terrain.fallbackShape](context, 0, 0, tileSize);
+        context.restore();
       }
+    }
+  };
+
+  const terrainChanged = (chunk, cx, cy) => {
+    const N = TERRAIN_CHUNK;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      if (World.getTile(cx * N + i, cy * N + j).terrainType !== chunk.types[j * N + i]) return true;
+    }
+    return false;
+  };
+
+  const buildTerrainChunk = (chunk, cx, cy, scale, tileSize) => {
+    const N = TERRAIN_CHUNK, width = edge((cx + 1) * N, scale) - edge(cx * N, scale), height = edge((cy + 1) * N, scale) - edge(cy * N, scale);
+    if (!chunk.canvas) chunk.canvas = document.createElement('canvas');
+    const canvas = chunk.canvas;
+    if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+    paintTerrainChunk(canvas.getContext('2d'), cx, cy, scale, tileSize, chunk.types);
+  };
+
+  Renderer.addLayer('terrain', (context, renderer) => {
+    const range = renderer.visibleTileRange(), tileSize = renderer.tileSize, now = performance.now(), view = terrainView;
+    const zoom = renderer.zoom * renderer.pixelRatio, scale = tileSize * zoom, N = TERRAIN_CHUNK;
+
+    if (scale !== view.scale) { view.scale = scale; view.since = now; terrainChunks.clear(); }
+    if (now - view.checkedAt >= TERRAIN_CHECK_MS) {
+      view.checkedAt = now;
+      const images = loadedTerrainImages();
+      if (images !== view.images) { view.images = images; terrainChunks.clear(); }
+    }
+    const cached = now - view.since >= TERRAIN_SETTLE_MS;
+    const shiftX = Math.round(renderer.camera.x * zoom), shiftY = Math.round(renderer.camera.y * zoom);
+    let builds = 0;
+
+    context.save();
+    for (let cy = Math.floor(range.minY / N); cy <= Math.floor(range.maxY / N); cy++) {
+      for (let cx = Math.floor(range.minX / N); cx <= Math.floor(range.maxX / N); cx++) {
+        const x = edge(cx * N, scale) - shiftX, y = edge(cy * N, scale) - shiftY;
+        let chunk;
+        if (cached) {
+          const key = cx + ',' + cy;
+          chunk = terrainChunks.get(key);
+          if (!chunk) { chunk = { canvas: null, types: new Array(N * N), checkedAt: -Infinity }; terrainChunks.set(key, chunk); }
+          chunk.usedAt = now;
+          if (now - chunk.checkedAt >= TERRAIN_CHECK_MS && (chunk.canvas || builds < TERRAIN_BUILDS)) {
+            chunk.checkedAt = now;
+            if (terrainChanged(chunk, cx, cy)) { builds++; buildTerrainChunk(chunk, cx, cy, scale, tileSize); }
+          }
+        }
+        if (chunk && chunk.canvas) {
+          context.setTransform(1, 0, 0, 1, 0, 0);
+          context.drawImage(chunk.canvas, x, y);
+        } else {
+          context.setTransform(1, 0, 0, 1, x, y);
+          paintTerrainChunk(context, cx, cy, scale, tileSize, null);
+        }
+      }
+    }
+    context.restore();
+
+    if (now - view.pruneAt > 5000) {
+      view.pruneAt = now;
+      for (const [key, chunk] of terrainChunks) if (now - chunk.usedAt > TERRAIN_KEEP_MS) terrainChunks.delete(key);
     }
   });
 

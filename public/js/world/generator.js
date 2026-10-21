@@ -5,6 +5,8 @@
   const { Utils } = CityBuilder;
 
   const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const BAR_CELL = 16;   // sandrevskandidater slumpas fram per ruta på så här många rutor
+  const BAR_TRIES = 3;   // kandidater per ruta
 
   const Generator = {
     // Slutlig terräng: utjämning av enstaka rutor, vadställen över smala vattendrag och holmar utan fyndigheter.
@@ -14,7 +16,8 @@
       const around = [];   // grannarnas terräng i NEIGHBOURS-ordning, hämtas först när den behövs
       const at = i => around[i] ??= this.baseTypeAt(x + NEIGHBOURS[i][0], y + NEIGHBOURS[i][1]);
       const type = this.despeckle(x, y, base, at);
-      return type === 'water' ? this.ford(at) : type;
+      if (type !== 'water') return type;
+      return this.ford(at) === 'sand' || this.sandbar(x, y) ? 'sand' : 'water';
     },
 
     // Enstaka berg- eller vattenrutor (inga grannar av samma slag) ersätts av grannarnas vanligaste typ,
@@ -37,6 +40,69 @@
     ford(at) {
       const land = i => Number.isFinite(CityBuilder.Config.terrain[at(i)].walkCost);
       return (land(0) && land(1)) || (land(2) && land(3)) ? 'sand' : 'water';
+    },
+
+    // Landbryggor: sandrev över vatten (Config.world.landBridges) som binder ihop holmar och fastland, så att öar med resurser
+    // går att nå. Varje ruta på BAR_CELL x BAR_CELL rutor slumpar fram några raka linjer genom vatten (density = chans per linje).
+    // En linje blir ett rev bara om den korsar högst maxGap rutor vatten och har mark i båda ändar. Revet slingrar sig
+    // lätt och växlar i bredd, så det ser ut som en naturlig sandbank. Resultatet sparas per ruta.
+    sandbar(x, y) {
+      const settings = CityBuilder.Config.world.landBridges;
+      if (!settings) return false;
+      const cellX = Math.floor(x / BAR_CELL), cellY = Math.floor(y / BAR_CELL);
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+        for (const bar of this.barsIn(cellX + i, cellY + j, settings)) if (this.onBar(bar, x, y)) return true;
+      }
+      return false;
+    },
+
+    barsIn(cellX, cellY, settings) {
+      const fingerprint = Utils.hash(3, 5, 9) + ':' + settings.density + ':' + settings.maxGap;
+      if (this.barKey !== fingerprint) { this.barKey = fingerprint; this.bars = new Map(); }
+      const key = Utils.tileKey(cellX, cellY);
+      let bars = this.bars.get(key);
+      if (!bars) {
+        bars = [];
+        for (let k = 0; k < BAR_TRIES; k++) {
+          if (Utils.hash(cellX, cellY, 600 + k) >= settings.density) continue;
+          const bar = this.findBar(
+            (cellX + Utils.hash(cellX, cellY, 610 + k)) * BAR_CELL, (cellY + Utils.hash(cellX, cellY, 620 + k)) * BAR_CELL,
+            Utils.hash(cellX, cellY, 630 + k) * Math.PI, settings.maxGap, Utils.hash(cellX, cellY, 640 + k));
+          if (bar) bars.push(bar);
+        }
+        this.bars.set(key, bars);
+      }
+      return bars;
+    },
+
+    // Går från vattenpunkten (x, y) åt båda håll längs vinkeln tills det blir mark. Berg eller för långt vatten: inget rev.
+    findBar(x, y, angle, maxGap, id) {
+      const dx = Math.cos(angle), dy = Math.sin(angle), terrain = CityBuilder.Config.terrain;
+      const typeAt = t => this.baseTypeAt(Math.round(x + dx * t), Math.round(y + dy * t));
+      if (typeAt(0) !== 'water') return null;
+      const ends = [];
+      for (const direction of [-1, 1]) {
+        let t = 0, type;
+        do { t += direction; type = typeAt(t); } while (type === 'water' && Math.abs(t) <= maxGap);
+        if (!Number.isFinite(terrain[type].walkCost)) return null;
+        ends.push(t);
+      }
+      if (ends[1] - ends[0] < 3) return null;   // smalare vatten är redan vadställen
+      const middle = (ends[0] + ends[1]) / 2;   // revet ska korsa vattnet, inte följa en å eller klippa av ett hörn: vatten på båda sidor om mitten
+      for (const side of [-2, 2]) {
+        if (this.baseTypeAt(Math.round(x + dx * middle - dy * side), Math.round(y + dy * middle + dx * side)) !== 'water') return null;
+      }
+      const x1 = x + dx * ends[0], y1 = y + dy * ends[0], x2 = x + dx * ends[1], y2 = y + dy * ends[1];
+      return { x1, y1, x2, y2, length: ends[1] - ends[0], id, phase: id * 20, wobble: .6 + 1.2 * Utils.hash(id * 1e4 | 0, 7, 650) };
+    },
+
+    onBar(bar, x, y) {
+      const dx = bar.x2 - bar.x1, dy = bar.y2 - bar.y1, length = bar.length;
+      const along = ((x - bar.x1) * dx + (y - bar.y1) * dy) / length;
+      if (along < 0 || along > length) return false;
+      const bend = bar.wobble * Math.sin(Math.PI * along / length) * Math.sin(along * .55 + bar.phase);   // noll i ändarna
+      const across = ((x - bar.x1) * -dy + (y - bar.y1) * dx) / length - bend;
+      return Math.abs(across) < .75 + .5 * Utils.smoothNoise(along / 3, bar.id * 100, 77);
     },
 
     // Fyndigheter (Config.world.deposits) på en liten holme, t.ex. mitt i en damm, går inte att nå och blir sand. Bara fyndigheter med

@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.406': [
+      'Islands are now reachable over natural sandbars, and the terrain is drawn from cached tiles for a faster frame rate',
+    ],
     '0.4.405': [
       'No more ore stranded on tiny islands or in water, and one-tile-wide streams now have shallow crossings',
     ],
