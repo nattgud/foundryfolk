@@ -16,7 +16,7 @@
    Soldater styrs via stegkön (Jobs) som övriga enheter, så Units.update gör själva förflyttningen. */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Jobs, Behaviors, Players, Garrison } = CityBuilder;
+  const { Config, World, Jobs, Behaviors, Players, Garrison, Vision } = CityBuilder;
 
   const settings = () => Config.settings.military;
   const TIMERS = ['attackCooldownLeft', 'scanTimer', 'repathTimer', 'orderCooldown', 'homeSearchTimer'];
@@ -50,7 +50,7 @@
       for (const target of this.targets()) {
         if (target.removed || target === ignore || !Players.isHostile(player, target.player)) continue;
         const distance = Math.hypot(centreX(target) - x, centreY(target) - y);
-        if (distance > radius) continue;
+        if (distance > radius || !Vision.knows(player, target)) continue;   // fog of war: bara det spelaren ser, eller (dator) känner till
         const rank = priority(target);
         if (rank > bestPriority || (rank === bestPriority && distance >= bestDistance)) continue;
         best = target; bestPriority = rank; bestDistance = distance;

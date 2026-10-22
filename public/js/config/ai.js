@@ -6,6 +6,8 @@
    pace: tid mellan besluten = startSeconds * perLevel^(bana - 1), men minst minSeconds (människans tempo ligger runt 5-10 s).
    resourceRadius: hur långt från basen den söker malm, träd m.m. (rutor).
    blockedSeconds: väntetid innan en byggnad som inte gick att placera provas igen.
+   explore: när datorn inte vet var motståndaren finns bygger den utkikstorn i en ring runt sig (på rivalDistance): step = avstånd mellan tornen
+            (rutor, under maxBuildDistance), maxScouts = högsta antal utkikstorn.
    patienceSeconds: har datorn väntat så länge på en resurs som den redan har producenter för byggs ytterligare en (högst maxPerType av varje typ). */
 CityBuilder.Config.ai = {
   pace: { startSeconds: 20, perLevel: 0.97, minSeconds: 1 },  // sekunder mellan besluten: långsamt på bana 1, lite snabbare för varje bana, aldrig snabbare än minSeconds
@@ -14,6 +16,7 @@ CityBuilder.Config.ai = {
   blockedSeconds: 60,
   patienceSeconds: 30,
   maxPerType: 12,
+  explore: { step: 33, maxScouts: 36 },
   attack: { fromLevel: 16, soldiers: [6, 2, 40], maxTowers: 12 },   // datorn anfaller från bana fromLevel, när den har [start, +per bana, tak] soldater
   build: [
     ['woodcutter', 2], ['sawmill', 1], ['quarry', 1], ['warehouse', 1], ['woodcutter', 3],

@@ -6,7 +6,7 @@
    placeras sedan nära basen (eller nära resursen, för gatherers och gruvor). */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Players, Economy, Construction, Garrison, Utils } = CityBuilder;
+  const { Config, World, Players, Economy, Construction, Garrison, Utils, Vision } = CityBuilder;
 
   const WAIT = 'wait', BLOCKED = 'blocked';   // need() kan inte ge någon byggnad just nu: vänta på resurser / ingen plats
   const MAX_CHAIN = 6;                        // längsta kedjan av förkunskaper
@@ -83,6 +83,7 @@
     think(player, state) {
       this.current = player;
       state.starved = new Set();
+      this.observe(player, state);
       this.decide(player, state);
       this.pauseConsumers(player, state.starved);
     },
@@ -188,28 +189,46 @@
       for (const building of World.buildings) if (building.player === player && Garrison.isGarrison(building)) Garrison.setStance(building, stance);
     },
 
-    // Närmaste fiendebyggnad till datorns bas
-    enemyTarget(player) {
+    // Datorn har fog of war som spelaren: den vet bara det den sett. Här läggs sådant på minnet: Vision.knows kommer ihåg sedda
+    // fiendebyggnader, och state.lead blir platsen närmast basen där något av motståndaren syns (en enhet eller byggnad), så att
+    // datorn vet ungefär åt vilket håll motståndaren finns även innan någon bas upptäckts.
+    observe(player, state) {
       const hq = World.hqOf(player);
-      let best, bestDistance = Infinity;
-      for (const building of World.buildings) {
-        const distance = Math.hypot(building.x - hq.x, building.y - hq.y);
-        if (Players.isHostile(player, building.player) && distance < bestDistance) { best = building; bestDistance = distance; }
+      let nearest = Infinity;
+      for (const thing of [...World.buildings, ...World.units]) {
+        if (!Players.isHostile(player, thing.player) || !Vision.knows(player, thing)) continue;
+        const half = thing.buildProgress !== undefined ? .5 : 0;
+        const distance = Math.hypot(thing.x + half - hq.x, thing.y + half - hq.y);
+        if (distance < nearest) { nearest = distance; state.lead = { x: Math.round(thing.x), y: Math.round(thing.y) }; }
       }
-      return best;
     },
 
-    // Bygger ett vakttorn närmare fienden tills någon garnison når den med sitt attackläge. Returnerar true om något byggdes (eller väntas på).
-    advance(player, state, census) {
-      const target = this.enemyTarget(player);
-      if (!target) return false;
-      const reach = Config.settings.military.attackRadius * .8;
-      let from, fromDistance = Infinity;                       // egna färdiga garnisoner och torn är utgångspunkter
-      for (const building of World.buildings) {
-        const distance = Math.hypot(building.x - target.x, building.y - target.y);
-        if (building.player === player && building.buildProgress >= 1 && distance < fromDistance) { from = building; fromDistance = distance; }
+    // Närmaste fiendebyggnad som datorn känner till, annars platsen där den senast stötte på motståndaren, annars undefined
+    enemyTarget(player, state) {
+      const hq = World.hqOf(player);
+      let best, bestDistance = Infinity;
+      for (const building of Vision.memory.get(player) || []) {
+        const distance = Math.hypot(building.x - hq.x, building.y - hq.y);
+        if (distance < bestDistance) { best = building; bestDistance = distance; }
       }
-      if (!from || fromDistance <= reach) return false;
+      return best ?? state.lead;
+    },
+
+    // Bygger ett vakttorn närmare fienden tills någon garnison når den med sitt attackläge. Vet datorn inte var fienden finns bygger den
+    // utkikstorn utåt (explore). Returnerar true om något byggdes (eller väntas på).
+    advance(player, state, census) {
+      const target = this.enemyTarget(player, state);
+      if (!target) return this.explore(player, state, census);
+      const known = target.buildProgress !== undefined;        // en känd byggnad kan anfallas på långt håll, en ledtråd måste datorn komma nära
+      const reach = known ? Config.settings.military.attackRadius * .8 : Config.buildings.guard_tower.vision * .7;
+      let from, fromDistance = Infinity, garrisonDistance = Infinity;   // närmaste egna byggnad är utgångspunkt, och soldaterna bor i garnisoner
+      for (const building of World.buildings) {
+        if (building.player !== player || building.buildProgress < 1) continue;
+        const distance = Math.hypot(building.x - target.x, building.y - target.y);
+        if (distance < fromDistance) { from = building; fromDistance = distance; }
+        if (distance < garrisonDistance && Garrison.isGarrison(building)) garrisonDistance = distance;
+      }
+      if (!from || (known ? garrisonDistance : fromDistance) <= reach) return false;
       if ((census.count.guard_tower || 0) + (census.count.garrison || 0) >= Config.ai.attack.maxTowers) return false;
 
       const next = this.need(player, state, census, 'guard_tower', []);
@@ -219,6 +238,33 @@
       const step = Math.min(Config.settings.maxBuildDistance - 5, fromDistance - reach * .5);
       const point = { x: Math.round(from.x + (target.x - from.x) / fromDistance * step), y: Math.round(from.y + (target.y - from.y) / fromDistance * step) };
       this.place(player, state, next, this.free(point, Config.buildings.guard_tower, 8));
+      return true;
+    },
+
+    // Spaning: datorn vet att motståndaren bor ungefär rivalDistance från den (som en spelare som läst banans beskrivning), så den bygger
+    // utkikstorn i en ring på det avståndet. Varje torn står inom byggräckvidd från det förra och ser så långt att ringen täcker hela
+    // bandet. Går en plats inte att bygga på hoppas den över. Hittas något av motståndaren tar advance över.
+    explore(player, state, census) {
+      const { step, maxScouts } = Config.ai.explore, hq = World.hqOf(player), [near, far] = Config.world.rivalDistance, ring = (near + far) / 2;
+      if ((census.count.watchtower || 0) >= maxScouts) return false;
+      if (World.buildings.some(building => building.player === player && building.type === 'watchtower' && building.buildProgress < 1)) return true;   // vänta på tornet
+      const scouting = state.scouting ??= { angle: Utils.hash(player, 21, Config.world.seed) * 2 * Math.PI };
+
+      const next = this.need(player, state, census, 'watchtower', []);
+      if (next === WAIT) return true;
+      if (next === BLOCKED) { scouting.angle += step / ring; return false; }   // platsen gick inte att bygga på: hoppa över den
+      if (next !== 'watchtower') { this.place(player, state, next); return true; }
+
+      const goal = { x: hq.x + Math.cos(scouting.angle) * ring, y: hq.y + Math.sin(scouting.angle) * ring };
+      let from, fromDistance = Infinity;
+      for (const building of World.buildings) {
+        const distance = Math.hypot(building.x - goal.x, building.y - goal.y);
+        if (building.player === player && building.buildProgress >= 1 && distance < fromDistance) { from = building; fromDistance = distance; }
+      }
+      const reached = fromDistance <= step;                                      // inom räckhåll: bygg på ringen, annars ett steg dit
+      const point = reached ? goal : { x: from.x + (goal.x - from.x) / fromDistance * step, y: from.y + (goal.y - from.y) / fromDistance * step };
+      this.place(player, state, next, this.free({ x: Math.round(point.x), y: Math.round(point.y) }, Config.buildings.watchtower, 8));
+      if (reached) scouting.angle += step / ring;
       return true;
     },
 

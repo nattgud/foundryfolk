@@ -28,11 +28,12 @@
     version: 0,                    // ökar när synfältet räknats om (renderingen cachar dimman så länge den är oförändrad)
     discs: new Map(),              // räckvidd -> cellförskjutningar inom cirkeln
     maskData: new WeakMap(),       // canvas -> ImageData
+    memory: new Map(),             // datorspelare -> Set med fiendebyggnader den sett (byggnader flyttar inte)
 
     // Nollställer allt (ny värld)
     reset() {
       this.time = 0; this.nextRefresh = 0;
-      this.grids.clear(); this.activeChunks = [];
+      this.grids.clear(); this.activeChunks = []; this.memory.clear();
     },
 
     cellSize,
@@ -63,6 +64,22 @@
       if (thing.player === player) return true;
       const half = thing.buildProgress !== undefined ? .5 : 0;   // byggnadens x och y är rutan, enhetens är mitten
       return this.visible(player, thing.x + half, thing.y + half);
+    },
+
+    // Vet spelaren att byggnaden eller enheten finns? Den syns, eller (bara datorspelare) det är en byggnad den sett förut:
+    // en upptäckt bas går att anfalla utan att den syns hela tiden. Människan minns själv, med kartan.
+    knows(player, thing) {
+      if (this.sees(player, thing)) {
+        if (thing.buildProgress !== undefined && thing.player !== player && Players.isAI(player)) this.remember(player).add(thing);
+        return true;
+      }
+      return this.memory.get(player)?.has(thing) ?? false;
+    },
+
+    remember(player) {
+      let set = this.memory.get(player);
+      if (!set) this.memory.set(player, set = new Set());
+      return set;
     },
 
     // Syns någon cell inom rutintervallet (minX..maxX, minY..maxY, inklusive)?
@@ -114,6 +131,8 @@
         if (unit.player === Players.NEUTRAL) continue;
         this.stamp(unit.player, unit.x, unit.y, unit.definition.vision ?? (unit.definition.isSoldier ? settings.soldier : settings.unit), expiry);
       }
+
+      for (const set of this.memory.values()) for (const building of set) if (building.removed) set.delete(building);
 
       const active = new Map();
       for (const grid of this.grids.values()) {
