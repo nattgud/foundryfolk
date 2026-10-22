@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.418': [
+      'Watchtowers are much cheaper (2 planks, 3 stone) and build faster, so it is quick to find the rival',
+    ],
     '0.4.417': [
       'New short tutorial (How to play) for new players, also found in the main menu',
     ],
