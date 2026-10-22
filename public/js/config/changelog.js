@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.407': [
+      'Smoother loading bar that follows world creation, and scripts now load in parallel',
+    ],
     '0.4.406': [
       'Islands are now reachable over natural sandbars, and the terrain is drawn from cached tiles for a faster frame rate',
     ],

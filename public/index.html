@@ -27,7 +27,7 @@
   <div id="toast"></div>
 
   <script>
-    var version = "0.4.406";
+    var version = "0.4.407";
 
     // Laddningsstapel. set(0-1, text), paint() ger webbläsaren tid att rita, done() döljer rutan.
     window.GameLoading = {
@@ -109,43 +109,40 @@
         'js/game.js'
       ];
 
-      let loadIndex = 0;
+      // Alla skript hämtas samtidigt men körs i ordning (async = false), så laddningen går snabbare än ett skript i taget.
+      // Stapeln följer antalet körda skript.
+      let loaded = 0, failed = false;
       const totalScripts = scriptOrder.length;
+      GameLoading.set(0, 'Loading');
 
-      function loadNextScript() {
-        GameLoading.set(.4 * loadIndex / totalScripts, 'Loading');
-        if (loadIndex < totalScripts) {
-          const scriptPath = scriptOrder[loadIndex]+"?v="+version;
-          const script = document.createElement('script');
-          script.src = scriptPath;
-          
-          script.onload = () => {
-            loadIndex++;
-            loadNextScript(); // Gå vidare till nästa skript
-          };
-
-          script.onerror = (error) => {
-            console.error(`FATAL ERROR: Failed to load script at step ${loadIndex + 1}: ${scriptPath}`, error);
-            GameLoading.fail(new Error('Failed to load ' + scriptOrder[loadIndex]));
-            // Stoppa laddningen vid ett fel
-          };
-
-          document.head.appendChild(script);
+      function start() {
+        console.log('Game components loaded!');
+        // SÄKERHETSKONTROLL: Anropa init endast om vi tror att CityBuilder är redo
+        if (window.CityBuilder && window.CityBuilder.Game && typeof window.CityBuilder.Game.init === 'function') {
+          window.CityBuilder.Game.init();
+          console.log('CityBuilder.Game.init() started.');
         } else {
-          console.log('Game components loaded!');
-          
-          // SÄKERHETSKONTROLL: Anropa init endast om vi tror att CityBuilder är redo
-          if (window.CityBuilder && window.CityBuilder.Game && typeof window.CityBuilder.Game.init === 'function') {
-             window.CityBuilder.Game.init();
-             console.log('CityBuilder.Game.init() started.');
-          } else {
-             console.warn('Initialization failed: CityBuilder.Game.init() is not defined.');
-             GameLoading.fail(new Error('Game.init is not defined'));
-          }
+          console.warn('Initialization failed: CityBuilder.Game.init() is not defined.');
+          GameLoading.fail(new Error('Game.init is not defined'));
         }
       }
 
-      loadNextScript();
+      for (const file of scriptOrder) {
+        const scriptPath = file + "?v=" + version;
+        const script = document.createElement('script');
+        script.src = scriptPath;
+        script.async = false;
+        script.onload = () => {
+          GameLoading.set(.4 * ++loaded / totalScripts, 'Loading');
+          if (loaded === totalScripts && !failed) start();
+        };
+        script.onerror = error => {
+          console.error(`FATAL ERROR: Failed to load script ${scriptPath}`, error);
+          if (!failed) GameLoading.fail(new Error('Failed to load ' + file));
+          failed = true;
+        };
+        document.head.appendChild(script);
+      }
     }
   </script>
 

@@ -3,6 +3,9 @@
   'use strict';
   const { Utils, Config, Players } = CityBuilder;
 
+  const RIVAL_STEPS = 33;   // delsteg per rival i init: 1 + 24 grova + 6 noggranna + 2 för resurserna runt baserna (för framstegsstapeln)
+  const t = (text, variables) => CityBuilder.t(text, variables);
+
   const World = {
     chunks: new Map(),          // chunkNyckel -> lista av rutor
     buildingsByTile: new Map(), // rutnyckel -> byggnad
@@ -34,10 +37,19 @@
 
     hqOf(player) { return this.hqs[player]; },
 
-    init() {
+    // report(fraction 0-1, text) rapporterar framsteg och ger webbläsaren tid att rita (laddningsstapeln i Game.init). Den anropas
+    // högst var 40:e ms, så rapporteringen kostar nästan ingenting. Utan report går allt i ett svep.
+    async init(report = () => {}) {
       this.addPlayer(Players.HUMAN, 0, 0);
-      const rivals = CityBuilder.Levels?.current?.rivals ?? 1;
-      for (let i = 0; i < rivals; i++) this.addPlayer(Players.ENEMY + i, ...this.rivalSite(Players.ENEMY + i));
+      const rivals = CityBuilder.Levels?.current?.rivals ?? 1, total = rivals * RIVAL_STEPS;
+      let done = 0, last = performance.now();
+      const step = async text => {
+        done++;
+        if (performance.now() - last < 40) return;
+        last = performance.now();
+        await report(Math.min(1, done / total), text);
+      };
+      for (let i = 0; i < rivals; i++) this.addPlayer(Players.ENEMY + i, ...await this.rivalSite(Players.ENEMY + i, step));
     },
 
     // Ny spelare med egen bas och startresurser (samma för alla spelare)
@@ -67,20 +79,25 @@
     // Var en datorspelares bas ligger: 100-150 rutor från starten. Av 24 platser (riktning och avstånd sprids ut, start slumpas av bana och spelarnummer)
     // väljs den med minst vatten och berg runt sig (de sex bästa jämförs) och ungefär samma avstånd till resurserna som spelarens start (rättvist).
     // En gräsplan läggs in runt basen (clearings), och små fyndigheter av det banan kräver om det saknas i närheten (se endow).
-    rivalSite(player) {
+    async rivalSite(player, step = async () => {}) {
       const { rivalDistance: [near, far], rivalClearRadius: clear, fairResources } = Config.world;
       const salt = Config.world.seed * 131 + player * 977;
       const base = Utils.hash(player, 11, salt) * 2 * Math.PI, spread = Utils.hash(player, 12, salt);
       const reference = this.survey(0, 0).nearest;
+      await step(t('Surveying the land'));
       // Först en grov koll av vatten och berg på 24 platser, sedan en noggrann jämförelse av de sex bästa
-      const sites = Array.from({ length: 24 }, (_, i) => {
+      const sites = [];
+      for (let i = 0; i < 24; i++) {
         const angle = base + i * 2.4, distance = near + (far - near) * ((spread + i * .618) % 1);
         const x = Math.round(Math.cos(angle) * distance), y = Math.round(Math.sin(angle) * distance);
-        return { x, y, i, blocked: this.survey(x, y, [], 24, 6).blocked };
-      }).sort((a, b) => a.blocked - b.blocked || a.i - b.i).slice(0, 6);
+        sites.push({ x, y, i, blocked: this.survey(x, y, [], 24, 6).blocked });
+        await step(t('Surveying the land'));
+      }
+      sites.sort((a, b) => a.blocked - b.blocked || a.i - b.i).splice(6);
       let best = null, bestScore = Infinity;
       for (const { x, y, i } of sites) {
         const { nearest, blocked } = this.survey(x, y);
+        await step(t('Placing rivals'));
         // skillnad i avstånd, i procent: 10 mot 20 rutor väger lika tungt som 40 mot 80. Ju mer vatten och berg, desto sämre plats.
         const score = fairResources.reduce((sum, type) => sum + Math.abs(Math.log((nearest[type] + 3) / (reference[type] + 3))), 0) + 8 * blocked + i * .01;
         if (score < bestScore) { bestScore = score; best = { x, y }; }
@@ -89,7 +106,9 @@
       Config.world.meadows.push({ x: best.x, y: best.y });
       Config.world.roads.push({ x1: 0, y1: 0, x2: best.x, y2: best.y, width: 4, wobble: 10, wavelength: 9, phase: Utils.hash(player, 14, salt) * 6.28 });
       if (player === Players.ENEMY) this.endow(Players.HUMAN, 0, 0, salt); // spelarens start, en gång
+      await step(t('Placing rivals'));
       this.endow(player, best.x, best.y, salt);
+      await step(t('Placing rivals'));
       return [best.x, best.y];
     },
 
