@@ -228,7 +228,7 @@ CityBuilder.Config.buildings = {
       sourceTerrain: 'water',
       searchRadius: 2,
       outputResource: 'water',
-      workSeconds: 1
+      workSeconds: 30
     },
     buildDuration: 25
   },

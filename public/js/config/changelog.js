@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.414': [
+      'The Well now takes 30 seconds per trip to fetch water (it took 1 second)',
+    ],
     '0.4.413': [
       'Combat: swordsmen and knights now fight on the same tile as their target (next to a building), archers shoot up to 5 tiles, and their arrows fly for a moment and only hurt when they hit',
       'Buildings now hold three rounds of input for production (was two)',
