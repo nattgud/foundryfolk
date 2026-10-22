@@ -810,7 +810,7 @@ CityBuilder.Config.buildings = {
     symbol: 'WT',
     color: '#b08a55',
     buildCost: { wood: 4, plank: 4 },
-    vision: 40,
+    vision: 30,
     maxHp: 120,
     buildDuration: 25
   },
