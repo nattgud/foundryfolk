@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.412': [
+      'Direct deliveries: carriers take goods straight from a producer to the building that needs them, so a sawmill next to a woodcutter is fed directly instead of via the storage. Goods only go to storage when nobody needs them',
+    ],
     '0.4.411': [
       'Minimap: when a gathering building is selected, the resources it can use now glow with a light edge, so dark resources are easy to see too',
     ],

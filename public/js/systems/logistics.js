@@ -73,7 +73,7 @@
       if ((this.planningTimer -= deltaSeconds) <= 0) {
         this.planningTimer = cfg().planningIntervalSeconds;
         Economy.updateStats();
-        this.balanceCarriers(); this.purgeInvalidTasks(); this.rebuildCounters(); this.requestMissingInputs(); this.flushSurplusToStorage();
+        this.balanceCarriers(); this.purgeInvalidTasks(); this.rebuildCounters(); this.requestMissingInputs(); this.orders = null; this.flushSurplusToStorage(); this.orders = null;
       }
       this.time = (this.time || 0) + deltaSeconds;
       this.assignTasksToCarriers();
@@ -149,7 +149,7 @@
           const missing = capacity - (building.inputStock[resourceId] || 0) - (building.incomingCount[resourceId] || 0);
           for (let requested = 0; requested < Math.min(requestsPerBuilding, missing) && !this.full(building.player); requested++) {
             const supplier = this.findSupplier(resourceId, building);
-            if (!supplier) break;
+            if (!supplier || this.waitForProducer(building, resourceId, supplier, (building.inputStock[resourceId] || 0) + (building.incomingCount[resourceId] || 0))) break;
             this.createTask(supplier, building, resourceId);
           }
         }
@@ -158,7 +158,7 @@
           const missing = (group.capacity || 2) - Behaviors.eatStock(building, group) - incoming;
           for (let requested = 0; requested < Math.min(requestsPerBuilding, missing) && !this.full(building.player); requested++) {
             const pick = this.findAlternativeSupplier(group.any, building);
-            if (!pick) break;
+            if (!pick || this.waitForProducer(building, pick.resource, pick.source, Behaviors.eatStock(building, group) + incoming)) break;
             this.createTask(pick.source, building, pick.resource);
           }
         }
@@ -179,14 +179,87 @@
         const pressure = sum >= bufferLimit * 0.5 || sum + produced > bufferLimit; // halvfull, eller kan inte producera mer = töm allt
         for (const resourceId in building.outputStock) {
           const surplus = building.outputStock[resourceId] - (building.outputReserved[resourceId] || 0) - (pressure ? 0 : threshold);
-          for (let n = 0; n < surplus && !Economy.isFull(resourceId, building.player); n++) {
+          for (let n = 0; n < surplus; n++) {
             if (this.full(building.player)) break;
+            if (this.deliverDirect(building, resourceId)) continue;
+            if (Economy.isFull(resourceId, building.player)) break;
             const storage = Economy.nearestStorage(building);
             if (this.isUnreachable(building, storage)) break;
             this.createTask(building, storage, resourceId);
           }
         }
       }
+    },
+
+    // Har huset redan något av varan, och en producent av den ligger närmare än lagret? Då väntar huset på producentens nästa leverans
+    // (deliverDirect) i stället för att hämta ur lagret. Är huset helt tomt hämtar det ur lagret, så att det aldrig står still i onödan.
+    waitForProducer(building, resourceId, supplier, have) {
+      if (!have || !supplier.definition.isStorage) return false;
+      const reach = Utils.manhattanDistance(supplier, building);
+      return World.buildings.some(producer => {
+        const job = producer.definition.job;
+        return producer !== building && producer.player === building.player && producer.buildProgress >= 1 && job
+          && (job.outputs ? resourceId in job.outputs : job.outputResource === resourceId)
+          && Utils.manhattanDistance(producer, building) < reach && !this.isUnreachable(producer, building);
+      });
+    },
+
+    // Hur många av resursen huset fortfarande saknar (behov minus lager minus på väg)
+    shortage(building, resourceId) {
+      const need = Behaviors.requiredResources(building)[resourceId];
+      if (need !== undefined) return need - (building.inputStock[resourceId] || 0) - (building.incomingCount[resourceId] || 0);
+      for (const group of Behaviors.eatGroups(building)) {
+        if (!group.any.includes(resourceId)) continue;
+        const incoming = group.any.reduce((sum, id) => sum + (building.incomingCount[id] || 0), 0);
+        return (group.capacity || 2) - Behaviors.eatStock(building, group) - incoming;
+      }
+      return 0;
+    },
+
+    // Beställningar från lager som ingen bärare hämtat ännu, per mål och resurs. De kan bytas mot en leverans direkt från en producent.
+    cancellableOrders() {
+      const orders = new Map();
+      const add = (task, carrier) => {
+        if (task.destination.definition.isStorage || !task.source.definition.isStorage) return;
+        const key = task.destination.id + ':' + task.resource;
+        if (!orders.has(key)) orders.set(key, []);
+        orders.get(key).push({ task, carrier });
+      };
+      for (const task of this.tasks) add(task, null);
+      for (const unit of World.units) if (unit.deliveryTask && !unit.hasPickedUp) add(unit.deliveryTask, unit);
+      return orders;
+    },
+
+    // Överskott från en producent går helst direkt till närmaste hus som vill ha varan, utan omväg via lagret.
+    // Ett hus som redan väntar på leverans från ett lager får den i stället från producenten om den ligger närmare (lagerbeställningen avbryts).
+    deliverDirect(producer, resourceId) {
+      this.orders = this.orders || this.cancellableOrders();
+      let best = null, bestDistance = 1e9, bestOrder = null;
+      for (const consumer of World.buildings) {
+        if (consumer === producer || consumer.buildProgress < 1 || !consumer.definition.job || consumer.definition.isStorage
+          || consumer.player !== producer.player || this.isUnreachable(producer, consumer)) continue;
+        const distance = Utils.manhattanDistance(producer, consumer);
+        if (distance >= bestDistance) continue;
+        let order = null;
+        if (this.shortage(consumer, resourceId) <= 0) {
+          order = (this.orders.get(consumer.id + ':' + resourceId) || []).find(entry => distance < Utils.manhattanDistance(entry.task.source, consumer));
+          if (!order) continue;
+        }
+        best = consumer; bestDistance = distance; bestOrder = order;
+      }
+      if (!best) return false;
+      if (bestOrder) {
+        const { task, carrier } = bestOrder;
+        this.orders.get(best.id + ':' + resourceId).splice(this.orders.get(best.id + ':' + resourceId).indexOf(bestOrder), 1);
+        if (carrier) { this.abortTask(carrier); carrier.stepQueue.length = 0; }
+        else {
+          this.tasks.splice(this.tasks.indexOf(task), 1);
+          this.releaseReservation(task.source, task.resource); this.releaseIncoming(task);
+          this.load[task.source.player]--;
+        }
+      }
+      this.createTask(producer, best, resourceId);
+      return true;
     },
 
     // Äldsta uppdraget först, och det får närmaste lediga bärare. Långväga uppdrag blir därför aldrig bortglömda.
