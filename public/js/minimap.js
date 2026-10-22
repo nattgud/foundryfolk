@@ -416,21 +416,28 @@
       const drawNodes = () => {
         const favorites = (CityBuilder.UI && CityBuilder.UI.resourceFavorites) || new Set();
         const cache = new Map();
-        // Varje nod fyller exakt sin egen ruta (samma kantlinjer som terrängen under), utan kant
+        // Varje nod fyller exakt sin egen ruta (samma kantlinjer som terrängen under)
         const limit = (radius + 2 * scale + 2) * (radius + 2 * scale + 2);
-        let shown = 0, lastColor = null;
+        let shown = 0;
         const grow = mode === 'favorites' || mode === 'filter' ? 1 : 0;
-        for (const chunk of visible) {
-          for (const node of chunk.nodes) {
-            const color = this.nodeColor(node.type, mode, favorites, cache);
-            if (!color) continue;
-            const left = Math.round(toX(node.x)), top = Math.round(toY(node.y));
-            const right = Math.max(left + 1, Math.round(toX(node.x + 1))), bottom = Math.max(top + 1, Math.round(toY(node.y + 1)));
-            const dx = (left + right) / 2 - radius, dy = (top + bottom) / 2 - radius;
-            if (dx * dx + dy * dy > limit) continue;
-            if (color !== lastColor) { context.fillStyle = color; lastColor = color; }
-            context.fillRect(left - grow, top - grow, right - left + grow * 2, bottom - top + grow * 2);
-            shown++;
+        // Filterläget lägger först en ljus gloria under noderna, så att även mörka resurser syns tydligt
+        const halo = mode === 'filter' ? 2 : 0;
+        for (let pass = halo ? 0 : 1, lastColor = null; pass < 2; pass++) {
+          const spread = grow + (pass === 0 ? halo : 0);
+          if (pass === 0) { context.globalAlpha = .55; context.fillStyle = '#fff'; }
+          else { context.globalAlpha = 1; lastColor = null; }
+          for (const chunk of visible) {
+            for (const node of chunk.nodes) {
+              const color = this.nodeColor(node.type, mode, favorites, cache);
+              if (!color) continue;
+              const left = Math.round(toX(node.x)), top = Math.round(toY(node.y));
+              const right = Math.max(left + 1, Math.round(toX(node.x + 1))), bottom = Math.max(top + 1, Math.round(toY(node.y + 1)));
+              const dx = (left + right) / 2 - radius, dy = (top + bottom) / 2 - radius;
+              if (dx * dx + dy * dy > limit) continue;
+              if (pass && color !== lastColor) { context.fillStyle = color; lastColor = color; }
+              context.fillRect(left - spread, top - spread, right - left + spread * 2, bottom - top + spread * 2);
+              if (pass) shown++;
+            }
           }
         }
 

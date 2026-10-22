@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.411': [
+      'Minimap: when a gathering building is selected, the resources it can use now glow with a light edge, so dark resources are easy to see too',
+    ],
     '0.4.410': [
       'Smoother zooming and panning: the fog of war is no longer rebuilt every frame, which also removes the small hitches that came a couple of times per second',
     ],
