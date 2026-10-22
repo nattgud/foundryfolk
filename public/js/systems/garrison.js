@@ -134,11 +134,11 @@
   Behaviors.register('garrison', {
     onDemolished: building => Garrison.onDemolished(building),
 
-    // Samma buffert som craft (två omgångar), men bara för vald soldattyp och inte alls när byggnaden är full
+    // Samma buffert som craft, men bara för vald soldattyp och inte alls när byggnaden är full
     inputCapacities(building) {
       if (Garrison.slotsFree(building) <= 0) return {};
       const { inputs } = Config.units[Garrison.trainingType(building)].training;
-      return Object.fromEntries(Object.entries(inputs).map(([resourceId, amount]) => [resourceId, Math.max(2, amount * 2)]));
+      return Object.fromEntries(Object.entries(inputs).map(([resourceId, amount]) => [resourceId, Behaviors.inputBuffer(amount)]));
     },
 
     update(building, deltaSeconds) {

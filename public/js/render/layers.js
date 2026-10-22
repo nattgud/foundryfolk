@@ -420,7 +420,7 @@
     context.lineWidth = 2;
     for (const effect of CityBuilder.Combat.effects) {
       if (!Vision.visible(Players.HUMAN, effect.x2, effect.y2) && !Vision.visible(Players.HUMAN, effect.x1, effect.y1)) continue;
-      context.strokeStyle = effect.ranged ? '#c9a15a' : '#fff';
+      context.strokeStyle = '#fff';
       context.globalAlpha = Math.min(1, effect.life / 0.18);
       context.beginPath();
       context.moveTo(effect.x1 * tileSize, effect.y1 * tileSize);
@@ -428,6 +428,19 @@
       context.stroke();
     }
     context.globalAlpha = 1;
+
+    // Pilar: ett kort skaft med spets, riktat från skytten mot målet
+    context.strokeStyle = '#d8b16a'; context.lineWidth = 2; context.lineCap = 'round';
+    for (const shot of CityBuilder.Combat.projectiles) {
+      if (!Vision.visible(Players.HUMAN, shot.x, shot.y) && !Vision.visible(Players.HUMAN, shot.fromX, shot.fromY)) continue;
+      const length = Math.hypot(shot.toX - shot.fromX, shot.toY - shot.fromY) || 1;
+      const dx = (shot.toX - shot.fromX) / length * 0.5, dy = (shot.toY - shot.fromY) / length * 0.5; // skaftet är en halv ruta
+      context.beginPath();
+      context.moveTo((shot.x - dx) * tileSize, (shot.y - dy) * tileSize);
+      context.lineTo(shot.x * tileSize, shot.y * tileSize);
+      context.stroke();
+    }
+    context.lineCap = 'butt';
 
     context.font = 'bold 10px system-ui';
     context.textAlign = 'right';

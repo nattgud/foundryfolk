@@ -4,6 +4,10 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.413': [
+      'Combat: swordsmen and knights now fight on the same tile as their target (next to a building), archers shoot up to 5 tiles, and their arrows fly for a moment and only hurt when they hit',
+      'Buildings now hold three rounds of input for production (was two)',
+    ],
     '0.4.412': [
       'Direct deliveries: carriers take goods straight from a producer to the building that needs them, so a sawmill next to a woodcutter is fed directly instead of via the storage. Goods only go to storage when nobody needs them',
     ],

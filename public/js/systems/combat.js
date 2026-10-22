@@ -13,6 +13,8 @@
    En soldat har dessa fält utöver vanliga enhetsfält (alla sätts i spawnSoldier):
      quarters   byggnaden den hör till (null = fri soldat)    post     fri soldats vaktplats { x, y }
      target     enheten den anfaller                          mode     vad stegkön är till för: 'idle' | 'chase' | 'return'
+   Närstridssoldater (attackRange <= MELEE_RANGE) slår först när de står på samma ruta som en enhet (en byggnad: på angränsande ruta).
+   Bågskyttar skjuter en pil (Combat.projectiles) som flyger i en bråkdels sekund och gör skadan först när den träffar.
    Soldater styrs via stegkön (Jobs) som övriga enheter, så Units.update gör själva förflyttningen. */
 (function (CityBuilder) {
   'use strict';
@@ -22,6 +24,7 @@
   const TIMERS = ['attackCooldownLeft', 'scanTimer', 'repathTimer', 'orderCooldown', 'homeSearchTimer'];
   const HOME_SEARCH_SECONDS = 2;      // hur ofta en fri soldat letar efter en ledig garnison
   const POST_TOLERANCE = 1.5;         // så nära posten räknas en fri soldat som på plats
+  const MELEE_RANGE = 2;              // attackRange upp till detta är närstrid, över det en projektil
   const BUILDING_REACH = 0.6;         // en byggnad är en hel ruta: räckhållet räknas från kanten, inte mitten
 
   // Mål är enheter (x, y = mitten) eller byggnader (x, y = rutan). Mittpunkt och prioritet (lägre = angrips först):
@@ -31,7 +34,8 @@
   const priority = target => isBuilding(target) ? 2 : target.definition.isSoldier ? 0 : 1;
 
   const Combat = {
-    effects: [],                      // korta attackstreck för renderingen: { x1, y1, x2, y2, ranged, life }
+    effects: [],                      // korta slag för renderingen: { x1, y1, x2, y2, life }
+    projectiles: [],                  // pilar i luften: { x, y, fromX, fromY, toX, toY, target, attacker, damage, time, duration }
     time: 0,                          // simuleringstid i sekunder
     targetCache: null,                // kandidater för den här simuleringsrutan (se targets)
     alertTimers: new WeakMap(),       // byggnad -> sekunder till nästa sökning
@@ -61,10 +65,33 @@
     // ---- Skada ---------------------------------------------------------------------------------
 
     attack(attacker, target) {
-      const definition = attacker.definition;
+      const definition = attacker.definition, amount = Math.max(1, definition.attackDamage - (target.definition.armor || 0));
       attacker.attackCooldownLeft = definition.attackCooldown;
-      this.effects.push({ x1: attacker.x, y1: attacker.y, x2: centreX(target), y2: centreY(target), ranged: definition.attackRange > 2, life: 0.18 });
-      this.damage(target, Math.max(1, definition.attackDamage - (target.definition.armor || 0)), attacker);
+      if (definition.attackRange <= MELEE_RANGE) {
+        this.effects.push({ x1: attacker.x, y1: attacker.y, x2: centreX(target), y2: centreY(target), life: 0.18 });
+        this.damage(target, amount, attacker);
+        return;
+      }
+      const { projectileSpeed, projectileMinSeconds, projectileMaxSeconds } = settings();
+      const distance = Math.hypot(centreX(target) - attacker.x, centreY(target) - attacker.y);
+      this.projectiles.push({
+        x: attacker.x, y: attacker.y, fromX: attacker.x, fromY: attacker.y, toX: centreX(target), toY: centreY(target),
+        target, attacker, damage: amount, time: 0,
+        duration: Math.min(projectileMaxSeconds, Math.max(projectileMinSeconds, distance / projectileSpeed)),
+      });
+    },
+
+    // Pilarna flyger mot målets aktuella plats och gör skada när de når fram (målet kan ha dött under tiden)
+    updateProjectiles(deltaSeconds) {
+      for (const shot of this.projectiles) {
+        shot.time += deltaSeconds;
+        if (!shot.target.removed) { shot.toX = centreX(shot.target); shot.toY = centreY(shot.target); }
+        const progress = Math.min(1, shot.time / shot.duration);
+        shot.x = shot.fromX + (shot.toX - shot.fromX) * progress;
+        shot.y = shot.fromY + (shot.toY - shot.fromY) * progress;
+        if (progress >= 1 && !shot.target.removed) this.damage(shot.target, shot.damage, shot.attacker);
+      }
+      this.projectiles = this.projectiles.filter(shot => shot.time < shot.duration);
     },
 
     // attacker (valfri) är den som gav sista slaget: bara spelarens egna segrar räknas mot banans mål
@@ -144,6 +171,7 @@
         if (unit.definition.isSoldier && !unit.removed) this.updateSoldier(unit, deltaSeconds);
       }
 
+      this.updateProjectiles(deltaSeconds);
       for (const effect of this.effects) effect.life -= deltaSeconds;
       this.effects = this.effects.filter(effect => effect.life > 0);
     },
@@ -198,12 +226,18 @@
         Math.hypot(centreX(target) - anchor.x, centreY(target) - anchor.y) <= anchor.radius * settings().leashFactor;
     },
 
+    // Närstrid mot en enhet kräver samma ruta, annars räknas avståndet (mot en byggnad från dess kant)
+    inReach(unit, target) {
+      const range = unit.definition.attackRange;
+      if (range <= MELEE_RANGE && !isBuilding(target)) return Math.floor(unit.x) === Math.floor(target.x) && Math.floor(unit.y) === Math.floor(target.y);
+      return Math.hypot(centreX(target) - unit.x, centreY(target) - unit.y) <= range + (isBuilding(target) ? BUILDING_REACH : 0);
+    },
+
     // Slå om målet är inom räckhåll, annars gå mot det
     engage(unit) {
-      const target = unit.target, definition = unit.definition;
+      const target = unit.target;
 
-      const reach = definition.attackRange + (isBuilding(target) ? BUILDING_REACH : 0);
-      if (Math.hypot(centreX(target) - unit.x, centreY(target) - unit.y) <= reach) {
+      if (this.inReach(unit, target)) {
         unit.stepQueue.length = 0;
         unit.mode = 'idle';
         unit.status = 'Fighting';

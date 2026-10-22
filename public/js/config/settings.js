@@ -4,6 +4,7 @@ CityBuilder.Config.settings = {
   tileSize: 36,                  // pixlar per ruta vid zoom 1
   walkSpeed: 1,                  // rutor per sekund på gräs
   buildDurationSeconds: 1,
+  inputBufferFactor: 3,           // ett hus håller så många omgångar indata (insats per omgång * detta)
   outputBufferCapacity: 20,       // max i utbuffert innan producenten pausar
   flushThreshold: 0,             // överskott över detta skickas till lagret
   carriersPerBuilding: 3,
@@ -54,6 +55,9 @@ CityBuilder.Config.settings = {
     scanIntervalSeconds: 0.5,  // hur ofta byggnader och soldater letar efter fiender
     repathSeconds: 0.5,        // minsta tid mellan omräkningar av vägen mot ett rörligt mål
     retrySeconds: 2,           // väntetid innan en soldat försöker igen efter att något inte gick att nå
+    projectileSpeed: 16,       // pilens fart (rutor per sekund); flygtiden hålls mellan min och max
+    projectileMinSeconds: 0.2,
+    projectileMaxSeconds: 0.5,
     workerRespawnSeconds: 10,  // tid innan en dödad arbetare ersätts
   },
   // Fog of war (systems/vision.js). Radier i rutor, tider i sekunder speltid.

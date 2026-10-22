@@ -96,6 +96,9 @@
 
     forBuilding(building) { return building.definition.job ? this.get(building.definition.job.kind) : null; },
 
+    // Hur mycket ett hus håller av en insats som går åt 'amount' per omgång
+    inputBuffer: amount => Math.max(2, Math.ceil(amount * Config.settings.inputBufferFactor)),
+
     // Allt huset ska ha levererat: insatser (upp till kapacitet) och utrustning
     requiredResources(building) {
       const behavior = this.forBuilding(building);
@@ -280,12 +283,7 @@
   // Förädlare: konsumerar inputs, väntar craftSeconds, producerar outputs i utbufferten
   Behaviors.register('craft', {
     inputCapacities: building => Object.fromEntries(
-      Object.entries(building.definition.job.inputs || {}).map(
-        ([resourceId, amount]) => [
-          resourceId,
-          Math.max(2, amount * 2)
-        ]
-      )
+      Object.entries(building.definition.job.inputs || {}).map(([resourceId, amount]) => [resourceId, Behaviors.inputBuffer(amount)])
     ),
 
     update(building, deltaSeconds) {
