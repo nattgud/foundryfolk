@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.419': [
+      'The tutorial is now a 13-step guide that lights up the menu or button it explains: goals, resources, minimap, building, pausing, carriers, speed, fog, finding the enemy with watchtowers, and fighting',
+    ],
     '0.4.418': [
       'Watchtowers are much cheaper (2 planks, 3 stone) and build faster, so it is quick to find the rival',
     ],

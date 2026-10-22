@@ -239,21 +239,47 @@
       if (CityBuilder.Options) CityBuilder.Options.positionFpsCounter();
     },
 
-    // Handledning: fem korta sidor. Visas automatiskt första gången för nya spelare, och finns alltid i huvudmenyn.
+    // Handledning: en sida per del av spelet. Varje sida lyser upp det den förklarar (target = CSS-väljare, flera går bra) och kan först
+    // öppna en byggkategori (category). mock: en bild av infopanelen för det som inte syns förrän man markerat en byggnad.
     TUTORIAL: [
-      ['Welcome', ['Build a settlement, grow its economy and, in time, defeat the rival base.', 'The goals at the top tell you what to do next. Complete them to finish the level and unlock new buildings.']],
-      ['Look around', ['Drag the map to move it. Scroll or pinch to zoom.', 'Tap a building, tree, rock or water to see what it is. The minimap in the corner shows the area around you.']],
-      ['Build', ['Open a category in the menu at the bottom, pick a building and tap the ground to place it.', 'It costs materials from your stores. You can only build near your own buildings, and not in the fog.']],
-      ['Produce', ['Woodcutters and quarries gather wood and stone. A sawmill turns wood into planks. Place a producer next to the building that needs its goods.', 'Carriers move everything between buildings and stores. When things are far apart, build a warehouse. While you place a gathering building, the minimap lights up the resources it can use.']],
-      ['Explore and fight', ['Land you have not seen is hidden by fog. Buildings and units reveal what is near them, and watchtowers see far.', 'Later you unlock soldiers: train them in a garrison, guard them with towers and destroy the rival base to win. Soldiers go for enemy soldiers first, then buildings.']],
+      { title: 'Welcome', lines: ['Build a settlement, grow your economy and, in time, defeat the rival base.', 'This guide shows every button you need. Each step lights up the part of the screen it explains.'] },
+      { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'The timer shows your time against the par time. Be faster for more stars.'] },
+      { title: 'Resources', target: ['#top'], lines: ['The top bar shows what is in your stores. Tap "All resources" for the full list.', 'A number turns orange when the stores are full for that resource. Build a warehouse for more room.'] },
+      { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap a building, tree, rock or water to see what it is.'] },
+      { title: 'Minimap', target: ['#minimap', '#minimapMode', '#minimapZoomIn', '#minimapZoomOut'], lines: ['The minimap shows the area around you. The white box is what you see on screen.', 'Use + and − to zoom it, and the small button to change what it shows.', 'Your buildings are coloured squares. Enemies you have spotted are red.'] },
+      { title: 'Build menu', target: ['#bottom .build-categories'], category: null, lines: ['The build menu is at the bottom. Each icon is a category of buildings.', 'Tap a category to open it. New buildings unlock as you complete levels.'] },
+      { title: 'Place a building', target: ['#build_woodcutter'], category: 'forestry', lines: ['Tap a building to select it. Move the mouse over it to see its cost and what it does.', 'Then tap the ground to place it. A preview follows you and shows whether it fits. You can only build near your own buildings, and not in the fog.', 'Tap the building again, or Cancel, to stop placing.'] },
+      { title: 'Select, pause and demolish', mock: true, lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working and using goods. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
+      { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
+      { title: 'Speed and menu', target: ['#speedButton', '#mainMenuButton'], lines: ['Change the game speed here.', 'The menu button opens save, load, settings and this guide.'] },
+      { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
+      { title: 'Find the enemy', target: ['#build_watchtower'], category: 'military', lines: ['The rival base is 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far and are cheap.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.'] },
+      { title: 'Fight', target: ['#build_garrison'], category: 'military', lines: ['Soldiers are trained in a Garrison: select it, pick a soldier type and supply the goods it needs.', 'Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.'] },
     ],
 
-    // Handledningen (spelet pausas medan den är öppen). Bakåt, framåt och sista sidan stänger.
+    // Handledningen (spelet pausas medan den är öppen). Varje sida lyser upp det den förklarar.
     openTutorial() {
       this.hideTooltip();
-      const game = CityBuilder.Game;
+      const game = CityBuilder.Game, pages = this.TUTORIAL, categoryBefore = this.openCategoryId;
       game.paused = true;
       let page = 0;
+      if (!byId('tutorialStyles')) {
+        const style = document.createElement('style');
+        style.id = 'tutorialStyles';
+        style.textContent = `
+          #tutorialSpotlight { position: fixed; z-index: 1000; pointer-events: none; border: 3px solid #ffd23f; border-radius: 8px;
+            box-shadow: 0 0 0 9999px rgb(0 0 0 / 62%), 0 0 14px 4px rgb(255 210 63 / 70%); animation: tutorialPulse 1.4s ease-in-out infinite; }
+          @keyframes tutorialPulse { 50% { box-shadow: 0 0 0 9999px rgb(0 0 0 / 62%), 0 0 22px 8px rgb(255 210 63 / 95%); } }
+          #tutorialOverlay { z-index: 1001; }
+          #tutorialOverlay.lit { background: none; }
+          .tutorial-mock { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; margin: 4px 0;
+            background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+          .tutorial-mock .glow { border: 2px solid #ffd23f; animation: tutorialGlow 1.4s ease-in-out infinite; }
+          @keyframes tutorialGlow { 50% { box-shadow: 0 0 10px 3px rgb(255 210 63 / 90%); } }`;
+        document.head.appendChild(style);
+      }
+      const spotlight = document.createElement('div');
+      spotlight.id = 'tutorialSpotlight';
       const overlay = document.createElement('div');
       overlay.id = 'tutorialOverlay';
       overlay.className = 'resource-window-overlay';
@@ -270,31 +296,77 @@
       body.className = 'main-menu-body';
       const footer = document.createElement('footer');
       footer.style.cssText = 'padding:10px 12px;border-top:1px solid var(--line);flex:0 0 auto;display:flex;gap:8px';
-      const button = (onclick) => {
+      const button = onclick => {
         const element = document.createElement('button');
         element.type = 'button';
         element.className = 'main-menu-button';
         element.onclick = onclick;
         return element;
       };
-      const close = () => { overlay.remove(); removeEventListener('keydown', onKey); game.paused = !!this.mainMenuOpen; };
-      const back = button(() => { page--; render(); }), next = button(() => { if (page === this.TUTORIAL.length - 1) close(); else { page++; render(); } });
-      const render = () => {
-        const [heading, lines] = this.TUTORIAL[page];
-        body.replaceChildren();
-        const add = (className, text) => { const element = document.createElement('div'); element.className = className; element.textContent = text; body.append(element); };
-        add('main-menu-level', (page + 1) + '/' + this.TUTORIAL.length + ' · ' + t(heading));
-        for (const text of lines) add('main-menu-note', t(text));
-        back.textContent = t('Back'); back.disabled = page === 0;
-        next.textContent = page === this.TUTORIAL.length - 1 ? t('Start playing') : t('Next');
+      let frame = 0;
+      const close = () => {
+        cancelAnimationFrame(frame); spotlight.remove(); overlay.remove(); removeEventListener('keydown', onKey);
+        this.setOpenCategory(categoryBefore ?? null);
+        game.paused = !!this.mainMenuOpen;
       };
-      const onKey = event => { if (event.key === 'Escape') close(); };
+      const skip = button(close), back = button(() => { page--; render(); });
+      const next = button(() => { if (page === pages.length - 1) close(); else { page++; render(); } });
+      skip.style.cssText = 'margin-left:auto;padding:2px 10px;flex:0 0 auto;width:auto';
+      header.append(skip);
+
+      // Håller markeringen och dialogen på plats (sidan kan ändra layouten, t.ex. när en byggkategori öppnas)
+      const track = () => {
+        frame = requestAnimationFrame(track);
+        const rects = (pages[page].target || []).flatMap(selector => [...document.querySelectorAll(selector)]).map(element => element.getBoundingClientRect()).filter(rect => rect.width && rect.height);
+        overlay.classList.toggle('lit', rects.length > 0);
+        spotlight.style.display = rects.length ? 'block' : 'none';
+        if (!rects.length) { overlay.style.alignItems = ''; return; }
+        const left = Math.min(...rects.map(rect => rect.left)) - 6, top = Math.min(...rects.map(rect => rect.top)) - 6;
+        const right = Math.max(...rects.map(rect => rect.right)) + 6, bottom = Math.max(...rects.map(rect => rect.bottom)) + 6;
+        Object.assign(spotlight.style, { left: left + 'px', top: top + 'px', width: right - left + 'px', height: bottom - top + 'px' });
+        overlay.style.alignItems = (top + bottom) / 2 < innerHeight / 2 ? 'end' : 'start'; // dialogen ligger på andra halvan av skärmen
+      };
+
+      const render = () => {
+        const { title: heading, lines, category, mock } = pages[page];
+        this.setOpenCategory(category ?? null);
+        body.replaceChildren();
+        const add = (className, text) => { const element = document.createElement('div'); element.className = className; element.textContent = text; body.append(element); return element; };
+        add('main-menu-level', (page + 1) + '/' + pages.length + ' · ' + t(heading));
+        if (mock) { // infopanelen för en vald byggnad, med Pause lysande
+          const panel = document.createElement('div');
+          panel.className = 'tutorial-mock';
+          const name = document.createElement('div');
+          name.innerHTML = '<b></b><br><span></span>';
+          name.firstChild.textContent = this.buildingName('woodcutter'); name.lastChild.textContent = t('Working');
+          const buttons = document.createElement('div');
+          buttons.style.cssText = 'display:flex;gap:6px';
+          for (const [text, glow] of [[t('Pause'), true], [t('Demolish'), false]]) {
+            const element = document.createElement('button');
+            element.type = 'button'; element.textContent = text; element.tabIndex = -1;
+            if (glow) element.className = 'glow';
+            buttons.append(element);
+          }
+          panel.append(name, buttons);
+          body.append(panel);
+        }
+        for (const text of lines) add('main-menu-note', t(text));
+        skip.textContent = t('Skip');
+        back.textContent = t('Back'); back.disabled = page === 0;
+        next.textContent = page === pages.length - 1 ? t('Start playing') : t('Next');
+      };
+      const onKey = event => {
+        if (event.key === 'Escape') close();
+        else if (event.key === 'ArrowRight' && page < pages.length - 1) { page++; render(); }
+        else if (event.key === 'ArrowLeft' && page > 0) { page--; render(); }
+      };
       addEventListener('keydown', onKey);
       footer.append(back, next);
       dialog.append(header, body, footer);
       overlay.appendChild(dialog);
-      document.body.appendChild(overlay);
+      document.body.append(spotlight, overlay);
       render();
+      track();
       next.focus();
     },
 
