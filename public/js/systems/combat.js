@@ -4,8 +4,10 @@
    - Garnisonsbyggnader (garrison.js) letar efter fiender inom sin räckvidd. Hittas en skickas alla soldater därinne ut.
    - Soldater (definition.isSoldier) väljer själva mål, går fram och slår eller skjuter. Finns inga fiender kvar går de hem
      och stiger in i byggnaden igen. Fria soldater (utan byggnad) vaktar sin post och söker sig till en ledig garnison.
-   - Alla enheter och byggnader med hp kan skadas. Fiendens soldater går först, sedan övriga enheter och sist byggnader.
-     Dör en bärare ersätts den av Logistics.balanceCarriers, en arbetare av sin byggnad (efter workerRespawnSeconds).
+   - Alla enheter och byggnader med hp kan skadas. Fiendens soldater går först, sedan byggnader och sist övriga enheter (bärare, arbetare),
+     så att en bas går att utplåna. En soldat som anfaller något sämre byter till ett bättre mål när det dyker upp.
+     Dör en bärare ersätts den av Logistics.balanceCarriers (en i taget, carrierRespawnSeconds emellan), en arbetare av sin
+     byggnad (efter workerRespawnSeconds).
      En förstörd byggnad lämnar inget tillbaka. Förstörs en bas är spelaren utslagen (eliminate).
    - Garnisonsbyggnadens läge (building.stance): 'defend' vaktar inom job.searchRadius, 'attack' söker upp fiender inom
      settings.attackRadius och jagar dem dit.
@@ -31,7 +33,7 @@
   const isBuilding = target => target.buildProgress !== undefined;
   const centreX = target => target.x + (isBuilding(target) ? .5 : 0);
   const centreY = target => target.y + (isBuilding(target) ? .5 : 0);
-  const priority = target => isBuilding(target) ? 2 : target.definition.isSoldier ? 0 : 1;
+  const priority = target => target.definition.isSoldier && !isBuilding(target) ? 0 : isBuilding(target) ? 1 : 2;
 
   const Combat = {
     effects: [],                      // korta slag för renderingen: { x1, y1, x2, y2, life }
@@ -108,6 +110,7 @@
       if (isBuilding(target)) return this.destroyBuilding(target);
       const unit = target;
       CityBuilder.Logistics.abortTask(unit); // en bärare som dör släpper sina reservationer
+      if (unit.definition.isHauler) CityBuilder.Logistics.carrierLost(unit);
       Garrison.release(unit);
       Behaviors.removeUnit(unit);
     },
@@ -196,10 +199,12 @@
       const anchor = this.anchorOf(unit);
       if (unit.target && !this.isValidTarget(unit, anchor)) unit.target = null;
 
-      if (!unit.target && unit.scanTimer <= 0) {
+      // Utan mål söker soldaten ett, och med ett sämre mål än en soldat (byggnad, bärare) letar den vidare efter något bättre
+      if ((!unit.target || priority(unit.target) > 0) && unit.scanTimer <= 0) {
         unit.scanTimer = settings().scanIntervalSeconds;
         const ignored = unit.ignoreUntil > this.time ? unit.ignore : null;
-        unit.target = this.findEnemy(unit.player, anchor.x, anchor.y, anchor.radius, ignored);
+        const found = this.findEnemy(unit.player, anchor.x, anchor.y, anchor.radius, ignored);
+        if (found && (!unit.target || priority(found) < priority(unit.target))) unit.target = found;
       }
 
       if (unit.target) { this.engage(unit); return; }

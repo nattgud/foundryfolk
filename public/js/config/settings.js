@@ -58,7 +58,8 @@ CityBuilder.Config.settings = {
     projectileSpeed: 16,       // pilens fart (rutor per sekund); flygtiden hålls mellan min och max
     projectileMinSeconds: 0.2,
     projectileMaxSeconds: 0.5,
-    workerRespawnSeconds: 10,  // tid innan en dödad arbetare ersätts
+    workerRespawnSeconds: 60,  // tid innan en dödad arbetare ersätts
+    carrierRespawnSeconds: 20, // tid mellan att dödade bärare ersätts (en i taget per spelare)
   },
   // Fog of war (systems/vision.js). Radier i rutor, tider i sekunder speltid.
   vision: {

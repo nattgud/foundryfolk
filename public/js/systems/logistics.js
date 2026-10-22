@@ -13,6 +13,7 @@
     planningTimer: 0,
     cursor: 0,              // var nästa planering börjar i byggnadslistan (så att inga byggnader alltid kommer sist)
     load: {},               // spelare -> antal väntande uppdrag (maxTasks gäller per spelare)
+    lost: {},               // spelare -> tider då dödade bärare ersätts (en i taget, carrierRespawnSeconds emellan)
     unreachable: new Map(), // "källa>mål" -> tid då paret får provas igen (efter att en bärare inte hittade någon väg)
 
     pairKey: (source, destination) => source.id + '>' + destination.id,
@@ -115,6 +116,12 @@
       else if (!destination.removed) destination.incomingCount[task.resource]--;
     },
 
+    // En dödad bärare ersätts först när det är dess tur i kön, så att en bas under angrepp inte fylls på lika fort som den töms
+    carrierLost(unit) {
+      const queue = this.lost[unit.player] = this.lost[unit.player] || [];
+      queue.push(Math.max(this.time || 0, queue[queue.length - 1] ?? 0) + Config.settings.military.carrierRespawnSeconds);
+    },
+
     // Antalet bärare följer antalet byggnader: bas + 1,5 per färdig byggnad (per spelare). Överskott tas bort när de är lediga.
     balanceCarriers() {
       const { baseCarriers = 5, carriersPerBuilding = 1.5 } = cfg();
@@ -123,7 +130,8 @@
         if (!hq) continue;
         let buildings = 0;
         for (const building of World.buildings) if (building.player === player && building.buildProgress >= 1 && building !== hq) buildings++;
-        const target = baseCarriers + Math.floor(buildings * carriersPerBuilding);
+        const waiting = (this.lost[player] = (this.lost[player] || []).filter(time => time > (this.time || 0))).length; // dödade, ännu inte ersatta
+        const target = Math.max(0, baseCarriers + Math.floor(buildings * carriersPerBuilding) - waiting);
 
         const carriers = World.units.filter(unit => unit.definition.isHauler && unit.player === player);
         for (let count = carriers.length; count < target; count++) World.spawnUnit('carrier', hq.x, hq.y, null, player);
