@@ -93,7 +93,7 @@
       this.canvas.title = t('Minimap (scroll to zoom)');
       this.context = this.canvas.getContext('2d');
       this.background = new Image();
-      this.background.src = 'images/minimap_bg.jpg';
+      this.background.src = CityBuilder.Config.settings.vision.image;
 
       this.modeButton = document.createElement('button');
       this.modeButton.type = 'button';

@@ -62,7 +62,7 @@ CityBuilder.Config.settings = {
     interval: 1,               // hur ofta synfältet räknas om
     fade: 5,                   // de sista sekunderna bleknar dimman in
     building: 12, unit: 8, soldier: 10,  // standardräckvidd (definition.vision åsidosätter)
-    image: 'images/fog.png',   // bakgrundstextur för dimman (en bild mindre än skärmen läggs som mönster, en större täcker skärmen)
+    image: 'images/fog.jpg',   // bakgrundstextur för dimman (en bild mindre än skärmen läggs som mönster, en större täcker skärmen)
     color: '#0b0d10',          // dimmans färg tills bilden laddats, eller utan bild
   },
   systemOrder: ['ai', 'construction', 'production', 'logistics', 'combat', 'units', 'vision'],
