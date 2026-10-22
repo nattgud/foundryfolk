@@ -83,7 +83,7 @@
       return { nearest, blocked: blocked / total };
     },
 
-    // Var en datorspelares bas ligger: 100-150 rutor från starten. Av 24 platser (riktning och avstånd sprids ut, start slumpas av bana och spelarnummer)
+    // Var en datorspelares bas ligger: 60-90 rutor från starten. Av 24 platser (riktning och avstånd sprids ut, start slumpas av bana och spelarnummer)
     // väljs den med minst vatten och berg runt sig (de sex bästa jämförs) och ungefär samma avstånd till resurserna som spelarens start (rättvist).
     // En gräsplan läggs in runt basen (clearings), och små fyndigheter av det banan kräver om det saknas i närheten (se endow).
     async rivalSite(player, step = async () => {}) {

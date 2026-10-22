@@ -603,7 +603,7 @@
     isletSize: 30,             // gångbar mark som hänger ihop med färre rutor än så här räknas som holme
     meadows: [{ x: 0, y: 0 }], // baserna: runt var och en glesas skog och träsk ut till gräs (World.rivalSite lägger till datorspelarnas)
     meadowRadius: 28,          // hur långt ut den öppna marken når (rutor). Mest gräs nära basen, ingenting vid kanten
-    rivalDistance: [100, 150], // hur långt från starten en datorspelares bas ligger (rutor)
+    rivalDistance: [60, 90], // hur långt från starten en datorspelares bas ligger (rutor)
     rivalClearRadius: 5,
     fairResources: ['tree', 'rock', 'water', 'clay', 'iron_ore', 'coal', 'sand', 'limestone'], // avstånden hit ska vara ungefär lika för alla spelare
     fairRadius: 36,            // så långt från basen mäts avstånden (rutor)

@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.415': [
+      'Rivals now start closer: their base is 60-90 tiles from yours (was 100-150)',
+    ],
     '0.4.414': [
       'The Well now takes 30 seconds per trip to fetch water (it took 1 second)',
     ],
