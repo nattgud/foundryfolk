@@ -7,7 +7,6 @@ CityBuilder.Config.settings = {
   outputBufferCapacity: 20,       // max i utbuffert innan producenten pausar
   flushThreshold: 0,             // överskott över detta skickas till lagret
   carriersPerBuilding: 3,
-  deerActivationRadius: 2,
   deerPerChunk: 3,
   deerTreeSpreadChance: 0.005,
   startingResources: { wood: 10, plank: 10, stone: 10, hammer: 10 },
@@ -57,5 +56,14 @@ CityBuilder.Config.settings = {
     retrySeconds: 2,           // väntetid innan en soldat försöker igen efter att något inte gick att nå
     workerRespawnSeconds: 10,  // tid innan en dödad arbetare ersätts
   },
-  systemOrder: ['ai', 'construction', 'production', 'logistics', 'combat', 'units'],
+  // Fog of war (systems/vision.js). Radier i rutor, tider i sekunder speltid.
+  vision: {
+    ttl: 45,                   // så länge en ruta syns kvar efter att den sista byggnaden eller enheten lämnat den
+    interval: 1,               // hur ofta synfältet räknas om
+    fade: 5,                   // de sista sekunderna bleknar dimman in
+    building: 12, unit: 8, soldier: 10,  // standardräckvidd (definition.vision åsidosätter)
+    image: 'images/fog.png',   // bakgrundstextur för dimman (en bild mindre än skärmen läggs som mönster, en större täcker skärmen)
+    color: '#0b0d10',          // dimmans färg tills bilden laddats, eller utan bild
+  },
+  systemOrder: ['ai', 'construction', 'production', 'logistics', 'combat', 'units', 'vision'],
 };

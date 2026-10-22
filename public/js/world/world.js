@@ -35,11 +35,18 @@
 
     buildingAt: (x, y) => World.buildingsByTile.get(Utils.tileKey(x, y)),
 
+    // Byggnad på rutan som spelaren ser: andras byggnader i dimman finns inte för spelaren (klick, markering och verktygstips)
+    seenBuildingAt(x, y) {
+      const building = this.buildingAt(x, y);
+      return building && CityBuilder.Vision.sees(Players.HUMAN, building) ? building : undefined;
+    },
+
     hqOf(player) { return this.hqs[player]; },
 
     // report(fraction 0-1, text) rapporterar framsteg och ger webbläsaren tid att rita (laddningsstapeln i Game.init). Den anropas
     // högst var 40:e ms, så rapporteringen kostar nästan ingenting. Utan report går allt i ett svep.
     async init(report = () => {}) {
+      CityBuilder.Vision.reset();
       this.addPlayer(Players.HUMAN, 0, 0);
       const rivals = CityBuilder.Levels?.current?.rivals ?? 1, total = rivals * RIVAL_STEPS;
       let done = 0, last = performance.now();

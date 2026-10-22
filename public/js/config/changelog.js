@@ -4,6 +4,10 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.408': [
+      'Fog of war: you only see what is near your buildings and units, and explored ground fades back into fog after a while. You cannot build in the fog',
+      'New building: Watchtower, which sees far. Deer are only simulated where someone can see them',
+    ],
     '0.4.407': [
       'Smoother loading bar that follows world creation, and scripts now load in parallel',
     ],

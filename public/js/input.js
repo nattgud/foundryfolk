@@ -109,7 +109,7 @@
 
       if (game.placingType) { game.tryBuild(game.placingType, tile.x, tile.y); return; }
 
-      const building = CityBuilder.World.buildingAt(tile.x, tile.y);
+      const building = CityBuilder.World.seenBuildingAt(tile.x, tile.y);
       game.selectBuilding(building);
       CityBuilder.UI.inspectTile(building ? null : tile); // terrängnod (träd, sten ...) visas i samma infopanel
     },

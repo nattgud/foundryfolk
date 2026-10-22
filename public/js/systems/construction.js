@@ -4,7 +4,7 @@
   'use strict';
   const { World, Behaviors, Economy, Pathfinder, Players, Config } = CityBuilder;
 
-  // Försöker bygga. Returnerar null om det gick, annars orsaken: 'occupied' | 'terrain' | 'far' | 'unreachable' | 'cost'.
+  // Försöker bygga. Returnerar null om det gick, annars orsaken: 'fog' | 'occupied' | 'terrain' | 'far' | 'unreachable' | 'cost'.
   const Construction = {
     // Närmaste egna byggnad inom maxBuildDistance rutor (luftlinje), eller undefined. Ingen får bygga var som helst.
     nearestOwnBuilding(x, y, player) {
@@ -17,6 +17,9 @@
       return best;
     },
     isNearOwnBuilding(x, y, player) { return Boolean(this.nearestOwnBuilding(x, y, player)); },
+
+    // Spelaren kan inte bygga i dimman. Datorspelarna ser kartan som förut: de är bara blinda för motståndaren.
+    isHidden(x, y, player) { return !Players.isAI(player) && !CityBuilder.Vision.visible(player, x, y); },
 
     // Tar bort en byggnad. Soldater som bor där blir fria (de söker sig till en annan garnison eller vaktar platsen).
     // salvage = riven av ägaren: halva byggkostnaden och allt byggnaden höll (lager, in- och utbuffert, det arbetaren bär)
@@ -34,9 +37,10 @@
 
     build(buildingType, x, y, player = Players.HUMAN) {
       const definition = Config.buildings[buildingType];
-      if (!World.canPlace(buildingType, x, y)) return definition.placeOnTerrain ? 'terrain' : 'occupied';
       const from = this.nearestOwnBuilding(x, y, player);   // vägen räknas från närmaste egna byggnad, så att utposter långt från basen går att bygga
       if (!from) return 'far';
+      if (this.isHidden(x, y, player)) return 'fog';          // före terrängkollen, så att dimman inte avslöjar vad som ligger där
+      if (!World.canPlace(buildingType, x, y)) return definition.placeOnTerrain ? 'terrain' : 'occupied';
       if (Pathfinder.findPathNow(from.x, from.y, x, y) === null) return 'unreachable';
       if (!Economy.spend(definition.buildCost, player)) return 'cost';
       World.placeBuilding(buildingType, x, y, false, player);

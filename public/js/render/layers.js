@@ -1,10 +1,13 @@
 /* Renderlager i ritordning: terräng, stigar, byggnader, enheter, placeringsspöke. */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Assets, Economy, Renderer } = CityBuilder;
+  const { Config, World, Assets, Economy, Renderer, Vision, Players } = CityBuilder;
 
   // Utanför synfältet (Renderer.viewBounds)? Byggnader och enheter utanför bild hoppas över, så ritkostnaden följer vad som syns.
   const outside = (view, x, y) => x < view.left || x > view.right || y < view.top || y > view.bottom;
+
+  // Någon annans byggnad eller enhet som spelaren inte ser (i dimman): ritas inte
+  const hidden = thing => thing.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, thing);
 
   // Terräng: ritas i brickor på 8x8 rutor som cachas på egna canvaser, så varje bildruta bara kostar en drawImage per
   // synlig bricka. Rutnätet snappas till hela skärmpixlar (grannrutor delar kantpixel, så det blir inga skarvar), och
@@ -86,6 +89,7 @@
     context.save();
     for (let cy = Math.floor(range.minY / N); cy <= Math.floor(range.maxY / N); cy++) {
       for (let cx = Math.floor(range.minX / N); cx <= Math.floor(range.maxX / N); cx++) {
+        if (!Vision.anyVisible(Players.HUMAN, cx * N, cy * N, cx * N + N - 1, cy * N + N - 1)) continue;   // bara dimma: ritas inte
         const x = edge(cx * N, scale) - shiftX, y = edge(cy * N, scale) - shiftY;
         let chunk;
         if (cached) {
@@ -270,7 +274,7 @@
     const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize);
     for (const building of World.buildings) {
       const x = building.x * tileSize, y = building.y * tileSize;
-      if (outside(view, x, y)) continue;
+      if (outside(view, x, y) || hidden(building)) continue;
       const isFinished = building.buildProgress >= 1, image = Assets.get(building.definition.image);
       context.globalAlpha = isFinished ? (building.paused ? .5 : 1) : .7;
 
@@ -338,7 +342,7 @@
     context.imageSmoothingQuality = 'high';
     const view = renderer.viewBounds(tileSize * 2);
     for (const unit of World.units) {
-      if (outside(view, unit.x * tileSize, unit.y * tileSize)) { unit.lastX = unit.x; unit.lastY = unit.y; continue; } // förflyttningen utanför bild ger ingen riktning
+      if (outside(view, unit.x * tileSize, unit.y * tileSize) || hidden(unit)) { unit.lastX = unit.x; unit.lastY = unit.y; continue; } // förflyttningen utanför bild ger ingen riktning
       const definition = unit.definition, image = findUnitImage(unit);
       const frameW = image && (definition.frame || image.naturalWidth), frameH = image && (definition.frame || image.naturalHeight);
       const cols = image ? Math.max(1, Math.floor(image.naturalWidth / frameW)) : 1, rows = image ? Math.max(1, Math.floor(image.naturalHeight / frameH)) : 1;
@@ -393,7 +397,7 @@
 
     for (const unit of World.units) {
       const definition = unit.definition, pixelX = unit.x * tileSize, pixelY = unit.y * tileSize;
-      if (outside(view, pixelX, pixelY)) continue;
+      if (outside(view, pixelX, pixelY) || hidden(unit)) continue;
 
       if (definition.isSoldier) {
         context.beginPath();
@@ -414,6 +418,7 @@
 
     context.lineWidth = 2;
     for (const effect of CityBuilder.Combat.effects) {
+      if (!Vision.visible(Players.HUMAN, effect.x2, effect.y2) && !Vision.visible(Players.HUMAN, effect.x1, effect.y1)) continue;
       context.strokeStyle = effect.ranged ? '#c9a15a' : '#fff';
       context.globalAlpha = Math.min(1, effect.life / 0.18);
       context.beginPath();
@@ -427,7 +432,7 @@
     context.textAlign = 'right';
     context.textBaseline = 'top';
     for (const building of World.buildings) {
-      if (building.buildProgress < 1 || !CityBuilder.Garrison.isGarrison(building) || outside(view, building.x * tileSize, building.y * tileSize)) continue;
+      if (building.buildProgress < 1 || !CityBuilder.Garrison.isGarrison(building) || outside(view, building.x * tileSize, building.y * tileSize) || hidden(building)) continue;
       const text = CityBuilder.Garrison.count(building) + '/' + CityBuilder.Garrison.capacity(building);
       const right = (building.x + 1) * tileSize - 3, top = building.y * tileSize + 2;
       context.fillStyle = '#000';
@@ -435,6 +440,61 @@
       context.fillStyle = '#fff';
       context.fillText(text, right, top);
     }
+  });
+
+  // Dimma (Vision): en textur över det spelaren inte ser. Täckningen kommer som en liten alfamask (en pixel per cell) som skalas upp
+  // med utjämning, så kanterna blir mjuka, och som klipper ut texturen (ett mönster som ligger fast i världen) på en canvas som
+  // är lite större än skärmen. Den ritas om bara när synfältet räknats om, när celler håller på att blekna (högst 4 gånger per
+  // sekund), vid zoom eller när bilden lämnar canvasen. Annars kostar dimman en enda 1:1-drawImage per bildruta.
+  const FOG_MARGIN = .25;          // extra yta runt skärmen (andel av skärmens storlek)
+  const FOG_MAX_PIXELS = 12e6;     // minnestak för dimmans canvas
+  const FOG_FADE_MS = 250;         // hur ofta blekande celler ritas om
+  const fog = { mask: document.createElement('canvas'), canvas: document.createElement('canvas'), key: '', version: -1, state: 0, at: 0, left: 0, top: 0, right: 0, bottom: 0, originX: 0, originY: 0 };
+
+  const composeFog = (renderer, now) => {
+    const { image: source, color } = Config.settings.vision, image = source && Assets.get(source);
+    const scale = renderer.zoom * renderer.pixelRatio, unit = renderer.tileSize * Vision.cellSize();
+    const view = renderer.viewBounds(0), width = view.right - view.left, height = view.bottom - view.top;
+    const grow = Math.min(FOG_MARGIN, Math.max(0, Math.sqrt(FOG_MAX_PIXELS / (width * height * scale * scale)) / 2 - .5));
+    const minX = Math.floor((view.left - width * grow) / unit) - 1, minY = Math.floor((view.top - height * grow) / unit) - 1;
+    const cols = Math.ceil((view.right + width * grow) / unit) + 2 - minX, rows = Math.ceil((view.bottom + height * grow) / unit) + 2 - minY;
+
+    fog.state = Vision.mask(Players.HUMAN, fog.mask, minX, minY, cols, rows);
+    fog.version = Vision.version; fog.at = now;
+    fog.key = [scale, image ? 1 : 0].join();
+    fog.left = (minX + 1) * unit; fog.top = (minY + 1) * unit;            // cachen täcker allt utom den extra cellen i kanten
+    fog.right = (minX + cols - 1) * unit; fog.bottom = (minY + rows - 1) * unit;
+    fog.originX = Math.round(minX * unit * scale); fog.originY = Math.round(minY * unit * scale);
+    if (!fog.state) return;
+
+    const canvas = fog.canvas, context = canvas.getContext('2d');
+    const pixelsX = Math.ceil(cols * unit * scale), pixelsY = Math.ceil(rows * unit * scale);
+    if (canvas.width !== pixelsX || canvas.height !== pixelsY) { canvas.width = pixelsX; canvas.height = pixelsY; }
+    context.globalCompositeOperation = 'source-over';
+    context.clearRect(0, 0, pixelsX, pixelsY);
+    context.imageSmoothingEnabled = true;
+    context.drawImage(fog.mask, 0, 0, pixelsX, pixelsY);
+    context.globalCompositeOperation = 'source-in';
+    if (image) {
+      const pattern = context.createPattern(image, 'repeat');
+      pattern.setTransform(new DOMMatrix().translate(-fog.originX, -fog.originY).scale(scale));
+      context.fillStyle = pattern;
+    } else context.fillStyle = color;
+    context.fillRect(0, 0, pixelsX, pixelsY);
+    context.globalCompositeOperation = 'source-over';
+  };
+
+  Renderer.addLayer('fog', (context, renderer) => {
+    const now = performance.now(), view = renderer.viewBounds(0), scale = renderer.zoom * renderer.pixelRatio;
+    const { image: source } = Config.settings.vision, loaded = source && Assets.get(source) ? 1 : 0;
+    const covers = fog.key === [scale, loaded].join() && view.left >= fog.left && view.top >= fog.top && view.right <= fog.right && view.bottom <= fog.bottom;
+    if (!covers || fog.version !== Vision.version || (fog.state === 2 && now - fog.at > FOG_FADE_MS)) composeFog(renderer, now);
+    if (!fog.state) return;
+
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.drawImage(fog.canvas, fog.originX - Math.round(renderer.camera.x * scale), fog.originY - Math.round(renderer.camera.y * scale));
+    context.restore();
   });
 
   Renderer.addLayer('workerLink', (context, renderer) => {
@@ -467,7 +527,7 @@
     const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize);
     const time = performance.now() / 1000;
     for (const building of World.buildings) {
-      if (outside(view, building.x * tileSize, building.y * tileSize)) continue;
+      if (outside(view, building.x * tileSize, building.y * tileSize) || hidden(building)) continue;
       // Ineffektiv en längre tid: liten ikon uppe till höger (Config.settings.efficiency: minSeconds, warnBelow, badBelow)
       const summary = building.eff && building.eff.summary, limits = Object.assign({ minSeconds: 30, warnBelow: .6, badBelow: .3 }, Config.settings.efficiency);
       if (summary && !building.paused && summary.seconds >= limits.minSeconds && summary.ratio < limits.warnBelow) {
@@ -520,7 +580,7 @@
     const placingType = CityBuilder.Game.placingType;
     if (!placingType || !renderer.hoverTile) return;
     const { x, y } = renderer.hoverTile;
-    const isValid = World.canPlace(placingType, x, y) && CityBuilder.Construction.isNearOwnBuilding(x, y, CityBuilder.Players.HUMAN) && Economy.canAfford(Config.buildings[placingType].buildCost);
+    const isValid = !CityBuilder.Construction.isHidden(x, y, Players.HUMAN) && World.canPlace(placingType, x, y) && CityBuilder.Construction.isNearOwnBuilding(x, y, CityBuilder.Players.HUMAN) && Economy.canAfford(Config.buildings[placingType].buildCost);
     context.fillStyle = isValid ? 'rgba(95,181,95,.5)' : 'rgba(217,83,79,.5)';
     context.fillRect(x * renderer.tileSize, y * renderer.tileSize, renderer.tileSize, renderer.tileSize);
   });

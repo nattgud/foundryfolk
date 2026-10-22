@@ -18,7 +18,7 @@
    enabled: false för att stänga av } */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Renderer, Players } = CityBuilder;
+  const { Config, World, Renderer, Players, Vision } = CityBuilder;
   const t = (text, variables) => CityBuilder.t(text, variables);
 
   const DEFAULTS = { size: 176, pixelsPerTile: 2, corner: 'top-right' };
@@ -369,12 +369,15 @@
       const reach = radius / scale + CHUNK;
       const minCX = Math.floor((centerX - reach) / CHUNK), maxCX = Math.floor((centerX + reach) / CHUNK);
       const minCY = Math.floor((centerY - reach) / CHUNK), maxCY = Math.floor((centerY + reach) / CHUNK);
+      // Fog of war: brickor utan en enda synlig cell byggs och ritas inte. Undantag: när en gather-byggnad ska placeras visas
+      // alla fyndigheter av dess slag, också i dimman (så att man vet vart man ska spana)
       const visible = [];
       for (let cy = minCY; cy <= maxCY; cy++) {
         for (let cx = minCX; cx <= maxCX; cx++) {
           const chunk = this.chunkAt(cx, cy);
           chunk.usedAt = now;
-          visible.push(chunk);
+          chunk.lit = Vision.anyVisible(Players.HUMAN, cx * CHUNK, cy * CHUNK, cx * CHUNK + CHUNK - 1, cy * CHUNK + CHUNK - 1);
+          if (chunk.lit || mode === 'filter') visible.push(chunk);
         }
       }
       const distance = chunk => Math.hypot(chunk.cx * CHUNK + 8 - centerX, chunk.cy * CHUNK + 8 - centerY);
@@ -399,27 +402,22 @@
 
       context.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
       context.clearRect(0, 0, size, size);
-      if (this.background && this.background.complete && this.background.naturalWidth) context.drawImage(this.background, 0, 0, size, size);
-      else { context.fillStyle = '#0d1115'; context.fillRect(0, 0, size, size); }
       context.imageSmoothingEnabled = false;
       for (const chunk of visible) {
-        if (!chunk.builtAt) continue;
+        if (!chunk.builtAt || !chunk.lit) continue;
         const x0 = Math.round(toX(chunk.cx * CHUNK)), x1 = Math.round(toX((chunk.cx + 1) * CHUNK));
         const y0 = Math.round(toY(chunk.cy * CHUNK)), y1 = Math.round(toY((chunk.cy + 1) * CHUNK));
         context.drawImage(chunk.canvas, x0, y0, x1 - x0, y1 - y0);
       }
 
       // Lägena Resurser och Favoriter: mörka terrängen och lys upp noderna
-      if (mode !== 'all') {
-        context.fillStyle = 'rgb(6 9 12 / 80%)';
-        context.fillRect(0, 0, size, size);
-
+      const drawNodes = () => {
         const favorites = (CityBuilder.UI && CityBuilder.UI.resourceFavorites) || new Set();
         const cache = new Map();
         // Varje nod fyller exakt sin egen ruta (samma kantlinjer som terrängen under), utan kant
         const limit = (radius + 2 * scale + 2) * (radius + 2 * scale + 2);
         let shown = 0, lastColor = null;
-		    const grow = mode === 'favorites' || mode === 'filter' ? 1 : 0; 
+        const grow = mode === 'favorites' || mode === 'filter' ? 1 : 0;
         for (const chunk of visible) {
           for (const node of chunk.nodes) {
             const color = this.nodeColor(node.type, mode, favorites, cache);
@@ -429,7 +427,7 @@
             const dx = (left + right) / 2 - radius, dy = (top + bottom) / 2 - radius;
             if (dx * dx + dy * dy > limit) continue;
             if (color !== lastColor) { context.fillStyle = color; lastColor = color; }
-			context.fillRect(left - grow, top - grow, right - left + grow * 2, bottom - top + grow * 2);
+            context.fillRect(left - grow, top - grow, right - left + grow * 2, bottom - top + grow * 2);
             shown++;
           }
         }
@@ -448,13 +446,35 @@
           context.textBaseline = 'middle';
           context.fillText(t('None nearby'), radius, radius);
         }
+      };
+      if (mode !== 'all') {
+        context.fillStyle = 'rgb(6 9 12 / 80%)';
+        context.fillRect(0, 0, size, size);
+        if (mode !== 'filter') drawNodes();
       }
+
+      // Dimman: sudda ut det spelaren inte ser (mjuka kanter), lägg bakgrunden bakom, och lägg sedan fyndigheterna i filterläget ovanpå
+      const cell = Vision.cellSize(), reachTiles = radius / scale;
+      const minCell = { x: Math.floor((centerX - reachTiles) / cell) - 1, y: Math.floor((centerY - reachTiles) / cell) - 1 };
+      const cells = Math.ceil(2 * reachTiles / cell) + 3;
+      this.fogMask = this.fogMask || document.createElement('canvas');
+      if (Vision.mask(Players.HUMAN, this.fogMask, minCell.x, minCell.y, cells, cells)) {
+        context.globalCompositeOperation = 'destination-out';
+        context.imageSmoothingEnabled = true;
+        context.drawImage(this.fogMask, toX(minCell.x * cell), toY(minCell.y * cell), cells * cell * scale, cells * cell * scale);
+        context.imageSmoothingEnabled = false;
+      }
+      context.globalCompositeOperation = 'destination-over';
+      if (this.background && this.background.complete && this.background.naturalWidth) context.drawImage(this.background, 0, 0, size, size);
+      else { context.fillStyle = '#0d1115'; context.fillRect(0, 0, size, size); }
+      context.globalCompositeOperation = 'source-over';
+      if (mode === 'filter') drawNodes();
 
       // Byggnader: tydlig färg med mörk kant (ofärdiga är genomskinliga)
       const marker = Math.max(4, Math.round(scale * 2));
       const rivalColor = '#e5534b';  // andra spelares byggnader och soldater: röda
       for (const building of World.buildings) {
-        if (building === World.headquarters) continue;
+        if (building === World.headquarters || (building.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, building))) continue;
         const x = toX(building.x + 0.5), y = toY(building.y + 0.5);
         if (Math.hypot(x - radius, y - radius) > radius + marker) continue;
         context.globalAlpha = building.buildProgress >= 1 ? 1 : 0.55;
@@ -468,7 +488,7 @@
       // Soldater: små cirklar (röda för andra spelare, blå för dina egna)
       const dot = Math.max(2, Math.round(scale * 1.2));
       for (const unit of World.units) {
-        if (!unit.definition.isSoldier) continue;
+        if (!unit.definition.isSoldier || (unit.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, unit))) continue;
         const x = toX(unit.x), y = toY(unit.y);
         if (Math.hypot(x - radius, y - radius) > radius) continue;
         context.fillStyle = unit.player === Players.HUMAN ? '#4aa3ff' : rivalColor;

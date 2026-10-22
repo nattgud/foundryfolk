@@ -38,6 +38,8 @@
         await step(.96, t('Almost ready'));
         for (let i = 0; i < Config.settings.startingCarriers; i++) World.spawnUnit('carrier', 0, 0);
         const restored = Save ? Save.applyStart() : false;
+        CityBuilder.Vision.refresh();                    // synfältet och hjortarna finns från första bildrutan
+        CityBuilder.Deer.updateActivation();
         if (level) UI.showToast((restored ? t('Game loaded.') + ' ' : '') + t('Level {level}: {name}', { level: level.level, name: level.name }));
         this.installFocusPause();
         L.set(1, t('Almost ready'));
@@ -73,6 +75,7 @@
           occupied: () => t('This spot is occupied'),
           far: () => t('Too far from your buildings'),
           unreachable: () => t('This spot cannot be reached'),
+          fog: () => t('Hidden in the fog of war'),
           cost: () => t('Not enough resources'),
         }[problem]());
       }
@@ -104,8 +107,6 @@
     advanceSimulation(deltaSeconds) {
       this.deltaSeconds = deltaSeconds;
       Pathfinder.update(deltaSeconds);
-
-      CityBuilder.Deer.updateActivation();
 
       for (const system of this.systems) {
         system.update(deltaSeconds);

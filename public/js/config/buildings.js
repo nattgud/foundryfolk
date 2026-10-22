@@ -8,6 +8,7 @@ CityBuilder.Config.buildings = {
     buildCost: {},
     hiddenInMenu: true,
     isStorage: true,
+    vision: 18,
     maxHp: 400,
     buildDuration: 5
   },
@@ -797,8 +798,21 @@ CityBuilder.Config.buildings = {
       trains: ['swordsman', 'archer'],
       searchRadius: 20
     },
+    vision: 18,
     maxHp: 200,
     buildDuration: 40
+  },
+
+  // Utkikstorn: ser långt men gör inget annat. Ger synfält så att nya platser går att bygga på.
+  watchtower: {
+    name: 'Watchtower',
+    category: 'military',
+    symbol: 'WT',
+    color: '#b08a55',
+    buildCost: { wood: 4, plank: 4 },
+    vision: 30,
+    maxHp: 120,
+    buildDuration: 25
   },
 
   garrison: {
@@ -813,6 +827,7 @@ CityBuilder.Config.buildings = {
       trains: ['swordsman', 'archer', 'knight'],
       searchRadius: 20
     },
+    vision: 18,
     maxHp: 300,
     buildDuration: 80
   },

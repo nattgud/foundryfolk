@@ -1851,6 +1851,7 @@
     // En terrängnod är en ruta man kan samla från, eller som blockerar (träd, sten, malm, vatten ...).
     // Gräs och andra "tomma" rutor är inte noder.
     getTerrainNode(x, y) {
+      if (!CityBuilder.Vision.visible(CityBuilder.Players.HUMAN, x, y)) return null;   // dimma: inget att inspektera
       const tile = World.getTile(x, y);
       const terrain = Config.terrain[tile.terrainType];
 
@@ -1916,7 +1917,7 @@
         const input = CityBuilder.Input;
         const tile = renderer.hoverTile;
         const hovering = input && input.mouseOverMap && !input.dragging && tile && !game.placingType;
-        const hovered = hovering ? World.buildingAt(tile.x, tile.y) : null;
+        const hovered = hovering ? World.seenBuildingAt(tile.x, tile.y) : null;
         const size = renderer.tileSize;
 
         for (const building of new Set([game.selectedBuilding, hovered])) {
@@ -1948,7 +1949,7 @@
 
       const active = input && input.mouseOverMap && !input.dragging && tile && !game.placingType;
 
-      const building = active ? World.buildingAt(tile.x, tile.y) : null;
+      const building = active ? World.seenBuildingAt(tile.x, tile.y) : null;
       const node = active && !building ? this.getTerrainNode(tile.x, tile.y) : null;
 
       if (!building && !node) {

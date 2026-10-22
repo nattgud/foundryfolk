@@ -60,7 +60,7 @@
   // Buildings that are not listed are available from level 1.
   const UNLOCK = {
     woodcutter: 1, quarry: 1, sawmill: 1, warehouse: 1,
-    berry_gatherer: 2, well: 2,
+    berry_gatherer: 2, well: 2, watchtower: 3,
     hunters_cottage: 3, herb_gatherer: 3,
     charcoal_burner: 4, clay_pit: 4,
     farm: 5, fishing_hut: 5,
