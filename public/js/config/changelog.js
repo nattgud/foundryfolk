@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.417': [
+      'New short tutorial (How to play) for new players, also found in the main menu',
+    ],
     '0.4.416': [
       'Combat: soldiers attack enemy soldiers first, then buildings, and carriers and workers last, and switch to a better target when one appears. Dead carriers are replaced one at a time (every 20 s) and workers after 60 s, so a base under attack can be wiped out',
     ],

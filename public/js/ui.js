@@ -109,7 +109,7 @@
 
       // Språket byts direkt: allt som redan är uppritat ritas om
       I18n().onChange(() => this.applyLanguage());
-      this.showChangelogIfNew();
+      if (!this.showTutorialIfNew()) this.showChangelogIfNew();
     },
 
     // Anropas när språket byts (I18n.onChange)
@@ -237,6 +237,75 @@
       panel.style.top = top + 'px';
       panel.style.maxHeight = Math.max(40, limit - top) + 'px';
       if (CityBuilder.Options) CityBuilder.Options.positionFpsCounter();
+    },
+
+    // Handledning: fem korta sidor. Visas automatiskt första gången för nya spelare, och finns alltid i huvudmenyn.
+    TUTORIAL: [
+      ['Welcome', ['Build a settlement, grow its economy and, in time, defeat the rival base.', 'The goals at the top tell you what to do next. Complete them to finish the level and unlock new buildings.']],
+      ['Look around', ['Drag the map to move it. Scroll or pinch to zoom.', 'Tap a building, tree, rock or water to see what it is. The minimap in the corner shows the area around you.']],
+      ['Build', ['Open a category in the menu at the bottom, pick a building and tap the ground to place it.', 'It costs materials from your stores. You can only build near your own buildings, and not in the fog.']],
+      ['Produce', ['Woodcutters and quarries gather wood and stone. A sawmill turns wood into planks. Place a producer next to the building that needs its goods.', 'Carriers move everything between buildings and stores. When things are far apart, build a warehouse. While you place a gathering building, the minimap lights up the resources it can use.']],
+      ['Explore and fight', ['Land you have not seen is hidden by fog. Buildings and units reveal what is near them, and watchtowers see far.', 'Later you unlock soldiers: train them in a garrison, guard them with towers and destroy the rival base to win. Soldiers go for enemy soldiers first, then buildings.']],
+    ],
+
+    // Handledningen (spelet pausas medan den är öppen). Bakåt, framåt och sista sidan stänger.
+    openTutorial() {
+      this.hideTooltip();
+      const game = CityBuilder.Game;
+      game.paused = true;
+      let page = 0;
+      const overlay = document.createElement('div');
+      overlay.id = 'tutorialOverlay';
+      overlay.className = 'resource-window-overlay';
+      const dialog = document.createElement('section');
+      dialog.className = 'resource-window main-menu';
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+      const header = document.createElement('header');
+      header.className = 'resource-window-header';
+      const title = document.createElement('strong');
+      title.textContent = t('How to play');
+      header.appendChild(title);
+      const body = document.createElement('div');
+      body.className = 'main-menu-body';
+      const footer = document.createElement('footer');
+      footer.style.cssText = 'padding:10px 12px;border-top:1px solid var(--line);flex:0 0 auto;display:flex;gap:8px';
+      const button = (onclick) => {
+        const element = document.createElement('button');
+        element.type = 'button';
+        element.className = 'main-menu-button';
+        element.onclick = onclick;
+        return element;
+      };
+      const close = () => { overlay.remove(); removeEventListener('keydown', onKey); game.paused = !!this.mainMenuOpen; };
+      const back = button(() => { page--; render(); }), next = button(() => { if (page === this.TUTORIAL.length - 1) close(); else { page++; render(); } });
+      const render = () => {
+        const [heading, lines] = this.TUTORIAL[page];
+        body.replaceChildren();
+        const add = (className, text) => { const element = document.createElement('div'); element.className = className; element.textContent = text; body.append(element); };
+        add('main-menu-level', (page + 1) + '/' + this.TUTORIAL.length + ' · ' + t(heading));
+        for (const text of lines) add('main-menu-note', t(text));
+        back.textContent = t('Back'); back.disabled = page === 0;
+        next.textContent = page === this.TUTORIAL.length - 1 ? t('Start playing') : t('Next');
+      };
+      const onKey = event => { if (event.key === 'Escape') close(); };
+      addEventListener('keydown', onKey);
+      footer.append(back, next);
+      dialog.append(header, body, footer);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+      render();
+      next.focus();
+    },
+
+    // Nya spelare (ingen sparad version eller framgång) får handledningen en gång. Returnerar true om den öppnades.
+    showTutorialIfNew() {
+      let seen = true, played = false;
+      try { seen = !!localStorage.getItem('citybuilder.tutorialSeen'); played = !!localStorage.getItem('citybuilder.progress'); } catch (error) {}
+      try { localStorage.setItem('citybuilder.tutorialSeen', '1'); } catch (error) {}
+      if (seen || played) return false;
+      this.openTutorial();
+      return true;
     },
 
     // Changelog: visas en gång per ny version (spelet pausas medan rutan är öppen). Texten är bara engelska.
@@ -791,6 +860,7 @@
           button(t('Save game'), () => this.renderMainMenu('save')),
           button(t('Load game'), entries.size ? () => this.renderMainMenu('load') : null),
           button(t('Statistics'), () => this.renderMainMenu('stats')),
+          button(t('How to play'), () => this.openTutorial()),
           button('Changelog', () => this.openChangelog()),
           button(t('Settings'), () => this.renderMainMenu('options')),
           button(t('Restart level'), () => this.renderMainMenu('confirm', {
