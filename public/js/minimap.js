@@ -21,7 +21,7 @@
   const { Config, World, Renderer, Players, Vision } = CityBuilder;
   const t = (text, variables) => CityBuilder.t(text, variables);
 
-  const DEFAULTS = { size: 176, pixelsPerTile: 2, corner: 'top-right' };
+  const DEFAULTS = { size: 176, pixelsPerTile: 3, corner: 'top-right' };
   const ZOOM_STEPS = [1, 1.5, 2, 3, 4];
   const MODES = [
     { id: 'all', name: 'All', icon: '🗺️' },
@@ -43,6 +43,7 @@
   const isMobile = () => !!(window.matchMedia && window.matchMedia(MOBILE_QUERY).matches);
 
   const settings = () => Object.assign({}, DEFAULTS, Config.settings && Config.settings.minimap);
+  const currentLevel = () => CityBuilder.Levels?.current?.level ?? 0;
   const safe = fn => { try { return fn(); } catch (e) { return null; } };
 
   // Resursnod = terräng man kan samla från (samma regel som i ui.js, men utan oändliga typer som vatten)
@@ -83,8 +84,9 @@
       if (Config.settings && Config.settings.minimap && Config.settings.minimap.enabled === false) return;
       this.started = true;
 
-      const storedZoom = Number(safe(() => localStorage.getItem(ZOOM_KEY)));
-      this.scale = ZOOM_STEPS.includes(storedZoom) ? storedZoom : config.pixelsPerTile;
+      // Zoomen gäller bara banan den ställdes in på ("bana:zoom"): ny bana börjar alltid på standardzoomen
+      const [storedLevel, storedZoom] = String(safe(() => localStorage.getItem(ZOOM_KEY))).split(':').map(Number);
+      this.scale = storedLevel === currentLevel() && ZOOM_STEPS.includes(storedZoom) ? storedZoom : config.pixelsPerTile;
       const storedMode = MODES.findIndex(mode => mode.id === safe(() => localStorage.getItem(MODE_KEY)));
       this.modeIndex = storedMode >= 0 ? storedMode : 0;
 
@@ -181,7 +183,7 @@
       const next = ZOOM_STEPS[Math.max(0, Math.min(ZOOM_STEPS.length - 1, index + direction))];
       if (next !== this.scale) {
         this.scale = next;
-        safe(() => localStorage.setItem(ZOOM_KEY, String(next)));
+        safe(() => localStorage.setItem(ZOOM_KEY, currentLevel() + ':' + next));
         this.lastDraw = 0; // rita om direkt
       }
       this.updateZoomButtons();
