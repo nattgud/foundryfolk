@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.410': [
+      'Smoother zooming and panning: the fog of war is no longer rebuilt every frame, which also removes the small hitches that came a couple of times per second',
+    ],
     '0.4.409': [
       'Fog of war in combat: soldiers only attack what their side can see. Rivals no longer know where you are: they remember what they have seen, build watchtowers outward to search, and aim at where they first meet you',
     ],

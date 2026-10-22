@@ -89,7 +89,8 @@
     context.save();
     for (let cy = Math.floor(range.minY / N); cy <= Math.floor(range.maxY / N); cy++) {
       for (let cx = Math.floor(range.minX / N); cx <= Math.floor(range.maxX / N); cx++) {
-        if (!Vision.anyVisible(Players.HUMAN, cx * N, cy * N, cx * N + N - 1, cy * N + N - 1)) continue;   // bara dimma: ritas inte
+        const reach = Vision.cellSize();   // dimmans mjuka kant når en cell in i brickan: grannceller räknas också
+        if (!Vision.anyVisible(Players.HUMAN, cx * N - reach, cy * N - reach, cx * N + N - 1 + reach, cy * N + N - 1 + reach)) continue;   // bara dimma: ritas inte
         const x = edge(cx * N, scale) - shiftX, y = edge(cy * N, scale) - shiftY;
         let chunk;
         if (cached) {
@@ -442,58 +443,54 @@
     }
   });
 
-  // Dimma (Vision): en textur över det spelaren inte ser. Täckningen kommer som en liten alfamask (en pixel per cell) som skalas upp
-  // med utjämning, så kanterna blir mjuka, och som klipper ut texturen (ett mönster som ligger fast i världen) på en canvas som
-  // är lite större än skärmen. Den ritas om bara när synfältet räknats om, när celler håller på att blekna (högst 4 gånger per
-  // sekund), vid zoom eller när bilden lämnar canvasen. Annars kostar dimman en enda 1:1-drawImage per bildruta.
-  const FOG_MARGIN = .25;          // extra yta runt skärmen (andel av skärmens storlek)
-  const FOG_MAX_PIXELS = 12e6;     // minnestak för dimmans canvas
-  const FOG_FADE_MS = 250;         // hur ofta blekande celler ritas om
-  const fog = { mask: document.createElement('canvas'), canvas: document.createElement('canvas'), key: '', version: -1, state: 0, at: 0, left: 0, top: 0, right: 0, bottom: 0, originX: 0, originY: 0 };
+  // Dimma (Vision): det spelaren inte ser suddas ut ur spelcanvasen (hål), och dimmans textur ligger som vanlig CSS-bakgrund bakom
+  // canvasen, så webbläsaren ritar den utan kostnad. Täckningen är en liten alfamask (en pixel per cell). Den skalas upp med utjämning
+  // till en liten canvas med några pixlar per skärmpixel-steg (mjuka kanter), som sedan ritas rakt av i världens koordinater: pan och zoom
+  // kostar bara den ritningen, och ingenting stort behöver byggas om. Masken räknas om bara när synfältet, fönstret, zoomen eller
+  // blekande celler ändrats. Texturen ligger fast på skärmen.
+  const FOG_FADE_MS = 100;         // hur ofta blekande celler uppdateras
+  const FOG_STEP = 6;              // ungefär så många skärmpixlar per steg i den uppskalade masken
+  const fog = { cells: document.createElement('canvas'), mask: document.createElement('canvas'), key: '', state: 0, at: 0, version: -1 };
 
-  const composeFog = (renderer, now) => {
-    const { image: source, color } = Config.settings.vision, image = source && Assets.get(source);
-    const scale = renderer.zoom * renderer.pixelRatio, unit = renderer.tileSize * Vision.cellSize();
-    const view = renderer.viewBounds(0), width = view.right - view.left, height = view.bottom - view.top;
-    const grow = Math.min(FOG_MARGIN, Math.max(0, Math.sqrt(FOG_MAX_PIXELS / (width * height * scale * scale)) / 2 - .5));
-    const minX = Math.floor((view.left - width * grow) / unit) - 1, minY = Math.floor((view.top - height * grow) / unit) - 1;
-    const cols = Math.ceil((view.right + width * grow) / unit) + 2 - minX, rows = Math.ceil((view.bottom + height * grow) / unit) + 2 - minY;
-
-    fog.state = Vision.mask(Players.HUMAN, fog.mask, minX, minY, cols, rows);
-    fog.version = Vision.version; fog.at = now;
-    fog.key = [scale, image ? 1 : 0].join();
-    fog.left = (minX + 1) * unit; fog.top = (minY + 1) * unit;            // cachen täcker allt utom den extra cellen i kanten
-    fog.right = (minX + cols - 1) * unit; fog.bottom = (minY + rows - 1) * unit;
-    fog.originX = Math.round(minX * unit * scale); fog.originY = Math.round(minY * unit * scale);
-    if (!fog.state) return;
-
-    const canvas = fog.canvas, context = canvas.getContext('2d');
-    const pixelsX = Math.ceil(cols * unit * scale), pixelsY = Math.ceil(rows * unit * scale);
-    if (canvas.width !== pixelsX || canvas.height !== pixelsY) { canvas.width = pixelsX; canvas.height = pixelsY; }
-    context.globalCompositeOperation = 'source-over';
-    context.clearRect(0, 0, pixelsX, pixelsY);
-    context.imageSmoothingEnabled = true;
-    context.drawImage(fog.mask, 0, 0, pixelsX, pixelsY);
-    context.globalCompositeOperation = 'source-in';
-    if (image) {
-      const pattern = context.createPattern(image, 'repeat');
-      pattern.setTransform(new DOMMatrix().translate(-fog.originX, -fog.originY).scale(scale));
-      context.fillStyle = pattern;
-    } else context.fillStyle = color;
-    context.fillRect(0, 0, pixelsX, pixelsY);
-    context.globalCompositeOperation = 'source-over';
-  };
+  // En bild som täcker skärmen sträcks över den, en mindre läggs som mönster
+  {
+    const { image: source, color } = Config.settings.vision, style = document.body.style;
+    style.backgroundColor = color;
+    if (source) {
+      const image = new Image();
+      image.onload = () => {
+        const cover = image.naturalWidth >= innerWidth && image.naturalHeight >= innerHeight;
+        style.backgroundImage = `url("${source}?v=${window.version}")`;
+        style.backgroundSize = cover ? 'cover' : 'auto';
+        style.backgroundRepeat = cover ? 'no-repeat' : 'repeat';
+        style.backgroundPosition = 'center';
+      };
+      image.src = source + '?v=' + window.version;
+    }
+  }
 
   Renderer.addLayer('fog', (context, renderer) => {
-    const now = performance.now(), view = renderer.viewBounds(0), scale = renderer.zoom * renderer.pixelRatio;
-    const { image: source } = Config.settings.vision, loaded = source && Assets.get(source) ? 1 : 0;
-    const covers = fog.key === [scale, loaded].join() && view.left >= fog.left && view.top >= fog.top && view.right <= fog.right && view.bottom <= fog.bottom;
-    if (!covers || fog.version !== Vision.version || (fog.state === 2 && now - fog.at > FOG_FADE_MS)) composeFog(renderer, now);
+    const unit = renderer.tileSize * Vision.cellSize(), view = renderer.viewBounds(0), now = performance.now();
+    const minX = Math.floor(view.left / unit) - 1, minY = Math.floor(view.top / unit) - 1;
+    const cols = Math.floor(view.right / unit) + 2 - minX, rows = Math.floor(view.bottom / unit) + 2 - minY;
+    const factor = 2 ** Math.ceil(Math.log2(Math.max(1, unit * renderer.zoom * renderer.pixelRatio / FOG_STEP)));   // uppskalning, i tvåpotenser
+    const key = [minX, minY, cols, rows, factor].join();
+    if (key !== fog.key || fog.version !== Vision.version || (fog.state === 2 && now - fog.at > FOG_FADE_MS)) {
+      fog.key = key; fog.version = Vision.version; fog.at = now;
+      fog.state = Vision.mask(Players.HUMAN, fog.cells, minX, minY, cols, rows);
+      if (fog.state) {
+        const smooth = fog.mask.getContext('2d');
+        fog.mask.width = cols * factor; fog.mask.height = rows * factor;
+        smooth.imageSmoothingEnabled = true;
+        smooth.drawImage(fog.cells, 0, 0, fog.mask.width, fog.mask.height);
+      }
+    }
     if (!fog.state) return;
 
     context.save();
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.drawImage(fog.canvas, fog.originX - Math.round(renderer.camera.x * scale), fog.originY - Math.round(renderer.camera.y * scale));
+    context.globalCompositeOperation = 'destination-out';
+    context.imageSmoothingEnabled = false;
+    context.drawImage(fog.mask, minX * unit, minY * unit, cols * unit, rows * unit);
     context.restore();
   });
 
