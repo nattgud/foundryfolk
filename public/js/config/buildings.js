@@ -809,7 +809,7 @@ CityBuilder.Config.buildings = {
     category: 'military',
     symbol: 'WT',
     color: '#b08a55',
-    buildCost: { wood: 4, plank: 4 },
+    buildCost: { wood: 4, plank: 8, stone: 12 },
     vision: 30,
     maxHp: 120,
     buildDuration: 25
