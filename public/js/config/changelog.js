@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.6.2': [
+      'Notices (such as "Unlocks at level 5") now appear centred at the bottom of the screen, just above the build menu, instead of behind the minimap buttons',
+    ],
     '0.6.1': [
       'Enemies no longer attack before 30 minutes into the level, and only once they have seen one of your buildings or units',
       'There is no enemy at all on levels 1-14, so nobody can attack you before you have learned to defend',

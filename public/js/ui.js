@@ -2410,6 +2410,9 @@
       const toast = byId('toast');
       toast.innerHTML = html;
       toast.style.display = 'block';
+      // Centrerad längst ner, precis över det som ligger överst där nere (byggmenyn, och infopanelen när den är öppen)
+      const info = byId('info'), infoTop = info && info.style.display !== 'none' ? info.getBoundingClientRect().top : Infinity;
+      toast.style.bottom = Math.round(innerHeight - Math.min(infoTop, byId('bottom').getBoundingClientRect().top) + 8) + 'px';
 
       clearTimeout(this.toastTimer);
 
