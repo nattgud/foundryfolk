@@ -986,11 +986,28 @@
     language: 'en',
     listeners: [],
 
+    needsChoice: false,   // true: första starten och webbläsarens språk finns inte bland spelets, spelaren får välja (UI.openLanguagePicker)
+
+    // Sparat val, annars webbläsarens språk (första starten). Spelare med sparad framgång men inget språkval behåller engelska.
     init() {
-      let saved = null;
-      try { saved = localStorage.getItem(STORAGE_KEY); } catch (error) { /* ingen lagring */ }
+      let saved = null, played = false;
+      try { saved = localStorage.getItem(STORAGE_KEY); played = !!localStorage.getItem('citybuilder.progress'); } catch (error) { /* ingen lagring */ }
       if (LANGUAGES.some(([code]) => code === saved)) this.language = saved;
+      else if (played) this.choose('en');
+      else {
+        const wanted = [...(navigator.languages || []), navigator.language].filter(Boolean).map(tag => String(tag).toLowerCase().split('-')[0]);
+        const match = wanted.find(code => LANGUAGES.some(([known]) => known === code));
+        if (match) this.choose(match); else this.needsChoice = true;
+      }
       document.documentElement.lang = this.language;
+    },
+
+    // Sätter och sparar språket (utan att tala om det för lyssnarna: används före gränssnittet finns)
+    choose(code) {
+      this.language = code;
+      this.needsChoice = false;
+      document.documentElement.lang = code;
+      try { localStorage.setItem(STORAGE_KEY, code); } catch (error) { /* ignoreras */ }
     },
 
     // Statusens engelska grundform (äldre svenska texter och andra stavningar räknas om)

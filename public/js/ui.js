@@ -109,7 +109,41 @@
 
       // Språket byts direkt: allt som redan är uppritat ritas om
       I18n().onChange(() => this.applyLanguage());
-      if (!this.showTutorialIfNew()) this.showChangelogIfNew();
+      const intro = () => { const tutorial = this.showTutorialIfNew(); this.showChangelogIfNew(tutorial); };
+      if (I18n().needsChoice) this.openLanguagePicker(intro); else intro();
+    },
+
+    // Språkval före allt annat, när webbläsarens språk inte finns bland spelets (I18n.needsChoice). Spelet pausas medan rutan är öppen.
+    openLanguagePicker(done) {
+      const game = CityBuilder.Game, i18n = I18n();
+      game.paused = true;
+      const overlay = document.createElement('div');
+      overlay.id = 'languageOverlay';
+      overlay.className = 'resource-window-overlay';
+      overlay.style.zIndex = 1001;
+      const dialog = document.createElement('section');
+      dialog.className = 'resource-window main-menu';
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+      const header = document.createElement('header');
+      header.className = 'resource-window-header';
+      const title = document.createElement('strong');
+      title.textContent = i18n.languages.map(([code, name]) => (({ en: 'Language', sv: 'Språk', de: 'Sprache', es: 'Idioma' })[code] || name)).join(' · ');
+      header.appendChild(title);
+      const body = document.createElement('div');
+      body.className = 'main-menu-body';
+      for (const [code, name] of i18n.languages) {
+        const choice = document.createElement('button');
+        choice.type = 'button';
+        choice.className = 'main-menu-button';
+        choice.textContent = name;
+        choice.onclick = () => { if (code === i18n.language) i18n.choose(code); else i18n.setLanguage(code); overlay.remove(); game.paused = !!this.mainMenuOpen; done(); };
+        body.append(choice);
+      }
+      dialog.append(header, body);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+      body.firstChild.focus();
     },
 
     // Anropas när språket byts (I18n.onChange)
@@ -381,12 +415,13 @@
     },
 
     // Changelog: visas en gång per ny version (spelet pausas medan rutan är öppen). Texten är bara engelska.
-    showChangelogIfNew() {
+    // skip: handledningen visades just nu (en ny spelare), så ingen ruta över den. Versionen sparas ändå, så att nya spelare aldrig får nyheter för äldre versioner.
+    showChangelogIfNew(skip) {
       const current = String(window.version || ''), log = CityBuilder.Changelog || {};
       let last = null;
       try { last = localStorage.getItem('citybuilder.version'); } catch (error) {}
       try { localStorage.setItem('citybuilder.version', current); } catch (error) {}
-      if (!current || last === current) return;
+      if (!current || last === current || skip) return;
       if (last === null) { // ingen sparad version: nya spelare får ingen ruta, tidigare spelare (de har framsteg sparade) får de senaste nyheterna
         let played = false;
         try { played = !!localStorage.getItem('citybuilder.progress'); } catch (error) {}
