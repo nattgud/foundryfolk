@@ -232,7 +232,7 @@ CityBuilder.Config.buildings = {
       sourceTerrain: 'water',
       searchRadius: 2,
       outputResource: 'water',
-      workSeconds: 30
+      workSeconds: 15
     },
     buildDuration: 25
   },
