@@ -138,6 +138,15 @@ CityBuilder.Config.units = {
       tin_smelter: { image: 'images/units/worker_smelter.png', imageCarrying: 'images/units/worker_smelter_carry.png' },
       bronze_foundry: { image: 'images/units/worker_smelter.png', imageCarrying: 'images/units/worker_smelter_carry.png' },
 
+      planter: { image: 'images/units/worker_picker.png', imageCarrying: 'images/units/worker_picker_carry.png' },
+      silver_smelter: { image: 'images/units/worker_smelter.png', imageCarrying: 'images/units/worker_smelter_carry.png' },
+      gold_smelter: { image: 'images/units/worker_smelter.png', imageCarrying: 'images/units/worker_smelter_carry.png' },
+      mint: { image: 'images/units/worker_blacksmith.png', imageCarrying: 'images/units/worker_blacksmith_carry.png' },
+      market: { image: 'images/units/worker_grey.png', imageCarrying: 'images/units/worker_grey_carry.png' },
+      alchemist: { image: 'images/units/worker_mystic.png', imageCarrying: 'images/units/worker_mystic_carry.png' },
+      enchanter: { image: 'images/units/worker_mystic.png', imageCarrying: 'images/units/worker_mystic_carry.png' },
+      shrine: { image: 'images/units/worker_mystic.png', imageCarrying: 'images/units/worker_mystic_carry.png' },
+
       charcoal_burner: { image: 'images/units/worker_digger.png', imageCarrying: 'images/units/worker_digger_carry.png' },
 
       hammersmith: { image: 'images/units/worker_blacksmith.png', imageCarrying: 'images/units/worker_blacksmith_carry.png' },

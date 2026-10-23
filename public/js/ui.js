@@ -39,6 +39,10 @@
       name: 'Crafting & tools',
       symbol: '🔨'
     },
+    trade: {
+      name: 'Trade & coinage',
+      symbol: '🪙'
+    },
     military: {
       name: 'Military',
       symbol: '⚔️'
@@ -1985,12 +1989,24 @@
     },
 
     // Vad en byggnad är till för, som en lista med korta rader
+    // Går byggnadens boost att få tag på ännu? Det räcker att en byggnad som tillverkar varan är upplåst.
+    boostAvailable(definition) {
+      const boost = definition.job && CityBuilder.Behaviors.boostOf(definition);
+      if (!boost) return false;
+      const levels = CityBuilder.Levels;
+      return Object.entries(Config.buildings).some(([id, other]) => other.job?.outputs && boost.resource in other.job.outputs && (!levels || levels.isUnlocked(id)));
+    },
+
     describeBuilding(definition) {
       const lines = [];
       const job = definition.job;
 
       if (definition.isStorage) lines.push(t('Stores resources'));
-      if (definition.isWinBuilding) lines.push(t('Build this to win'));
+      if (definition.aura) {
+        lines.push(t('Boosts all your buildings within {n} tiles: output +{yield}%, soldiers train {training}% faster',
+          { n: definition.aura.radius, yield: Math.round(definition.aura.yield * 100), training: Math.round(definition.aura.training * 100) }));
+        lines.push(t('Only one can be built'));
+      }
 
       if (job?.kind === 'gather') {
         const output = this.resourceChip(job.outputResource ?? Object.keys(job.outputs || {})[0]);
@@ -1998,10 +2014,26 @@
           ? t('Hunting: {source} → {output}', { source: this.unitName(job.sourceUnit), output })
           : t('Gathering: {source} → {output}', { source: this.terrainName(job.sourceTerrain), output }));
         if (this.getBuildingRange(definition)) lines.push(t('Range: {n} tiles', { n: this.getBuildingRange(definition) }));
+      } else if (job?.kind === 'craft' && job.choices) {
+        // Få val: ett recept per rad. Många val med samma insats (Market): en rad med alla varor.
+        if (job.choices.length <= 3) {
+          for (const { inputs, outputs } of job.choices) lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.resourceIconsHtml(inputs), outputs: this.resourceIconsHtml(outputs) }));
+        } else {
+          const currency = Object.keys(job.choices[0].inputs)[0];
+          lines.push(t('Exchanges {currency} for: {goods}', {
+            currency: this.resourceChip(currency),
+            goods: job.choices.map(({ outputs }) => this.resourceChip(Object.keys(outputs)[0])).join(' '),
+          }));
+        }
+        lines.push(t('Choose what it makes in the info panel'));
       } else if (job?.kind === 'craft') {
         const inputs = this.resourceIconsHtml(job.inputs);
         const outputs = this.resourceIconsHtml(job.outputs);
         lines.push(inputs ? t('Processing: {inputs} → {outputs}', { inputs, outputs }) : t('Producing: {outputs}', { outputs }));
+      } else if (job?.kind === 'plant') {
+        lines.push(t('Plants a tree {min}-{max} tiles away: {inputs} → {wood} wood', {
+          min: job.minRadius, max: job.maxRadius, inputs: this.resourceIconsHtml(job.inputs), wood: job.amount.join('-'),
+        }));
       } else if (job?.kind === 'garrison') {
         lines.push(t('Houses up to {n} soldiers', { n: job.capacity }));
         lines.push(t('Trains: {list}', { list: job.trains.map(kind => this.unitName(kind)).join(', ') }));
@@ -2010,6 +2042,12 @@
 
       if (definition.placeOnTerrain) {
         lines.push(t('Placed on: {terrain}', { terrain: this.terrainName(definition.placeOnTerrain) }));
+      }
+
+      const boost = job && this.boostAvailable(definition) && CityBuilder.Behaviors.boostOf(definition);
+      if (boost) {
+        const effect = boost.speed ? t('training {n}% faster', { n: Math.round(boost.speed * 100) }) : t('output +{n}%', { n: Math.round(boost.yield * 100) });
+        lines.push(t('Boost with {item}: {effect}', { item: this.resourceChip(boost.resource), effect }));
       }
 
       const equipment = this.resourceIconsHtml(definition.requiredEquipment);
@@ -2036,7 +2074,7 @@
       const lines = [];
 
       if (terrain.resourceAmount > 0 && terrain.resourceAmount < 10000) {
-        lines.push(t('Remaining: {amount} of {total}', { amount: tile.remainingAmount, total: terrain.resourceAmount }));
+        lines.push(t('Remaining: {amount} of {total}', { amount: tile.remainingAmount, total: Math.max(terrain.resourceAmount, tile.remainingAmount) }));
       }
 
       if (terrain.walkCost === Infinity) lines.push(t('Blocked terrain'));
@@ -2184,6 +2222,9 @@
           ? '<button id="pauseButton"></button>'
           : '';
 
+        const choiceButton = own && building.definition.job?.choices ? '<button id="choiceButton"></button>' : '';
+        const boostButton = own && this.boostAvailable(building.definition) ? '<button id="boostButton"></button>' : '';
+
         const demolishButton = own && building !== World.headquarters
           ? `<button id="demolishButton">${t('Demolish')}</button>`
           : '';
@@ -2197,7 +2238,7 @@
 
         panel.innerHTML =
           `<div><b>${this.buildingName(building.definition)}</b><br><span id="infoStatus"></span></div>` +
-          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${trainButtons}${stanceButton}${pauseButton}${demolishButton}</div>`;
+          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${trainButtons}${stanceButton}${choiceButton}${boostButton}${pauseButton}${demolishButton}</div>`;
 
         if (byId('stanceButton')) {
           byId('stanceButton').onclick = () => {
@@ -2208,6 +2249,14 @@
 
         for (const button of panel.querySelectorAll('.train-button')) {
           button.onclick = () => CityBuilder.Garrison.setTrainingType(building, button.dataset.kind);
+        }
+
+        if (byId('choiceButton')) {
+          byId('choiceButton').onclick = () => { building.choice = ((building.choice || 0) + 1) % building.definition.job.choices.length; };
+        }
+
+        if (byId('boostButton')) {
+          byId('boostButton').onclick = () => { building.boostOn = !building.boostOn; };
         }
 
         if (byId('pauseButton')) {
@@ -2265,6 +2314,24 @@
 
       if (byId('pauseButton')) {
         byId('pauseButton').textContent = t(building.paused ? 'Unpause' : 'Pause');
+      }
+
+      // Knapparnas innehåll sätts bara när det ändras, så att ikonerna inte laddas om varje bildruta
+      const setButton = (id, html, on) => {
+        const button = byId(id);
+        if (!button) return;
+        if (button.dataset.html !== html) { button.dataset.html = html; button.innerHTML = html; }
+        button.classList.toggle('on', Boolean(on));
+      };
+      if (byId('choiceButton')) {
+        const recipe = CityBuilder.Behaviors.recipe(building);
+        setButton('choiceButton', `⇄ ${this.resourceIconsHtml(recipe.outputs)} ← ${this.resourceIconsHtml(recipe.inputs)}`);
+        byId('choiceButton').title = t('Click to change what it makes');
+      }
+      if (byId('boostButton')) {
+        const boost = CityBuilder.Behaviors.boostOf(building);
+        setButton('boostButton', `${this.resourceChip(boost.resource)} ${t(building.boostOn ? 'Boost on' : 'Boost off')}`, building.boostOn);
+        byId('boostButton').title = t('Uses {item} to make this building more productive', { item: this.resourceName(boost.resource) });
       }
 
       if (byId('stanceButton')) {

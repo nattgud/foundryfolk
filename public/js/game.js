@@ -77,6 +77,7 @@
           unreachable: () => t('This spot cannot be reached'),
           fog: () => t('Hidden in the fog of war'),
           cost: () => t('Not enough resources'),
+          unique: () => t('You can only build one'),
         }[problem]());
       }
       CityBuilder.Sound?.play('build', { x, y });

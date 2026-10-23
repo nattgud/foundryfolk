@@ -14,6 +14,13 @@ CityBuilder.Config.settings = {
   gameSpeeds: [1, 2, 4, 8],
   maxBuildDistance: 35,          // längst avstånd (rutor) från en egen byggnad som man får bygga på
   defaultEquipment: {}, // utrustning som varje produktionshus måste få (kan åsidosättas med requiredEquipment)
+  // Boost per byggnad (spelaren slår på det i infopanelen). Varan går åt: 'cycles' omgångar per vara. Gäller alla hus av jobbtypen
+  // om byggnaden inte har eget 'boost' (boost: null stänger av). yield = extra utdata (1 = dubbelt), speed = extra fart (1 = dubbelt).
+  boosts: {
+    gather: { resource: 'potion', cycles: 5, yield: 1 },
+    craft: { resource: 'enchanted_wood', cycles: 5, yield: 0.5 },
+    garrison: { resource: 'talisman', cycles: 3, speed: 1 },
+  },
   wearPerPass: 0.1,              // slitage per bärarpassage
   maxWearSpeedBonus: .25,         // max hastighetsökning på helt upptrampad ruta
   maxPathSearchesPerFrame: 16,

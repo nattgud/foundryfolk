@@ -101,8 +101,12 @@
 
     // Allt huset ska ha levererat: insatser (upp till kapacitet) och utrustning
     requiredResources(building) {
-      const behavior = this.forBuilding(building);
-      return { ...(behavior.inputCapacities ? behavior.inputCapacities(building) : {}), ...(building.definition.requiredEquipment || {}) };
+      const behavior = this.forBuilding(building), boost = building.boostOn && this.boostOf(building);
+      return {
+        ...(behavior.inputCapacities ? behavior.inputCapacities(building) : {}),
+        ...(boost ? { [boost.resource]: this.inputBuffer(1) } : {}),
+        ...(building.definition.requiredEquipment || {}),
+      };
     },
 
     // Varför står huset still med fullt utlager? Centrallagret fullt (för en vara i utlagret) eller bara huset eget lager (väntar på bärare)
@@ -136,7 +140,7 @@
     // Effektivitet: andel av de senaste ~60 s (speltid) som huset inte stått still, med orsaker till stilleståndet.
     // Statusar som räknas som stillestånd; allt annat (Working, Walking, Gathering, ...) räknas som arbete.
     // Byggnader som spelaren pausat räknas inte alls.
-    IDLE_STATUSES: new Set(['Local stock full', 'Central storage full', 'No resources', 'No deer in range', 'Tools missing', "Can't reach", 'Missing outputResource']),
+    IDLE_STATUSES: new Set(['Local stock full', 'Central storage full', 'No resources', 'No deer in range', 'Tools missing', "Can't reach", 'No room to plant', 'Missing outputResource']),
     idleReason(building) {
       const status = CityBuilder.I18n.canonicalStatus(building.status || '');
       return status.startsWith('Missing:') ? status.replace(/\s*\(\d+\)/g, '') : this.IDLE_STATUSES.has(status) ? status : null;
@@ -179,6 +183,57 @@
       worker.carriedOutputs = null;
     },
 
+    // ---- Val, boost och aura -----------------------------------------------------------------------------------------
+    // job.choices: [{ inputs, outputs }]: byggnaden gör ett val åt gången (Market, Mint). Spelaren väljer med building.choice (index).
+    recipe(building) {
+      const job = building.definition.job;
+      return job.choices ? job.choices[building.choice] || job.choices[0] : job;
+    },
+
+    // Byggnadens boost (se settings.boosts) eller null. definition.boost åsidosätter jobbtypens standard.
+    boostOf(building) {
+      const definition = building.definition || building;   // byggnad eller byggnadstyp
+      return (definition.boost !== undefined ? definition.boost : Config.settings.boosts[definition.job.kind]) || null;
+    },
+
+    // Börjar en omgång: går boosten (påslagen av spelaren) att använda? En vara räcker boost.cycles omgångar. Utan vara går omgången på vanligt sätt.
+    useBoost(building) {
+      const boost = this.boostOf(building);
+      if (!boost || !building.boostOn) return false;
+      if (!(building.boostLeft > 0)) {
+        if (!(building.inputStock[boost.resource] > 0)) return false;
+        building.inputStock[boost.resource]--;
+        building.boostLeft = boost.cycles;
+      }
+      building.boostLeft--;
+      return true;
+    },
+
+    // Extra utdata/fart från monumentet: den största aura-bonusen (key: 'yield' | 'training') från ett färdigt monument inom räckhåll
+    auraBonus(building, key) {
+      let best = 0;
+      for (const other of World.buildings) {
+        const aura = other.definition.aura;
+        if (!aura || !(aura[key] > best) || other.player !== building.player || other.buildProgress < 1) continue;
+        if (Math.hypot(other.x - building.x, other.y - building.y) <= aura.radius) best = aura[key];
+      }
+      return best;
+    },
+
+    // Utdata med boost och aura. Bråkdelar sparas i building.yieldCarry, så +10 % betyder en extra vara var tionde omgång.
+    yielded(building, outputs, boosted) {
+      const boost = boosted && this.boostOf(building);
+      const extra = (boost && boost.yield || 0) + this.auraBonus(building, 'yield');
+      if (!extra) return outputs;
+      const carry = building.yieldCarry || (building.yieldCarry = {}), result = {};
+      for (const resourceId in outputs) {
+        const total = outputs[resourceId] * (1 + extra) + (carry[resourceId] || 0);
+        result[resourceId] = Math.floor(total + 1e-9);
+        carry[resourceId] = total - result[resourceId];
+      }
+      return result;
+    },
+
     hasRequiredEquipment: building =>
       Object.entries(building.definition.requiredEquipment || {}).every(([resourceId, amount]) => (building.inputStock[resourceId] || 0) >= amount),
   };
@@ -214,6 +269,7 @@
       if (!prey) { worker.status = 'Inga hjortar i räckvidd'; worker.idleCooldown = job.retrySeconds || 5; return; }
 
       Behaviors.eat(building);
+      const boosted = Behaviors.useBoost(building);
 
       worker.stepQueue = [
         Jobs.walkTo(Math.floor(prey.x), Math.floor(prey.y), true),
@@ -234,7 +290,7 @@
           if (!target || target.removed || target.heldBy !== worker) return false;
           Behaviors.removeUnit(target);
           worker.carriedResource = outputResource;
-          worker.carriedOutputs = outputs;
+          worker.carriedOutputs = Behaviors.yielded(building, outputs, boosted);
         }),
         Jobs.walkTo(building.x, building.y),
         Jobs.run(() => Behaviors.deposit(worker, building)),
@@ -265,6 +321,7 @@
       const stopBeside = Config.terrain[target.tile.terrainType].gatherersStopBefore;
 
       Behaviors.eat(building);
+      const boosted = Behaviors.useBoost(building);
 
       worker.stepQueue = [
         Jobs.walkTo(target.x, target.y, stopBeside),
@@ -273,6 +330,7 @@
           if (target.tile.remainingAmount <= 0) return false; // någon annan hann före
           if (--target.tile.remainingAmount <= 0) target.tile.terrainType = 'grass';
           worker.carriedResource = job.outputResource;
+          worker.carriedOutputs = Behaviors.yielded(building, { [job.outputResource]: 1 }, boosted);
         }),
         Jobs.walkTo(building.x, building.y),
         Jobs.run(() => Behaviors.deposit(worker, building)),
@@ -283,12 +341,13 @@
   // Förädlare: konsumerar inputs, väntar craftSeconds, producerar outputs i utbufferten
   Behaviors.register('craft', {
     inputCapacities: building => Object.fromEntries(
-      Object.entries(building.definition.job.inputs || {}).map(([resourceId, amount]) => [resourceId, Behaviors.inputBuffer(amount)])
+      Object.entries(Behaviors.recipe(building).inputs || {}).map(([resourceId, amount]) => [resourceId, Behaviors.inputBuffer(amount)])
     ),
 
     update(building, deltaSeconds) {
       const job = building.definition.job;
-      const inputs = job.inputs || {};
+      const recipe = Behaviors.recipe(building);
+      const inputs = recipe.inputs || {};
 
       if (building.paused) {
         building.status = 'Paused';
@@ -314,7 +373,7 @@
 
         if (
           Utils.sumValues(building.outputStock) +
-          Utils.sumValues(job.outputs) >
+          Utils.sumValues(recipe.outputs) >
           Config.settings.outputBufferCapacity
         ) {
           building.status = Behaviors.fullStatus(building);
@@ -326,6 +385,7 @@
         }
 
         building.isCrafting = true;
+        building.craftOutputs = Behaviors.yielded(building, recipe.outputs, Behaviors.useBoost(building));
         building.craftTimeLeft = job.craftSeconds;
         building.craftTotalTime = building.craftTimeLeft;
       }
@@ -335,11 +395,62 @@
       if ((building.craftTimeLeft -= deltaSeconds) <= 0) {
         building.isCrafting = false;
 
-        for (const resourceId in job.outputs) {
+        const outputs = building.craftOutputs || recipe.outputs;
+        building.craftOutputs = null;
+        for (const resourceId in outputs) {
           building.outputStock[resourceId] =
-            (building.outputStock[resourceId] || 0) + job.outputs[resourceId];
+            (building.outputStock[resourceId] || 0) + outputs[resourceId];
         }
       }
+    },
+  });
+
+  // Planterare: arbetaren går till en slumpad ledig gräsruta på avstånd minRadius-maxRadius och planterar ett träd (amount: [min, max] trä).
+  // Insatserna (frön, vatten) förbrukas när arbetaren går ut, och lämnas tillbaka om rutan hunnit bli upptagen.
+  const { gather, craft } = Behaviors.registry;
+  Behaviors.register('plant', {
+    onBuilt: gather.onBuilt,
+    update: gather.update,
+    inputCapacities: craft.inputCapacities,
+
+    // Slumpad ruta som går att nå: gräs, ingen byggnad. Provar några gånger och ger null om inget fanns.
+    findSpot(building, job) {
+      for (let attempt = 0; attempt < 24; attempt++) {
+        const angle = Math.random() * Math.PI * 2;
+        const distance = job.minRadius + Math.random() * (job.maxRadius - job.minRadius);
+        const x = Math.round(building.x + Math.cos(angle) * distance), y = Math.round(building.y + Math.sin(angle) * distance);
+        const tile = World.getTile(x, y);
+        if (tile && tile.terrainType === 'grass' && !World.buildingAt(x, y) && CityBuilder.Pathfinder.findPathNow(building.x, building.y, x, y) !== null) return { x, y };
+      }
+      return null;
+    },
+
+    planWork(worker) {
+      const building = worker.homeBuilding, job = building.definition.job;
+      if (!Behaviors.hasRequiredEquipment(building)) { worker.status = 'Tools missing'; return; }
+      const missing = Object.entries(job.inputs).filter(([id, amount]) => (building.inputStock[id] || 0) < amount)
+        .map(([id, amount]) => `${Config.resources[id].name} (${amount - (building.inputStock[id] || 0)})`);
+      if (missing.length) { worker.status = `Missing: ${missing.join(', ')}`; worker.idleCooldown = 1; return; }
+
+      const spot = this.findSpot(building, job);
+      if (!spot) { worker.status = 'No room to plant'; worker.idleCooldown = 10; return; }
+
+      for (const id in job.inputs) building.inputStock[id] -= job.inputs[id];
+      worker.stepQueue = [
+        Jobs.walkTo(spot.x, spot.y),
+        Jobs.wait(job.workSeconds, 'Planting'),
+        Jobs.run(() => {
+          const tile = World.getTile(spot.x, spot.y);
+          if (!tile || tile.terrainType !== 'grass' || World.buildingAt(spot.x, spot.y)) {
+            if (!building.removed) for (const id in job.inputs) building.inputStock[id] = (building.inputStock[id] || 0) + job.inputs[id];
+            return false;
+          }
+          const [low, high] = job.amount;
+          Utils.assign(tile, Config.terrain[job.terrain], { terrainType: job.terrain, remainingAmount: low + Math.floor(Math.random() * (high - low + 1)) });
+          CityBuilder.Pathfinder.clearCache();
+        }),
+        Jobs.walkTo(building.x, building.y),
+      ];
     },
   });
 

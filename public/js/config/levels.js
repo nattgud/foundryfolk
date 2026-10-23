@@ -63,7 +63,7 @@
     berry_gatherer: 2, well: 2, watchtower: 3,
     hunters_cottage: 3, herb_gatherer: 3,
     charcoal_burner: 4, clay_pit: 4,
-    farm: 5, fishing_hut: 5,
+    farm: 5, fishing_hut: 5, planter: 6,
     mill: 6, brickworks: 6,
     apple_gatherer: 7, mushroom_gatherer: 7, sand_collector: 7,
     bakery: 8,
@@ -77,10 +77,10 @@
     bronze_foundry: 22, rock_crusher: 22,
     salt_mine: 25, sulfur_mine: 25,
     great_depot: 28,
-    silver_mine: 32, gold_mine: 36,
-    gemstone_mine: 40, crystal_gatherer: 40,
-    moonstone_gatherer: 45, fallen_star_collector: 50, relic_hunter: 55,
-    monument: 55,
+    silver_mine: 32, silver_smelter: 33, mint: 34, market: 35, gold_mine: 36, gold_smelter: 37,
+    gemstone_mine: 40, crystal_gatherer: 40, alchemist: 41,
+    moonstone_gatherer: 45, enchanter: 46, fallen_star_collector: 50, relic_hunter: 55, shrine: 56,
+    monument: 58,
   };
   const unlockLevelOf = id => UNLOCK[id] ?? 1;
 

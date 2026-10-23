@@ -15,12 +15,15 @@
   applyDefaultImages('buildings', 'buildings');
   applyDefaultImages('units', 'units');
 
+  for (const boost of Object.values(Config.settings.boosts)) if (!Config.resources[boost.resource]) warn(`okänd boostresurs '${boost.resource}'`);
+
   for (const [id, building] of Object.entries(Config.buildings)) {
     if (building.job && !building.requiredEquipment) building.requiredEquipment = Config.settings.defaultEquipment;
 
     for (const resourceId of Object.keys(building.buildCost || {})) {
       if (!Config.resources[resourceId]) warn(`${id}: okänd kostnadsresurs '${resourceId}'`);
     }
+    if (building.boost && !Config.resources[building.boost.resource]) warn(`${id}: okänd boostresurs '${building.boost.resource}'`);
     if (building.placeOnTerrain && !Config.terrain[building.placeOnTerrain]) warn(`${id}: okänd placeOnTerrain '${building.placeOnTerrain}'`);
 
     const job = building.job;
@@ -32,9 +35,14 @@
       if (!job.sourceUnit && !Config.terrain[job.sourceTerrain]) warn(`${id}: okänd terräng '${job.sourceTerrain}'`);
       for (const resourceId of outputs) if (!Config.resources[resourceId]) warn(`${id}: okänd resurs '${resourceId}'`);
     } else if (job.kind === 'craft') {
-      for (const resourceId of [...Object.keys(job.inputs), ...Object.keys(job.outputs)]) {
-        if (!Config.resources[resourceId]) warn(`${id}: okänd resurs '${resourceId}'`);
+      for (const recipe of job.choices || [job]) {
+        for (const resourceId of [...Object.keys(recipe.inputs || {}), ...Object.keys(recipe.outputs || {})]) {
+          if (!Config.resources[resourceId]) warn(`${id}: okänd resurs '${resourceId}'`);
+        }
       }
+    } else if (job.kind === 'plant') {
+      if (!Config.terrain[job.terrain]) warn(`${id}: okänd terräng '${job.terrain}'`);
+      for (const resourceId of Object.keys(job.inputs || {})) if (!Config.resources[resourceId]) warn(`${id}: okänd resurs '${resourceId}'`);
     } else if (job.kind === 'garrison') {
       if (!(job.capacity > 0)) warn(`${id}: garnisonen saknar capacity`);
       if (!job.trains || !job.trains.length) warn(`${id}: garnisonen tränar inga soldater (trains)`);

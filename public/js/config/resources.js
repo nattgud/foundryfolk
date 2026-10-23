@@ -84,6 +84,7 @@ CityBuilder.Config.resources = {
   ancient_relic:    { name: 'Ancient Relic',         color: '#a18a68' },
   fallen_star:      { name: 'Fallen Star',           color: '#8d6b9c' },
   enchanted_wood:   { name: 'Enchanted Wood',        color: '#55765a' },
+  talisman:         { name: 'Talisman',              color: '#e6d9a2' },
 
   // Handel och lyxvaror
   coins:            { name: 'Coins',                color: '#c9a746' },

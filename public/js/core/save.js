@@ -135,7 +135,9 @@
         const snapshot = snapshots.get(unit.homeBuilding);
         if (!snapshot) continue;
         snapshot.fields.outputStock = snapshot.fields.outputStock || {};
-        snapshot.fields.outputStock[unit.carriedResource] = (snapshot.fields.outputStock[unit.carriedResource] || 0) + 1;
+        for (const [resourceId, amount] of Object.entries(unit.carriedOutputs || { [unit.carriedResource]: 1 })) {
+          snapshot.fields.outputStock[resourceId] = (snapshot.fields.outputStock[resourceId] || 0) + amount;
+        }
       }
 
       // Utskickade soldater räknas som hemma i sin byggnad (de går ut igen om fienden finns kvar). Fria soldater sparas var för sig.

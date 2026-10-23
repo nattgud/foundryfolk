@@ -76,17 +76,21 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 15
   },
+  // Planterar träd: en frö och lite vatten ger ett nytt träd med 5-10 trä på en slumpad ledig gräsruta 5-10 rutor bort
   planter: {
     name: 'Planter',
     category: 'forestry',
-    symbol: 'SE',
+    symbol: 'PL',
     color: '#176d22',
     buildCost: { wood: 5, stone: 4 },
     job: {
-      kind: 'craft',
-      inputs: { seeds: 3 },
-      outputs: { herbs: 1 },
-      craftSeconds: 8
+      kind: 'plant',
+      inputs: { seeds: 1, water: 1 },
+      terrain: 'tree',
+      amount: [5, 10],
+      minRadius: 5,
+      maxRadius: 10,
+      workSeconds: 6
     },
     buildDuration: 30
   },
@@ -568,6 +572,36 @@ CityBuilder.Config.buildings = {
     buildDuration: 45
   },
 
+  silver_smelter: {
+    name: 'Silver Smelter',
+    category: 'processing',
+    symbol: 'SI',
+    color: '#9fb6c9',
+    buildCost: { plank: 7, stone: 8 },
+    job: {
+      kind: 'craft',
+      inputs: { silver_ore: 1, charcoal: 1 },
+      outputs: { silver: 1 },
+      craftSeconds: 12
+    },
+    buildDuration: 45
+  },
+
+  gold_smelter: {
+    name: 'Gold Smelter',
+    category: 'processing',
+    symbol: 'GS',
+    color: '#d1a93a',
+    buildCost: { plank: 7, stone: 8 },
+    job: {
+      kind: 'craft',
+      inputs: { gold_ore: 1, charcoal: 1 },
+      outputs: { gold: 1 },
+      craftSeconds: 14
+    },
+    buildDuration: 45
+  },
+
   bronze_foundry: {
     name: 'Bronze Foundry',
     category: 'processing',
@@ -720,6 +754,52 @@ CityBuilder.Config.buildings = {
     buildDuration: 45
   },
 
+  // Handel. 'choices': byggnaden gör ett val åt gången, spelaren väljer i infopanelen (building.choice).
+  mint: {
+    name: 'Mint',
+    category: 'trade',
+    symbol: 'MI',
+    color: '#cdbb6a',
+    buildCost: { plank: 8, stone: 10, brick: 6 },
+    boost: null,
+    job: {
+      kind: 'craft',
+      choices: [
+        { inputs: { silver: 1 }, outputs: { coins: 6 } },
+        { inputs: { gold: 1 }, outputs: { coins: 20 } }
+      ],
+      craftSeconds: 8
+    },
+    buildDuration: 60
+  },
+
+  // Köper varor för mynt. Priserna gör att marknaden är en nödventil för sällsynta varor, inte ett sätt att slippa gruvorna.
+  market: {
+    name: 'Market',
+    category: 'trade',
+    symbol: 'MK',
+    color: '#d98f3a',
+    buildCost: { plank: 10, stone: 8, brick: 6 },
+    boost: null,
+    job: {
+      kind: 'craft',
+      choices: [
+        { inputs: { coins: 3 }, outputs: { plank: 1 } },
+        { inputs: { coins: 3 }, outputs: { stone: 1 } },
+        { inputs: { coins: 5 }, outputs: { brick: 1 } },
+        { inputs: { coins: 4 }, outputs: { charcoal: 1 } },
+        { inputs: { coins: 6 }, outputs: { leather: 1 } },
+        { inputs: { coins: 6 }, outputs: { salt: 1 } },
+        { inputs: { coins: 8 }, outputs: { iron: 1 } },
+        { inputs: { coins: 25 }, outputs: { crystal: 1 } },
+        { inputs: { coins: 30 }, outputs: { gemstone: 1 } },
+        { inputs: { coins: 40 }, outputs: { moonstone: 1 } }
+      ],
+      craftSeconds: 6
+    },
+    buildDuration: 60
+  },
+
   // Magiska och forntida fynd
   crystal_gatherer: {
     name: 'Crystal Gatherer',
@@ -786,6 +866,54 @@ CityBuilder.Config.buildings = {
   },
 
 
+  // Slutvaror: boost som spelaren väljer per byggnad (se settings.boosts). Potion ger samlarna mer, förtrollat trä ger förädlarna mer,
+  // en talisman får garnisonerna att träna dubbelt så fort.
+  alchemist: {
+    name: 'Alchemist',
+    category: 'magic',
+    symbol: 'AL',
+    color: '#6f4fa8',
+    buildCost: { plank: 10, stone: 10, brick: 6 },
+    job: {
+      kind: 'craft',
+      inputs: { crystal: 1, herbs: 2, salt: 1 },
+      outputs: { potion: 2 },
+      craftSeconds: 15
+    },
+    buildDuration: 60
+  },
+
+  enchanter: {
+    name: 'Enchanter',
+    category: 'magic',
+    symbol: 'EN',
+    color: '#3f8f6a',
+    buildCost: { plank: 12, stone: 10, brick: 6 },
+    job: {
+      kind: 'craft',
+      inputs: { wood: 4, moonstone: 1 },
+      outputs: { enchanted_wood: 4 },
+      craftSeconds: 15
+    },
+    buildDuration: 70
+  },
+
+  shrine: {
+    name: 'Shrine',
+    category: 'magic',
+    symbol: 'SH',
+    color: '#c9b6e8',
+    buildCost: { plank: 12, stone: 14, brick: 8 },
+    job: {
+      kind: 'craft',
+      inputs: { ancient_relic: 1, gemstone: 2, gold: 1 },
+      outputs: { talisman: 3 },
+      craftSeconds: 20
+    },
+    buildDuration: 80
+  },
+
+
   guard_tower: {
     name: 'Guard Tower',
     category: 'military',
@@ -845,14 +973,16 @@ CityBuilder.Config.buildings = {
     buildDuration: 6
   },
 
-  // Slutbyggnad
+  // Slutbyggnad: alla egna byggnader inom radien producerar mer och soldater tränas snabbare. Bara ett per spelare.
   monument: {
-    name: 'Monument',
+    name: 'Resonance Monument',
     category: 'special',
     symbol: '★',
     color: '#e8c547',
     buildCost: { plank: 10, stone: 10, fallen_star: 5, ancient_relic: 5, moonstone: 10, crystal: 20 },
     isWinBuilding: true,
+    unique: true,
+    aura: { radius: 30, yield: 0.1, training: 0.25 },
     buildDuration: 300
   }
 };

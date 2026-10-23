@@ -4,7 +4,7 @@
   'use strict';
   const { World, Behaviors, Economy, Pathfinder, Players, Config } = CityBuilder;
 
-  // Försöker bygga. Returnerar null om det gick, annars orsaken: 'fog' | 'occupied' | 'terrain' | 'far' | 'unreachable' | 'cost'.
+  // Försöker bygga. Returnerar null om det gick, annars orsaken: 'fog' | 'occupied' | 'terrain' | 'far' | 'unreachable' | 'cost' | 'unique'.
   const Construction = {
     // Närmaste egna byggnad inom maxBuildDistance rutor (luftlinje), eller undefined. Ingen får bygga var som helst.
     nearestOwnBuilding(x, y, player) {
@@ -17,6 +17,9 @@
       return best;
     },
     isNearOwnBuilding(x, y, player) { return Boolean(this.nearestOwnBuilding(x, y, player)); },
+
+    // Byggnader med unique (monumentet) går bara att bygga en av per spelare
+    isUniqueTaken: (buildingType, player) => Boolean(Config.buildings[buildingType].unique) && World.buildings.some(building => building.type === buildingType && building.player === player),
 
     // Spelaren kan inte bygga i dimman. Datorspelarna ser kartan som förut: de är bara blinda för motståndaren.
     isHidden(x, y, player) { return !Players.isAI(player) && !CityBuilder.Vision.visible(player, x, y); },
@@ -40,6 +43,7 @@
       const from = this.nearestOwnBuilding(x, y, player);   // vägen räknas från närmaste egna byggnad, så att utposter långt från basen går att bygga
       if (!from) return 'far';
       if (this.isHidden(x, y, player)) return 'fog';          // före terrängkollen, så att dimman inte avslöjar vad som ligger där
+      if (this.isUniqueTaken(buildingType, player)) return 'unique';
       if (!World.canPlace(buildingType, x, y)) return definition.placeOnTerrain ? 'terrain' : 'occupied';
       if (Pathfinder.findPathNow(from.x, from.y, x, y) === null) return 'unreachable';
       if (!Economy.spend(definition.buildCost, player)) return 'cost';

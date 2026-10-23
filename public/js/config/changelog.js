@@ -4,6 +4,13 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.5.0': [
+      'Coins: silver and gold are smelted and minted into coins at the Mint, and the Market sells goods for coins (including rare ones)',
+      'Boosts: choose per building to use a Potion (gatherers), Enchanted Wood (crafters) or a Talisman (garrisons) for more output or faster training',
+      'New magic buildings: Alchemist (potions), Enchanter (enchanted wood) and Shrine (talismans), plus Silver and Gold Smelters',
+      'The Monument is now the Resonance Monument: all your buildings within 30 tiles produce 10% more and soldiers train 25% faster. Only one can be built',
+      'The Planter now plants trees: a seed and some water give a new tree with 5-10 wood 5-10 tiles away',
+    ],
     '0.4.420': [
       'The game picks your language from your browser on the first run, and asks you if it has no match',
       'Resources are shown as icons with hover names everywhere, and resource and building colours are easier to tell apart from the enemy on the minimap',

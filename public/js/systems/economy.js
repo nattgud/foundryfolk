@@ -9,10 +9,11 @@
   const STORAGE_FACTOR = {};
   const setFactor = (factor, ids) => ids.split(' ').forEach(id => { STORAGE_FACTOR[id] = factor; });
   setFactor(0.6, 'brick charcoal ash limestone coal iron_ore copper_ore tin_ore salt_ore salt leather');
-  setFactor(0.4, 'iron copper tin bronze steel tar sulfur potion');
+  setFactor(0.4, 'iron copper tin bronze steel tar sulfur');
   setFactor(0.3, 'axe pickaxe hammer saw scythe shovel knife sword bow leather_armor iron_armor');
   setFactor(0.2, 'horse');
-  setFactor(0.15, 'silver_ore silver gold_ore crystal enchanted_wood cursed_ash coins');
+  setFactor(0.15, 'silver_ore silver gold_ore crystal enchanted_wood potion cursed_ash coins');
+setFactor(0.1, 'talisman');
   setFactor(0.08, 'gold gemstone moonstone fallen_star ancient_relic');
   const MIN_CAPACITY = 5;
 

@@ -169,7 +169,10 @@
         for (const resourceId in inputs) building.inputStock[resourceId] -= inputs[resourceId];
         building.isCrafting = true;
         building.trainingUnit = kind;
-        building.craftTotalTime = building.craftTimeLeft = seconds;
+        // Talisman (boost) och monumentets aura gör träningen snabbare
+        const boost = Behaviors.boostOf(building), boosted = Behaviors.useBoost(building);
+        const speed = 1 + (boosted ? boost.speed || 0 : 0) + Behaviors.auraBonus(building, 'training');
+        building.craftTotalTime = building.craftTimeLeft = seconds / speed;
       }
 
       building.status = 'Training';
