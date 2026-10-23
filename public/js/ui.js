@@ -276,19 +276,20 @@
     // Handledning: en sida per del av spelet. Varje sida lyser upp det den förklarar (target = CSS-väljare, flera går bra) och kan först
     // öppna en byggkategori (category). mock: en bild av infopanelen för det som inte syns förrän man markerat en byggnad.
     TUTORIAL: [
-      { title: 'Welcome', lines: ['Build a settlement, grow your economy and, in time, defeat the rival base.', 'This guide shows every button you need. Each step lights up the part of the screen it explains.'] },
+      { title: 'Welcome', lines: ['Build a settlement, grow your economy and, in time, defeat the rival base.', 'Each step lights up the part of the screen it explains.'] },
       { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'The timer shows your time against the par time. Be faster for more stars.'] },
       { title: 'Resources', target: ['#top'], lines: ['The top bar shows what is in your stores. Tap "All resources" for the full list.', 'A number turns orange when the stores are full for that resource. Build a warehouse for more room.'] },
       { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap a building, tree, rock or water to see what it is.'] },
       { title: 'Minimap', target: ['#minimap', '#minimapMode', '#minimapZoomIn', '#minimapZoomOut'], lines: ['The minimap shows the area around you. The white box is what you see on screen.', 'Use + and − to zoom it, and the small button to change what it shows.', 'Your buildings are coloured squares. Enemies you have spotted are red.'] },
       { title: 'Build menu', target: ['#bottom .build-categories'], category: null, lines: ['The build menu is at the bottom. Each icon is a category of buildings.', 'Tap a category to open it. New buildings unlock as you complete levels.'] },
       { title: 'Place a building', target: ['#build_woodcutter'], category: 'forestry', lines: ['Tap a building to select it. Move the mouse over it to see its cost and what it does.', 'Then tap the ground to place it. A preview follows you and shows whether it fits. You can only build near your own buildings, and not in the fog.', 'Tap the building again, or Cancel, to stop placing.'] },
-      { title: 'Select, pause and demolish', mock: true, lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working and using goods. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
+      { title: 'Select, pause and demolish', mock: 'pause', lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
       { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
       { title: 'Speed and menu', target: ['#speedButton', '#mainMenuButton'], lines: ['Change the game speed here.', 'The menu button opens save, load, settings and this guide.'] },
       { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
       { title: 'Find the enemy', target: ['#build_watchtower'], category: 'military', lines: ['The rival base is 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.'] },
-      { title: 'Fight', target: ['#build_garrison'], category: 'military', lines: ['Soldiers are trained in a Garrison: select it, pick a soldier type and supply the goods it needs.', 'Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.'] },
+      { title: 'Train soldiers', target: ['#build_garrison', '#build_guard_tower'], category: 'military', lines: ['Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.', 'Each soldier needs weapons and armour, which carriers deliver to the building.'] },
+      { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.'] },
     ],
 
     // Handledningen (spelet pausas medan den är öppen). Varje sida lyser upp det den förklarar.
@@ -306,6 +307,10 @@
           @keyframes tutorialPulse { 50% { box-shadow: 0 0 0 9999px rgb(0 0 0 / 62%), 0 0 22px 8px rgb(255 210 63 / 95%); } }
           #tutorialOverlay { z-index: 1001; }
           #tutorialOverlay.lit { background: none; }
+          #tutorialOverlay .tutorial-next { background: linear-gradient(180deg, #4fc274, #2f9455); border-color: #7be39c; color: #fff; font-weight: 600;
+            box-shadow: 0 0 10px rgb(95 220 140 / 45%); }
+          #tutorialOverlay .tutorial-next:hover { filter: brightness(1.12); }
+          #tutorialOverlay .tutorial-back:disabled { opacity: .45; cursor: default; }
           .tutorial-mock { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; margin: 4px 0;
             background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
           .tutorial-mock .glow { border: 2px solid #ffd23f; animation: tutorialGlow 1.4s ease-in-out infinite; }
@@ -345,6 +350,7 @@
       };
       const skip = button(close), back = button(() => { page--; render(); });
       const next = button(() => { if (page === pages.length - 1) close(); else { page++; render(); } });
+      back.classList.add('tutorial-back'); next.classList.add('tutorial-next');
       skip.style.cssText = 'margin-left:auto;padding:2px 10px;flex:0 0 auto;width:auto';
       header.append(skip);
 
@@ -367,15 +373,17 @@
         body.replaceChildren();
         const add = (className, text) => { const element = document.createElement('div'); element.className = className; element.textContent = text; body.append(element); return element; };
         add('main-menu-level', (page + 1) + '/' + pages.length + ' · ' + t(heading));
-        if (mock) { // infopanelen för en vald byggnad, med Pause lysande
+        if (mock) { // infopanelen för en vald byggnad, med den knapp som förklaras lysande
+          const garrison = mock === 'stance';
           const panel = document.createElement('div');
           panel.className = 'tutorial-mock';
           const name = document.createElement('div');
           name.innerHTML = '<b></b><br><span></span>';
-          name.firstChild.textContent = this.buildingName('woodcutter'); name.lastChild.textContent = t('Working');
+          name.firstChild.textContent = this.buildingName(garrison ? 'guard_tower' : 'woodcutter'); name.lastChild.textContent = t(garrison ? 'Training' : 'Working');
           const buttons = document.createElement('div');
-          buttons.style.cssText = 'display:flex;gap:6px';
-          for (const [text, glow] of [[t('Pause'), true], [t('Demolish'), false]]) {
+          buttons.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end';
+          const labels = garrison ? [[this.unitName('swordsman'), false], [this.unitName('archer'), false], [t('Defence mode'), true]] : [[t('Pause'), true], [t('Demolish'), false]];
+          for (const [text, glow] of labels) {
             const element = document.createElement('button');
             element.type = 'button'; element.textContent = text; element.tabIndex = -1;
             if (glow) element.className = 'glow';
