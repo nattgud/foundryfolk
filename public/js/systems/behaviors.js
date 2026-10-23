@@ -413,14 +413,16 @@
     update: gather.update,
     inputCapacities: craft.inputCapacities,
 
-    // Slumpad ruta som går att nå: gräs, ingen byggnad. Provar några gånger och ger null om inget fanns.
+    // Helt tom gräsruta: ingen byggnad och ingen upptrampad stig (wear), så träden hamnar aldrig på vägar och stigar
+    isFree: (x, y) => { const tile = World.getTile(x, y); return !!tile && tile.terrainType === 'grass' && !tile.wear && !World.buildingAt(x, y); },
+
+    // Slumpad ruta som går att nå och är helt tom. Provar några gånger och ger null om inget fanns.
     findSpot(building, job) {
       for (let attempt = 0; attempt < 24; attempt++) {
         const angle = Math.random() * Math.PI * 2;
         const distance = job.minRadius + Math.random() * (job.maxRadius - job.minRadius);
         const x = Math.round(building.x + Math.cos(angle) * distance), y = Math.round(building.y + Math.sin(angle) * distance);
-        const tile = World.getTile(x, y);
-        if (tile && tile.terrainType === 'grass' && !World.buildingAt(x, y) && CityBuilder.Pathfinder.findPathNow(building.x, building.y, x, y) !== null) return { x, y };
+        if (this.isFree(x, y) && CityBuilder.Pathfinder.findPathNow(building.x, building.y, x, y) !== null) return { x, y };
       }
       return null;
     },
@@ -441,7 +443,7 @@
         Jobs.wait(job.workSeconds, 'Planting'),
         Jobs.run(() => {
           const tile = World.getTile(spot.x, spot.y);
-          if (!tile || tile.terrainType !== 'grass' || World.buildingAt(spot.x, spot.y)) {
+          if (!this.isFree(spot.x, spot.y)) {
             if (!building.removed) for (const id in job.inputs) building.inputStock[id] = (building.inputStock[id] || 0) + job.inputs[id];
             return false;
           }

@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.6.3': [
+      'The Planter only plants on completely empty grass: never on roads and worn paths',
+    ],
     '0.6.2': [
       'Notices (such as "Unlocks at level 5") now appear centred at the bottom of the screen, just above the build menu, instead of behind the minimap buttons',
     ],
