@@ -995,7 +995,7 @@
       if (LANGUAGES.some(([code]) => code === saved)) this.language = saved;
       else if (played) this.choose('en');
       else {
-        const wanted = [...(navigator.languages || []), navigator.language].filter(Boolean).map(tag => String(tag).toLowerCase().split('-')[0]);
+        const wanted = (typeof navigator === 'undefined' ? [] : [...(navigator.languages || []), navigator.language]).filter(Boolean).map(tag => String(tag).toLowerCase().split('-')[0]);
         const match = wanted.find(code => LANGUAGES.some(([known]) => known === code));
         if (match) this.choose(match); else this.needsChoice = true;
       }

@@ -229,7 +229,7 @@
         case 'kills': return t('Defeat enemy units: {have}/{need}', numbers);
         case 'destroy': return item.id === 'any' ? t('Destroy enemy buildings: {have}/{need}', numbers) : t('Destroy enemy {name}: {have}/{need}', { name: lower(this.buildingName(item.id)), ...numbers });
         case 'eliminate': return t('Destroy the enemy base');
-        default: return t('Store {name}: {have}/{need}', { name: this.resourceName(item.resource), ...numbers });
+        default: return t('Store {name}: {have}/{need}', { name: this.resourceChip(item.resource), ...numbers });
       }
     },
 
@@ -1272,7 +1272,7 @@
       for (const line of details) {
         const detail = document.createElement('div');
         detail.className = 'tooltip-detail';
-        detail.textContent = line;
+        detail.innerHTML = line;   // raden är vår egen text, ev. med resursikoner
         content.appendChild(detail);
       }
 
@@ -1280,20 +1280,7 @@
         const costLine = document.createElement('div');
         costLine.className = 'tooltip-cost';
 
-        for (const [resourceId, amount] of Object.entries(cost)) {
-          const part = document.createElement('span');
-          const resource = Config.resources[resourceId];
-
-          part.textContent = resource
-            ? `${amount} ${lower(this.resourceName(resourceId))}`
-            : `${amount} ${resourceId}`;
-
-          if (Economy.freeAmount(resourceId) < amount) {
-            part.className = 'tooltip-short';
-          }
-
-          costLine.appendChild(part);
-        }
+        costLine.innerHTML = this.resourceIconsHtml(cost, true);
 
         content.appendChild(costLine);
       }
@@ -1503,14 +1490,6 @@
           color: var(--dim);
         }
 
-        #buildTooltip .tooltip-cost span + span::before {
-          content: ', ';
-        }
-
-        #buildTooltip .tooltip-short {
-          color: #e5736f;
-        }
-
         #buildTooltip .tooltip-detail {
           color: var(--dim);
         }
@@ -1564,7 +1543,7 @@
           color: #e5bc58;
         }
 
-        #info .info-res {
+        .info-res {
           display: inline-flex;
           align-items: center;
           gap: 2px;
@@ -1572,7 +1551,7 @@
           vertical-align: middle;
         }
 
-        #info .info-res-icon {
+        .info-res-icon {
           display: inline-block;
           width: 16px;
           height: 16px;
@@ -1581,7 +1560,7 @@
           image-rendering: pixelated;
         }
 
-        #info .info-short {
+        .info-short {
           color: #e5736f;
         }
 
@@ -1957,36 +1936,43 @@
       return I18n().nameOf('building', id, definition?.name);
     },
 
-    // { wood: 2, stone: 1 } -> "2 wood, 1 stone"
-    formatResources(amounts) {
-      return Object.entries(amounts || {})
-        .filter(([, amount]) => amount > 0)
-        .map(([resourceId, amount]) => `${amount} ${lower(this.resourceName(resourceId))}`)
-        .join(', ');
+    // En resurs som ikon (bild, annars färgruta) med namnet som hover. amount utelämnat = bara ikonen. className 'info-short' = röd (saknas).
+    resourceChip(resourceId, amount, className = '') {
+      const resource = Config.resources[resourceId] || {};
+      const name = this.resourceName(resourceId).replace(/"/g, '&quot;'), color = resource.color || '#3a444d';
+      // Saknas bildfilen (t.ex. nya resurser utan grafik än) visas resursens färgruta i stället
+      const icon = resource.image && Config.settings.useImages !== false
+        ? `<img class="info-res-icon" src="${resource.image}" alt="${name}" draggable="false" style="background:${color}" onerror="this.removeAttribute('src');this.removeAttribute('alt')">`
+        : `<span class="info-res-icon" style="background:${color}"></span>`;
+      return `<span class="info-res ${className}" title="${name}">${icon}${amount === undefined ? '' : amount}</span>`;
     },
 
-    // { wood: 2 } -> HTML med resursbild + antal (används i infopanelen). Utan bild: färgruta.
-    resourceIconsHtml(amounts) {
-      const useImages = Config.settings.useImages !== false;
+    // { wood: 2 } -> ikoner med antal (infopanelen, verktygstips). Antal 0 hoppas över.
+    resourceIconsHtml(amounts, shortage) {
       return Object.entries(amounts || {})
         .filter(([, amount]) => amount > 0)
-        .map(([resourceId, amount]) => {
-          const resource = Config.resources[resourceId] || {};
-          const name = this.resourceName(resourceId).replace(/"/g, '&quot;');
-          // Saknas bildfilen (t.ex. nya resurser utan grafik än) visas resursens färgruta i stället
-          const icon = resource.image && useImages
-            ? `<img class="info-res-icon" src="${resource.image}" alt="${name}" title="${name}" draggable="false" style="background:${resource.color || '#3a444d'}" onerror="this.removeAttribute('src');this.removeAttribute('alt')">`
-            : `<span class="info-res-icon" title="${name}" style="background:${resource.color || '#3a444d'}"></span>`;
-          return `<span class="info-res">${icon}${amount}</span>`;
-        })
+        .map(([resourceId, amount]) => this.resourceChip(resourceId, amount, shortage && Economy.freeAmount(resourceId) < amount ? 'info-short' : ''))
         .join('');
+    },
+
+    // Statustext där resurser visas som ikoner: "Missing: Iron (2)" -> Saknas: [järn] (2)
+    statusHtml(text) {
+      text = I18n().canonicalStatus(text || '');
+      if (!text.startsWith('Missing: ')) return I18n().status(text);
+      const idOf = name => Object.keys(Config.resources).find(id => Config.resources[id].name === name);
+      const list = text.slice('Missing: '.length).split(', ').map(part => {
+        const match = /^(.*) \((\d+)\)$/.exec(part);
+        const chips = (match ? match[1] : part).split(' / ').map(name => idOf(name) ? this.resourceChip(idOf(name)) : t(name)).join(' / ');
+        return match ? `${chips} (${match[2]})` : chips;
+      }).join(' ');
+      return t('Missing: {list}', { list });
     },
 
     // Effektivitet senaste minuten: "Efficiency 62% · Missing: Iron 25%, Local stock full 13%". Tom tills det finns data.
     efficiencyText(building) {
       const summary = building.eff && building.eff.summary;
       if (!summary || building.buildProgress < 1 || !building.definition.job) return '';
-      const reasons = summary.reasons.slice(0, 3).map(([reason, share]) => `${I18n().status(reason)} ${Math.round(share * 100)}%`).join(', ');
+      const reasons = summary.reasons.slice(0, 3).map(([reason, share]) => `${this.statusHtml(reason)} ${Math.round(share * 100)}%`).join(', ');
       return t('Efficiency {percent}%', { percent: Math.round(summary.ratio * 100) }) + (reasons ? ' · ' + reasons : '');
     },
 
@@ -1999,14 +1985,14 @@
       if (definition.isWinBuilding) lines.push(t('Build this to win'));
 
       if (job?.kind === 'gather') {
-        const output = this.resourceName(job.outputResource ?? Object.keys(job.outputs || {})[0]);
+        const output = this.resourceChip(job.outputResource ?? Object.keys(job.outputs || {})[0]);
         lines.push(job.sourceUnit
           ? t('Hunting: {source} → {output}', { source: this.unitName(job.sourceUnit), output })
           : t('Gathering: {source} → {output}', { source: this.terrainName(job.sourceTerrain), output }));
         if (this.getBuildingRange(definition)) lines.push(t('Range: {n} tiles', { n: this.getBuildingRange(definition) }));
       } else if (job?.kind === 'craft') {
-        const inputs = this.formatResources(job.inputs);
-        const outputs = this.formatResources(job.outputs);
+        const inputs = this.resourceIconsHtml(job.inputs);
+        const outputs = this.resourceIconsHtml(job.outputs);
         lines.push(inputs ? t('Processing: {inputs} → {outputs}', { inputs, outputs }) : t('Producing: {outputs}', { outputs }));
       } else if (job?.kind === 'garrison') {
         lines.push(t('Houses up to {n} soldiers', { n: job.capacity }));
@@ -2018,9 +2004,9 @@
         lines.push(t('Placed on: {terrain}', { terrain: this.terrainName(definition.placeOnTerrain) }));
       }
 
-      const equipment = this.formatResources(definition.requiredEquipment);
+      const equipment = this.resourceIconsHtml(definition.requiredEquipment);
       if (job && equipment) lines.push(t('Requires: {equipment}', { equipment }));
-      for (const group of [].concat(job?.eats || [])) lines.push(t('Needs: {food}', { food: group.any.map(id => this.resourceName(id)).join(' / ') }));
+      for (const group of [].concat(job?.eats || [])) lines.push(t('Needs: {food}', { food: group.any.map(id => this.resourceChip(id)).join(' / ') }));
 
       return lines;
     },
@@ -2231,7 +2217,7 @@
 
       const statusText = building.buildProgress < 1
         ? t('Under construction {time}', { time: this.timeLeft(building) })
-        : I18n().status(building.status);
+        : this.statusHtml(building.status);
 
       const range = this.getBuildingRange(building.definition);
       const imports = building.definition.isStorage ? '' : this.resourceIconsHtml(building.inputStock);
@@ -2297,12 +2283,7 @@
         byId('cancelPlacementButton').onclick = () => game.setPlacingType(null);
       }
 
-      const cost = Object.entries(definition.buildCost || {})
-        .map(([resourceId, amount]) => {
-          const short = Economy.freeAmount(resourceId) < amount ? ' class="info-short"' : '';
-          return `<span${short}>${amount} ${lower(this.resourceName(resourceId))}</span>`;
-        })
-        .join(', ');
+      const cost = this.resourceIconsHtml(definition.buildCost, true);
 
       byId('infoStatus').innerHTML = [
         t('Cost: {cost}', { cost: cost || '–' }),

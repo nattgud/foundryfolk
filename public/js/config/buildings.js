@@ -144,7 +144,7 @@ CityBuilder.Config.buildings = {
     name: 'Mushroom Gatherer',
     category: 'farming',
     symbol: 'MG',
-    color: '#49354e',
+    color: '#7a5c80',
     buildCost: { plank: 4, wood: 4 },
     job: {
       kind: 'gather',
@@ -188,7 +188,7 @@ CityBuilder.Config.buildings = {
     name: 'Hunters Cottage',
     category: 'farming',
     symbol: 'HC',
-    color: '#be1f1f',
+    color: '#8a7b3e',
     buildCost: { plank: 6, wood: 5, stone: 4 },
     job: {
       kind: 'gather',
@@ -318,7 +318,7 @@ CityBuilder.Config.buildings = {
     name: 'Iron Mine',
     category: 'mining',
     symbol: 'IM',
-    color: '#65463f',
+    color: '#7b6f6a',
     buildCost: { plank: 6, stone: 5 },
     placeOnTerrain: 'iron_ore',
     job: {
@@ -336,7 +336,7 @@ CityBuilder.Config.buildings = {
     name: 'Copper Mine',
     category: 'mining',
     symbol: 'CM',
-    color: '#ad704b',
+    color: '#c87f35',
     buildCost: { plank: 6, stone: 5 },
     placeOnTerrain: 'copper_ore',
     job: {
@@ -372,7 +372,7 @@ CityBuilder.Config.buildings = {
     name: 'Coal Mine',
     category: 'mining',
     symbol: 'CO',
-    color: '#292a30',
+    color: '#34363d',
     buildCost: { plank: 6, stone: 5 },
     placeOnTerrain: 'coal',
     job: {
@@ -512,7 +512,7 @@ CityBuilder.Config.buildings = {
     name: 'Brickworks',
     category: 'processing',
     symbol: 'BW',
-    color: '#ad604b',
+    color: '#b97a45',
     buildCost: { plank: 7, stone: 6 },
     job: {
       kind: 'craft',
@@ -542,7 +542,7 @@ CityBuilder.Config.buildings = {
     name: 'Copper Smelter',
     category: 'processing',
     symbol: 'CS',
-    color: '#c47b51',
+    color: '#d08a3a',
     buildCost: { plank: 7, stone: 8 },
     job: {
       kind: 'craft',
@@ -587,7 +587,7 @@ CityBuilder.Config.buildings = {
     name: 'Charcoal Burner',
     category: 'processing',
     symbol: 'CB',
-    color: '#38383b',
+    color: '#45454a',
     buildCost: { wood: 5, stone: 4 },
     job: {
       kind: 'craft',
@@ -618,7 +618,7 @@ CityBuilder.Config.buildings = {
     name: 'Picksmith',
     category: 'crafting',
     symbol: 'PS',
-    color: '#8a8f99',
+    color: '#7b92a8',
     buildCost: { plank: 8, stone: 8 },
     job: {
       kind: 'craft',
@@ -633,7 +633,7 @@ CityBuilder.Config.buildings = {
     name: 'Axesmith',
     category: 'crafting',
     symbol: 'AS',
-    color: '#8a8f99',
+    color: '#a0958a',
     buildCost: { plank: 8, stone: 8 },
     job: {
       kind: 'craft',
@@ -648,7 +648,7 @@ CityBuilder.Config.buildings = {
     name: 'Scythesmith',
     category: 'crafting',
     symbol: 'SS',
-    color: '#8a8f99',
+    color: '#8da58f',
     buildCost: { plank: 8, stone: 8 },
     job: {
       kind: 'craft',
@@ -694,7 +694,7 @@ CityBuilder.Config.buildings = {
     name: 'Leatherworker',
     category: 'crafting',
     symbol: 'LT',
-    color: '#7a4e32',
+    color: '#7a5632',
     buildCost: { plank: 6, stone: 4 },
     job: {
       kind: 'craft',
@@ -790,7 +790,7 @@ CityBuilder.Config.buildings = {
     name: 'Guard Tower',
     category: 'military',
     symbol: 'GT',
-    color: '#8c5a3c',
+    color: '#46a083',
     buildCost: { wood: 5, plank: 6, stone: 10 },
     job: {
       kind: 'garrison',
@@ -808,7 +808,7 @@ CityBuilder.Config.buildings = {
     name: 'Watchtower',
     category: 'military',
     symbol: 'WT',
-    color: '#b08a55',
+    color: '#8fc1ad',
     buildCost: { plank: 2, stone: 3 },
     vision: 30,
     maxHp: 120,
@@ -819,7 +819,7 @@ CityBuilder.Config.buildings = {
     name: 'Garrison',
     category: 'military',
     symbol: 'GA',
-    color: '#7a3f3f',
+    color: '#357a65',
     buildCost: { plank: 15, stone: 20, brick: 8 },
     job: {
       kind: 'garrison',
