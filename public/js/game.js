@@ -40,7 +40,7 @@
         const restored = Save ? Save.applyStart() : false;
         CityBuilder.Vision.refresh();                    // synfältet och hjortarna finns från första bildrutan
         CityBuilder.Deer.updateActivation();
-        if (level) UI.showToast((restored ? t('Game loaded.') + ' ' : '') + t('Level {level}: {name}', { level: level.level, name: level.name }));
+        if (level) UI.showToast((restored ? t('Game loaded.') + ' ' : '') + (level.custom ? level.name : t('Level {level}: {name}', { level: level.level, name: level.name })));
         this.installFocusPause();
         L.set(1, t('Almost ready'));
         requestAnimationFrame(time => { this.lastFrameTime = time; this.frame(time); L.done(); });

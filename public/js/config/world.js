@@ -77,11 +77,15 @@
   };
 
   /* ---------- Landskapsmodell (beräknas en gång per ruta) ---------- */
-  const SEA_LEVEL = 0.2;
-  // Berg (terrängtypen 'mountain'): ruta med relief över nivån, med ojämn kant. Justera här för mer/mindre berg.
-  const MOUNTAIN_LEVEL = 0.76;
+  // Reglage för landskapet (Config.world.tuning). Banorna använder standardvärdena; en egen bana (levels.js) ändrar dem.
+  //   sea:           havsnivå: högre = mer vatten
+  //   mountain:      högsta reliefen utan berg: lägre = mer berg (över 1 inga berg alls)
+  //   oreShare:      andel av bergets kärna som blir malm
+  //   scatteredOre:  chans per ruta att vara ett utspritt malmfynd (före stenvillkoret). Lägre = färre fynd
+  //   forest:        faktor på trädens täthet
+  const TUNING = { sea: 0.2, mountain: 0.76, oreShare: 0.40, scatteredOre: 0.01, forest: 1 };
+  const tuning = { ...TUNING };
   // Malm utanför berg: enstaka fynd på en eller två rutor, väldigt utspridda och helst intill vanlig sten.
-  const SCATTERED_ORE_CHANCE = 0.01;      // chans per ruta att vara ett fynd (före stenvillkoret). Lägre = färre fynd
   const SCATTERED_ORE_FAR_CHANCE = 0.2;    // andel av fynden som får ligga utan sten i närheten (1 = överallt, 0 = bara intill sten)
   const SCATTERED_ORE_PAIR_CHANCE = 0.4;   // chans att ett fynd är två rutor i stället för en
   const SCATTERED_ORE_MIN_ORIGIN = 8;     // inga spridda fynd närmare startpunkten än så här (startområdet har egna)
@@ -111,7 +115,7 @@
     // Startlandet: runt huvudlagret lyfts marken över havet, så spelet aldrig börjar i vattnet. Det blir en
     // lugn slätt (inga sjöar) som går över i naturligt landskap. Klimat och berggrund använder relief.
     const startLand = 1 - smoothstep(24, 45, origin);
-    const landFloor = SEA_LEVEL + 0.05 + 0.1 * hills;
+    const landFloor = tuning.sea + 0.05 + 0.1 * hills;
     const elevation = relief + startLand * Math.max(0, landFloor - relief);
 
     // Fuktighet: regionala mönster, torrare på höga höjder och uppe i bergen
@@ -127,9 +131,9 @@
       ? Math.min(riverCenterDistance - riverHalfWidth, tributaryActive ? tributaryDistance - riverHalfWidth * 0.7 : Infinity)
       : Infinity; // tiles from riverbank (negative = i floden)
 
-    const seaDepth = SEA_LEVEL - elevation; // > 0 = under havsytan
+    const seaDepth = tuning.sea - elevation; // > 0 = under havsytan
     const nearWater = 1 - clamp01(Math.min(riverDistance < Infinity ? Math.max(riverDistance, 0) : 99, 14) / 14);
-    const coastal = 1 - smoothstep(0, 0.12, elevation - SEA_LEVEL);
+    const coastal = 1 - smoothstep(0, 0.12, elevation - tuning.sea);
     const moisture = clamp01(
       regionalMoisture * 0.85 + 0.02 + 0.25 * nearWater + 0.22 * coastal + startArea * 0.12 -
       0.30 * smoothstep(0.62, 0.85, relief)
@@ -137,7 +141,7 @@
 
     // Bergruta: högt relief, ojämn kant och aldrig nära start
     const mountainEdge = (macro(context, x, y, 10, 265, 0.5) - 0.5) * 0.06;
-    const mountainDepth = relief + mountainEdge - MOUNTAIN_LEVEL; // > 0 = bergsruta, högre = längre in/upp
+    const mountainDepth = relief + mountainEdge - tuning.mountain; // > 0 = bergsruta, högre = längre in/upp
     const inMountain = origin > 20 && mountainDepth > 0;
     // Bergskärna: marginellt högre upp än bergets kant. Malm i berg ligger bara här, så den är alltid omsluten av berg.
     const coreMountain = inMountain && mountainDepth > MOUNTAIN_ORE_MARGIN;
@@ -152,7 +156,6 @@
   // Malm inne i bergen: ungefär så här stor andel av bergsrutorna blir malm (exklusive svavel och månsten).
   // Mängden är en slumpandel per ruta, så den ligger nära målet oavsett hur bruset ser ut. Klungbildningen
   // flyttar den lokalt men inte i snitt.
-  const MOUNTAIN_ORE_SHARE = 0.40;  // andel av bergets KÄRNA (se marginalen nedan). Hela berget blir ca 25-30 % malm
   const MOUNTAIN_ORE_MARGIN = 0.03; // hur mycket högre än bergets kant en ruta måste ligga för att få malm (större = bredare malmfri kant)
   // Bas-vikter (summan 1) för vilken malm en malmruta i berg blir. Provinser (brus) förskjuter dem regionalt.
   const MOUNTAIN_ORE_MIX = [
@@ -176,7 +179,7 @@
     const { x, y } = context;
     if (!model.coreMountain) return; // bergets kant är bara berg
     const cluster = fbm(context, x, y, 9, 400, 1.0);
-    const chance = clamp01(MOUNTAIN_ORE_SHARE + (cluster - 0.5) * 0.9);
+    const chance = clamp01(tuning.oreShare + (cluster - 0.5) * 0.9);
     if (random(context, x, y, 401) >= chance) return;
 
     // Garanti: alla åtta grannar måste också vara bergsrutor, så malmen aldrig gränsar mot öppen mark.
@@ -240,7 +243,7 @@
   const NEIGHBORS_4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
   // Fler fynd nära start (upp till 3x), glesnar ut mot 60 rutor
-  const scatteredAnchorGate = (context, x, y) => random(context, x, y, 430) < SCATTERED_ORE_CHANCE * (1 + 2 * (1 - smoothstep(8, 34, Math.hypot(x, y))));
+  const scatteredAnchorGate = (context, x, y) => random(context, x, y, 430) < tuning.scatteredOre * (1 + 2 * (1 - smoothstep(8, 34, Math.hypot(x, y))));
 
   // Ankarruta som duger? (öppen mark, inte sten, intill sten eller en slumpad andel)
   const scatteredAnchorValid = (context, x, y) => {
@@ -562,8 +565,8 @@
       const treeLine = 1 - smoothstep(0.64, 0.8, model.relief);
       const suitability = smoothstep(0.2, 0.5, model.moisture) * treeLine;
       const stand = 0.6 * stretch(fbm(context, context.x, context.y, 36, 300, 0.6), 2.2) + 0.4 * stretch(fbm(context, context.x, context.y, 12, 301, 1.5), 2.0);
-      const density = stand * suitability + model.startArea * 0.18 * suitability;
-      const probability = smoothstep(0.34, 0.56, density) * 0.9 + 0.09 * suitability; // lite enstaka träd även i ängen
+      const density = (stand * suitability + model.startArea * 0.18 * suitability) * tuning.forest;
+      const probability = Math.min(1, smoothstep(0.34, 0.56, density) * 0.9 + 0.09 * suitability * Math.min(tuning.forest, 1.5)); // lite enstaka träd även i ängen
       if (random(context, context.x, context.y, 302) < probability) return 'tree';
     },
 
@@ -594,6 +597,7 @@
   ];
 
   CityBuilder.Config.world = {
+    tuning, defaults: TUNING,
     seed: Math.floor(Math.random() * 1000000), // ny värld vid varje start. Skriv ett fast tal här för en bestämd värld
     clearRadius: 4,
     roads: [],                 // landvägar { x1, y1, x2, y2, width, wobble, wavelength, phase } som ersätter vatten och berg med gräs (World.rivalSite lägger till en till varje bas)
@@ -604,7 +608,9 @@
     meadows: [{ x: 0, y: 0 }], // baserna: runt var och en glesas skog och träsk ut till gräs (World.rivalSite lägger till datorspelarnas)
     meadowRadius: 28,          // hur långt ut den öppna marken når (rutor). Mest gräs nära basen, ingenting vid kanten
     rivalDistance: [60, 90], // hur långt från starten en datorspelares bas ligger (rutor)
-    rivalSpacing: 45,        // minsta avstånd mellan två datorspelares baser (rutor), när banan har fler än en
+    // Var baserna ligger i förhållande till spelaren, så att alla avstånd blir ungefär lika: [vinkel (grader) från första basen, avstånd i delar av rivalDistance]
+    // 1-2 rivaler: alla baser på samma avstånd från varandra (liksidig triangel). 3: en kvadrat med spelaren i ett hörn (sidor lika, diagonalen 1,4 gånger längre).
+    rivalLayouts: { 1: [[0, 1]], 2: [[0, 1], [60, 1]], 3: [[0, .9], [45, 1.27], [90, .9]] },
     rivalClearRadius: 5,
     fairResources: ['tree', 'rock', 'water', 'clay', 'iron_ore', 'coal', 'sand', 'limestone'], // avstånden hit ska vara ungefär lika för alla spelare
     fairRadius: 36,            // så långt från basen mäts avstånden (rutor)

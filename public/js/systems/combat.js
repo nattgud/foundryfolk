@@ -130,8 +130,8 @@
       if (player !== Players.HUMAN) Players.active = Players.active.filter(other => other !== player);
       if (player === Players.HUMAN) CityBuilder.Game?.defeat?.();
       else {
-        if (!restoring) CityBuilder.Levels?.onRivalDown?.();
-        if (!Players.active.some(Players.isAI)) CityBuilder.Levels?.win?.();
+        if (!restoring && Players.isHostile(Players.HUMAN, player)) CityBuilder.Levels?.onRivalDown?.();
+        if (!Players.hostileAI().length) CityBuilder.Levels?.win?.();
       }
     },
 

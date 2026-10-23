@@ -9,6 +9,9 @@
   const BAR_TRIES = 3;   // kandidater per ruta
 
   const Generator = {
+    // Glömmer det som cachats per värld (sandrev, gångar). Anropas när landskapsreglagen eller seedet byts utan omladdning (förhandsvisningen).
+    reset() { this.barKey = this.tableKey = null; },
+
     // Slutlig terräng: utjämning av enstaka rutor, vadställen över smala vattendrag och holmar utan fyndigheter.
     terrainTypeAt(x, y) {
       const base = this.baseTypeAt(x, y);

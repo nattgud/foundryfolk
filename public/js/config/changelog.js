@@ -4,6 +4,13 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.6.0': [
+      'Custom map: a new menu option for playing a map outside the levels. Choose 1-3 enemies, how strong each one is, the teams, and how much water, mountains, forest and resources there is, with a simple preview of the land before you start',
+      'Rivals now fight each other until level 60; from level 60 they are allied against you',
+      'Rival bases are placed at an even distance from you and from each other',
+      '"Par time" is now called "target time"',
+      'Faster start: the land around every base is prepared during loading, so the game hitches less when the enemies start building',
+    ],
     '0.5.1': [
       'More enemies on later levels: two rivals from level 35 and three from level 70. They are allied against you and their bases are spread apart',
       'The "destroy the enemy base" goal now counts every rival base, and mission par times account for the extra enemies',

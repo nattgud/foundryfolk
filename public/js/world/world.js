@@ -3,7 +3,10 @@
   'use strict';
   const { Utils, Config, Players } = CityBuilder;
 
+  const WARM_CHUNKS = { human: 3, rival: 2 };   // marken runt varje bas genereras redan vid start: så många chunkar åt varje håll (spelarens bas får mer: den syns)
+  const warmCount = player => (2 * (player === Players.HUMAN ? WARM_CHUNKS.human : WARM_CHUNKS.rival) + 1) ** 2;
   const RIVAL_STEPS = 33;   // delsteg per rival i init: 1 + 24 grova + 6 noggranna + 2 för resurserna runt baserna (för framstegsstapeln)
+  const SITE_SPREAD = 8;   // hur långt (rutor) från idealplatsen en rivals bas får ligga
   const t = (text, variables) => CityBuilder.t(text, variables);
 
   const World = {
@@ -47,8 +50,9 @@
     // högst var 40:e ms, så rapporteringen kostar nästan ingenting. Utan report går allt i ett svep.
     async init(report = () => {}) {
       CityBuilder.Vision.reset();
+      Players.team = { ...CityBuilder.Levels?.current?.teams };
       this.addPlayer(Players.HUMAN, 0, 0);
-      const rivals = CityBuilder.Levels?.current?.rivals ?? 1, total = rivals * RIVAL_STEPS;
+      const rivals = CityBuilder.Levels?.current?.rivals ?? 1, total = rivals * RIVAL_STEPS + warmCount(Players.HUMAN) + rivals * warmCount(Players.ENEMY);
       let done = 0, last = performance.now();
       const step = async text => {
         done++;
@@ -56,7 +60,21 @@
         last = performance.now();
         await report(Math.min(1, done / total), text);
       };
-      for (let i = 0; i < rivals; i++) this.addPlayer(Players.ENEMY + i, ...await this.rivalSite(Players.ENEMY + i, step));
+      for (let i = 0; i < rivals; i++) this.addPlayer(Players.ENEMY + i, ...await this.rivalSite(Players.ENEMY + i, i, rivals, step));
+      await this.warm(step);
+    },
+
+    // Genererar marken runt varje bas medan laddningsstapeln visas. Annars sker det mitt i spelet, när datorspelarna börjar bygga
+    // och synfältet växer, och då hackar det: de första chunkarna är dessutom långsammast (koden är inte varmkörd).
+    async warm(step = async () => {}) {
+      const size = Config.settings.chunkSize;
+      for (const hq of Object.values(this.hqs)) {
+        const baseX = Math.floor(hq.x / size), baseY = Math.floor(hq.y / size), reach = hq.player === Players.HUMAN ? WARM_CHUNKS.human : WARM_CHUNKS.rival;
+        for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
+          this.getTile((baseX + dx) * size, (baseY + dy) * size);
+          await step(t('Creating world'));
+        }
+      }
     },
 
     // Ny spelare med egen bas och startresurser (samma för alla spelare)
@@ -83,26 +101,32 @@
       return { nearest, blocked: blocked / total };
     },
 
-    // Var en datorspelares bas ligger: 60-90 rutor från starten. Av 24 platser (riktning och avstånd sprids ut, start slumpas av bana och spelarnummer)
-    // väljs den med minst vatten och berg runt sig (de sex bästa jämförs) och ungefär samma avstånd till resurserna som spelarens start (rättvist).
+    // Idealplatsen för rival nummer index av count (se Config.world.rivalLayouts), utan hänsyn till marken
+    idealSite(index, count) {
+      const { rivalDistance: [near, far], rivalLayouts } = Config.world;
+      const layout = rivalLayouts[count] || Array.from({ length: count }, (_, i) => [i * 360 / count, 1]);
+      const turn = Utils.hash(0, 11, Config.world.seed * 131) * 2 * Math.PI, [degrees, factor] = layout[index];
+      const angle = turn + degrees * Math.PI / 180, distance = (near + far) / 2 * factor;
+      return { x: Math.cos(angle) * distance, y: Math.sin(angle) * distance };
+    },
+
+    // Var en datorspelares bas ligger: runt en idealplats 60-90 rutor från starten (Config.world.rivalLayouts: alla baser får ungefär lika långt till varandra).
+    // Av 24 platser nära idealplatsen väljs den med minst vatten och berg runt sig (de sex bästa jämförs) och ungefär samma avstånd till resurserna som spelarens start (rättvist).
     // En gräsplan läggs in runt basen (clearings), och små fyndigheter av det banan kräver om det saknas i närheten (se endow).
-    async rivalSite(player, step = async () => {}) {
-      const { rivalDistance: [near, far], rivalSpacing, rivalClearRadius: clear, fairResources } = Config.world;
+    async rivalSite(player, index = 0, count = 1, step = async () => {}) {
+      const { rivalClearRadius: clear, fairResources } = Config.world;
       const salt = Config.world.seed * 131 + player * 977;
-      const base = Utils.hash(player, 11, salt) * 2 * Math.PI, spread = Utils.hash(player, 12, salt);
+      const ideal = this.idealSite(index, count);
       const reference = this.survey(0, 0).nearest;
       await step(t('Surveying the land'));
       // Först en grov koll av vatten och berg på 24 platser, sedan en noggrann jämförelse av de sex bästa
       const sites = [];
       for (let i = 0; i < 24; i++) {
-        const angle = base + i * 2.4, distance = near + (far - near) * ((spread + i * .618) % 1);
-        const x = Math.round(Math.cos(angle) * distance), y = Math.round(Math.sin(angle) * distance);
+        const angle = i * 2.4, offset = SITE_SPREAD * Math.sqrt((i + .5) / 24);
+        const x = Math.round(ideal.x + Math.cos(angle) * offset), y = Math.round(ideal.y + Math.sin(angle) * offset);
         sites.push({ x, y, i, blocked: this.survey(x, y, [], 24, 6).blocked });
         await step(t('Surveying the land'));
       }
-      // Fler rivaler ska inte hamna ovanpå varandra: platser nära en redan placerad rival väljs bort (om det finns andra)
-      const apart = sites.filter(site => Object.values(this.hqs).every(hq => hq.player === Players.HUMAN || Math.hypot(hq.x - site.x, hq.y - site.y) >= rivalSpacing));
-      sites.splice(0, sites.length, ...(apart.length ? apart : sites));
       sites.sort((a, b) => a.blocked - b.blocked || a.i - b.i).splice(6);
       let best = null, bestScore = Infinity;
       for (const { x, y, i } of sites) {

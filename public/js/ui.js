@@ -251,9 +251,11 @@
         return `<div class="goal-item${item.done ? ' done' : ''}">${item.done ? '✔' : '☐'} ${text}</div>`;
       });
       const unlocks = level.unlocks.map(id => this.buildingName(id)).join(', ');
-      const header = Levels.completed
-        ? `<b>${t('Level complete!')}</b> ${'★'.repeat(Levels.stars)} <button type="button" data-next class="goal-next">${t('Next level')}</button>`
-        : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })} / ${this.formatTime(level.goal.par)}`;
+      const header = level.custom
+        ? (Levels.completed ? `<b>${t('Victory!')}</b>` : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })}`)
+        : Levels.completed
+          ? `<b>${t('Level complete!')}</b> ${'★'.repeat(Levels.stars)} <button type="button" data-next class="goal-next">${t('Next level')}</button>`
+          : `<b>${t('Goals')}</b> · ${t('Time: {time} (target {target})', { time: this.formatTime(Levels.seconds), target: this.formatTime(level.goal.par) })}`;
       const html = `<div class="goal-header">${header}</div>${lines.join('')}` + (unlocks ? `<div class="goal-new">${t('New: {list}', { list: unlocks })}</div>` : '');
 
       if (panel.dataset.html !== html) {
@@ -281,7 +283,7 @@
     // öppna en byggkategori (category). mock: en bild av infopanelen för det som inte syns förrän man markerat en byggnad.
     TUTORIAL: [
       { title: 'Welcome', lines: ['Build a settlement, grow your economy and, in time, defeat the rival base.', 'Each step lights up the part of the screen it explains.'] },
-      { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'The timer shows your time against the par time. Be faster for more stars.'] },
+      { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'The timer shows your time against the target time. Be faster for more stars.'] },
       { title: 'Resources', target: ['#top'], lines: ['The top bar shows what is in your stores. Tap "All resources" for the full list.', 'A number turns orange when the stores are full for that resource. Build a warehouse for more room.'] },
       { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap a building, tree, rock or water to see what it is.'] },
       { title: 'Minimap', target: ['#minimap', '#minimapMode', '#minimapZoomIn', '#minimapZoomOut'], lines: ['The minimap shows the area around you. The white box is what you see on screen.', 'Use + and − to zoom it, and the small button to change what it shows.', 'Your buildings are coloured squares. Enemies you have spotted are red.'] },
@@ -532,8 +534,8 @@
       dialog.setAttribute('role', 'dialog');
       dialog.setAttribute('aria-modal', 'true');
 
-      const next = Levels.info(result.level + 1);
-      const fresh = next.unlocks.map(id => this.buildingName(id)).join(', ');
+      const custom = result.custom;
+      const fresh = custom ? '' : Levels.info(result.level + 1).unlocks.map(id => this.buildingName(id)).join(', ');
       const body = document.createElement('div');
       body.className = 'main-menu-body';
       const line = (className, text) => { const element = document.createElement('div'); element.className = className; element.textContent = text; return element; };
@@ -549,15 +551,16 @@
       const header = document.createElement('header');
       header.className = 'resource-window-header';
       const title = document.createElement('strong');
-      title.textContent = t('Level complete!');
+      title.textContent = custom ? t('Victory!') : t('Level complete!');
       header.appendChild(title);
 
       body.append(
-        line('level-stars', '★'.repeat(result.stars) + '☆'.repeat(3 - result.stars)),
-        line('main-menu-level', t('Time: {time}', { time: this.formatTime(result.seconds) }) + ' · ' + t('Par time: {time}', { time: this.formatTime(result.par) })),
+        ...(custom ? [] : [line('level-stars', '★'.repeat(result.stars) + '☆'.repeat(3 - result.stars))]),
+        line('main-menu-level', t('Time: {time}', { time: this.formatTime(result.seconds) }) + (custom ? '' : ' · ' + t('Target time: {time}', { time: this.formatTime(result.par) }))),
         ...(fresh ? [line('main-menu-note', t('Next level unlocks: {list}', { list: fresh }))] : []),
-        button(t('Next level'), () => Levels.advance()),
-        button(t('Keep playing'), () => overlay.remove())
+        ...(custom
+          ? [button(t('Keep playing'), () => overlay.remove()), button(t('Play this map again'), () => Levels.restart()), button(t('New custom map'), () => { overlay.remove(); this.toggleMainMenu(true); this.renderMainMenu('custom'); })]
+          : [button(t('Next level'), () => Levels.advance()), button(t('Keep playing'), () => overlay.remove())])
       );
       dialog.append(header, body);
       overlay.appendChild(dialog);
@@ -944,7 +947,7 @@
         row.append(
           make('span', 'main-menu-slot-name', label),
           make('span', 'main-menu-slot-meta', entry
-            ? `${t('Level {level}', { level: entry.level })} · ${this.formatSaveTime(entry.savedAt)}`
+            ? `${entry.custom ? t('Custom map') : t('Level {level}', { level: entry.level })} · ${this.formatSaveTime(entry.savedAt)}`
             : t('Empty'))
         );
         return row;
@@ -952,7 +955,7 @@
 
       const titles = {
         main: t('Main menu'), save: t('Save game'), load: t('Load game'), confirm: t('Are you sure?'),
-        options: t('Settings'), stats: t('Statistics'),
+        options: t('Settings'), stats: t('Statistics'), custom: t('Custom map'),
       };
       const header = make('header', 'resource-window-header');
       const close = make('button', 'resource-window-close', '×');
@@ -972,8 +975,8 @@
       };
 
       if (view === 'main') {
-        if (level) body.append(make('div', 'main-menu-level', t('Level {level}: {name}', { level: level.level, name: level.name })));
-        if (CityBuilder.Levels?.completed) body.append(button(t('Next level'), () => CityBuilder.Levels.advance()));
+        if (level) body.append(make('div', 'main-menu-level', level.custom ? level.name : t('Level {level}: {name}', { level: level.level, name: level.name })));
+        if (CityBuilder.Levels?.completed && !level?.custom) body.append(button(t('Next level'), () => CityBuilder.Levels.advance()));
         body.append(
           button(t('Continue'), () => this.toggleMainMenu(false)),
           button(t('Save game'), () => this.renderMainMenu('save')),
@@ -982,9 +985,16 @@
           button(t('How to play'), () => this.openTutorial()),
           button('Changelog', () => this.openChangelog()),
           button(t('Settings'), () => this.renderMainMenu('options')),
-          button(t('Restart level'), () => this.renderMainMenu('confirm', {
-            text: t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
-            confirmLabel: t('Restart level'),
+          button(t('Custom map'), () => this.renderMainMenu('custom')),
+          ...(level?.custom ? [button(t('Back to the levels'), () => this.renderMainMenu('confirm', {
+            text: t('Return to your levels? The custom map is kept in its autosave and in your manual saves.'),
+            confirmLabel: t('Back to the levels'),
+            back: 'main',
+            onConfirm: () => CityBuilder.Levels.leaveCustom(),
+          }))] : []),
+          button(level?.custom ? t('Restart map') : t('Restart level'), () => this.renderMainMenu('confirm', {
+            text: level?.custom ? t('Restart this map? Progress on this map is lost. Manual saves are unchanged.') : t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
+            confirmLabel: level?.custom ? t('Restart map') : t('Restart level'),
             danger: true,
             back: 'main',
             onConfirm: () => CityBuilder.Levels.restart(),
@@ -1037,6 +1047,7 @@
         });
 
         body.append(slotRow('autosave', t('Autosave'), () => doLoad('autosave', t('Autosave'))));
+        if (entries.has('autocustom')) body.append(slotRow('autocustom', t('Autosave (custom map)'), () => doLoad('autocustom', t('Autosave (custom map)'))));
         for (const [id, label] of slotLabels) body.append(slotRow(id, label, () => doLoad(id, label)));
         body.append(button(t('Back'), () => this.renderMainMenu('main')));
       } else if (view === 'confirm') {
@@ -1053,6 +1064,8 @@
       } else if (view === 'stats') {
         CityBuilder.Options.fillStats(body, make);
         body.append(button(t('Back'), () => this.renderMainMenu('main')));
+      } else if (view === 'custom') {
+        CityBuilder.CustomMap.fillSetup(body, make, button, () => this.renderMainMenu('main'));
       }
 
       dialog.replaceChildren(header, body);

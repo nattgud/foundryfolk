@@ -218,7 +218,7 @@
         return element;
       };
 
-      if (stats.level) body.append(row(t('Level'), `${stats.level.level}: ${stats.level.name}`));
+      if (stats.level) body.append(row(stats.level.custom ? t('Map') : t('Level'), stats.level.custom ? stats.level.name : `${stats.level.level}: ${stats.level.name}`));
       body.append(
         row(t('Play time (this session)'), this.formatDuration(this.playSeconds)),
         row(t('Workers'), stats.workers),

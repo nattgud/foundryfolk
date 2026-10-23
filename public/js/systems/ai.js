@@ -58,7 +58,8 @@
       return this.producers[resourceId];
     },
 
-    level: () => CityBuilder.Levels?.current?.level ?? 1,
+    // Datorns styrka som en banas nummer. På en egen bana har varje datorspelare sin egen (Levels.current.aiLevels). Gäller AI.current.
+    level: () => CityBuilder.Levels?.current?.aiLevels?.[AI.current] ?? CityBuilder.Levels?.current?.level ?? 1,
 
     // Tid mellan besluten: långsam på de första banorna och en aning snabbare för varje bana
     interval() {
@@ -75,6 +76,7 @@
         const state = this.players.get(player) || { timer: 0, blocked: {}, short: {} };
         this.players.set(player, state);
         if ((state.timer -= deltaSeconds) > 0) continue;
+        this.current = player;
         state.timer = this.interval();
         this.think(player, state);
       }

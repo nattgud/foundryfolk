@@ -14,7 +14,7 @@
 
   const PREFIX = 'citybuilder.save.';
   const PENDING_KEY = 'citybuilder.pendingLoad';
-  const SLOT_IDS = ['autosave', 'slot1', 'slot2', 'slot3', 'slot4', 'slot5'];
+  const SLOT_IDS = ['autosave', 'autocustom', 'slot1', 'slot2', 'slot3', 'slot4', 'slot5'];
   const AUTOSAVE_MS = 30000;
   const FORMAT = 2;
   const BUILDING_SKIP = new Set(['x', 'y', 'id', 'type', 'removed']); // sätts av World när byggnaden skapas
@@ -110,7 +110,7 @@
     list() {
       return SLOT_IDS.map(id => ({ id, data: readSlot(id) }))
         .filter(entry => entry.data)
-        .map(({ id, data }) => ({ id, savedAt: data.savedAt, level: data.level }));
+        .map(({ id, data }) => ({ id, savedAt: data.savedAt, level: data.level, custom: !!data.custom }));
     },
 
     capture() {
@@ -177,6 +177,7 @@
         savedAt: Date.now(),
         level: levels ? levels.current.level : 1,
         runSeed: levels ? levels.runSeed : null,
+        custom: levels ? levels.custom || undefined : undefined,   // inställningarna om det är en egen bana
         speedIndex: Game ? Game.speedIndex : 0,
         headquarters: captureFields(headquarters, BUILDING_SKIP),
         rivals,
@@ -280,6 +281,7 @@
     // Returnerar true/false. Vid misslyckande finns orsaken i Save.lastError (och i webbläsarens konsol).
     save(id) {
       this.lastError = null;
+      if (id === 'autosave') id = this.slot();
       if (!SLOT_IDS.includes(id)) return this.fail('unknown save slot', id);
       if (this.suspended) return this.fail('the page is reloading');
       if (!this.ready) return this.fail('the game has not finished starting');
@@ -303,10 +305,14 @@
       return true;
     },
 
-    // Nytt spel: ta bort autosparningen och starta om. Manuella sparningar rörs inte.
-    newGame() {
+    // Autosparningens plats: banorna och en egen bana har var sin, så de skriver inte över varandra
+    slot() { return CityBuilder.Levels?.isCustom() ? 'autocustom' : 'autosave'; },
+
+    // Nytt spel: ta bort autosparningen (slot: den som ska tas bort, annars den som hör till spelet just nu) och starta om.
+    // Manuella sparningar rörs inte.
+    newGame(slot = this.slot()) {
       this.suspended = true;
-      remove(PREFIX + 'autosave');
+      remove(PREFIX + slot);
       remove(PENDING_KEY);
       location.reload();
     },
@@ -316,8 +322,9 @@
       this.installTileTracker();
       const pending = read(PENDING_KEY);
       remove(PENDING_KEY);
-      this.startData = readSlot(pending || 'autosave');
-      if (this.startData && CityBuilder.Levels) CityBuilder.Levels.restore(this.startData.level, this.startData.runSeed);
+      this.startData = readSlot(pending || this.slot());
+      const data = this.startData, levels = CityBuilder.Levels;
+      if (data && levels) { if (data.custom) levels.restoreCustom(data.custom); else levels.restore(data.level, data.runSeed); }
     },
 
     // Anropas sist i Game.init (efter att världen byggts): återställer sparningen och startar autosparningen

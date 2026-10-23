@@ -26,9 +26,13 @@
   const CHAPTER = 10;
   const RIVALS_FROM = [35, 70];  // a second rival from level 35, a third from level 70 (the player colours allow three)
   const rivalsAt = level => 1 + RIVALS_FROM.filter(from => level >= from).length;
+  const ALLIED_FROM = 60;        // with several rivals: each plays for itself (free-for-all) until this level, from here they are allied against you
+  const alliedAt = level => rivalsAt(level) > 1 && level >= ALLIED_FROM;
   const LEVEL_KEY = 'citybuilder.level';
   const RUN_KEY = 'citybuilder.runSeed';
   const PROGRESS_KEY = 'citybuilder.progress';
+  const CUSTOM_KEY = 'citybuilder.custom';                  // inställningarna för en egen bana: finns nyckeln startar spelet den banan
+  const CUSTOM_PROGRESS_KEY = 'citybuilder.progress.custom';
 
   /* ---------- Helpers ---------- */
   const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -45,6 +49,7 @@
   const store = {
     get(key) { try { return window.localStorage.getItem(key); } catch (e) { return null; } },
     set(key, value) { try { window.localStorage.setItem(key, String(value)); } catch (e) { /* ignore */ } },
+    remove(key) { try { window.localStorage.removeItem(key); } catch (e) { /* ignore */ } },
   };
 
   // Noise and randomness per cell (c = wrapper context)
@@ -604,6 +609,7 @@
     const tagKeys = [];
     if (bounty) tagKeys.push('Wealth level');
     if (trial) tagKeys.push('Trial');
+    if (rivalsAt(level) > 1) tagKeys.push(alliedAt(level) ? 'Allied rivals' : 'Rivals fight each other');
     if (guardian) tagKeys.push('Guardian level');
     if (signatureDef) tagKeys.push(signatureDef.name);
     twists.forEach(twist => tagKeys.push(twist.name));
@@ -621,6 +627,7 @@
     let goals = null;
     const info = {
       level,
+      key: level,   // identifierar banan i framstegen (en egen bana har 'custom:<seed>')
       get name() { return nameOf(); },
       theme: theme.id,
       themeObject: theme,
@@ -633,6 +640,7 @@
       trial, bounty, guardian,
       difficulty,
       rivals: rivalsAt(level),   // antal datorspelare (minst en per bana)
+      teams: alliedAt(level) ? Object.fromEntries(Array.from({ length: rivalsAt(level) }, (_, i) => [CityBuilder.Players.ENEMY + i, CityBuilder.Players.ENEMY])) : {},   // spelare -> lag (se Players.team)
       seed,
       keep,
       twists,
@@ -646,6 +654,67 @@
     };
     return info;
   };
+
+
+  /* ---------- Custom map ----------
+     A map outside the levels. The player picks the number of enemies, how strong each one is, the teams, and how much water,
+     mountain, forest and resources there is (steps 0-4, 2 = as on a normal level). Every building is unlocked, and the only goal
+     is to beat the enemies that are not on the player's team. The settings are stored under CUSTOM_KEY while the map is played. */
+  const MAX_CUSTOM_ENEMIES = 3;
+  const DIFFICULTIES = [1, 18, 35, 60, 90, 120];                    // enemy strength as a level (the AI works from the level, see AI.level)
+  const TEAM_CHOICES = ['own', 'you', 'a', 'b', 'c'];               // own = plays for itself, you = on the player's team, a-c = enemy teams
+  const SEA = [0.08, 0.14, 0.2, 0.27, 0.34];                        // Config.world.tuning per step
+  const MOUNTAIN = [0.99, 0.88, 0.76, 0.68, 0.6];
+  const FOREST = [0.55, 0.8, 1, 1.4, 2];
+  const RICHNESS = [0.25, 0.6, 1, 1.5, 2.2];
+  const BASIC_TERRAIN = ['rock', 'clay', 'limestone', 'berry_bush', 'herbs', 'mushrooms', 'apple_tree'];
+  const integer = (value, min, max, fallback) => { const n = Math.floor(Number(value)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback; };
+
+  const normalizeCustom = raw => {
+    const given = raw && typeof raw === 'object' ? raw : {};
+    const enemies = (Array.isArray(given.enemies) && given.enemies.length ? given.enemies : [{}]).slice(0, MAX_CUSTOM_ENEMIES).map(enemy => ({
+      difficulty: integer(enemy?.difficulty, 0, DIFFICULTIES.length - 1, 2),
+      team: TEAM_CHOICES.includes(enemy?.team) ? enemy.team : 'own',
+    }));
+    if (enemies.every(enemy => enemy.team === 'you')) enemies[enemies.length - 1].team = 'own';   // somebody has to be an enemy
+    return {
+      seed: integer(given.seed, 1, 999999, 1), enemies,
+      water: integer(given.water, 0, 4, 2), mountains: integer(given.mountains, 0, 4, 2),
+      forest: integer(given.forest, 0, 4, 2), resources: integer(given.resources, 0, 4, 2),
+    };
+  };
+
+  const customInfo = raw => {
+    const settings = normalizeCustom(raw), { HUMAN, ENEMY } = CityBuilder.Players;
+    const teamIds = { you: HUMAN, a: 100, b: 101, c: 102 };
+    const teams = {}, aiLevels = {};
+    settings.enemies.forEach((enemy, i) => {
+      aiLevels[ENEMY + i] = DIFFICULTIES[enemy.difficulty];
+      if (enemy.team !== 'own') teams[ENEMY + i] = teamIds[enemy.team];
+    });
+    const richness = RICHNESS[settings.resources], keep = {};
+    for (const terrain of Object.keys(TIERS)) keep[terrain] = Math.min(1, richness);
+    for (const terrain of BASIC_TERRAIN) keep[terrain] = Math.min(1, 0.5 + 0.5 * richness);
+    const strongest = Math.max(...Object.values(aiLevels));
+    return {
+      level: strongest,                       // what the enemies' strength is measured in (see AI.level), and what saves show
+      key: 'custom:' + settings.seed,
+      custom: settings,
+      get name() { return t('Custom map'); },
+      theme: 'valleys', themeObject: THEMES[0], signature: null,
+      tags: [], trial: false, bounty: false, guardian: false,
+      difficulty: strongest / MAX_LEVELS,
+      rivals: settings.enemies.length, teams, aiLevels,
+      seed: settings.seed,
+      keep, twists: [],
+      tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.85, 0.4 * richness), scatteredOre: 0.01 * richness, forest: FOREST[settings.forest] },
+      unlocks: [],
+      goal: { items: [{ key: 'm:eliminate', type: 'eliminate', amount: settings.enemies.filter(enemy => enemy.team !== 'you').length }], par: 0 },
+      needs: ['iron_ore', 'tree', 'rock', 'clay', 'coal'],
+    };
+  };
+
+  const readCustom = () => { try { const saved = JSON.parse(store.get(CUSTOM_KEY)); return saved ? normalizeCustom(saved) : null; } catch (e) { return null; } };
 
   /* ---------- Coupling to World Generation ---------- */
   const state = { info: levelInfo(1) };
@@ -721,14 +790,15 @@
   const completeListeners = [];
   let checkTimer = 0, saveTimer = 0;
 
+  const progressKey = () => (state.info.custom ? CUSTOM_PROGRESS_KEY : PROGRESS_KEY);
   const loadProgress = () => {
     let saved = null;
-    try { saved = JSON.parse(store.get(PROGRESS_KEY)); } catch (e) { /* ignore */ }
-    const same = saved && saved.run === runSeed && saved.level === state.info.level;
-    Object.assign(progress, { run: runSeed, level: state.info.level, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
+    try { saved = JSON.parse(store.get(progressKey())); } catch (e) { /* ignore */ }
+    const same = saved && saved.run === runSeed && saved.level === state.info.key;
+    Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
   };
   const resetProgress = () => Object.assign(progress, { latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, destroyed: {}, rivalsDown: 0, won: false });
-  const saveProgress = () => store.set(PROGRESS_KEY, JSON.stringify(progress));
+  const saveProgress = () => store.set(progressKey(), JSON.stringify(progress));
 
   const countBuilt = id => {
     const definition = CityBuilder.Config.buildings[id];
@@ -769,7 +839,7 @@
         checkTimer = 0;
         if (!progress.complete && (progress.won || evaluate().every(item => item.done))) {
           progress.complete = true;
-          progress.stars = starsFor(progress.seconds);
+          progress.stars = state.info.custom ? 0 : starsFor(progress.seconds);
           saveProgress();
           completeListeners.forEach(fn => { try { fn(Levels.result()); } catch (e) { console.error(e); } });
         }
@@ -780,12 +850,18 @@
 
   /* ---------- Public API ---------- */
   const listeners = [];
-  const setLevel = (n, silent) => {
-    const info = levelInfo(n);
+  // Makes a level or a custom map the current one: seed, noise offset and landscape tuning
+  const enter = info => {
     state.info = info;
     world.seed = info.seed;
     offset.x = frac(info.seed, 1) * 4000;
     offset.y = frac(info.seed, 2) * 4000;
+    Object.assign(world.tuning, world.defaults, info.tuning);
+    return info;
+  };
+  const setCustom = raw => { const info = enter(customInfo(raw)); loadProgress(); return info; };
+  const setLevel = (n, silent) => {
+    const info = enter(levelInfo(n));
     store.set(LEVEL_KEY, info.level);
     loadProgress();
     if (!silent) {
@@ -806,13 +882,19 @@
     info: levelInfo,
     list: (count = MAX_LEVELS) => Array.from({ length: count }, (_, i) => levelInfo(i + 1)),
     // Silent start: reads saved level (level 1 if nothing is saved), sets seed and offset. Called before World.init().
-    start: () => { registerSystem(); return setLevel(clampLevel(store.get(LEVEL_KEY)), true); },
+    start: () => {
+      registerSystem();
+      const custom = readCustom();
+      return custom ? setCustom(custom) : setLevel(clampLevel(store.get(LEVEL_KEY)), true);
+    },
     get runSeed() { return runSeed; },
     // Restores level and run-seed from a save (silent, before world generation)
     restore: (level, seed) => {
       if (Number.isFinite(seed) && seed > 0) { runSeed = seed; store.set(RUN_KEY, runSeed); }
+      store.remove(CUSTOM_KEY);
       return setLevel(level, true);
     },
+    restoreCustom: settings => { store.set(CUSTOM_KEY, JSON.stringify(normalizeCustom(settings))); return setCustom(settings); },
     set: n => setLevel(n),
     next: () => setLevel(state.info.level + 1),
     prev: () => setLevel(state.info.level - 1),
@@ -820,6 +902,7 @@
     newRun: (seed) => {
       runSeed = Number.isFinite(seed) ? seed : Math.floor(Math.random() * 1000000) + 1;
       store.set(RUN_KEY, runSeed);
+      store.remove(CUSTOM_KEY);
       resetProgress();
       return setLevel(1);
     },
@@ -828,7 +911,7 @@
 
     // Unlocks
     unlockLevel: unlockLevelOf,
-    isUnlocked: id => unlockLevelOf(id) <= state.info.level,
+    isUnlocked: id => !!state.info.custom || unlockLevelOf(id) <= state.info.level,
 
     // Combat results for the goals: the player defeated an enemy unit or destroyed an enemy building
     onDefeated(target) {
@@ -846,8 +929,60 @@
     get seconds() { return progress.seconds; },
     get completed() { return progress.complete; },
     get stars() { return progress.stars; },
-    result: () => ({ level: state.info.level, seconds: progress.seconds, par: state.info.goal.par, stars: progress.stars }),
+    result: () => ({ level: state.info.level, seconds: progress.seconds, par: state.info.goal.par, stars: progress.stars, custom: !!state.info.custom }),
     onComplete: fn => { completeListeners.push(fn); },
+    // ---- Custom map ----
+    CUSTOM: { maxEnemies: MAX_CUSTOM_ENEMIES, difficulties: DIFFICULTIES.length, teams: TEAM_CHOICES, steps: 5 },
+    get custom() { return state.info.custom || null; },           // settings of the current custom map, or null on a level
+    isCustom: () => !!(state.info.custom || readCustom()),         // also true before Levels.start() when a custom map is stored
+    defaultCustom: seed => normalizeCustom({ seed: seed ?? Math.floor(Math.random() * 999999) + 1 }),
+    normalizeCustom,
+    storedCustom: readCustom,
+    // Plays a custom map: the current game is saved first, then the page reloads into the new map
+    startCustom(raw) {
+      const settings = normalizeCustom(raw), save = CityBuilder.Save;
+      if (save && save.ready) save.save(save.slot());
+      store.set(CUSTOM_KEY, JSON.stringify(settings));
+      store.remove(CUSTOM_PROGRESS_KEY);
+      if (save && save.newGame) save.newGame('autocustom'); else location.reload();
+    },
+    // Back to the levels (the page reloads and continues from the autosave of the levels)
+    leaveCustom() {
+      store.remove(CUSTOM_KEY);
+      location.reload();
+    },
+    // A map of the custom settings, without changing the game: { size, cells: Uint8Array of class numbers, bases: [{ x, y, player }] }
+    // Class numbers: 0 grass, 1 water, 2 mountain, 3 forest, 4 sand, 5 ore. The bases are where the layout wants
+    // them (the real ones move a few tiles to the best spot nearby).
+    preview(raw, size = 64) {
+      const info = customInfo(raw), { World, Generator, Players } = CityBuilder;
+      const saved = { info: state.info, seed: world.seed, offset: { ...offset }, tuning: { ...world.tuning }, meadows: world.meadows, clearings: world.clearings, roads: world.roads };
+      try {
+        enter(info);
+        Generator.reset();
+        const bases = [{ x: 0, y: 0, player: Players.HUMAN }, ...info.custom.enemies.map((enemy, i) => ({ ...World.idealSite(i, info.rivals), player: Players.ENEMY + i }))];
+        world.meadows = bases.map(({ x, y }) => ({ x, y }));
+        world.clearings = bases.slice(1).map(({ x, y }) => ({ x, y, radius: world.rivalClearRadius }));
+        world.roads = [];
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const { x, y } of bases) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
+        const span = Math.max(maxX - minX, maxY - minY) + 60, step = span / size;
+        const centerX = (minX + maxX) / 2, centerY = (minY + maxY) / 2;
+        const classes = { water: 1, mountain: 2, tree: 3, sand: 4, grass: 0 };
+        const cells = new Uint8Array(size * size);
+        for (let row = 0; row < size; row++) for (let column = 0; column < size; column++) {
+          const type = Generator.terrainTypeAt(Math.round(centerX + (column - size / 2 + .5) * step), Math.round(centerY + (row - size / 2 + .5) * step));
+          cells[row * size + column] = classes[type] ?? (world.deposits.includes(type) ? 5 : 0);
+        }
+        return { size, cells, bases: bases.map(({ x, y, player }) => ({ player, x: (x - centerX) / step + size / 2, y: (y - centerY) / step + size / 2 })) };
+      } finally {
+        state.info = saved.info; world.seed = saved.seed; offset.x = saved.offset.x; offset.y = saved.offset.y;
+        Object.assign(world.tuning, saved.tuning);
+        world.meadows = saved.meadows; world.clearings = saved.clearings; world.roads = saved.roads;
+        Generator.reset();
+      }
+    },
+
     // Same level again, from scratch: new world from the same seed, goals and time reset (the autosave is removed)
     restart() {
       resetProgress();

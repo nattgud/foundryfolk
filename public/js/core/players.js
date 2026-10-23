@@ -14,8 +14,15 @@
 
     isAI: player => player !== Players.NEUTRAL && player !== Players.HUMAN,
 
-    // Datorspelarna är förbundna mot människan: fiender är den mänskliga spelaren och en datorspelare, aldrig två datorspelare
-    isHostile: (a, b) => a !== b && a !== Players.NEUTRAL && b !== Players.NEUTRAL && (a === Players.HUMAN || b === Players.HUMAN),
+    // Lag: spelare i samma lag är inte fiender. Standard är att varje spelare är ett eget lag (alla mot alla). Banan sätter lag med
+    // Players.team = { spelare: lag } (se World.init och Levels.current.teams).
+    team: {},
+    teamOf: player => Players.team[player] ?? player,
+
+    isHostile: (a, b) => a !== b && a !== Players.NEUTRAL && b !== Players.NEUTRAL && Players.teamOf(a) !== Players.teamOf(b),
+
+    // Datorspelare som måste slås ut för att vinna (de som inte är i spelarens lag)
+    hostileAI: () => Players.active.filter(player => Players.isAI(player) && Players.isHostile(Players.HUMAN, player)),
   };
 
   CityBuilder.Players = Players;
