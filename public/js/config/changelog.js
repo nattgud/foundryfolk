@@ -4,6 +4,12 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.4.420': [
+      'The game picks your language from your browser on the first run, and asks you if it has no match',
+      'Resources are shown as icons with hover names everywhere, and resource and building colours are easier to tell apart from the enemy on the minimap',
+      'The guide is simpler, explains soldier training in a garrison or guard tower, and has a green Next button',
+      'Mission par times now count mining, smelting, crafting, scouting and marching, so star targets are more realistic',
+    ],
     '0.4.419': [
       'The tutorial is now a 13-step guide that lights up the menu or button it explains: goals, resources, minimap, building, pausing, carriers, speed, fog, finding the enemy with watchtowers, and fighting',
     ],

@@ -376,33 +376,108 @@
 
   const storageFactor = resourceId => (CityBuilder.Economy && CityBuilder.Economy.factorOf ? CityBuilder.Economy.factorOf(resourceId) : 1);
 
-  // Rough seconds to make one unit of a resource with the cheapest unlocked producer (work time + walking, inputs included)
-  const unitSeconds = (resourceId, level, guard = []) => {
-    if (guard.includes(resourceId)) return 60;
-    let best = Infinity;
+  // ---- Par time -------------------------------------------------------------------------------------------------------
+  // What a decent player needs. Every step of a production chain costs time twice: the building has to be placed and built, and
+  // goods have to travel between the steps before the next one can start. War adds finding the rival, an army and a long march.
+  const HOP_SECONDS = 20;        // a carrier trip between two steps of a chain
+  const SETUP_SECONDS = 45;      // placing a building and collecting its materials (plus its build time)
+  const TERRAIN_SECONDS = 60;    // finding and reaching the terrain of a mine or other terrain-bound building
+  const DEPTH_FACTOR = 0.25;     // each extra step in a chain slows the flow down by this much (waiting, uneven speeds)
+  const EXPLORE_SECONDS = 600;   // finding the rival 60-90 tiles away: watchtowers outward, and some wrong guesses
+  const MARCH_SECONDS = 150;     // the army's march there (and back and forth between targets)
+
+  // Cheapest unlocked way to make a resource: { seconds per unit (single producer per step), latency to the first unit,
+  // depth (number of steps in the chain), ids (the buildings of the chain) }
+  const chain = (resourceId, level, guard = []) => {
+    const fallback = { seconds: 60, latency: 60, depth: 1, ids: new Set() };
+    if (guard.includes(resourceId)) return fallback;
+    let best = null;
     for (const [id, definition] of Object.entries(CityBuilder.Config.buildings)) {
       const job = definition.job;
       if (!job || unlockLevelOf(id) > level) continue;
       const amount = job.outputs?.[resourceId] ?? (job.outputResource === resourceId ? 1 : 0);
       if (!amount) continue;
-      let seconds = ((job.kind === 'gather' ? job.workSeconds || job.craftSeconds || 6 : job.craftSeconds || 10) + 8) / amount;
-      for (const [input, count] of Object.entries(job.inputs || {})) seconds += count * unitSeconds(input, level, [...guard, resourceId]) / amount;
-      best = Math.min(best, seconds);
+      const work = job.kind === 'gather' ? job.workSeconds || job.craftSeconds || 6 : job.craftSeconds || 10;
+      const candidate = { seconds: (work + 8) / amount, latency: work + HOP_SECONDS, depth: 1, ids: new Set([id]) };
+      for (const [input, count] of Object.entries(job.inputs || {})) {
+        const source = chain(input, level, [...guard, resourceId]);
+        candidate.seconds += count * source.seconds / amount;
+        candidate.latency = Math.max(candidate.latency, source.latency + work + HOP_SECONDS);
+        candidate.depth = Math.max(candidate.depth, source.depth + 1);
+        source.ids.forEach(ingredient => candidate.ids.add(ingredient));
+      }
+      if (!best || candidate.seconds < best.seconds) best = candidate;
     }
-    return best === Infinity ? 60 : best;
+    return best || fallback;
   };
 
-  const MILITARY_SECONDS = { soldiers: 60, kills: 25, destroy: 150, eliminate: 900 };   // rough par time per unit of a military goal
+  // Time to place and build a set of buildings (once per level, shared between the goals that need them)
+  const setupSeconds = ids => {
+    let seconds = 0;
+    for (const id of ids) {
+      const definition = CityBuilder.Config.buildings[id];
+      seconds += (definition.buildDuration || 5) + SETUP_SECONDS + (definition.placeOnTerrain || definition.job?.kind === 'gather' && !definition.job.sourceUnit ? TERRAIN_SECONDS : 0);
+    }
+    return seconds;
+  };
 
-  // Par time: what a decent player needs. Grows with the goals (stock amounts, chain depth, number of buildings) and the level.
+  // An army of 'size' soldiers: the cheapest unlocked soldier type, its equipment chains and the building that trains it
+  const armyPlan = (level, size, workers) => {
+    const { buildings, units } = CityBuilder.Config;
+    const trainers = Object.entries(buildings).filter(([id, definition]) => definition.job?.kind === 'garrison' && unlockLevelOf(id) <= level);
+    let best = null;
+    for (const [kind, unit] of Object.entries(units)) {
+      if (!unit.isSoldier || !unit.training) continue;
+      const trainer = trainers.find(([, definition]) => definition.job.trains.includes(kind));
+      if (!trainer) continue;
+      const ids = new Set([trainer[0]]);
+      let perSoldier = unit.training.seconds, latency = 0, depth = 1;
+      for (const [input, count] of Object.entries(unit.training.inputs)) {
+        const source = chain(input, level);
+        perSoldier += count * source.seconds * (1 + DEPTH_FACTOR * (source.depth - 1)) / workers;
+        latency = Math.max(latency, source.latency); depth = Math.max(depth, source.depth);
+        source.ids.forEach(id => ids.add(id));
+      }
+      const seconds = latency + size * perSoldier;
+      if (!best || seconds + setupSeconds(ids) < best.seconds + setupSeconds(best.ids)) best = { seconds, ids };
+    }
+    return best || { seconds: size * 120, ids: new Set() };
+  };
+
+  const KILL_SECONDS = 25, DESTROY_SECONDS = 150, ELIMINATE_SECONDS = 1200;
+
   const parSeconds = (items, level) => {
     const workers = 2 + Math.floor(level / 10);   // producers a player typically runs at once
     let seconds = 240 + 6 * level;
+    const ids = new Set();
+    let trained = 0;   // soldiers a 'soldiers' goal already provides for the war
+    const war = items.some(item => item.type === 'kills' || item.type === 'destroy' || item.type === 'eliminate');
     for (const item of items) {
       if (item.type === 'build') seconds += item.amount * ((CityBuilder.Config.buildings[item.id].buildDuration || 5) + 40);
-      else if (MILITARY_SECONDS[item.type]) seconds += item.amount * MILITARY_SECONDS[item.type];
-      else seconds += item.amount * unitSeconds(item.resource, level) / workers;
+      else if (item.type === 'soldiers') {
+        const army = armyPlan(level, item.amount, workers);
+        trained += item.amount;
+        seconds += army.seconds; army.ids.forEach(id => ids.add(id));
+      } else if (item.type === 'kills') seconds += item.amount * KILL_SECONDS;
+      else if (item.type === 'destroy') seconds += item.amount * DESTROY_SECONDS;
+      else if (item.type === 'eliminate') seconds += ELIMINATE_SECONDS;
+      else {
+        const made = chain(item.resource, level);
+        seconds += made.latency + item.amount * made.seconds * (1 + DEPTH_FACTOR * (made.depth - 1)) / workers;
+        made.ids.forEach(id => ids.add(id));
+      }
     }
+    if (war) { // finding the rival, an army big enough to beat its base, and the march
+      const extra = Math.min(24, 6 + Math.floor(level / 4)) - trained;
+      seconds += EXPLORE_SECONDS + MARCH_SECONDS;
+      if (extra > 0) {
+        const army = armyPlan(level, extra, workers);
+        seconds += army.seconds;
+        army.ids.forEach(id => ids.add(id));
+      }
+      ids.add('watchtower');
+    }
+    seconds += setupSeconds(ids);
     return Math.round(seconds / 10) * 10;
   };
 
