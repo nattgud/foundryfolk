@@ -4,6 +4,10 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.5.1': [
+      'More enemies on later levels: two rivals from level 35 and three from level 70. They are allied against you and their bases are spread apart',
+      'The "destroy the enemy base" goal now counts every rival base, and mission par times account for the extra enemies',
+    ],
     '0.5.0': [
       'Coins: silver and gold are smelted and minted into coins at the Mint, and the Market sells goods for coins (including rare ones)',
       'Boosts: choose per building to use a Potion (gatherers), Enchanted Wood (crafters) or a Talisman (garrisons) for more output or faster training',

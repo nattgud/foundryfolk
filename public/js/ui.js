@@ -232,7 +232,7 @@
         case 'soldiers': return t('Train soldiers: {have}/{need}', numbers);
         case 'kills': return t('Defeat enemy units: {have}/{need}', numbers);
         case 'destroy': return item.id === 'any' ? t('Destroy enemy buildings: {have}/{need}', numbers) : t('Destroy enemy {name}: {have}/{need}', { name: lower(this.buildingName(item.id)), ...numbers });
-        case 'eliminate': return t('Destroy the enemy base');
+        case 'eliminate': return item.amount > 1 ? t('Destroy the enemy bases: {have}/{need}', numbers) : t('Destroy the enemy base');
         default: return t('Store {name}: {have}/{need}', { name: this.resourceChip(item.resource), ...numbers });
       }
     },

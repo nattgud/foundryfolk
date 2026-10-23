@@ -87,7 +87,7 @@
     // väljs den med minst vatten och berg runt sig (de sex bästa jämförs) och ungefär samma avstånd till resurserna som spelarens start (rättvist).
     // En gräsplan läggs in runt basen (clearings), och små fyndigheter av det banan kräver om det saknas i närheten (se endow).
     async rivalSite(player, step = async () => {}) {
-      const { rivalDistance: [near, far], rivalClearRadius: clear, fairResources } = Config.world;
+      const { rivalDistance: [near, far], rivalSpacing, rivalClearRadius: clear, fairResources } = Config.world;
       const salt = Config.world.seed * 131 + player * 977;
       const base = Utils.hash(player, 11, salt) * 2 * Math.PI, spread = Utils.hash(player, 12, salt);
       const reference = this.survey(0, 0).nearest;
@@ -100,6 +100,9 @@
         sites.push({ x, y, i, blocked: this.survey(x, y, [], 24, 6).blocked });
         await step(t('Surveying the land'));
       }
+      // Fler rivaler ska inte hamna ovanpå varandra: platser nära en redan placerad rival väljs bort (om det finns andra)
+      const apart = sites.filter(site => Object.values(this.hqs).every(hq => hq.player === Players.HUMAN || Math.hypot(hq.x - site.x, hq.y - site.y) >= rivalSpacing));
+      sites.splice(0, sites.length, ...(apart.length ? apart : sites));
       sites.sort((a, b) => a.blocked - b.blocked || a.i - b.i).splice(6);
       let best = null, bestScore = Infinity;
       for (const { x, y, i } of sites) {

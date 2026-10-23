@@ -124,12 +124,15 @@
     },
 
     // En spelare utan bas är utslagen: allt hens byggnader och enheter försvinner. Utslagen spelare = förlust, sista datorspelaren = seger.
-    eliminate(player) {
+    eliminate(player, restoring = false) {
       for (const building of [...World.buildings]) if (building.player === player) CityBuilder.Construction.dismantle(building, false);
       for (const unit of [...World.units]) if (unit.player === player) this.kill(unit);
       if (player !== Players.HUMAN) Players.active = Players.active.filter(other => other !== player);
       if (player === Players.HUMAN) CityBuilder.Game?.defeat?.();
-      else if (!Players.active.some(Players.isAI)) CityBuilder.Levels?.win?.();
+      else {
+        if (!restoring) CityBuilder.Levels?.onRivalDown?.();
+        if (!Players.active.some(Players.isAI)) CityBuilder.Levels?.win?.();
+      }
     },
 
     // ---- Skapa soldater ------------------------------------------------------------------------

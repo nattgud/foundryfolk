@@ -180,6 +180,7 @@
         speedIndex: Game ? Game.speedIndex : 0,
         headquarters: captureFields(headquarters, BUILDING_SKIP),
         rivals,
+        eliminated: CityBuilder.Players.aiPlayers().filter(player => !CityBuilder.Players.active.includes(player)),
         buildings,
         soldiers,
         carriers: haulers.length,
@@ -231,6 +232,7 @@
       }
 
       restoreFields(headquarters, data.headquarters);
+      for (const player of data.eliminated || []) CityBuilder.Combat.eliminate(player, true);   // World.init skapar alla rivaler på nytt: de utslagna tas bort igen
       for (const rival of data.rivals || []) {
         const hq = World.hqOf(rival.player);
         if (hq) restoreFields(hq, rival.fields);

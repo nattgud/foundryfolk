@@ -9,10 +9,13 @@
     ENEMY: 2,                 // första datorspelaren. Fler får nästa lediga nummer (3, 4, ...)
     active: [1],              // spelarna i spelet (World.addPlayer lägger till datorspelare)
 
+    // Alla datorspelare i banan (aktiva eller utslagna): Levels.current.rivals stycken från ENEMY
+    aiPlayers: () => Array.from({ length: CityBuilder.Levels?.current?.rivals ?? 1 }, (_, i) => Players.ENEMY + i),
+
     isAI: player => player !== Players.NEUTRAL && player !== Players.HUMAN,
 
-    // Fiender är två olika riktiga spelare
-    isHostile: (a, b) => a !== b && a !== Players.NEUTRAL && b !== Players.NEUTRAL,
+    // Datorspelarna är förbundna mot människan: fiender är den mänskliga spelaren och en datorspelare, aldrig två datorspelare
+    isHostile: (a, b) => a !== b && a !== Players.NEUTRAL && b !== Players.NEUTRAL && (a === Players.HUMAN || b === Players.HUMAN),
   };
 
   CityBuilder.Players = Players;

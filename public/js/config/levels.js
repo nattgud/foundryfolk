@@ -24,6 +24,8 @@
   const MISSION_START = 16;     // levels 1-15 train for combat, from here the goals are attack missions
   const ELIMINATE_START = 26;   // from here the rival's base must be destroyed
   const CHAPTER = 10;
+  const RIVALS_FROM = [35, 70];  // a second rival from level 35, a third from level 70 (the player colours allow three)
+  const rivalsAt = level => 1 + RIVALS_FROM.filter(from => level >= from).length;
   const LEVEL_KEY = 'citybuilder.level';
   const RUN_KEY = 'citybuilder.runSeed';
   const PROGRESS_KEY = 'citybuilder.progress';
@@ -460,16 +462,17 @@
         seconds += army.seconds; army.ids.forEach(id => ids.add(id));
       } else if (item.type === 'kills') seconds += item.amount * KILL_SECONDS;
       else if (item.type === 'destroy') seconds += item.amount * DESTROY_SECONDS;
-      else if (item.type === 'eliminate') seconds += ELIMINATE_SECONDS;
+      else if (item.type === 'eliminate') seconds += ELIMINATE_SECONDS * item.amount;
       else {
         const made = chain(item.resource, level);
         seconds += made.latency + item.amount * made.seconds * (1 + DEPTH_FACTOR * (made.depth - 1)) / workers;
         made.ids.forEach(id => ids.add(id));
       }
     }
-    if (war) { // finding the rival, an army big enough to beat its base, and the march
-      const extra = Math.min(24, 6 + Math.floor(level / 4)) - trained;
-      seconds += EXPLORE_SECONDS + MARCH_SECONDS;
+    if (war) { // finding the rival(s), an army big enough to beat their bases, and the march
+      const rivals = rivalsAt(level);
+      const extra = Math.min(24, 6 + Math.floor(level / 4)) + 6 * (rivals - 1) - trained;
+      seconds += (EXPLORE_SECONDS * (1 + 0.7 * (rivals - 1))) + MARCH_SECONDS * rivals;
       if (extra > 0) {
         const army = armyPlan(level, extra, workers);
         seconds += army.seconds;
@@ -497,7 +500,7 @@
       if (level >= MISSION_START + 3) items.push({ key: 'm:destroy:' + second, type: 'destroy', id: second, amount });
       if (level >= MISSION_START + 5) items.push({ key: 'm:destroy:any', type: 'destroy', id: 'any', amount: 3 + (level - MISSION_START - 5) });
     }
-    if (level >= ELIMINATE_START) items.push({ key: 'm:eliminate', type: 'eliminate', amount: 1 });
+    if (level >= ELIMINATE_START) items.push({ key: 'm:eliminate', type: 'eliminate', amount: rivalsAt(level) });
     return items;
   };
 
@@ -629,7 +632,7 @@
       get tags() { return tagKeys.map(key => t(key)); },
       trial, bounty, guardian,
       difficulty,
-      rivals: 1,   // antal datorspelare (minst en per bana)
+      rivals: rivalsAt(level),   // antal datorspelare (minst en per bana)
       seed,
       keep,
       twists,
@@ -714,7 +717,7 @@
 
   /* ---------- Goal progress ---------- */
   const Economy = () => CityBuilder.Economy;
-  const progress = { run: null, level: null, latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, destroyed: {}, won: false };
+  const progress = { run: null, level: null, latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, destroyed: {}, rivalsDown: 0, won: false };
   const completeListeners = [];
   let checkTimer = 0, saveTimer = 0;
 
@@ -722,9 +725,9 @@
     let saved = null;
     try { saved = JSON.parse(store.get(PROGRESS_KEY)); } catch (e) { /* ignore */ }
     const same = saved && saved.run === runSeed && saved.level === state.info.level;
-    Object.assign(progress, { run: runSeed, level: state.info.level, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, won: same ? !!saved.won : false });
+    Object.assign(progress, { run: runSeed, level: state.info.level, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
   };
-  const resetProgress = () => Object.assign(progress, { latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, destroyed: {}, won: false });
+  const resetProgress = () => Object.assign(progress, { latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, destroyed: {}, rivalsDown: 0, won: false });
   const saveProgress = () => store.set(PROGRESS_KEY, JSON.stringify(progress));
 
   const countBuilt = id => {
@@ -743,7 +746,7 @@
       case 'soldiers': return CityBuilder.Garrison.soldiersOf(CityBuilder.Players.HUMAN);
       case 'kills': return progress.kills;
       case 'destroy': return progress.destroyed[item.id] || 0;
-      case 'eliminate': return progress.won ? 1 : 0;
+      case 'eliminate': return progress.won ? item.amount : progress.rivalsDown;
       default: return Economy() ? Economy().totalAmount(item.resource) : 0;
     }
   };
@@ -833,6 +836,8 @@
       progress.destroyed.any = (progress.destroyed.any || 0) + 1;
       progress.destroyed[target.type] = (progress.destroyed[target.type] || 0) + 1;
     },
+    // A rival's base is destroyed (counts towards the 'eliminate' goal)
+    onRivalDown() { progress.rivalsDown++; },
     // The last rival is gone: the level is won, whatever the other goals say
     win() { progress.won = true; },
 
