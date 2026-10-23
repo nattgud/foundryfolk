@@ -933,8 +933,9 @@
         if (text !== undefined) element.textContent = text;
         return element;
       };
-      const button = (text, onclick, className = '') => {
-        const element = make('button', 'main-menu-button ' + className, text);
+      const button = (text, onclick, className = '', icon = '') => {
+        const element = make('button', 'main-menu-button ' + className);
+        if (icon) element.append(make('span', 'main-menu-icon', icon), make('span', '', text)); else element.textContent = text;
         element.type = 'button';
         if (onclick) element.onclick = onclick; else element.disabled = true;
         return element;
@@ -976,29 +977,29 @@
 
       if (view === 'main') {
         if (level) body.append(make('div', 'main-menu-level', level.custom ? level.name : t('Level {level}: {name}', { level: level.level, name: level.name })));
-        if (CityBuilder.Levels?.completed && !level?.custom) body.append(button(t('Next level'), () => CityBuilder.Levels.advance()));
+        if (CityBuilder.Levels?.completed && !level?.custom) body.append(button(t('Next level'), () => CityBuilder.Levels.advance(), '', '⏭'));
         body.append(
-          button(t('Continue'), () => this.toggleMainMenu(false)),
-          button(t('Save game'), () => this.renderMainMenu('save')),
-          button(t('Load game'), entries.size ? () => this.renderMainMenu('load') : null),
-          button(t('Statistics'), () => this.renderMainMenu('stats')),
-          button(t('How to play'), () => this.openTutorial()),
-          button('Changelog', () => this.openChangelog()),
-          button(t('Settings'), () => this.renderMainMenu('options')),
-          button(t('Custom map'), () => this.renderMainMenu('custom')),
+          button(t('Continue'), () => this.toggleMainMenu(false), '', '▶'),
+          button(t('Save game'), () => this.renderMainMenu('save'), '', '💾'),
+          button(t('Load game'), entries.size ? () => this.renderMainMenu('load') : null, '', '📂'),
+          button(t('Statistics'), () => this.renderMainMenu('stats'), '', '📊'),
+          button(t('How to play'), () => this.openTutorial(), '', '❓'),
+          button('Changelog', () => this.openChangelog(), '', '📜'),
+          button(t('Settings'), () => this.renderMainMenu('options'), '', '⚙️'),
+          button(t('Custom map'), () => this.renderMainMenu('custom'), '', '🗺️'),
           ...(level?.custom ? [button(t('Back to the levels'), () => this.renderMainMenu('confirm', {
             text: t('Return to your levels? The custom map is kept in its autosave and in your manual saves.'),
             confirmLabel: t('Back to the levels'),
             back: 'main',
             onConfirm: () => CityBuilder.Levels.leaveCustom(),
-          }))] : []),
+          }), '', '↩️')] : []),
           button(level?.custom ? t('Restart map') : t('Restart level'), () => this.renderMainMenu('confirm', {
             text: level?.custom ? t('Restart this map? Progress on this map is lost. Manual saves are unchanged.') : t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
             confirmLabel: level?.custom ? t('Restart map') : t('Restart level'),
             danger: true,
             back: 'main',
             onConfirm: () => CityBuilder.Levels.restart(),
-          })),
+          }), '', '🔄'),
           button(t('New game'), () => this.renderMainMenu('confirm', {
             text: t('New game resets the game and autosave, and generates new maps. Manual saves are unchanged.'),
             confirmLabel: t('Start a new game'),
@@ -1010,7 +1011,7 @@
               saveSystem.newGame();
               this.toggleMainMenu(false);
             },
-          }))
+          }), '', '✨')
         );
         if (window.version) body.append(make('div', 'main-menu-note', 'Version ' + window.version));
       } else if (view === 'save') {
@@ -1799,6 +1800,14 @@
           padding: 10px 12px;
           font-size: 14px;
           text-align: left;
+        }
+
+        .main-menu-icon {
+          display: inline-block;
+          width: 28px;
+          margin-right: 6px;
+          text-align: center;
+          font-size: 17px;
         }
 
         .main-menu-button:disabled {

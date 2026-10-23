@@ -41,6 +41,8 @@
       synth: render(0.9, time => (note(523, time, 0, 0.5) + note(659, time, 0.14, 0.5) + note(784, time, 0.28, 0.5) + note(1047, time, 0.42, 0.45)) * 0.3),
       maxVoices: 1,
     },
+    // Larm: en siren som växlar mellan två toner, två varv
+    alarm: { synth: render(1.2, (time, p) => (Math.sign(Math.sin(TAU * (Math.floor(time * 3.3) % 2 ? 640 : 880) * time)) * 0.5 + Math.sin(TAU * (Math.floor(time * 3.3) % 2 ? 640 : 880) * time) * 0.5) * 0.35 * Math.min(1, (1 - p) * 4)), volume: 0.9, pitch: 0, maxVoices: 1, cooldown: 5 },
     drop: { synth: render(0.04, (time, p) => Math.sin(TAU * 900 * time) * Math.pow(1 - p, 3) * 0.3), volume: 0.5, cooldown: 0.05, maxVoices: 4 },
   };
 

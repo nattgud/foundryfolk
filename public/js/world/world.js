@@ -60,6 +60,7 @@
         last = performance.now();
         await report(Math.min(1, done / total), text);
       };
+      if (!rivals) this.endow(Players.HUMAN, 0, 0, Config.world.seed * 131 + Players.ENEMY * 977);   // annars gör rivalSite det (spelarens start, en gång)
       for (let i = 0; i < rivals; i++) this.addPlayer(Players.ENEMY + i, ...await this.rivalSite(Players.ENEMY + i, i, rivals, step));
       await this.warm(step);
     },

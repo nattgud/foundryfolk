@@ -526,9 +526,15 @@
       // Pilen: i kanten, pekar mot huvudlagret när det inte syns på skärmen
       const hqOnScreen = hq.x >= range.minX && hq.x <= range.maxX && hq.y >= range.minY && hq.y <= range.maxY;
       if (!hqOnScreen) this.drawArrow(context, Math.atan2(hq.y + 0.5 - centerY, hq.x + 0.5 - centerX), radius);
+
+      // Röd pil mot platsen där fienden senast attackerade (10 sekunder, se Combat.raiseAlarm), på samma sätt
+      const attack = CityBuilder.Combat.alarmArrow();
+      if (attack && !(attack.x >= range.minX && attack.x <= range.maxX && attack.y >= range.minY && attack.y <= range.maxY)) {
+        this.drawArrow(context, Math.atan2(attack.y + 0.5 - centerY, attack.x + 0.5 - centerX), radius, '#ff3b30');
+      }
     },
 
-    drawArrow(context, angle, radius) {
+    drawArrow(context, angle, radius, color = '#ffd23f') {
       context.save();
       context.translate(radius, radius);
       context.rotate(angle);
@@ -543,7 +549,7 @@
       context.lineWidth = 3;
       context.strokeStyle = '#0d1115';
       context.stroke();
-      context.fillStyle = '#ffd23f';
+      context.fillStyle = color;
       context.fill();
       context.restore();
     },

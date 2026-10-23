@@ -25,7 +25,8 @@
   const ELIMINATE_START = 26;   // from here the rival's base must be destroyed
   const CHAPTER = 10;
   const RIVALS_FROM = [35, 70];  // a second rival from level 35, a third from level 70 (the player colours allow three)
-  const rivalsAt = level => 1 + RIVALS_FROM.filter(from => level >= from).length;
+  const FIRST_RIVAL = MISSION_START - 1;   // below this level there is no enemy at all: nobody can attack you before you have learned to defend
+  const rivalsAt = level => (level < FIRST_RIVAL ? 0 : 1 + RIVALS_FROM.filter(from => level >= from).length);
   const ALLIED_FROM = 60;        // with several rivals: each plays for itself (free-for-all) until this level, from here they are allied against you
   const alliedAt = level => rivalsAt(level) > 1 && level >= ALLIED_FROM;
   const LEVEL_KEY = 'citybuilder.level';

@@ -97,8 +97,21 @@
     },
 
     // attacker (valfri) är den som gav sista slaget: bara spelarens egna segrar räknas mot banans mål
+    // Larm när en fiende träffar något av spelarens: ett ljud (sedan vila) och en röd pil på minikartan (Combat.alarm, ritas av minimap.js)
+    ALARM_SOUND_COOLDOWN: 30, ALARM_ARROW_SECONDS: 10,
+    alarm: { x: 0, y: 0, arrowUntil: -1, soundAfter: 0 },
+    raiseAlarm(target, attacker) {
+      if (target.player !== Players.HUMAN || !attacker || !Players.isHostile(Players.HUMAN, attacker.player)) return;
+      const alarm = this.alarm;
+      alarm.x = target.x; alarm.y = target.y;
+      alarm.arrowUntil = this.time + this.ALARM_ARROW_SECONDS;   // en ny attack under tiden startar om pilens tid
+      if (this.time >= alarm.soundAfter) { alarm.soundAfter = this.time + this.ALARM_SOUND_COOLDOWN; CityBuilder.Sound?.play('alarm'); }
+    },
+    alarmArrow() { return this.time < this.alarm.arrowUntil ? this.alarm : null; },
+
     damage(target, amount, attacker) {
       if (target.hp == null || target.removed) return;
+      this.raiseAlarm(target, attacker);
       target.hp -= amount;
       if (target.hp <= 0) this.kill(target, attacker);
     },

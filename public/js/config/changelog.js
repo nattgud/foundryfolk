@@ -4,6 +4,12 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.6.1': [
+      'Enemies no longer attack before 30 minutes into the level, and only once they have seen one of your buildings or units',
+      'There is no enemy at all on levels 1-14, so nobody can attack you before you have learned to defend',
+      'Alarm: a siren sounds when an enemy attacks (at most once every 30 seconds), and a red arrow on the minimap points at the attack for 10 seconds',
+      'The main menu buttons have icons',
+    ],
     '0.6.0': [
       'Custom map: a new menu option for playing a map outside the levels. Choose 1-3 enemies, how strong each one is, the teams, and how much water, mountains, forest and resources there is, with a simple preview of the land before you start',
       'Rivals now fight each other until level 60; from level 60 they are allied against you',

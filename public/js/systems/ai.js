@@ -40,6 +40,8 @@
 
   const costOf = definition => Utils.sumValues(definition.buildCost);
 
+  const gameSeconds = () => CityBuilder.Levels?.seconds ?? 0;   // speltid på banan (sparas, så anfallstiden gäller även efter omladdning)
+
   const AI = {
     players: new Map(),      // spelare -> { timer, blocked: { byggnadstyp: tid då den får provas igen }, short: { resurs: { since, seen } } }
     time: 0,
@@ -102,12 +104,13 @@
 
     decide(player, state) {
       const census = this.census(player);
-      const attacking = this.attacking(player);
+      const ready = this.ready(player), target = ready && this.enemyTarget(player, state);
+      const attacking = !!target && gameSeconds() >= Config.ai.attack.afterSeconds;   // anfaller först efter en tid, och bara om den sett något av motståndaren
       this.setStance(player, attacking ? 'attack' : 'defend');
 
       const [base, every, cap] = Config.ai.maxUnderConstruction;
       if (census.unfinished >= Math.min(cap, base + Math.floor((this.level() - 1) / every))) return;
-      if (attacking && this.advance(player, state, census)) return;
+      if (ready && (!target ? this.explore(player, state, census) : attacking && this.advance(player, state, census))) return;   // spaning går före anfallstiden, utposter mot fienden inte
 
       const decide = (type, trail = []) => this.need(player, state, census, type, trail);
       for (const [type, target] of Config.ai.build) {
@@ -181,8 +184,8 @@
 
     // ---- Anfall: samma sätt som spelaren (utposter av vakttorn nära fienden, sedan attackläge) --------
 
-    // Från en viss bana, och när armén är stor nog
-    attacking(player) {
+    // Redo för krig: från en viss bana, och när armén är stor nog
+    ready(player) {
       const { fromLevel, soldiers: [base, extra, cap] } = Config.ai.attack, level = this.level();
       return level >= fromLevel && Garrison.soldiersOf(player) >= Math.min(cap, base + extra * (level - fromLevel));
     },
