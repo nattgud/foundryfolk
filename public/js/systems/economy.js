@@ -12,7 +12,7 @@
   setFactor(0.4, 'iron copper tin bronze steel tar sulfur');
   setFactor(0.3, 'axe pickaxe hammer saw scythe shovel knife sword bow leather_armor iron_armor');
   setFactor(0.2, 'horse');
-  setFactor(0.15, 'silver_ore silver gold_ore crystal enchanted_wood potion cursed_ash coins');
+  setFactor(0.15, 'silver_ore silver gold_ore crystal enchanted_wood potion cursed_ash');
 setFactor(0.1, 'talisman');
   setFactor(0.08, 'gold gemstone moonstone fallen_star ancient_relic');
   const MIN_CAPACITY = 5;
@@ -43,6 +43,7 @@ setFactor(0.1, 'talisman');
     factorOf: resourceId => Config.resources[resourceId]?.storageFactor ?? STORAGE_FACTOR[resourceId] ?? 1,
 
     capacity(resourceId, player) {
+      if (resourceId === 'coins') return Infinity;   // mynt har inget tak: man kan äga hur många som helst
       return Math.max(MIN_CAPACITY, Math.floor(this.stats(player).baseCapacity * this.factorOf(resourceId)));
     },
     // Finns det plats för en till (inklusive leveranser på väg)?

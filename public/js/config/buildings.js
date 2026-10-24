@@ -792,7 +792,7 @@ CityBuilder.Config.buildings = {
         wood: 2, plank: 3, stone: 3, clay: 3, sand: 2, limestone: 4, brick: 5, charcoal: 4, coal: 4,
         grain: 2, flour: 3, bread: 5, meat: 3, fish: 3, leather: 6, salt: 6,
         iron_ore: 6, copper_ore: 6, tin_ore: 6, iron: 8, copper: 10, tin: 10, bronze: 14,
-        straw: 2, tar: 4, apples: 2, berries: 2, mushrooms: 3, herbs: 4, bone: 3, steel: 18,
+        straw: 2, apples: 2, berries: 2, mushrooms: 3, herbs: 4,
         crystal: 25, gemstone: 30, moonstone: 40,
       },
     },

@@ -733,11 +733,17 @@
       return item;
     },
 
+    // "mängd / tak", eller bara mängden för resurser utan tak (mynt)
+    stockText(resourceId, amount = Economy.totalAmount(resourceId)) {
+      const capacity = Economy.capacity(resourceId);
+      return Number.isFinite(capacity) ? amount + ' / ' + capacity : String(amount);
+    },
+
     resourceTooltip(resourceId) {
       const resource = Config.resources[resourceId];
       const total = Economy.totalAmount(resourceId);
       const free = Economy.freeAmount ? Economy.freeAmount(resourceId) : total;
-      const details = [total + ' / ' + Economy.capacity(resourceId)];
+      const details = [this.stockText(resourceId, total)];
       if (free !== total) details.push(t('Free: {amount}', { amount: free }));
       if (resource.description) details.push(resource.description);
       return this.tooltipContent(this.resourceName(resourceId), null, details);
@@ -1018,7 +1024,7 @@
       if (!Economy.marketOf()) return this.closeMarket();
       const buying = state.mode === 'buy', verb = t(buying ? 'Buy' : 'Sell');
       const coins = Economy.freeAmount('coins');
-      const coinsHtml = this.resourceChip('coins', Economy.totalAmount('coins') + ' / ' + Economy.capacity('coins'));
+      const coinsHtml = this.resourceChip('coins', Economy.totalAmount('coins'));
       if (state.coinsHtml !== coinsHtml) state.coins.innerHTML = state.coinsHtml = coinsHtml;
       for (const key in state.modeButtons) state.modeButtons[key].classList.toggle('on', key === state.mode);
       for (const key in state.amountButtons) state.amountButtons[key].classList.toggle('on', +key === state.amount);
@@ -1034,7 +1040,7 @@
           ? (Math.floor(coins / unit) < 1 ? t('Not enough coins') : t('No room in storage'))
           : (free < 1 ? t('Nothing to sell') : t('No room for the coins'));
         const html = count > 0 ? `${verb} ${count} · ${this.resourceChip('coins', count * unit)}` : verb;
-        const stockText = Economy.totalAmount(resourceId) + ' / ' + Economy.capacity(resourceId);
+        const stockText = this.stockText(resourceId);
         if (stock.textContent !== stockText) stock.textContent = stockText;
         if (price.dataset.unit !== String(unit)) { price.dataset.unit = unit; price.innerHTML = this.resourceChip('coins', unit); }
         if (button.dataset.html !== html) { button.dataset.html = html; button.innerHTML = html; }

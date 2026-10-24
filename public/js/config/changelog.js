@@ -4,6 +4,10 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.7.4': [
+      'Coins have no storage limit any more: you can own as many as you like',
+      'The Market no longer sells goods that nothing in the game makes or uses (steel, bone, tar)',
+    ],
     '0.7.3': [
       'Hotkeys for the build menu: a number opens a category and then a number picks a building (Esc goes back). With one of your buildings selected: P pause, B boost, R change recipe, T trade, S attack/defence, Z X C V train soldiers, Delete demolish (press twice). The keys never use Ctrl, Alt or Cmd, and are shown when you hover over a button',
       'The minimap rings buildings with problems: a red ring with ! when a gatherer finds nothing to gather, and an orange or red ring when a building stands still most of the time',
