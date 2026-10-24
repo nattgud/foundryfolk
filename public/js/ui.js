@@ -75,7 +75,6 @@
     openCategoryId: null,
     tooltipElement: null,
     lastBuildingCount: 0,
-    inspectedTile: null,     // markerad terrängnod { x, y }
     tooltipOwner: null,      // 'map' (hover över kartan) eller 'button'
     mapTooltipKey: null,
     touchTooltipTimer: null,
@@ -97,7 +96,7 @@
 
       this.buildBuildMenu(buildMenu);
       this.initHotkeys();
-      this.initMapInspection();
+      this.initBuildingRange();
       this.createCopyrightLabel();
       this.createGoalPanel();
       if (CityBuilder.Levels) CityBuilder.Levels.onComplete(result => this.showLevelComplete(result));
@@ -299,7 +298,7 @@
         { title: 'Welcome', lines: ['Welcome to Foundryfolk! You build a settlement: gather resources, make goods and grow stronger.', 'Each step lights up the part of the screen it explains.', 'This short guide covers the basics. You can open it again from the menu at any time.'] },
         { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'The goals tell you what to build next. Start with the first one.'] },
         { title: 'Resources', target: ['#top'], lines: ['The top bar shows what you have in store, for example wood, planks and stone.', 'You start with a little. Your buildings make more.'] },
-        { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap a building, tree, rock or water to see what it is.'] },
+        { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap or hover over a building, tree, rock or water to see what it is.'] },
         { title: 'Build menu', target: ['#bottom .build-categories'], category: null, lines: ['The build menu is at the bottom. Each icon is a category of buildings.', 'Tap a category to open it. New buildings unlock as you complete levels.'] },
         { title: 'Place a building', target: ['#build_woodcutter'], category: 'forestry', lines: ['Try it with the highlighted Woodcutter. Tap it to select it, and move the mouse over it to see its cost and what it does.', 'Then tap the ground next to some trees to place it. A preview follows you and shows whether it fits. You can only build near your own buildings, and not in the fog.', 'Tap the building again, or Cancel, to stop placing.'] },
         { title: 'Then let it work', target: ['#mainMenuButton'], lines: ['A finished building works by itself. Workers gather or make goods, and carriers bring them where they are needed. You do not control them.', 'Keep an eye on your goals and build what they ask for. When you want to know more, open the menu here and choose Advanced guide.'] },
@@ -460,9 +459,13 @@
     // Changelog: visas en gång per ny version (spelet pausas medan rutan är öppen). Texten är bara engelska.
     // skip: handledningen visades just nu (en ny spelare), så ingen ruta över den. Versionen sparas ändå, så att nya spelare aldrig får nyheter för äldre versioner.
     showChangelogIfNew(skip) {
-      const current = String(window.version || ''), log = CityBuilder.Changelog || {};
+      const log = CityBuilder.Changelog || {};
+      // Mellanversioner (0.7.74) hör till nästa hela version (0.7.8), där changeloggen samlar deras rader: nyheterna visas när den hela versionen byts
+      const whole = version => { const [major, minor, patch = '0'] = String(version).split('.'); if (patch.length <= 1) return String(version); const next = parseInt(patch[0], 10) + 1; return next === 10 ? `${major}.${+minor + 1}.0` : `${major}.${minor}.${next}`; };
+      const current = whole(window.version || '');
       let last = null;
       try { last = localStorage.getItem('citybuilder.version'); } catch (error) {}
+      if (last !== null) last = whole(last);   // tidigare sparade versioner kan vara mellanversioner
       try { localStorage.setItem('citybuilder.version', current); } catch (error) {}
       if (!current || last === current || skip) return;
       if (last === null) { // ingen sparad version: nya spelare får ingen ruta, tidigare spelare (de har framsteg sparade) får de senaste nyheterna
@@ -1481,11 +1484,10 @@
     handleHotkey(key) {
       const game = CityBuilder.Game, selected = game.selectedBuilding;
 
-      if (key === 'Escape') { // ett steg tillbaka: placering, öppen kategori, vald byggnad, markerad terräng
+      if (key === 'Escape') { // ett steg tillbaka: placering, öppen kategori, vald byggnad
         if (game.placingType) game.setPlacingType(null);
         else if (this.openCategoryId) this.setOpenCategory(null);
         else if (selected) game.selectBuilding(null);
-        else if (this.inspectedTile) this.inspectTile(null);
         else return false;
         return true;
       }
@@ -1783,9 +1785,11 @@
           pointer-events: none;
         }
 
-        #bottom .build-category-toggle[aria-expanded="true"] {
+        #bottom .build-category-toggle[aria-expanded="true"],
+        #bottom .icon-button.building-option.on {
           border-color: var(--accent);
-          background: #26402b;
+          background: #2d5a36;
+          box-shadow: 0 0 0 1px var(--accent), 0 0 10px rgb(95 181 95 / 55%);
         }
 
         #bottom .building-option.unaffordable .icon {
@@ -2406,7 +2410,6 @@
       this.lastBuildingCount = buildingCount;
 
       this.refreshGoals();
-      this.updateInspection(game);
       this.refreshInfoPanel(game);
       this.updateMapTooltip(game);
       this.positionInfoPanel();
@@ -2605,34 +2608,8 @@
       return lines;
     },
 
-    // Anropas av Input vid tryck på en ruta utan byggnad. null (eller en ruta som inte är en nod) avmarkerar.
-    inspectTile(tile) {
-      this.inspectedTile = tile && this.getTerrainNode(tile.x, tile.y)
-        ? { x: tile.x, y: tile.y }
-        : null;
-
-      byId('info').dataset.buildingId = ''; // tvinga infopanelen att byggas om
-    },
-
-    updateInspection(game) {
-      if (game.selectedBuilding || game.placingType) {
-        this.inspectedTile = null;
-      } else if (this.inspectedTile && !this.getTerrainNode(this.inspectedTile.x, this.inspectedTile.y)) {
-        this.inspectedTile = null; // noden är slut
-      }
-    },
-
-    // Vit ram runt den markerade terrängnoden
-    initMapInspection() {
-      CityBuilder.Renderer.addLayer('inspectedTile', (context, renderer) => {
-        if (!this.inspectedTile) return;
-
-        const size = renderer.tileSize;
-        context.strokeStyle = '#fff';
-        context.lineWidth = 2;
-        context.strokeRect(this.inspectedTile.x * size + 1, this.inspectedTile.y * size + 1, size - 2, size - 2);
-      });
-
+    // Räckvidd. Terrängnoder markeras inte: deras info visas i hover-tooltipen (på pekskärm vid tryck, se Input.handleTap).
+    initBuildingRange() {
       // Räckvidd: en gul cirkel runt vald (eller hovrad) byggnad som samlar från terrängen.
       // En ruta är inom räckhåll när avståndet till byggnaden är högst searchRadius (samma regel som i behaviors.js).
       CityBuilder.Renderer.addLayer('buildingRange', (context, renderer) => {
@@ -2664,13 +2641,15 @@
       return job && (job.kind === 'gather' || job.kind === 'garrison') && job.searchRadius > 0 ? job.searchRadius : 0;
     },
 
-    // Hover-tooltip för byggnader och terrängnoder under musen (inte på pekskärm, inte vid panorering)
+    // Tooltip för byggnader och terrängnoder under musen, eller på pekskärm den ruta man just tryckt på (inte vid panorering)
     updateMapTooltip(game) {
       const input = CityBuilder.Input;
       const renderer = CityBuilder.Renderer;
       const tile = renderer.hoverTile;
 
-      const active = input && input.mouseOverMap && !input.dragging && tile && !game.placingType;
+      // Mus: hover. Pekskärm: efter ett tryck på en ruta visas tooltipen en stund (Input.touchTipUntil)
+      const pointing = input && (input.mouseOverMap || input.touchTipUntil > performance.now());
+      const active = pointing && !input.dragging && tile && !game.placingType;
 
       const building = active ? World.seenBuildingAt(tile.x, tile.y) : null;
       const node = active && !building ? this.getTerrainNode(tile.x, tile.y) : null;
@@ -2713,7 +2692,7 @@
       this.mapTooltipKey = key;
     },
 
-    // Infopanelen visar, i prioritetsordning: vald byggnad, byggnad som håller på att placeras, markerad terrängnod
+    // Infopanelen visar, i prioritetsordning: vald byggnad, byggnad som håller på att placeras
     refreshInfoPanel(game) {
       const panel = byId('info');
 
@@ -2721,8 +2700,6 @@
         this.renderBuildingInfo(panel, game.selectedBuilding);
       } else if (game.placingType) {
         this.renderPlacementInfo(panel, game);
-      } else if (this.inspectedTile) {
-        this.renderTerrainInfo(panel, this.inspectedTile);
       } else {
         panel.style.display = 'none';
       }
@@ -2889,24 +2866,6 @@
         t('Cost: {cost}', { cost: cost || '–' }),
         ...this.describeBuilding(definition),
       ].join('<br>');
-    },
-
-    renderTerrainInfo(panel, tilePosition) {
-      const node = this.getTerrainNode(tilePosition.x, tilePosition.y);
-      const key = `t:${tilePosition.x},${tilePosition.y}:${node.tile.terrainType}`;
-      panel.style.display = 'flex';
-
-      if (panel.dataset.buildingId !== key) {
-        panel.dataset.buildingId = key;
-
-        panel.innerHTML =
-          `<div><b>${node.name}</b><br><span id="infoStatus"></span></div>` +
-          `<div style="display:flex;gap:6px"><button id="closeInfoButton">${t('Close')}</button></div>`;
-
-        byId('closeInfoButton').onclick = () => this.inspectTile(null);
-      }
-
-      byId('infoStatus').innerHTML = this.describeTerrainNode(node).join('<br>');
     },
 
     showToast(html) {

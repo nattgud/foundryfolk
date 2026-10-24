@@ -685,8 +685,21 @@
     if (!placingType || !renderer.hoverTile) return;
     const { x, y } = renderer.hoverTile;
     const isValid = !CityBuilder.Construction.isHidden(x, y, Players.HUMAN) && World.canPlace(placingType, x, y) && !CityBuilder.Construction.isUniqueTaken(placingType, Players.HUMAN) && CityBuilder.Construction.isNearOwnBuilding(x, y, CityBuilder.Players.HUMAN) && Economy.canAfford(Config.buildings[placingType].buildCost);
-    context.fillStyle = isValid ? 'rgba(95,181,95,.5)' : 'rgba(217,83,79,.5)';
-    context.fillRect(x * renderer.tileSize, y * renderer.tileSize, renderer.tileSize, renderer.tileSize);
+    // Den valda byggnaden syns genomskinlig på rutan. En svag färgton och en ram visar om den får plats (grön) eller inte (röd).
+    const size = renderer.tileSize, px = x * size, py = y * size, definition = Config.buildings[placingType], image = Assets.get(definition.image);
+    const color = isValid ? '95,181,95' : '217,83,79';
+    context.fillStyle = `rgba(${color},.22)`;
+    context.fillRect(px, py, size, size);
+    context.globalAlpha = .65;
+    if (image) context.drawImage(image, px, py, size, size);
+    else {   // utan bilder ("Bara former"): samma reservform som byggnadslagret
+      context.fillStyle = definition.color;
+      context.fillRect(px + 3, py + 3, size - 6, size - 6);
+    }
+    context.globalAlpha = 1;
+    context.strokeStyle = `rgba(${color},.9)`;
+    context.lineWidth = 2;
+    context.strokeRect(px + 1, py + 1, size - 2, size - 2);
   });
 
 })(window.CityBuilder);

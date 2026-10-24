@@ -3,9 +3,12 @@
   'use strict';
   const { Config, Utils, Renderer } = CityBuilder;
 
+  const TOUCH_TIP_MS = 4000;   // hur länge tooltipen står kvar efter ett tryck
+
   const Input = {
     mouseOverMap: false, // musen är över kartan (UI använder det för hover-tooltips)
     dragging: false,     // pågående panorering med ett finger/musen
+    touchTipUntil: 0,    // pekskärm: tills dess visas tooltipen för rutan man tryckt på (performance.now())
 
     init() {
       const canvas = Renderer.canvas, zoomLimits = Config.settings.zoom;
@@ -72,6 +75,7 @@
         if (Math.hypot(deltaX, deltaY) > DRAG_THRESHOLD_PIXELS) gesture.isDragging = true;
         if (gesture.isDragging) {
           this.dragging = true;
+          this.touchTipUntil = 0;
           Renderer.camera.x = gesture.cameraX - deltaX / Renderer.zoom;
           Renderer.camera.y = gesture.cameraY - deltaY / Renderer.zoom;
         }
@@ -84,7 +88,7 @@
       };
       canvas.addEventListener('pointerup', event => {
         const wasTap = activePointers.size === 1 && gesture && !gesture.isDragging && !gesture.isPinching;
-        if (wasTap) this.handleTap(event.clientX, event.clientY);
+        if (wasTap) this.handleTap(event.clientX, event.clientY, event.pointerType);
         releasePointer(event);
       });
       canvas.addEventListener('pointercancel', releasePointer);
@@ -103,7 +107,7 @@
       }, { passive: false });
     },
 
-    handleTap(screenX, screenY) {
+    handleTap(screenX, screenY, pointerType = 'mouse') {
       const tile = Renderer.screenToTile(screenX, screenY), game = CityBuilder.Game;
       Renderer.hoverTile = tile;
 
@@ -111,7 +115,8 @@
 
       const building = CityBuilder.World.seenBuildingAt(tile.x, tile.y);
       game.selectBuilding(building);
-      CityBuilder.UI.inspectTile(building ? null : tile); // terrängnod (träd, sten ...) visas i samma infopanel
+      // Utan hover på pekskärm: ett tryck på marken visar tooltipen för rutan (träd, sten ...) en stund, till nästa tryck eller panorering
+      this.touchTipUntil = pointerType !== 'mouse' && !building ? performance.now() + TOUCH_TIP_MS : 0;
     },
   };
 
