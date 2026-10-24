@@ -47,13 +47,13 @@ CityBuilder.Config.settings = {
   audio: {  // play('coin', { x: ruta_x, y: ruta_y })
     sounds: {
       // click: 'sounds/click.mp3',
-      // build: 'sounds/build.mp3',
-      // built: 'sounds/built.mp3',
+      build: 'sounds/build.mp3',
+      built: 'sounds/built.mp3',
       // demolish: 'sounds/demolish.mp3',
       // error: 'sounds/error.mp3',
       levelComplete: 'sounds/level_complete.mp3',
       // drop: 'sounds/drop.mp3',
-      // alarm: 'sounds/alarm.mp3',
+      alarm: 'sounds/alarm.mp3',
       // arrow: 'sounds/arrow.mp3',          // pil avfyras
       // swing: 'sounds/swing.mp3',          // närstrid
       // hit: 'sounds/hit.mp3',              // träff
