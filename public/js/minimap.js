@@ -272,6 +272,7 @@
         element.style.right = left ? 'auto' : beside;
       }
       this.lastDraw = 0;
+      CityBuilder.UI?.layoutGoals?.();   // målrutan viker för kartan och knapparna
     },
 
     // ---- Terrängbrickor ----

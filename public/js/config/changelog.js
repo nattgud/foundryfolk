@@ -4,6 +4,10 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.7.71': [
+      'Fixed goals sometimes showing as completed from the start: goal progress is now stored in each saved game',
+      'The goals panel shows the level name and keeps clear of the minimap and its zoom buttons',
+    ],
     '0.7.7': [
       'Safer game: unexpected errors are caught and shown in a small box with details you can copy, instead of silently freezing the game',
       'Saved games that are damaged or from an old version no longer break the game. Parts that cannot be restored are skipped, and a copy of the original save is kept',

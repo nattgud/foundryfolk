@@ -258,7 +258,8 @@
         : Levels.completed
           ? `<b>${t('Level complete!')}</b> ${'★'.repeat(Levels.stars)} <button type="button" data-next class="goal-next">${t('Next level')}</button>`
           : `<b>${t('Goals')}</b> · ${t('Time: {time} (target {target})', { time: this.formatTime(Levels.seconds), target: this.formatTime(level.goal.par) })}`;
-      const html = `<div class="goal-header">${header}</div>${lines.join('')}` + (unlocks ? `<div class="goal-new">${t('New: {list}', { list: unlocks })}</div>` : '');
+      const title = level.name ? `<div class="goal-title">${String(level.name).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])}</div>` : '';
+      const html = `${title}<div class="goal-header">${header}</div>${lines.join('')}` + (unlocks ? `<div class="goal-new">${t('New: {list}', { list: unlocks })}</div>` : '');
 
       if (panel.dataset.html !== html) {
         panel.dataset.html = html;
@@ -276,8 +277,17 @@
       const info = byId('info');
       const infoTop = info && info.style.display !== 'none' ? info.getBoundingClientRect().top : Infinity;
       const limit = Math.min(infoTop, byId('bottom').getBoundingClientRect().top) - 8 - 18;
-      panel.style.top = top + 'px';
-      panel.style.maxHeight = Math.max(40, limit - top) + 'px';
+      // Minikartan och dess knappar får inte täckas: ligger de till vänster flyttas panelen under dem, ligger de till höger smalnar den av
+      let start = top, right = innerWidth;
+      for (const id of ['minimap', 'minimapMode', 'minimapZoomIn', 'minimapZoomOut']) {
+        const rect = byId(id)?.getBoundingClientRect();
+        if (!rect || !rect.width || rect.bottom <= top) continue;
+        if (rect.left + rect.width / 2 < innerWidth / 2) start = Math.max(start, rect.bottom + 8);
+        else right = Math.min(right, rect.left);
+      }
+      panel.style.top = start + 'px';
+      panel.style.maxWidth = Math.max(120, Math.min(280, right - 16)) + 'px';
+      panel.style.maxHeight = Math.max(40, limit - start) + 'px';
       if (CityBuilder.Options) CityBuilder.Options.positionFpsCounter();
     },
 
@@ -1902,6 +1912,17 @@
           line-height: 1.45;
           cursor: pointer;
           overflow-y: auto;
+        }
+
+        #goalPanel .goal-title {
+          margin-bottom: 1px;
+          color: var(--dim);
+          font-size: 10px;
+          letter-spacing: .04em;
+          text-transform: uppercase;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         #goalPanel.collapsed .goal-item,

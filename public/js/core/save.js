@@ -183,6 +183,7 @@
         level: levels ? levels.current.level : 1,
         runSeed: levels ? levels.runSeed : null,
         custom: levels ? levels.custom || undefined : undefined,   // inställningarna om det är en egen bana
+        progress: levels ? levels.snapshot() : undefined,          // målens framsteg och tid hör till just den här sparningen
         speedIndex: Game ? Game.speedIndex : 0,
         headquarters: captureFields(headquarters, BUILDING_SKIP),
         rivals,
@@ -347,7 +348,11 @@
       this.startSlot = pending || this.slot();
       this.startData = readSlot(this.startSlot);
       const data = this.startData, levels = CityBuilder.Levels;
-      if (data && levels) { if (data.custom) levels.restoreCustom(data.custom); else levels.restore(data.level, data.runSeed); }
+      if (levels) levels.hold(true);   // inga mål får klaras av förrän sparningen är återställd (se Levels.hold)
+      if (data && levels) {
+        if (data.custom) levels.restoreCustom(data.custom); else levels.restore(data.level, data.runSeed);
+        levels.restoreProgress(data.progress);   // äldre sparningar saknar framsteg: målen börjar då om och klaras av igen utifrån det som finns
+      }
     },
 
     // Anropas sist i Game.init (efter att världen byggts): återställer sparningen och startar autosparningen
@@ -366,6 +371,7 @@
       }
 
       this.ready = true;
+      CityBuilder.Levels?.hold(false);
       clearInterval(this.timer);
       this.timer = setInterval(() => this.autosave(), this.autosaveMs);
       addEventListener('pagehide', () => this.save('autosave'));

@@ -793,11 +793,15 @@
   let checkTimer = 0, saveTimer = 0;
 
   const progressKey = () => (state.info.custom ? CUSTOM_PROGRESS_KEY : PROGRESS_KEY);
+  // Framstegen för den här banan ur 'saved' (från lagringen eller en sparning). Gäller bara samma omgång och bana, annars börjar de om.
+  const applyProgress = saved => {
+    const same = saved && saved.run === runSeed && saved.level === state.info.key;
+    Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
+  };
   const loadProgress = () => {
     let saved = null;
     try { saved = JSON.parse(store.get(progressKey())); } catch (e) { /* ignore */ }
-    const same = saved && saved.run === runSeed && saved.level === state.info.key;
-    Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
+    applyProgress(saved);
   };
   const resetProgress = () => Object.assign(progress, { latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, destroyed: {}, rivalsDown: 0, won: false });
   const saveProgress = () => store.set(progressKey(), JSON.stringify(progress));
@@ -824,9 +828,11 @@
   };
 
   // [{ ...item, have, done }] for the current level
+  // Medan en sparning återställs (hold) står lagren på startvärden och det som räknas är inte spelarens: då får inget målt klaras av
+  let held = false;
   const evaluate = () => state.info.goal.items.map(item => {
     const have = haveOf(item);
-    if (have >= item.amount) progress.latched[item.key] = true;
+    if (have >= item.amount && !held) progress.latched[item.key] = true;
     return { ...item, have: Math.min(have, item.amount), done: !!progress.latched[item.key] };
   });
 
@@ -927,6 +933,11 @@
     onRivalDown() { progress.rivalsDown++; },
     // The last rival is gone: the level is won, whatever the other goals say
     win() { progress.won = true; },
+
+    // Framstegen följer med sparningen (annars kan en äldre sparning få mål som redan är gröna). hold(true) medan en sparning återställs.
+    snapshot: () => JSON.parse(JSON.stringify(progress)),
+    restoreProgress(saved) { applyProgress(saved || null); saveProgress(); },
+    hold(value) { held = !!value; },
 
     // Goals
     progress: evaluate,                                   // [{ key, type, id|resource, amount, have, done }]
