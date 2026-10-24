@@ -15,7 +15,7 @@
    En soldat har dessa fält utöver vanliga enhetsfält (alla sätts i spawnSoldier):
      quarters   byggnaden den hör till (null = fri soldat)    post     fri soldats vaktplats { x, y }
      target     enheten den anfaller                          mode     vad stegkön är till för: 'idle' | 'chase' | 'return'
-   Närstridssoldater (attackRange <= MELEE_RANGE) slår först när de står intill en enhet (MELEE_REACH; en byggnad: på angränsande ruta).
+   Närstridssoldater (attackRange <= MELEE_RANGE) slår först när de står i samma ruta som en enhet (en byggnad: på angränsande ruta).
    Bågskyttar skjuter en pil (Combat.projectiles) som flyger i en bråkdels sekund och gör skadan först när den träffar.
    Soldater styrs via stegkön (Jobs) som övriga enheter, så Units.update gör själva förflyttningen. */
 (function (CityBuilder) {
@@ -26,9 +26,8 @@
   const TIMERS = ['attackCooldownLeft', 'scanTimer', 'repathTimer', 'orderCooldown', 'homeSearchTimer'];
   const HOME_SEARCH_SECONDS = 2;      // hur ofta en fri soldat letar efter en ledig garnison
   const POST_TOLERANCE = 3;           // så nära posten räknas en fri soldat som på plats
-  const SEPARATION_SPEED = 0.8;       // hur fort soldater trycks isär (rutor per sekund)
+  const SETTLE_SPEED = 1;             // hur fort en stillastående soldat glider till sin plats i rutan (rutor per sekund)
   const MELEE_RANGE = 2;              // attackRange upp till detta är närstrid, över det en projektil
-  const MELEE_REACH = 1;              // närstrid mot en enhet: avståndet mellan mittpunkterna (så att de kan stå bredvid varandra i stället för på samma plats)
   const BUILDING_REACH = 0.6;         // en byggnad är en hel ruta: räckhållet räknas från kanten, inte mitten
 
   // Mål är enheter (x, y = mitten) eller byggnader (x, y = rutan). Mittpunkt och prioritet (lägre = angrips först):
@@ -36,6 +35,21 @@
   const centreX = target => target.x + (isBuilding(target) ? .5 : 0);
   const centreY = target => target.y + (isBuilding(target) ? .5 : 0);
   const priority = target => target.definition.isSoldier && !isBuilding(target) ? 0 : isBuilding(target) ? 1 : 2;
+
+  // Platsen (0..1 inom rutan) för soldat nummer index av count på samma ruta: en i mitten, få i en ring, många i ett rutnät
+  const slotIn = (index, count) => {
+    if (count === 1) return [.5, .5];
+    if (count <= 6) { const angle = index / count * Math.PI * 2; return [.5 + .27 * Math.cos(angle), .5 + .27 * Math.sin(angle)]; }
+    if (count <= 10) {
+      if (!index) return [.5, .5];
+      const angle = (index - 1) / (count - 1) * Math.PI * 2; return [.5 + .33 * Math.cos(angle), .5 + .33 * Math.sin(angle)];
+    }
+    const side = Math.ceil(Math.sqrt(count));
+    return [.12 + .76 * ((index % side) + .5) / side, .12 + .76 * (Math.floor(index / side) + .5) / side];
+  };
+  const uids = new WeakMap();
+  let nextUid = 0;
+  const uidOf = unit => uids.get(unit) ?? (uids.set(unit, ++nextUid), nextUid);
 
   const Combat = {
     effects: [],                      // korta slag för renderingen: { x1, y1, x2, y2, life }
@@ -161,6 +175,8 @@
     spawnSoldier(kind, x, y, player) {
       const unit = World.spawnUnit(kind, x, y, null, player);
       return Object.assign(unit, {
+        laneX: (Math.random() - .5) * .44,   // förskjutning inom rutan under gång (se Units.walk)
+        laneY: (Math.random() - .5) * .44,
         quarters: null,
         post: null,
         target: null,
@@ -197,7 +213,7 @@
         if (unit.definition.isSoldier && !unit.removed) this.updateSoldier(unit, deltaSeconds);
       }
 
-      this.separate(deltaSeconds);
+      this.settle(deltaSeconds);
       this.updateProjectiles(deltaSeconds);
       for (const effect of this.effects) effect.life -= deltaSeconds;
       this.effects = this.effects.filter(effect => effect.life > 0);
@@ -217,43 +233,25 @@
       }
     },
 
-    // Soldater får inte stå på varandra: de som är närmare än soldierSpacing trycks isär (mjukt, högst SEPARATION_SPEED rutor per sekund).
-    // Alla trycks isär, men bara över gränsen till en ruta som går att beträda. Närstrid kräver bara att man står nära (MELEE_REACH), så ingen behöver stå i någon annan.
-    separate(deltaSeconds) {
-      const gap = settings().soldierSpacing, reach = SEPARATION_SPEED * deltaSeconds, cells = new Map();
-      // Soldater som är på väg in i sin garnison trycks inte undan: de måste få nå dörren
-      const arriving = unit => unit.mode === 'return' && unit.goal && isBuilding(unit.goal) && Math.hypot(unit.goal.x + .5 - unit.x, unit.goal.y + .5 - unit.y) < 2;
-      const soldiers = World.units.filter(unit => unit.definition.isSoldier && !unit.removed && !arriving(unit));
-      if (soldiers.length < 2) return;
-      const cellKey = (cx, cy) => cx * 100003 + cy;
-      soldiers.forEach((unit, index) => {
-        const key = cellKey(Math.floor(unit.x / gap), Math.floor(unit.y / gap)), list = cells.get(key);
-        if (list) list.push(index); else cells.set(key, [index]);
-      });
-      const shift = (unit, dx, dy) => {
-        // Går rörelsen inte (ruta som inte går att beträda) glider soldaten längs hindret i stället för att fastna
-        const move = (x, y) => {
-          if ((Math.floor(x) !== Math.floor(unit.x) || Math.floor(y) !== Math.floor(unit.y)) && CityBuilder.Pathfinder.tileCost(Math.floor(x), Math.floor(y)) === Infinity) return false;
-          unit.x = x; unit.y = y;
-          return true;
-        };
-        move(unit.x + dx, unit.y + dy) || move(unit.x + dx, unit.y) || move(unit.x, unit.y + dy);
-      };
-      soldiers.forEach((unit, index) => {
-        const cx = Math.floor(unit.x / gap), cy = Math.floor(unit.y / gap);
-        for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
-          for (const otherIndex of cells.get(cellKey(cx + i, cy + j)) || []) {
-            if (otherIndex <= index) continue;   // varje par en gång
-            const other = soldiers[otherIndex];
-            let dx = other.x - unit.x, dy = other.y - unit.y, distance = Math.hypot(dx, dy);
-            if (distance >= gap) continue;
-            if (distance < 1e-3) { const angle = CityBuilder.Utils.hash(index, otherIndex, 55) * Math.PI * 2; dx = Math.cos(angle); dy = Math.sin(angle); distance = 0; }
-            const unitLength = distance || 1, amount = Math.min(reach, (gap - distance) / 2);
-            shift(unit, -dx / unitLength * amount, -dy / unitLength * amount);
-            shift(other, dx / unitLength * amount, dy / unitLength * amount);
-          }
-        }
-      });
+    // Soldater rör sig mellan rutorna som alla andra enheter och passerar varandra utan att knuffas (så de kan aldrig fastna).
+    // Stillastående soldater på samma ruta, vänner som fiender, tar varsin plats i rutan och glider dit. Slåss två, står de alltså i samma ruta.
+    settle(deltaSeconds) {
+      const groups = new Map();
+      for (const unit of World.units) {
+        if (!unit.definition.isSoldier || unit.removed || unit.stepQueue.length) continue;
+        const key = Math.floor(unit.x) * 100003 + Math.floor(unit.y), group = groups.get(key);
+        if (group) group.push(unit); else groups.set(key, [unit]);
+      }
+      const reach = SETTLE_SPEED * deltaSeconds;
+      for (const group of groups.values()) {
+        group.sort((a, b) => uidOf(a) - uidOf(b)); // fast ordning, så platserna inte byter ägare
+        group.forEach((unit, index) => {
+          const [slotX, slotY] = slotIn(index, group.length), tileX = Math.floor(unit.x), tileY = Math.floor(unit.y);
+          const dx = tileX + slotX - unit.x, dy = tileY + slotY - unit.y, distance = Math.hypot(dx, dy);
+          if (distance <= reach) { unit.x = tileX + slotX; unit.y = tileY + slotY; }
+          else { unit.x += dx / distance * reach; unit.y += dy / distance * reach; }
+        });
+      }
     },
 
     updateSoldier(unit, deltaSeconds) {
@@ -294,10 +292,10 @@
         Math.hypot(centreX(target) - anchor.x, centreY(target) - anchor.y) <= anchor.radius * settings().leashFactor;
     },
 
-    // Närstrid mot en enhet kräver att den står alldeles intill, annars räknas avståndet (mot en byggnad från dess kant)
+    // Närstrid mot en enhet kräver att den står i samma ruta, annars räknas avståndet (mot en byggnad från dess kant)
     inReach(unit, target) {
       const range = unit.definition.attackRange;
-      if (range <= MELEE_RANGE && !isBuilding(target)) return Math.hypot(target.x - unit.x, target.y - unit.y) <= MELEE_REACH;
+      if (range <= MELEE_RANGE && !isBuilding(target)) return Math.floor(target.x) === Math.floor(unit.x) && Math.floor(target.y) === Math.floor(unit.y);
       return Math.hypot(centreX(target) - unit.x, centreY(target) - unit.y) <= range + (isBuilding(target) ? BUILDING_REACH : 0);
     },
 

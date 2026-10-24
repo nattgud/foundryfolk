@@ -77,7 +77,6 @@ CityBuilder.Config.settings = {
     attackRadius: 75,          // räckvidd (rutor) i attackläge: soldaterna söker upp fiender så här långt bort
     buildingHp: 100,           // livspoäng för en byggnad som saknar eget maxHp
     leashFactor: 1.25,         // en soldat jagar inte längre bort än searchRadius * detta från sin byggnad eller post
-    soldierSpacing: 0.45,      // minsta avstånd (rutor, ca 16 px) mellan två soldater: de ska inte stå på varandra och se ut som en enhet
     scanIntervalSeconds: 0.5,  // hur ofta byggnader och soldater letar efter fiender
     repathSeconds: 0.5,        // minsta tid mellan omräkningar av vägen mot ett rörligt mål
     retrySeconds: 2,           // väntetid innan en soldat försöker igen efter att något inte gick att nå

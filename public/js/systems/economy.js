@@ -155,6 +155,7 @@ setFactor(0.1, 'talisman');
     addToNearestStorage(resourceId, amount, nearPosition, player) {
       const near = nearPosition || World.headquarters;
       const storage = this.nearestStorage(near, player ?? near.player ?? Players.HUMAN);
+      if (!storage) return;
       storage.storedGoods[resourceId] = (storage.storedGoods[resourceId] || 0) + amount;
     },
     // Halva byggnadskostnaden tillbaka vid rivning

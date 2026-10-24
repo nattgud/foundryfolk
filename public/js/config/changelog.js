@@ -4,6 +4,11 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.7.6': [
+      'Soldiers now move between tiles like every other unit and can no longer get stuck in each other. Soldiers standing still on the same tile spread out inside it, and fighting soldiers share a tile',
+      'Removed the shading on grass, mountains and water',
+      'Safer game loop: an unexpected error (for example from an old saved game) no longer stops the game',
+    ],
     '0.7.5': [
       'Fixed deer coming back after a hunter had killed them: a hunted animal now stays gone',
       'New wild animals: moose, foxes and rabbits roam beside the deer. They all behave the same and give the same meat and leather',

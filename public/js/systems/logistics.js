@@ -196,7 +196,7 @@
             if (this.deliverDirect(building, resourceId)) continue;
             if (Economy.isFull(resourceId, building.player)) break;
             const storage = Economy.nearestStorage(building);
-            if (this.isUnreachable(building, storage)) break;
+            if (!storage || this.isUnreachable(building, storage)) break; // spelare utan lager (t.ex. slagen rival): inget att leverera till
             this.createTask(building, storage, resourceId);
           }
         }

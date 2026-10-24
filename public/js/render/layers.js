@@ -46,12 +46,6 @@
     context.restore();
   };
 
-  // Subtila nyanser: mjukt brus (stora fläckar) lägger en svag mörk eller ljus slöja över rutan. Läggs bara på cachade brickor: en gång per bricka, aldrig varje bildruta.
-  const SHADES = {
-    grass: { channel: 9, scale: 7, dark: 0.16, light: 0.1 },
-    water: { channel: 13, scale: 5, dark: 0.14, light: 0.1 },
-    mountain: { channel: 17, scale: 4, dark: 0.2, light: 0.12 },
-  };
   // Mjuka hörn: sand, vatten och lera mot gräs får rundade yttre hörn, så att fläckarna ser organiska ut i stället för att bestå av kvadrater.
   // Ett hörn rundas när båda grannarna vid hörnet är gräs. Gräsbilden ritas över hörnet utanför en kvartscirkel.
   const ROUNDED = new Set(['sand', 'water', 'clay']), CORNER_RADIUS = 0.34;
@@ -91,12 +85,6 @@
       if (clustered) drawFlipped(context, image, left, top, width, height, Utils.hash(x, y, 80) < 0.5, false);
       else if (image) {
         context.drawImage(image, left, top, width, height);
-        const shade = types && SHADES[type];   // bara när brickan cachas (inte varje bildruta under zoom), så att det inte kostar något i FPS
-        if (shade) {
-          const level = Utils.smoothNoise(x / shade.scale, y / shade.scale, shade.channel) - 0.5;
-          context.fillStyle = level < 0 ? `rgba(0,0,0,${-level * shade.dark})` : `rgba(255,255,255,${level * shade.light})`;
-          context.fillRect(left, top, width, height);
-        }
         if (ROUNDED.has(type)) roundCorners(context, x, y, left, top, width, height);
       }
       else if (terrain.fallbackShape && CityBuilder.Shapes[terrain.fallbackShape]) {

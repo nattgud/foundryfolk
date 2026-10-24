@@ -110,9 +110,18 @@
       this.deltaSeconds = deltaSeconds;
       Pathfinder.update(deltaSeconds);
 
+      // Ett fel i ett system får aldrig stoppa hela spelet (t.ex. en gammal sparning med oväntade data): felet loggas en gång per sort och övriga system går vidare
       for (const system of this.systems) {
-        system.update(deltaSeconds);
+        try { system.update(deltaSeconds); } catch (error) { this.reportError(error); }
       }
+    },
+
+    reportedErrors: new Set(),
+    reportError(error) {
+      const key = String(error && (error.stack || error.message || error)).split('\n').slice(0, 2).join('|');
+      if (this.reportedErrors.has(key)) return;
+      this.reportedErrors.add(key);
+      console.error('Fel i simuleringen (spelet fortsätter):', error);
     },
 
     frame(time) {
@@ -134,10 +143,12 @@
       this.lastFrameTime = time;
       const simulatedSeconds = this.paused ? 0 : realSeconds * Config.settings.gameSpeeds[this.speedIndex];
       this.advanceSimulation(simulatedSeconds);
-      CityBuilder.Renderer.draw();
-      UI.refresh();
-      if (options) options.recordFrame(time, performance.now() - started, simulatedSeconds);
-      next();
+      try {
+        CityBuilder.Renderer.draw();
+        UI.refresh();
+        if (options) options.recordFrame(time, performance.now() - started, simulatedSeconds);
+      } catch (error) { this.reportError(error); }
+      next(); // loopen fortsätter alltid, även om en ritning eller panel kastade fel
     },
   };
 

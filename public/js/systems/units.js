@@ -106,12 +106,13 @@
       const isTarget = nextTile.x === step.targetX && nextTile.y === step.targetY;
       if (tileCost === Infinity && !isTarget) { Pathfinder.drop(step.path); step.path = null; return; } // vägen blockerades -> räkna om
 
-      const dx = nextTile.x + .5 - unit.x, dy = nextTile.y + .5 - unit.y, distance = Math.hypot(dx, dy);
+      const laneX = unit.laneX || 0, laneY = unit.laneY || 0; // soldaters egen linje i rutan, så att en marscherande grupp inte blir en enda hög
+      const dx = nextTile.x + .5 + laneX - unit.x, dy = nextTile.y + .5 + laneY - unit.y, distance = Math.hypot(dx, dy);
       const stepLength = Config.settings.walkSpeed * (unit.definition.speedMultiplier || 1) * deltaSeconds / (tileCost === Infinity ? 1 : tileCost);
       unit.status = 'Walking';
 
       if (distance <= stepLength) {
-        unit.x = nextTile.x + .5; unit.y = nextTile.y + .5; step.pathIndex++;
+        unit.x = nextTile.x + .5 + laneX; unit.y = nextTile.y + .5 + laneY; step.pathIndex++;
         if (unit.definition.wearsPaths) { // trampar upp stigen
           const tile = World.getTile(nextTile.x, nextTile.y);
           tile.wear = Math.min(2, tile.wear + Config.settings.wearPerPass);
@@ -278,6 +279,7 @@
       }
       if (unit.carriedResource) { // frisläppt bärare med last lämnar in i närmaste lager
         const storage = Economy.nearestStorage(unit);
+        if (!storage) { unit.carriedResource = null; return; }
         unit.stepQueue = [
           Jobs.walkTo(storage.x, storage.y),
           Jobs.run(() => { Economy.addToNearestStorage(unit.carriedResource, 1, storage); unit.carriedResource = null; }),
