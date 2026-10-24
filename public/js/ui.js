@@ -2494,7 +2494,7 @@
       if (job?.kind === 'gather') {
         const output = this.resourceChip(job.outputResource ?? Object.keys(job.outputs || {})[0]);
         lines.push(job.sourceUnit
-          ? t('Hunting: {source} → {output}', { source: this.unitName(job.sourceUnit), output })
+          ? t('Hunting: {source} → {output}', { source: Array.isArray(job.sourceUnit) ? t('Animals') : this.unitName(job.sourceUnit), output })
           : t('Gathering: {source} → {output}', { source: this.terrainName(job.sourceTerrain), output }));
         if (this.getBuildingRange(definition)) lines.push(t('Range: {n} tiles', { n: this.getBuildingRange(definition) }));
       } else if (job?.kind === 'craft' && job.choices) {

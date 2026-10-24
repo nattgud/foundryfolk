@@ -1,6 +1,6 @@
 /* Strid: fiender hittas, soldater anfaller dem, och enheter dör när livet tar slut.
 
-   - Players.isHostile(a, b) (core/players.js) avgör vem som är fiende. Neutrala enheter (hjortar) berörs aldrig.
+   - Players.isHostile(a, b) (core/players.js) avgör vem som är fiende. Neutrala enheter (djur) berörs aldrig.
    - Garnisonsbyggnader (garrison.js) letar efter fiender inom sin räckvidd. Hittas en skickas alla soldater därinne ut.
    - Soldater (definition.isSoldier) väljer själva mål, går fram och slår eller skjuter. Finns inga fiender kvar går de hem
      och stiger in i byggnaden igen. Fria soldater (utan byggnad) vaktar sin post och söker sig till en ledig garnison.

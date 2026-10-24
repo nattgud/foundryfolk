@@ -579,7 +579,7 @@
   const ICON_DIR = 'images/ui/icons/';
   const STATUS_ICONS = {
     'No resources': 'warning_grey', 'Local stock full': 'warning_grey', 'Central storage full': 'warning_red', 'Tools missing': 'warning_grey',
-    'No deer in range': 'warning_grey', 'Paused': 'paused', 'Missing export': 'error', "Can't reach": 'error',
+    'No animals in range': 'warning_grey', 'Paused': 'paused', 'Missing export': 'error', "Can't reach": 'error',
   };
   const statusIcon = status => {
     if (!status) return null;

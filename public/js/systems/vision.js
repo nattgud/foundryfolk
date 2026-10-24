@@ -7,7 +7,7 @@
 
    - Vision.visible(spelare, x, y) och Vision.sees(spelare, byggnad eller enhet): O(1)-uppslag, billiga att fråga överallt.
    - Systemet 'vision' stämplar om alla observatörer högst var settings.vision.interval:e sekund (speltid) och bygger då om
-     activeChunks: de chunkar som någon spelare ser. Bara där simuleras hjortar (Deer.updateActivation).
+     activeChunks: de chunkar som någon spelare ser. Bara där simuleras djur (Animals.updateActivation).
    - Vision.mask ritar celler som alfakanal i en liten canvas (en pixel per cell) för fog-lagret och minikartan. Uppskalningen
      med utjämning ger mjuka kanter, och celler bleknar de sista settings.vision.fade sekunderna.
    Räckvidd: definition.vision (byggnad eller enhet) eller settings.vision.building / unit / soldier. */
@@ -175,7 +175,7 @@
       Vision.time += deltaSeconds;
       if (Vision.time < Vision.nextRefresh) return;
       Vision.refresh();
-      CityBuilder.Deer.updateActivation();
+      CityBuilder.Animals.updateActivation();
     },
   };
 })(window.CityBuilder);

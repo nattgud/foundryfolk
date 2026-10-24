@@ -4,6 +4,11 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.7.5': [
+      'Fixed deer coming back after a hunter had killed them: a hunted animal now stays gone',
+      'New wild animals: moose, foxes and rabbits roam beside the deer. They all behave the same and give the same meat and leather',
+      'Animals breed faster the fewer there are nearby, so a local area can be hunted empty but a whole region cannot',
+    ],
     '0.7.4': [
       'Coins have no storage limit any more: you can own as many as you like',
       'The Market no longer sells goods that nothing in the game makes or uses (steel, bone, tar)',

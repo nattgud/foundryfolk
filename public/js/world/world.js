@@ -17,7 +17,7 @@
     headquarters: null,         // den mänskliga spelarens bas (alla spelares baser finns i hqs)
     hqs: {},                    // spelare -> bas
     nextBuildingId: 1,
-    deerByChunk: new Map(),
+    animalsByChunk: new Map(),
 
     // Ruta: { terrainType, remainingAmount, wear }
     getTile(x, y) {

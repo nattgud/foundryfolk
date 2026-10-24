@@ -27,13 +27,14 @@
     'Fullt lager': 'Full stock',
     'Söker...': 'Searching...',
     'Inga resurser': 'No resources',
-    'Inga hjortar i räckvidd': 'No deer in range',
+    'Inga hjortar i räckvidd': 'No animals in range', 'Inga djur i räckvidd': 'No animals in range',
     'Saknar outputResource': 'Missing outputResource',
     'Pausad': 'Paused',
     'Ingen väg': "Can't reach",
     'Fångad': 'Hunted',
     'Missing tools': 'Tools missing',
-    'No deers in range': 'No deer in range',
+    'No deers in range': 'No animals in range',
+    'No deer in range': 'No animals in range',
   };
 
   // Genus för banornas substantiv (index i adjektivens former). sv: en/ett, de: m/f/n, es: m/f
@@ -238,7 +239,7 @@
       'Full stock': 'Fullt lager',
       'Searching...': 'Söker...',
       'No resources': 'Inga resurser',
-      'No deer in range': 'Inga hjortar inom räckvidd',
+      'No animals in range': 'Inga djur inom räckvidd',
       'Missing outputResource': 'Saknar outputResource',
       'Missing: {list}': 'Saknas: {list}',
 
@@ -265,7 +266,7 @@
       'Play time (this session)': 'Speltid (denna session)',
       'Workers': 'Arbetare',
       'Carriers': 'Bärare',
-      'Deer': 'Hjortar',
+      'Animals': 'Djur',
       'Other units': 'Övriga enheter',
       'Total units': 'Enheter totalt',
       'Buildings': 'Byggnader',
@@ -365,7 +366,7 @@
       'No favorites': 'Inga favoriter',
       'Mark with ★': 'Markera med ★',
       'None nearby': 'Inga i närheten',
-      'unit.deer': 'Hjort', 'unit.carrier': 'Bärare', 'unit.worker': 'Arbetare', 'unit.soldier': 'Soldat',
+      'unit.deer': 'Hjort', 'unit.moose': 'Älg', 'unit.fox': 'Räv', 'unit.rabbit': 'Hare', 'unit.carrier': 'Bärare', 'unit.worker': 'Arbetare', 'unit.soldier': 'Soldat',
 
       // Namn: terräng
       'terrain.grass': 'Gräs', 'terrain.tree': 'Träd', 'terrain.rock': 'Sten', 'terrain.ore': 'Malm',
@@ -660,7 +661,7 @@
       'Full stock': 'Lager voll',
       'Searching...': 'Suche...',
       'No resources': 'Keine Ressourcen',
-      'No deer in range': 'Keine Hirsche in Reichweite',
+      'No animals in range': 'Keine Tiere in Reichweite',
       'Missing outputResource': 'outputResource fehlt',
       'Missing: {list}': 'Fehlt: {list}',
 
@@ -686,7 +687,7 @@
       'Play time (this session)': 'Spielzeit (diese Sitzung)',
       'Workers': 'Arbeiter',
       'Carriers': 'Träger',
-      'Deer': 'Hirsche',
+      'Animals': 'Tiere',
       'Other units': 'Sonstige Einheiten',
       'Total units': 'Einheiten gesamt',
       'Buildings': 'Gebäude',
@@ -785,7 +786,7 @@
       'No favorites': 'Keine Favoriten',
       'Mark with ★': 'Mit ★ markieren',
       'None nearby': 'Keine in der Nähe',
-      'unit.deer': 'Hirsch', 'unit.carrier': 'Träger', 'unit.worker': 'Arbeiter', 'unit.soldier': 'Soldat',
+      'unit.deer': 'Hirsch', 'unit.moose': 'Elch', 'unit.fox': 'Fuchs', 'unit.rabbit': 'Hase', 'unit.carrier': 'Träger', 'unit.worker': 'Arbeiter', 'unit.soldier': 'Soldat',
 
       'terrain.grass': 'Gras', 'terrain.tree': 'Baum', 'terrain.rock': 'Stein', 'terrain.ore': 'Erz',
       'terrain.water': 'Wasser', 'terrain.sand': 'Sand', 'terrain.clay': 'Ton', 'terrain.bog': 'Sumpf',
@@ -1079,7 +1080,7 @@
       'Full stock': 'Almacén lleno',
       'Searching...': 'Buscando...',
       'No resources': 'Sin recursos',
-      'No deer in range': 'Sin ciervos al alcance',
+      'No animals in range': 'Sin animales al alcance',
       'Missing outputResource': 'Falta outputResource',
       'Missing: {list}': 'Falta: {list}',
 
@@ -1105,7 +1106,7 @@
       'Play time (this session)': 'Tiempo de juego (esta sesión)',
       'Workers': 'Trabajadores',
       'Carriers': 'Porteadores',
-      'Deer': 'Ciervos',
+      'Animals': 'Animales',
       'Other units': 'Otras unidades',
       'Total units': 'Unidades en total',
       'Buildings': 'Edificios',
@@ -1204,7 +1205,7 @@
       'No favorites': 'Sin favoritos',
       'Mark with ★': 'Marca con ★',
       'None nearby': 'Ninguno cerca',
-      'unit.deer': 'Ciervo', 'unit.carrier': 'Porteador', 'unit.worker': 'Trabajador', 'unit.soldier': 'Soldado',
+      'unit.deer': 'Ciervo', 'unit.moose': 'Alce', 'unit.fox': 'Zorro', 'unit.rabbit': 'Liebre', 'unit.carrier': 'Porteador', 'unit.worker': 'Trabajador', 'unit.soldier': 'Soldado',
 
       'terrain.grass': 'Hierba', 'terrain.tree': 'Árbol', 'terrain.rock': 'Piedra', 'terrain.ore': 'Mineral',
       'terrain.water': 'Agua', 'terrain.sand': 'Arena', 'terrain.clay': 'Arcilla', 'terrain.bog': 'Pantano',

@@ -22,6 +22,16 @@
   // Columns: 1 = no animation, more = animated automatically (idle row too). Time-based: animFps frames/second (default 8)
   // Carry images (imageCarrying, imagesByBuilding) must use the same frame size and layout.
   // If the art faces left by default: imageFacesLeft: true. Custom row order: rows: { idle: 0, up: 1, ... }
+const ANIMAL_DEFAULTS = {
+  isAnimal: true,
+  player: CityBuilder.Players.NEUTRAL,
+  isHauler: false,
+  wearsPaths: false,
+  speedMultiplier: 0.3,
+  fallbackShape: 'circle',
+  fallbackSize: 6,
+};
+
 CityBuilder.Config.units = {
   carrier: {
     isHauler: true,
@@ -37,17 +47,22 @@ CityBuilder.Config.units = {
     image: 'images/units/carrier.png',
     imageCarrying: 'images/units/carrier_loaded.png',
   },
+  // Djur: samma beteende (äter, sprider växter, förökar sig, kan jagas), olika utseende. spawnWeight = hur vanlig arten är.
   deer: {
-    player: CityBuilder.Players.NEUTRAL,
-    isHauler: false, 
-    wearsPaths: false, 
-    speedMultiplier: 0.3, 
-    color: '#760', 
-    fallbackShape: 'circle', 
-    fallbackSize: 6, 
-    imageSize: 16,
-    deerBreedCooldown: 0,
-    image: 'images/units/deer.png', 
+    ...ANIMAL_DEFAULTS, color: '#760', imageSize: 16, spawnWeight: 4,
+    image: 'images/units/deer.png',
+  },
+  moose: {
+    ...ANIMAL_DEFAULTS, color: '#432', imageSize: 20, spawnWeight: 2,
+    image: 'images/units/moose.png', imageFacesLeft: true,
+  },
+  fox: {
+    ...ANIMAL_DEFAULTS, color: '#c60', fallbackSize: 5, imageSize: 12, spawnWeight: 2,
+    image: 'images/units/fox.png', imageFacesLeft: true,
+  },
+  rabbit: {
+    ...ANIMAL_DEFAULTS, color: '#998', fallbackSize: 4, imageSize: 9, spawnWeight: 3,
+    image: 'images/units/rabbit.png', imageFacesLeft: true,
   },
   swordsman: {
     isSoldier: true,

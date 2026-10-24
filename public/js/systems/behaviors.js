@@ -59,8 +59,8 @@
 
     // ---- Enheter som källa (jakt m.m.) --------------------------------------------------------
     // Ett gather-jobb hämtar antingen från terräng (job.sourceTerrain) eller från enheter (job.sourceUnit):
-    //   sourceUnit: 'deer'                  en enhetstyp (unit.kind)
-    //   sourceUnit: ['deer', 'soldier']     flera typer
+    //   sourceUnit: 'deer'                    en enhetstyp (unit.kind)
+    //   sourceUnit: ['deer', 'soldier']       flera typer
     //   sourceFilter: unit => boolean       valfritt extra villkor (t.ex. bara fientliga enheter)
     //   reach: 3                            hur nära (i rutor) bytet måste vara när arbetaren slår till
     //   workLabel: 'Hunting'                statustext medan arbetaren arbetar
@@ -92,6 +92,7 @@
       }
       unit.removed = true;
       unit.stepQueue = [];
+      if (unit.animalRecordId) CityBuilder.Animals.markDead(unit);
     },
 
     forBuilding(building) { return building.definition.job ? this.get(building.definition.job.kind) : null; },
@@ -142,7 +143,7 @@
     // Effektivitet: andel av de senaste ~60 s (speltid) som huset inte stått still, med orsaker till stilleståndet.
     // Statusar som räknas som stillestånd; allt annat (Working, Walking, Gathering, ...) räknas som arbete.
     // Byggnader som spelaren pausat räknas inte alls.
-    IDLE_STATUSES: new Set(['Local stock full', 'Central storage full', 'No resources', 'No deer in range', 'Tools missing', "Can't reach", 'No room to plant', 'Missing outputResource']),
+    IDLE_STATUSES: new Set(['Local stock full', 'Central storage full', 'No resources', 'No animals in range', 'Tools missing', "Can't reach", 'No room to plant', 'Missing outputResource']),
     idleReason(building) {
       const status = CityBuilder.I18n.canonicalStatus(building.status || '');
       return status.startsWith('Missing:') ? status.replace(/\s*\(\d+\)/g, '') : this.IDLE_STATUSES.has(status) ? status : null;
@@ -181,7 +182,7 @@
       if (!job || building.buildProgress < 1 || building.paused) return null;
       if (job.kind === 'gather') {
         const status = CityBuilder.I18n.canonicalStatus(building.status || '');
-        if (status === 'No resources' || status === 'No deer in range') return 'noResources';
+        if (status === 'No resources' || status === 'No animals in range') return 'noResources';
       }
       const summary = building.eff && building.eff.summary, limits = Object.assign({ minSeconds: 30, warnBelow: .6, badBelow: .3 }, Config.settings.efficiency);
       if (summary && summary.seconds >= limits.minSeconds && summary.ratio < limits.warnBelow) return summary.ratio < limits.badBelow ? 'bad' : 'warn';
@@ -287,7 +288,7 @@
       if (!outputResource) { worker.status = 'Saknar outputResource'; worker.idleCooldown = 5; return; }
 
       const prey = Behaviors.findUnitTarget(building, job, worker);
-      if (!prey) { worker.status = 'Inga hjortar i räckvidd'; worker.idleCooldown = job.retrySeconds || 5; return; }
+      if (!prey) { worker.status = 'No animals in range'; worker.idleCooldown = job.retrySeconds || 5; return; }
 
       Behaviors.eat(building);
       const boosted = Behaviors.useBoost(building);

@@ -5,7 +5,7 @@
    - Frame rate: obegränsad eller 30 FPS (Game.frame hoppar över bildrutor som kommer för tidigt).
    - Autosave: 30 s, 1, 2, 5 eller 15 min (Save.setAutosaveInterval).
    - Shapes only: ritar kartan (canvas) utan bilder, med reservformerna och färgerna. Menyer påverkas inte.
-   - Statistics: byggnader, arbetare, bärare, hjortar m.m.
+   - Statistics: byggnader, arbetare, bärare, djur m.m.
 
    Att spelet pausas när fönstret förlorar fokus är inte en inställning: det ligger fast i Game.frame (game.js).
 
@@ -182,13 +182,13 @@
         stats.buildingTypes.set(name, (stats.buildingTypes.get(name) || 0) + 1);
       }
 
-      stats.workers = 0; stats.carriers = 0; stats.deer = 0; stats.otherUnits = 0; stats.units = 0; stats.soldiers = 0;
+      stats.workers = 0; stats.carriers = 0; stats.animals = 0; stats.otherUnits = 0; stats.units = 0; stats.soldiers = 0;
       for (const building of World.buildings) if (building.garrison) stats.soldiers += Object.values(building.garrison).reduce((a, b) => a + b, 0);
       for (const unit of World.units) {
         if (unit.removed) continue;
         stats.units++;
         if (unit.definition && unit.definition.isHauler) stats.carriers++;
-        else if (unit.kind === 'deer') stats.deer++;
+        else if (unit.definition.isAnimal) stats.animals++;
         else if (unit.definition && unit.definition.isSoldier) stats.soldiers++;
         else if (unit.homeBuilding) stats.workers++;
         else stats.otherUnits++;
@@ -223,7 +223,7 @@
         row(t('Play time (this session)'), this.formatDuration(this.playSeconds)),
         row(t('Workers'), stats.workers),
         row(t('Carriers'), stats.carriers),
-        row(t('Deer'), stats.deer)
+        row(t('Animals'), stats.animals)
       );
       if (stats.soldiers) body.append(row(t('Soldiers'), stats.soldiers));
       if (stats.otherUnits) body.append(row(t('Other units'), stats.otherUnits));

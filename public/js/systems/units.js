@@ -3,7 +3,7 @@
   'use strict';
   const { Config, World, Pathfinder, Jobs, Economy, Logistics, Behaviors, Utils } = CityBuilder;
 
-  const DEER = {
+  const ANIMAL = {
     foodRadius: 3, 
     eatSeconds: 4,
     eatCooldown: 30,
@@ -12,36 +12,36 @@
     idleCooldown: 1,
     maxFoodPerTile: 5,
     maxSpreadDistance: 6,
-    breedChancePerSecond: Config.settings.deerBreedChancePerSecond ?? 2 / 1000, // chans per speltidssekund att få en unge (snitt ca 25 min mellan ungar per hjort)
-    breedCooldown: Config.settings.deerBreedCooldown ?? 60,    // speltid i sekunder innan samma hjort (eller ungen) kan få en ny unge
-    maxPopulation: Config.settings.deerMaxPopulation ?? 50,     // inga fler hjortar än så här i världen
+    breedChancePerSecond: 2 / 1000, // chans per speltidssekund att få en unge vid normal täthet (snitt ca 8 min mellan ungar per djur)
+    breedCooldown: 60,              // speltid i sekunder innan samma djur (eller ungen) kan få en ny unge
+    maxPopulation: 400,             // säkerhetsgräns för prestanda: inga fler djur än så här i världen
   };
 
-  const DEER_FOOD_TYPES = new Set([
+  const ANIMAL_FOOD_TYPES = new Set([
     'apple_tree',
     'berry_bush',
     'herbs',
     'mushrooms',
   ]);
 
-  // Hjortar sprider en mat bara om spelaren kan ta hand om den: både jakt och plockning av just den maten måste vara upplåsta
-  const DEER_FOOD_BUILDING = { apple_tree: 'apple_gatherer', berry_bush: 'berry_gatherer', herbs: 'herb_gatherer', mushrooms: 'mushroom_gatherer' };
+  // Djur sprider en mat bara om spelaren kan ta hand om den: både jakt och plockning av just den maten måste vara upplåsta
+  const ANIMAL_FOOD_BUILDING = { apple_tree: 'apple_gatherer', berry_bush: 'berry_gatherer', herbs: 'herb_gatherer', mushrooms: 'mushroom_gatherer' };
   const huntingUnlocked = () => !CityBuilder.Levels || CityBuilder.Levels.isUnlocked('hunters_cottage');
-  const deerMayEat = type => huntingUnlocked() && (!CityBuilder.Levels || CityBuilder.Levels.isUnlocked(DEER_FOOD_BUILDING[type]));
+  const animalMayEat = type => huntingUnlocked() && (!CityBuilder.Levels || CityBuilder.Levels.isUnlocked(ANIMAL_FOOD_BUILDING[type]));
 
   const Units = {
     update(unit, deltaSeconds) {
-      if (unit.kind === 'deer' && unit.deerEatCooldown > 0) {
-        unit.deerEatCooldown = Math.max(
+      if (unit.definition.isAnimal && unit.animalEatCooldown > 0) {
+        unit.animalEatCooldown = Math.max(
           0,
-          unit.deerEatCooldown - deltaSeconds
+          unit.animalEatCooldown - deltaSeconds
         );
       }
-      if (unit.kind === 'deer' && unit.huntedBy) {
+      if (unit.definition.isAnimal && unit.huntedBy) {
         const hunter = unit.huntedBy;
         const step = hunter.stepQueue[0];
 
-        // Stanna medan jägaren fortfarande fångar just denna hjort.
+        // Stanna medan jägaren fortfarande fångar just denna djur.
         if (
           step &&
           step.kind === 'followUnit' &&
@@ -58,12 +58,12 @@
           }
         }
 
-        // Jakten är avslutad eller avbruten: släpp hjorten fri.
+        // Jakten är avslutad eller avbruten: släpp djuret fri.
         unit.huntedBy = null;
       }
-      if (unit.kind === 'deer') {
-        if (unit.deerBreedCooldown > 0) unit.deerBreedCooldown -= deltaSeconds;
-        else if (Math.random() < DEER.breedChancePerSecond * deltaSeconds) this.tryDeerBreed(unit);
+      if (unit.definition.isAnimal) {
+        if (unit.animalBreedCooldown > 0) unit.animalBreedCooldown -= deltaSeconds;
+        else if (Math.random() < ANIMAL.breedChancePerSecond * (1 + Config.settings.animalBreeding.boost) * deltaSeconds) this.tryAnimalBreed(unit);
       }
 
       const step = unit.stepQueue[0];
@@ -139,7 +139,7 @@
       const unitTileX = Math.floor(unit.x);
       const unitTileY = Math.floor(unit.y);
 
-      // Jägaren och hjorten befinner sig på samma tile.
+      // Jägaren och djuret befinner sig på samma tile.
       if (unitTileX === preyTileX && unitTileY === preyTileY) {
         prey.huntedBy = unit;
         step.path = null;
@@ -173,10 +173,10 @@
         return;
       }
 
-      // Hjorten har lämnat jägaren: jaktmomentet börjar om.
+      // Djuret har lämnat jägaren: jaktmomentet börjar om.
       step.secondsLeft = null;
 
-      // Beräkna om rutten endast när hjorten byter tile.
+      // Beräkna om rutten endast när djuret byter tile.
       if (
         step.targetX !== preyTileX ||
         step.targetY !== preyTileY
@@ -196,32 +196,32 @@
       unit.idleCooldown = 0.5;
       unit.status = '';
 
-      if (unit.kind === 'deer') {
-        unit.idleCooldown = DEER.idleCooldown;
+      if (unit.definition.isAnimal) {
+        unit.idleCooldown = ANIMAL.idleCooldown;
 
-        if (unit.deerMustMoveAfterMeal) {
-          this.queueDeerWander(unit, true);
+        if (unit.animalMustMoveAfterMeal) {
+          this.queueAnimalWander(unit, true);
           return;
         }
 
-        // En väntande resurs måste spridas innan hjorten äter igen.
-        if (unit.deerSpreadPending && unit.deerLastEaten) {
-          this.queueDeerWander(unit, true);
+        // En väntande resurs måste spridas innan djuret äter igen.
+        if (unit.animalSpreadPending && unit.animalLastEaten) {
+          this.queueAnimalWander(unit, true);
           return;
         }
 
-        if (unit.deerEatCooldown > 0) {
-          this.queueDeerWander(unit, false);
+        if (unit.animalEatCooldown > 0) {
+          this.queueAnimalWander(unit, false);
           return;
         }
 
         // Mat inom räckhåll prioriteras framför vandring.
-        const food = this.findDeerFood(unit);
+        const food = this.findAnimalFood(unit);
 
         if (food) {
           unit.stepQueue = [
             Jobs.walkTo(food.x, food.y),
-            Jobs.wait(DEER.eatSeconds, 'Eating'),
+            Jobs.wait(ANIMAL.eatSeconds, 'Eating'),
             Jobs.run(() => {
               const tile = World.getTile(food.x, food.y);
 
@@ -234,23 +234,23 @@
 
               const eatenAmount = Math.min(
                 tile.remainingAmount,
-                1 + Math.floor(Math.random() * DEER.maxFoodPerTile)
+                1 + Math.floor(Math.random() * ANIMAL.maxFoodPerTile)
               );
 
               tile.remainingAmount -= eatenAmount;
 
-              unit.deerLastEaten = {
+              unit.animalLastEaten = {
                 type: food.type,
                 amount: eatenAmount,
               };
 
-              unit.deerMealTile = {
+              unit.animalMealTile = {
                 x: food.x,
                 y: food.y,
               };
 
-              unit.deerMustMoveAfterMeal = true;
-              unit.deerSpreadPending = true;
+              unit.animalMustMoveAfterMeal = true;
+              unit.animalSpreadPending = true;
 
               if (tile.remainingAmount <= 0) {
                 Utils.assign(tile, Config.terrain.grass, {
@@ -267,7 +267,7 @@
           return;
         }
 
-        this.queueDeerWander(unit, false);
+        this.queueAnimalWander(unit, false);
         return;
       }
 
@@ -285,10 +285,10 @@
       }
     },
 
-    findDeerFood(unit) {
+    findAnimalFood(unit) {
       const cx = Math.floor(unit.x);
       const cy = Math.floor(unit.y);
-      const radius = DEER.foodRadius;
+      const radius = ANIMAL.foodRadius;
       let nearest = null;
       let nearestDistance = Infinity;
 
@@ -302,7 +302,7 @@
           const y = cy + dy;
           const tile = World.getTile(x, y);
 
-          if (!DEER_FOOD_TYPES.has(tile.terrainType) || !deerMayEat(tile.terrainType)) continue;
+          if (!ANIMAL_FOOD_TYPES.has(tile.terrainType) || !animalMayEat(tile.terrainType)) continue;
           if (tile.remainingAmount <= 0) continue;
 
           if (distance < nearestDistance) {
@@ -319,10 +319,10 @@
       return nearest;
     },
     
-    queueDeerWander(unit, mustMove) {
+    queueAnimalWander(unit, mustMove) {
       const cx = Math.floor(unit.x);
       const cy = Math.floor(unit.y);
-      const radius = DEER.wanderRadius;
+      const radius = ANIMAL.wanderRadius;
       const candidates = [];
 
       for (let dy = -radius; dy <= radius; dy++) {
@@ -336,14 +336,14 @@
           const y = cy + dy;
 
           // En väntande resurs får inte föras längre än 8 rutor
-          // från platsen där hjorten åt.
-          if (unit.deerSpreadPending && unit.deerMealTile) {
-            const fromMealX = x - unit.deerMealTile.x;
-            const fromMealY = y - unit.deerMealTile.y;
+          // från platsen där djuret åt.
+          if (unit.animalSpreadPending && unit.animalMealTile) {
+            const fromMealX = x - unit.animalMealTile.x;
+            const fromMealY = y - unit.animalMealTile.y;
 
             if (
               fromMealX * fromMealX + fromMealY * fromMealY >
-              DEER.maxSpreadDistance * DEER.maxSpreadDistance
+              ANIMAL.maxSpreadDistance * ANIMAL.maxSpreadDistance
             ) {
               continue;
             }
@@ -379,24 +379,24 @@
           const y = Math.floor(unit.y);
 
           if (
-            unit.deerMustMoveAfterMeal &&
-            unit.deerMealTile &&
-            (x !== unit.deerMealTile.x ||
-            y !== unit.deerMealTile.y)
+            unit.animalMustMoveAfterMeal &&
+            unit.animalMealTile &&
+            (x !== unit.animalMealTile.x ||
+            y !== unit.animalMealTile.y)
           ) {
-            unit.deerMustMoveAfterMeal = false;
+            unit.animalMustMoveAfterMeal = false;
           }
 
-          // Försök sprida först efter att hjorten har flyttat sig.
-          this.tryDeerSpread(unit);
+          // Försök sprida först efter att djuret har flyttat sig.
+          this.tryAnimalSpread(unit);
         }),
       ];
 
       unit.status = 'Wandering';
     },
     
-    tryDeerSpread(unit) {
-      if (unit.deerMustMoveAfterMeal) return;
+    tryAnimalSpread(unit) {
+      if (unit.animalMustMoveAfterMeal) return;
 
       const x = Math.floor(unit.x);
       const y = Math.floor(unit.y);
@@ -406,8 +406,8 @@
       if (tile.terrainType !== 'grass') return;
 
       // 1. Återför alltid den uppätna växten först.
-      if (unit.deerLastEaten) {
-        const eaten = unit.deerLastEaten;
+      if (unit.animalLastEaten) {
+        const eaten = unit.animalLastEaten;
 
         Utils.assign(tile, Config.terrain[eaten.type], {
           terrainType: eaten.type,
@@ -417,18 +417,18 @@
           )
         });
 
-        unit.deerEatCooldown = DEER.eatCooldown;
-        unit.deerLastEaten = null;
-        unit.deerMealTile = null;
-        unit.deerSpreadPending = false;
-        unit.deerMustMoveAfterMeal = false;
+        unit.animalEatCooldown = ANIMAL.eatCooldown;
+        unit.animalLastEaten = null;
+        unit.animalMealTile = null;
+        unit.animalSpreadPending = false;
+        unit.animalMustMoveAfterMeal = false;
 
         Pathfinder.clearCache();
         return;
       }
 
       // 2. Träd får spridas separat, även när ingen växtåterföring väntar.
-      if (Math.random() < Config.settings.deerTreeSpreadChance) {
+      if (Math.random() < Config.settings.animalTreeSpreadChance) {
         Utils.assign(tile, Config.terrain.tree, {
           terrainType: 'tree',
           remainingAmount: Math.ceil(Math.random() * 2)
@@ -438,27 +438,34 @@
       }
     },
 
-    // Hjortar får mycket sällan en unge (slumpchans över tid, vilotid efteråt och en övre gräns för antalet).
-    tryDeerBreed(unit) {
-      let population = 0;
-      for (const other of World.units) if (other.kind === 'deer') population++;
-      if (population >= DEER.maxPopulation || !huntingUnlocked()) return; // utan jakt får hjortarna inte föröka sig
+    // Förökning styrs av hur många djur som finns i närheten: tomt runt omkring ger (1 + boost) gånger så ofta ungar,
+    // och chansen sjunker jämnt till noll när det finns 'capacity' djur i närheten. Ett lokalt område kan jagas tomt, men inte en hel region.
+    // Anropas med den högsta möjliga chansen och gallrar här ner till den verkliga.
+    tryAnimalBreed(unit) {
+      const { radius, capacity, dispersal } = Config.settings.animalBreeding;
+      if (!huntingUnlocked()) return; // utan jakt får djuren inte föröka sig
 
-      // Ungen föds på en ledig gräs- eller trädruta alldeles intill (annars på samma ruta)
+      let population = 0, nearby = 0;
+      for (const other of World.units) {
+        if (!other.definition.isAnimal) continue;
+        population++;
+        if (other !== unit && Math.hypot(other.x - unit.x, other.y - unit.y) <= radius) nearby++;
+      }
+      if (population >= ANIMAL.maxPopulation || Math.random() < nearby / capacity) return;
+
+      // Ungen föds på en ledig gräs- eller trädruta i närheten (annars på samma ruta)
       const cx = Math.floor(unit.x), cy = Math.floor(unit.y);
       const spots = [];
-      for (let dy = -2; dy <= 2; dy++) {
-        for (let dx = -2; dx <= 2; dx++) {
+      for (let dy = -dispersal; dy <= dispersal; dy++) {
+        for (let dx = -dispersal; dx <= dispersal; dx++) {
           if (!dx && !dy) continue;
           const terrainType = World.getTile(cx + dx, cy + dy).terrainType;
           if (terrainType === 'grass' || terrainType === 'tree') spots.push({ x: cx + dx, y: cy + dy });
         }
       }
       const spot = spots.length ? spots[Math.floor(Math.random() * spots.length)] : { x: cx, y: cy };
-      const fawn = World.spawnUnit('deer', spot.x, spot.y);
-      console.log("spawn", spot.x, spot.y);
-      unit.deerBreedCooldown = DEER.breedCooldown;
-      if (fawn) fawn.deerBreedCooldown = DEER.breedCooldown;
+      const young = CityBuilder.Animals.spawnYoung(unit.kind, spot.x, spot.y);
+      unit.animalBreedCooldown = young.animalBreedCooldown = ANIMAL.breedCooldown;
     },
 
     handlePathFailure(unit) {

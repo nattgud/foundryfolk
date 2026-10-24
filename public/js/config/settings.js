@@ -8,8 +8,11 @@ CityBuilder.Config.settings = {
   outputBufferCapacity: 20,       // max i utbuffert innan producenten pausar
   flushThreshold: 0,             // överskott över detta skickas till lagret
   carriersPerBuilding: 3,
-  deerPerChunk: 3,
-  deerTreeSpreadChance: 0.005,
+  animalPerChunk: 3,
+  // Förökning: ju färre andra djur inom radius rutor, desto oftare får ett djur ungar (upp till 1 + boost gånger oftare, inga alls
+  // när capacity djur finns i närheten). Ungen föds högst dispersal rutor bort.
+  animalBreeding: { radius: 12, capacity: 3, boost: 6, dispersal: 6 },
+  animalTreeSpreadChance: 0.005,
   startingResources: { wood: 10, plank: 10, stone: 10, hammer: 10 },
   gameSpeeds: [1, 2, 4, 8],
   maxBuildDistance: 35,          // längst avstånd (rutor) från en egen byggnad som man får bygga på

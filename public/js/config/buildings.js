@@ -199,7 +199,7 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 6, wood: 5, stone: 4 },
     job: {
       kind: 'gather',
-      sourceUnit: 'deer',
+      sourceUnit: Object.keys(CityBuilder.Config.units).filter(id => CityBuilder.Config.units[id].isAnimal),
       searchRadius: 20,
       workLabel: "Hunting",
       outputs: { meat: 1, leather: 1 },

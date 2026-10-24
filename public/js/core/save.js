@@ -187,9 +187,9 @@
         carriers: haulers.length,
         carried,
         tiles: this.collectTileChanges(),
-        deerChunks: (
-          CityBuilder.Deer.syncActive(),
-          Array.from(World.deerByChunk.entries())
+        animalChunks: (
+          CityBuilder.Animals.syncActive(),
+          Array.from(World.animalsByChunk.entries())
         ),
       };
     },
@@ -205,7 +205,7 @@
         Object.assign(tile, changed);
         if (changed.wear > 0) CityBuilder.Systems.pathDecay?.touch(tile); // slitna stigar börjar om sin vilotid (pathdecay.js)
       }
-      World.deerByChunk = new Map(data.deerChunks || []);
+      World.animalsByChunk = new Map(CityBuilder.Animals.migrate(data.animalChunks || data.deerChunks || []));
 
       for (const saved of data.buildings || []) {
         try {

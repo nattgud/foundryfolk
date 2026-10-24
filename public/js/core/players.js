@@ -1,5 +1,5 @@
 /* Spelare: varje enhet och byggnad har ett fält "player" som anger vem den tillhör. Alla spelare har egen bas, eget lager och egna bärare.
-   NEUTRAL (t.ex. hjortar) är aldrig fiende till någon: ingen anfaller dem och de anfaller ingen. */
+   NEUTRAL (t.ex. djur) är aldrig fiende till någon: ingen anfaller dem och de anfaller ingen. */
 (function (CityBuilder) {
   'use strict';
 
