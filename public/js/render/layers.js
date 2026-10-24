@@ -1,7 +1,7 @@
 /* Renderlager i ritordning: terräng, stigar, byggnader, enheter, placeringsspöke. */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Assets, Economy, Renderer, Vision, Players } = CityBuilder;
+  const { Config, World, Assets, Economy, Renderer, Vision, Players, Utils } = CityBuilder;
 
   // Utanför synfältet (Renderer.viewBounds)? Byggnader och enheter utanför bild hoppas över, så ritkostnaden följer vad som syns.
   const outside = (view, x, y) => x < view.left || x > view.right || y < view.top || y > view.bottom;
@@ -34,6 +34,49 @@
     return key;
   };
 
+  // Variation: sten och träd i en sammanhängande 2x2-yta slås ihop till en större form (hälften av ytorna, slumpvis och spegelvänt),
+  // så att intilliggande rutor inte blir identiska kopior. Ytorna ligger på ett jämnt rutnät, så de ryms alltid i samma bricka.
+  const CLUSTERS = new Set(['rock', 'tree']), MERGE_CHANCE = 0.5;
+  const mergedBlock = (blockX, blockY) => {
+    const type = World.getTile(blockX * 2, blockY * 2).terrainType;
+    if (!CLUSTERS.has(type) || Utils.hash(blockX, blockY, 77) >= MERGE_CHANCE) return null;
+    return World.getTile(blockX * 2 + 1, blockY * 2).terrainType === type && World.getTile(blockX * 2, blockY * 2 + 1).terrainType === type
+      && World.getTile(blockX * 2 + 1, blockY * 2 + 1).terrainType === type ? type : null;
+  };
+  // Ritar bilden spegelvänd (flipX / flipY) i rektangeln
+  const drawFlipped = (context, image, left, top, width, height, flipX, flipY) => {
+    if (!flipX && !flipY) return context.drawImage(image, left, top, width, height);
+    context.save();
+    context.translate(left + (flipX ? width : 0), top + (flipY ? height : 0));
+    context.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+    context.drawImage(image, 0, 0, width, height);
+    context.restore();
+  };
+
+  // Mjuka hörn: sand, vatten och lera mot gräs får rundade yttre hörn, så att fläckarna ser organiska ut i stället för att bestå av kvadrater.
+  // Ett hörn rundas när båda grannarna vid hörnet är gräs. Gräsbilden ritas över hörnet utanför en kvartscirkel.
+  const ROUNDED = new Set(['sand', 'water', 'clay']), CORNER_RADIUS = 0.34;
+  const roundCorners = (context, x, y, left, top, width, height) => {
+    const grass = Assets.getVariant(Config.terrain.grass.image, x, y);
+    if (!grass) return;
+    const isGrass = (dx, dy) => World.getTile(x + dx, y + dy)?.terrainType === 'grass';
+    const radius = width * CORNER_RADIUS;
+    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      if (!isGrass(dx, 0) || !isGrass(0, dy)) continue;
+      context.save();
+      context.translate(left + (dx > 0 ? width : 0), top + (dy > 0 ? height : 0));
+      context.scale(dx, dy);
+      context.beginPath();
+      context.moveTo(0, 0);
+      context.lineTo(radius, 0);
+      context.arc(radius, radius, radius, -Math.PI / 2, Math.PI, true);
+      context.closePath();
+      context.clip();
+      context.drawImage(grass, 0, 0, width, height);
+      context.restore();
+    }
+  };
+
   // Ritar brickan med sitt övre vänstra hörn i origo; types (valfri) får rutornas terrängtyper
   const paintTerrainChunk = (context, cx, cy, scale, tileSize, types) => {
     const N = TERRAIN_CHUNK, x0 = edge(cx * N, scale), y0 = edge(cy * N, scale), factor = scale / tileSize;
@@ -42,10 +85,26 @@
       const left = edge(x, scale) - x0, top = edge(y, scale) - y0;
       const width = edge(x + 1, scale) - x0 - left, height = edge(y + 1, scale) - y0 - top;
       if (types) types[j * N + i] = type;
+      const image = Assets.getVariant(terrain.image, x, y);
+      const clustered = image && CLUSTERS.has(type);
+      if (clustered && mergedBlock(x >> 1, y >> 1)) {
+        // Ett större block ritas från sin övre vänstra ruta, övriga tre rutor hoppas över (och får inte ritas över det)
+        if (!(x & 1) && !(y & 1)) drawFlipped(context, image, left, top, edge(x + 2, scale) - x0 - left, edge(y + 2, scale) - y0 - top, Utils.hash(x, y, 78) < 0.5, Utils.hash(x, y, 79) < 0.5);
+        continue;
+      }
       context.fillStyle = terrain.color;
       context.fillRect(left, top, width, height);
-      const image = Assets.getVariant(terrain.image, x, y);
-      if (image) context.drawImage(image, left, top, width, height);
+      if (clustered) drawFlipped(context, image, left, top, width, height, Utils.hash(x, y, 80) < 0.5, false);
+      else if (image) {
+        context.drawImage(image, left, top, width, height);
+        if (ROUNDED.has(type)) roundCorners(context, x, y, left, top, width, height);
+        // Gräset skiftar mjukt i ljus och mörker så att stora ytor inte ser ut som ett mönster som upprepas
+        if (type === 'grass') {
+          const shade = Utils.smoothNoise(x / 7, y / 7, 9) - 0.5;
+          context.fillStyle = shade < 0 ? `rgba(0,0,0,${-shade * 0.16})` : `rgba(255,255,255,${shade * 0.1})`;
+          context.fillRect(left, top, width, height);
+        }
+      }
       else if (terrain.fallbackShape && CityBuilder.Shapes[terrain.fallbackShape]) {
         context.save();
         context.translate(left, top);

@@ -233,7 +233,8 @@
         case 'kills': return t('Defeat enemy units: {have}/{need}', numbers);
         case 'destroy': return item.id === 'any' ? t('Destroy enemy buildings: {have}/{need}', numbers) : t('Destroy enemy {name}: {have}/{need}', { name: lower(this.buildingName(item.id)), ...numbers });
         case 'eliminate': return item.amount > 1 ? t('Destroy the enemy bases: {have}/{need}', numbers) : t('Destroy the enemy base');
-        default: return t('Store {name}: {have}/{need}', { name: this.resourceChip(item.resource), ...numbers });
+        // Ikon och namn: ikonen ensam kan misstolkas (lerblocket såg ut som en limpa)
+        default: return t('Store {name}: {have}/{need}', { name: this.resourceChip(item.resource) + ' ' + this.resourceName(item.resource), ...numbers });
       }
     },
 
@@ -832,6 +833,7 @@
       );
 
       if (this.resourceWindowOpen) {
+        this.updateKnownResources();
         this.updateResourceFavoriteButtons();
         overlay.querySelector('.resource-window-close').focus();
       } else {
@@ -840,6 +842,34 @@
     },
 
     // ---- Resursstatistik: klicka på en resurs i fönstret för att se vart den går och varifrån den kommer ------------------
+
+    // Resurser som spelaren kan ha nytta av nu: det som finns i lagret, favoriter och allt som de upplåsta byggnaderna kostar, kräver eller gör.
+    // Resten (t.ex. guld och månsten på nivå 1) döljs i resursfönstret tills de behövs, så att listan inte överväldigar.
+    knownResources() {
+      const known = new Set(this.resourceFavorites), Levels = CityBuilder.Levels;
+      const add = amounts => { for (const id in amounts || {}) known.add(id); };
+      for (const [id, building] of Object.entries(Config.buildings)) {
+        if (Levels && !Levels.isUnlocked(id)) continue;
+        add(building.buildCost);
+        add(building.requiredEquipment);
+        const job = building.job;
+        if (!job) continue;
+        add(job.inputs);
+        add(job.outputs);
+        if (job.outputResource) known.add(job.outputResource);
+        for (const choice of job.choices || []) { add(choice.inputs); add(choice.outputs); }
+        for (const group of [].concat(job.eats || [])) group.any.forEach(resourceId => known.add(resourceId));
+        for (const kind of job.trains || []) add(Config.units[kind]?.training?.inputs);
+      }
+      add(Config.settings.startingResources);
+      for (const id in Config.resources) if (Economy.totalAmount(id) > 0) known.add(id);
+      return known;
+    },
+
+    updateKnownResources() {
+      const known = this.knownResources();
+      document.querySelectorAll('#resourceWindowList .resource-detail').forEach(item => item.classList.toggle('is-hidden', !known.has(item.dataset.resource)));
+    },
 
     selectResourceFlow(resourceId) {
       this.flowResource = this.flowResource === resourceId ? null : resourceId;
@@ -1238,6 +1268,7 @@
 
       for (const [buildingId, building] of Object.entries(Config.buildings)) {
         if (building.hiddenInMenu) continue;
+        if (CityBuilder.Levels && !CityBuilder.Levels.isVisible(buildingId)) continue;
 
         const categoryId = groups.has(building.category)
           ? building.category
@@ -1316,7 +1347,7 @@
             tooltip: () => this.tooltipContent(
               this.buildingName(buildingId),
               building.buildCost,
-              [...(lockedLine ? [lockedLine] : []), ...this.describeBuilding(building)]
+              [...(lockedLine ? ['🔒 ' + lockedLine] : Economy.canAfford(building.buildCost) ? [] : ['⚠ ' + t('Not enough resources')]), ...this.describeBuilding(building)]
             ),
           });
 
@@ -1596,9 +1627,22 @@
         #bottom .building-option.unaffordable .icon {
           opacity: .4;
         }
-        #bottom .building-option.unaffordable, #bottom .building-option.locked {
+        #bottom .building-option.unaffordable {
           border-color: var(--bad-line);
           background: #35201f linear-gradient(var(--bad-bg), var(--bad-bg));
+        }
+        /* Låst är inte samma sak som för dyrt: grått, streckad ram, överstruken och med hänglås (för dyrt är rött) */
+        #bottom .building-option.locked {
+          border: 1px dashed #66717a;
+          background: #1a1f24;
+        }
+        #bottom .building-option.locked::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to top right, transparent calc(50% - 1.5px), #8b969f calc(50% - 1.5px), #8b969f calc(50% + 1.5px), transparent calc(50% + 1.5px));
+          pointer-events: none;
+          z-index: 1;
         }
 
         .icon {
@@ -1727,9 +1771,10 @@
           inset: 0;
           display: grid;
           place-items: center;
-          font-size: 30px;
+          font-size: 26px;
           text-shadow: 0 2px 6px #000;
           pointer-events: none;
+          z-index: 2;
         }
         #bottom .building-option.locked .build-count { display: none; }
 
@@ -1922,6 +1967,7 @@
         .market-trade { white-space: nowrap; padding: 4px 8px; }
         @media (max-width: 520px) { .market-row { grid-template-columns: minmax(0, 1fr) 44px 112px; } .market-stock { display: none; } }
 
+        .resource-detail.is-hidden { display: none; }
         .resource-detail.is-clickable { cursor: pointer; }
         .resource-detail.is-clickable:hover { background: rgb(255 255 255 / 6%); }
         .resource-detail.is-selected { border-color: #e5bc58; background: rgb(229 188 88 / 10%); }
@@ -2121,7 +2167,7 @@
         const windowAmount = byId('resourceWindowAmount_' + resourceId);
         if (windowAmount) { windowAmount.textContent = amount; windowAmount.classList.toggle('is-full', full); }
       }
-      if (this.resourceWindowOpen) this.renderResourceFlow();
+      if (this.resourceWindowOpen) { this.renderResourceFlow(); this.updateKnownResources(); }
       this.updateMarket();
 
       const carriers = World.units.filter(unit => unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN);

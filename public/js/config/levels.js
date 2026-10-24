@@ -91,6 +91,7 @@
     monument: 58,
   };
   const unlockLevelOf = id => UNLOCK[id] ?? 1;
+  const PREVIEW_LEVELS = 3;   // så många nivåer framåt visas låsta byggnader i byggmenyn
 
   /* ---------- Rarity ---------- */
   const TIERS = {
@@ -913,6 +914,8 @@
     // Unlocks
     unlockLevel: unlockLevelOf,
     isUnlocked: id => !!state.info.custom || unlockLevelOf(id) <= state.info.level,
+    // Syns byggnaden i byggmenyn? Låsta byggnader visas bara de närmaste nivåerna (en glimt av vad som kommer), resten döljs tills det är dags
+    isVisible: id => !!state.info.custom || unlockLevelOf(id) <= state.info.level + PREVIEW_LEVELS,
 
     // Combat results for the goals: the player defeated an enemy unit or destroyed an enemy building
     onDefeated(target) {

@@ -4,6 +4,13 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.7.1': [
+      'Goals show the resource name next to the icon, so a clay block is no longer mistaken for a loaf of bread',
+      'Locked buildings are now clearly different from buildings you cannot afford: locked ones are grey with a dashed border, a stroke and a padlock, while too expensive ones are red',
+      'Less clutter: locked buildings are only shown a few levels ahead, and the resource window only lists the resources you can use at your current level',
+      'Rounded corners on sand, water and clay, and soft light and dark patches in the grass',
+      'Forests and rocks vary: neighbouring trees and rocks can merge into larger trees and boulders, and single ones are mirrored at random',
+    ],
     '0.7.0': [
       'Soldiers keep their distance: they no longer stand on top of each other and look like one unit. The ring around a soldier is 1 px',
       'Sounds for arrows, melee, hits, deaths, destroyed buildings and for every kind of worker (chopping, mining, picking, digging, fishing, hunting, planting, crafting, smelting)',
