@@ -50,19 +50,19 @@ CityBuilder.Config.units = {
   // Djur: samma beteende (äter, sprider växter, förökar sig, kan jagas), olika utseende. spawnWeight = hur vanlig arten är.
   deer: {
     ...ANIMAL_DEFAULTS, color: '#760', imageSize: 16, spawnWeight: 4,
-    image: 'images/units/deer.png',
+    image: 'images/units/deer.png', imageFacesLeft: false,
   },
   moose: {
     ...ANIMAL_DEFAULTS, color: '#432', imageSize: 20, spawnWeight: 2,
-    image: 'images/units/moose.png', imageFacesLeft: true,
+    image: 'images/units/moose.png', imageFacesLeft: false,
   },
   fox: {
-    ...ANIMAL_DEFAULTS, color: '#c60', fallbackSize: 5, imageSize: 12, spawnWeight: 2,
-    image: 'images/units/fox.png', imageFacesLeft: true,
+    ...ANIMAL_DEFAULTS, color: '#c60', fallbackSize: 5, imageSize: 16, spawnWeight: 2,
+    image: 'images/units/fox.png', imageFacesLeft: false,
   },
   rabbit: {
-    ...ANIMAL_DEFAULTS, color: '#998', fallbackSize: 4, imageSize: 9, spawnWeight: 3,
-    image: 'images/units/rabbit.png', imageFacesLeft: true,
+    ...ANIMAL_DEFAULTS, color: '#998', fallbackSize: 4, imageSize: 16, spawnWeight: 3,
+    image: 'images/units/rabbit.png', imageFacesLeft: false,
   },
   swordsman: {
     isSoldier: true,

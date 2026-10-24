@@ -51,7 +51,7 @@ CityBuilder.Config.settings = {
       // built: 'sounds/built.mp3',
       // demolish: 'sounds/demolish.mp3',
       // error: 'sounds/error.mp3',
-      // levelComplete: 'sounds/level_complete.mp3',
+      levelComplete: 'sounds/level_complete.mp3',
       // drop: 'sounds/drop.mp3',
       // alarm: 'sounds/alarm.mp3',
       // arrow: 'sounds/arrow.mp3',          // pil avfyras
