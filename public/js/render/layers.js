@@ -34,15 +34,8 @@
     return key;
   };
 
-  // Variation: sten och träd i en sammanhängande 2x2-yta slås ihop till en större form (hälften av ytorna, slumpvis och spegelvänt),
-  // så att intilliggande rutor inte blir identiska kopior. Ytorna ligger på ett jämnt rutnät, så de ryms alltid i samma bricka.
-  const CLUSTERS = new Set(['rock', 'tree']), MERGE_CHANCE = 0.5;
-  const mergedBlock = (blockX, blockY) => {
-    const type = World.getTile(blockX * 2, blockY * 2).terrainType;
-    if (!CLUSTERS.has(type) || Utils.hash(blockX, blockY, 77) >= MERGE_CHANCE) return null;
-    return World.getTile(blockX * 2 + 1, blockY * 2).terrainType === type && World.getTile(blockX * 2, blockY * 2 + 1).terrainType === type
-      && World.getTile(blockX * 2 + 1, blockY * 2 + 1).terrainType === type ? type : null;
-  };
+  // Variation: sten och träd speglas slumpvis, så att intilliggande rutor inte blir identiska kopior
+  const CLUSTERS = new Set(['rock', 'tree']);
   // Ritar bilden spegelvänd (flipX / flipY) i rektangeln
   const drawFlipped = (context, image, left, top, width, height, flipX, flipY) => {
     if (!flipX && !flipY) return context.drawImage(image, left, top, width, height);
@@ -53,6 +46,12 @@
     context.restore();
   };
 
+  // Subtila nyanser: mjukt brus (stora fläckar) lägger en svag mörk eller ljus slöja över rutan. Läggs bara på cachade brickor: en gång per bricka, aldrig varje bildruta.
+  const SHADES = {
+    grass: { channel: 9, scale: 7, dark: 0.16, light: 0.1 },
+    water: { channel: 13, scale: 5, dark: 0.14, light: 0.1 },
+    mountain: { channel: 17, scale: 4, dark: 0.2, light: 0.12 },
+  };
   // Mjuka hörn: sand, vatten och lera mot gräs får rundade yttre hörn, så att fläckarna ser organiska ut i stället för att bestå av kvadrater.
   // Ett hörn rundas när båda grannarna vid hörnet är gräs. Gräsbilden ritas över hörnet utanför en kvartscirkel.
   const ROUNDED = new Set(['sand', 'water', 'clay']), CORNER_RADIUS = 0.34;
@@ -87,23 +86,18 @@
       if (types) types[j * N + i] = type;
       const image = Assets.getVariant(terrain.image, x, y);
       const clustered = image && CLUSTERS.has(type);
-      if (clustered && mergedBlock(x >> 1, y >> 1)) {
-        // Ett större block ritas från sin övre vänstra ruta, övriga tre rutor hoppas över (och får inte ritas över det)
-        if (!(x & 1) && !(y & 1)) drawFlipped(context, image, left, top, edge(x + 2, scale) - x0 - left, edge(y + 2, scale) - y0 - top, Utils.hash(x, y, 78) < 0.5, Utils.hash(x, y, 79) < 0.5);
-        continue;
-      }
       context.fillStyle = terrain.color;
       context.fillRect(left, top, width, height);
       if (clustered) drawFlipped(context, image, left, top, width, height, Utils.hash(x, y, 80) < 0.5, false);
       else if (image) {
         context.drawImage(image, left, top, width, height);
-        if (ROUNDED.has(type)) roundCorners(context, x, y, left, top, width, height);
-        // Gräset skiftar mjukt i ljus och mörker så att stora ytor inte ser ut som ett mönster som upprepas
-        if (type === 'grass') {
-          const shade = Utils.smoothNoise(x / 7, y / 7, 9) - 0.5;
-          context.fillStyle = shade < 0 ? `rgba(0,0,0,${-shade * 0.16})` : `rgba(255,255,255,${shade * 0.1})`;
+        const shade = types && SHADES[type];   // bara när brickan cachas (inte varje bildruta under zoom), så att det inte kostar något i FPS
+        if (shade) {
+          const level = Utils.smoothNoise(x / shade.scale, y / shade.scale, shade.channel) - 0.5;
+          context.fillStyle = level < 0 ? `rgba(0,0,0,${-level * shade.dark})` : `rgba(255,255,255,${level * shade.light})`;
           context.fillRect(left, top, width, height);
         }
+        if (ROUNDED.has(type)) roundCorners(context, x, y, left, top, width, height);
       }
       else if (terrain.fallbackShape && CityBuilder.Shapes[terrain.fallbackShape]) {
         context.save();

@@ -284,19 +284,22 @@
     // öppna en byggkategori (category). mock: en bild av infopanelen för det som inte syns förrän man markerat en byggnad.
     TUTORIAL: [
       { title: 'Welcome', lines: ['Build a settlement, grow your economy and, in time, defeat the rival base.', 'Each step lights up the part of the screen it explains.'] },
-      { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'The timer shows your time against the target time. Be faster for more stars.'] },
-      { title: 'Resources', target: ['#top'], lines: ['The top bar shows what is in your stores. Tap "All resources" for the full list.', 'A number turns orange when the stores are full for that resource. Build a warehouse for more room.'] },
+      { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'Resource goals show the icon and the name of the resource. The timer shows your time against the target time. Be faster for more stars.'] },
+      { title: 'Resources', target: ['#top'], lines: ['The top bar shows what is in your stores. Tap "All resources" for the full list.', 'A number turns orange when the stores are full for that resource. Build a warehouse for more room.', 'Tap a resource in the list to see which buildings use it and which make it, per minute. Buildings that could use it but do not right now are shown too.', 'The list only shows the resources you can use at your current level. More appear as you unlock buildings.'] },
       { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap a building, tree, rock or water to see what it is.'] },
       { title: 'Minimap', target: ['#minimap', '#minimapMode', '#minimapZoomIn', '#minimapZoomOut'], lines: ['The minimap shows the area around you. The white box is what you see on screen.', 'Use + and − to zoom it, and the small button to change what it shows.', 'Your buildings are coloured squares. Enemies you have spotted are red.'] },
       { title: 'Build menu', target: ['#bottom .build-categories'], category: null, lines: ['The build menu is at the bottom. Each icon is a category of buildings.', 'Tap a category to open it. New buildings unlock as you complete levels.'] },
+      { title: 'Locked or too expensive', target: ['#bottom .building-option'], category: 'gathering', lines: ['A grey button with a dashed border, a stroke and a padlock is locked. Move the mouse over it to see at which level it unlocks. Only the next few levels are shown.', 'A button with a red border is unlocked, but you cannot afford it yet. Move the mouse over it to see the cost.'] },
       { title: 'Place a building', target: ['#build_woodcutter'], category: 'forestry', lines: ['Tap a building to select it. Move the mouse over it to see its cost and what it does.', 'Then tap the ground to place it. A preview follows you and shows whether it fits. You can only build near your own buildings, and not in the fog.', 'Tap the building again, or Cancel, to stop placing.'] },
       { title: 'Select, pause and demolish', mock: 'pause', lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
-      { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
-      { title: 'Speed and menu', target: ['#speedButton', '#mainMenuButton'], lines: ['Change the game speed here.', 'The menu button opens save, load, settings and this guide.'] },
+      { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
+      { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
+      { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25.'] },
+      { title: 'Speed and menu', target: ['#speedButton', '#mainMenuButton'], lines: ['Change the game speed here.', 'The menu button opens save, load, settings and this guide. You can also start a custom map with your own settings, and use several save slots.'] },
       { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
-      { title: 'Find the enemy', target: ['#build_watchtower'], category: 'military', lines: ['The rival base is 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.'] },
+      { title: 'Find the enemy', target: ['#build_watchtower'], category: 'military', lines: ['From level 15 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
       { title: 'Train soldiers', target: ['#build_garrison', '#build_guard_tower'], category: 'military', lines: ['Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.', 'Each soldier needs weapons and armour, which carriers deliver to the building.'] },
-      { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.'] },
+      { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.', 'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.'] },
     ],
 
     // Handledningen (spelet pausas medan den är öppen). Varje sida lyser upp det den förklarar.
@@ -381,15 +384,19 @@
         const add = (className, text) => { const element = document.createElement('div'); element.className = className; element.textContent = text; body.append(element); return element; };
         add('main-menu-level', (page + 1) + '/' + pages.length + ' · ' + t(heading));
         if (mock) { // infopanelen för en vald byggnad, med den knapp som förklaras lysande
-          const garrison = mock === 'stance';
+          const garrison = mock === 'stance', trade = mock === 'trade';
           const panel = document.createElement('div');
           panel.className = 'tutorial-mock';
           const name = document.createElement('div');
           name.innerHTML = '<b></b><br><span></span>';
-          name.firstChild.textContent = this.buildingName(garrison ? 'guard_tower' : 'woodcutter'); name.lastChild.textContent = t(garrison ? 'Training' : 'Working');
+          name.firstChild.textContent = this.buildingName(garrison ? 'guard_tower' : trade ? 'sawmill' : 'woodcutter'); name.lastChild.textContent = t(garrison ? 'Training' : 'Working');
+          if (trade) { // sågverket: har en stock, inget sågat väntar
+            const sawmill = { definition: Config.buildings.sawmill, type: 'sawmill', player: CityBuilder.Players.HUMAN, inputStock: { wood: 1 }, outputStock: {} };
+            name.lastChild.insertAdjacentHTML('afterend', this.tradeHtml(sawmill));
+          }
           const buttons = document.createElement('div');
           buttons.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end';
-          const labels = garrison ? [[this.unitName('swordsman'), false], [this.unitName('archer'), false], [t('Defence mode'), true]] : [[t('Pause'), true], [t('Demolish'), false]];
+          const labels = trade ? [] : garrison ? [[this.unitName('swordsman'), false], [this.unitName('archer'), false], [t('Defence mode'), true]] : [[t('Pause'), true], [t('Demolish'), false]];
           for (const [text, glow] of labels) {
             const element = document.createElement('button');
             element.type = 'button'; element.textContent = text; element.tabIndex = -1;
@@ -876,6 +883,25 @@
       this.renderResourceFlow(true);
     },
 
+    // Alla byggnader som kan använda ('use') eller göra ('make') resursen, även de som inte gör det just nu (byggande och marknad räknas som egna rader)
+    resourceUsers(resourceId) {
+      const cache = this.usersCache = this.usersCache || new Map();
+      if (cache.has(resourceId)) return cache.get(resourceId);
+      const use = new Set(), make = new Set(), Behaviors = CityBuilder.Behaviors;
+      for (const [id, building] of Object.entries(Config.buildings)) {
+        if (building.buildCost?.[resourceId]) use.add('construction');
+        if (building.isMarket && Config.buildings.market.market.prices[resourceId] !== undefined) { use.add(id); make.add(id); }
+        const job = building.job;
+        if (!job) continue;
+        const takes = [job.inputs, building.requiredEquipment, ...(job.choices || []).map(choice => choice.inputs), ...(job.trains || []).map(kind => Config.units[kind]?.training?.inputs)];
+        if (takes.some(amounts => amounts && amounts[resourceId] !== undefined) || [].concat(job.eats || []).some(group => group.any.includes(resourceId)) || Behaviors.boostOf(building)?.resource === resourceId) use.add(id);
+        if ([job.outputs, ...(job.choices || []).map(choice => choice.outputs)].some(amounts => amounts && amounts[resourceId] !== undefined) || job.outputResource === resourceId) make.add(id);
+      }
+      const result = { use: [...use], make: [...make] };
+      cache.set(resourceId, result);
+      return result;
+    },
+
     flowLabel: label => label === 'construction' ? t('Construction') : UI.buildingName(label),
 
     // Ritar om panelen (högst en gång per sekund om inte force)
@@ -891,25 +917,34 @@
       if (!resourceId) { panel.replaceChildren(Object.assign(document.createElement('p'), { className: 'resource-flow-hint', textContent: t('Click a resource to see where it goes.') })); return; }
 
       const make = (tag, className, text) => Object.assign(document.createElement(tag), { className, ...(text !== undefined ? { textContent: text } : {}) });
+      // Rader: det som faktiskt händer (störst först), därefter alla övriga byggnader som kan använda resursen (0/min, dämpade, låsta med hänglås)
+      const Levels = CityBuilder.Levels, users = this.resourceUsers(resourceId);
+      const rowsFor = (flow, possible) => {
+        const seen = new Set(flow.map(row => row.label));
+        const idle = possible.filter(label => !seen.has(label)).map(label => ({ label, perMinute: 0, locked: label !== 'construction' && Levels && !Levels.isUnlocked(label) }))
+          .sort((a, b) => a.locked - b.locked || this.flowLabel(a.label).localeCompare(this.flowLabel(b.label)));
+        return [...flow, ...idle];
+      };
       const column = (title, rows) => {
         const box = make('div', 'resource-flow-column');
         box.append(make('h4', '', title));
-        const top = rows[0]?.perMinute || 1;
+        const top = rows[0]?.perMinute || 0;
         for (const row of rows) {
-          const line = make('div', 'resource-flow-row');
+          const line = make('div', 'resource-flow-row' + (row.perMinute ? '' : ' is-idle') + (row.locked ? ' is-locked' : ''));
           const bar = make('span', 'resource-flow-bar');
-          bar.style.width = Math.max(4, Math.round(row.perMinute / top * 100)) + '%';
-          line.append(bar, make('span', 'resource-flow-label', this.flowLabel(row.label)), make('span', 'resource-flow-value', row.perMinute.toFixed(1) + ' ' + t('/min')));
+          bar.style.width = row.perMinute ? Math.max(4, Math.round(row.perMinute / top * 100)) + '%' : '0';
+          line.append(bar, make('span', 'resource-flow-label', (row.locked ? '🔒 ' : '') + this.flowLabel(row.label)), make('span', 'resource-flow-value', row.perMinute.toFixed(1) + ' ' + t('/min')));
           box.append(line);
         }
-        if (!rows.length) box.append(make('div', 'resource-flow-none', t('Nothing yet')));
+        if (!rows.length) box.append(make('div', 'resource-flow-none', t('Nothing uses this')));
         return box;
       };
       const used = Economy.flow('use', resourceId), made = Economy.flow('make', resourceId);
+      const usedRows = rowsFor(used, users.use), madeRows = rowsFor(made, users.make);
       const net = made.reduce((sum, row) => sum + row.perMinute, 0) - used.reduce((sum, row) => sum + row.perMinute, 0);
       const title = make('div', 'resource-flow-title');
       title.append(make('strong', '', this.resourceName(resourceId)), make('span', 'resource-flow-net' + (net < -0.05 ? ' is-negative' : ''), (net > 0 ? '+' : '') + net.toFixed(1) + ' ' + t('/min')));
-      panel.replaceChildren(title, column(t('Used by'), used), column(t('Produced by'), made), make('p', 'resource-flow-note', t('Average over the last 5 minutes')));
+      panel.replaceChildren(title, column(t('Used by'), usedRows), column(t('Produced by'), madeRows), make('p', 'resource-flow-note', t('Average over the last 5 minutes')));
     },
 
     // ---- Marknaden: fönster där varor köps och säljs för mynt (Economy.buy / Economy.sell) ----------------------------------
@@ -1972,13 +2007,15 @@
         .resource-detail.is-clickable:hover { background: rgb(255 255 255 / 6%); }
         .resource-detail.is-selected { border-color: #e5bc58; background: rgb(229 188 88 / 10%); }
 
-        .resource-flow { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; padding: 10px 14px 12px; border-top: 1px solid var(--line); font-size: 12px; }
+        .resource-flow { max-height: 240px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; padding: 10px 14px 12px; border-top: 1px solid var(--line); font-size: 12px; }
         .resource-flow-title { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; }
         .resource-flow-title strong { font-size: 14px; }
         .resource-flow-net { color: #6ec27b; font-weight: 600; }
         .resource-flow-net.is-negative { color: #e5534b; }
         .resource-flow-column h4 { margin: 0 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--dim); }
         .resource-flow-row { position: relative; display: flex; justify-content: space-between; gap: 8px; padding: 2px 6px; margin-bottom: 2px; overflow: hidden; border-radius: 3px; }
+        .resource-flow-row.is-idle { color: var(--dim); }
+        .resource-flow-row.is-locked { opacity: .6; }
         .resource-flow-bar { position: absolute; inset: 0 auto 0 0; background: rgb(255 255 255 / 10%); }
         .resource-flow-label, .resource-flow-value { position: relative; white-space: nowrap; }
         .resource-flow-none, .resource-flow-hint, .resource-flow-note { color: var(--dim); }
@@ -2333,6 +2370,7 @@
       const job = definition.job;
 
       if (definition.isStorage) lines.push(t('Stores resources'));
+      if (definition.isStorage && definition.carriers) lines.push(t('Adds {n} carriers', { n: definition.carriers }));
       if (definition.isMarket) lines.push(t('Buy and sell goods for coins. Click it to trade.'));
       if (definition.aura) {
         lines.push(t('Boosts all your buildings within {n} tiles: output +{yield}%, soldiers train {training}% faster',

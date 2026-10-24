@@ -122,7 +122,7 @@
       queue.push(Math.max(this.time || 0, queue[queue.length - 1] ?? 0) + Config.settings.military.carrierRespawnSeconds);
     },
 
-    // Antalet bärare följer byggnaderna: bas + 1 per färdig byggnad + 5 per färdigt lager (per spelare). Rivs eller förstörs något
+    // Antalet bärare följer byggnaderna: bas + 1 per färdig byggnad + 5, 10 respektive 25 per färdigt lager, lagerhus och depå (definition.carriers, per spelare). Rivs eller förstörs något
     // minskar antalet igen: överskott tas bort när bärarna är lediga.
     balanceCarriers() {
       const { baseCarriers, carriersPerBuilding, carriersPerStorage } = cfg();
@@ -132,7 +132,7 @@
         let wanted = 0;
         for (const building of World.buildings) {
           if (building.player !== player || building.buildProgress < 1 || building === hq) continue;
-          wanted += building.definition.isStorage ? carriersPerStorage : carriersPerBuilding;
+          wanted += building.definition.carriers ?? (building.definition.isStorage ? carriersPerStorage : carriersPerBuilding);
         }
         const waiting = (this.lost[player] = (this.lost[player] || []).filter(time => time > (this.time || 0))).length; // dödade, ännu inte ersatta
         const target = Math.max(0, baseCarriers + wanted - waiting);

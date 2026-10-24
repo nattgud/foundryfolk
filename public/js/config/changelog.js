@@ -4,6 +4,14 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.7.2': [
+      'Soldiers no longer get stuck in each other: melee fighters stand next to their target instead of inside it, and soldiers slide along obstacles when they are pushed apart',
+      'Bigger stores give more carriers: warehouse +5, large warehouse +10, great depot +25',
+      'The resource statistics list every building that can use or make the resource, also the ones that are idle right now (locked ones are marked with a padlock)',
+      'Removed the merged 2x2 trees and boulders; trees and rocks are still mirrored at random',
+      'Subtle shades of colour in grass, water and mountains',
+      'The tutorial is updated: locked and too expensive buildings, imports and exports, resource statistics, the Market, carriers, rivals and the alarm',
+    ],
     '0.7.1': [
       'Goals show the resource name next to the icon, so a clay block is no longer mistaken for a loaf of bread',
       'Locked buildings are now clearly different from buildings you cannot afford: locked ones are grey with a dashed border, a stroke and a padlock, while too expensive ones are red',

@@ -20,7 +20,8 @@ CityBuilder.Config.buildings = {
     color: '#a88a2a',
     buildCost: { wood: 3, plank: 1 },
     isStorage: true,
-    capacity: 60, 
+    capacity: 60,
+    carriers: 5,        // så många bärare ger ett färdigt lager (annars carriersPerStorage)
     buildDuration: 10
   },
  
@@ -32,6 +33,7 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 8, stone: 6, brick: 4 },
     isStorage: true,
     capacity: 200,
+    carriers: 10,
     buildDuration: 20
   },
  
@@ -43,6 +45,7 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 20, stone: 20, brick: 12, iron: 4 },
     isStorage: true,
     capacity: 600,
+    carriers: 25,
     buildDuration: 45
   },
 

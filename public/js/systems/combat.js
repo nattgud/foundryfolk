@@ -15,7 +15,7 @@
    En soldat har dessa fält utöver vanliga enhetsfält (alla sätts i spawnSoldier):
      quarters   byggnaden den hör till (null = fri soldat)    post     fri soldats vaktplats { x, y }
      target     enheten den anfaller                          mode     vad stegkön är till för: 'idle' | 'chase' | 'return'
-   Närstridssoldater (attackRange <= MELEE_RANGE) slår först när de står på samma ruta som en enhet (en byggnad: på angränsande ruta).
+   Närstridssoldater (attackRange <= MELEE_RANGE) slår först när de står intill en enhet (MELEE_REACH; en byggnad: på angränsande ruta).
    Bågskyttar skjuter en pil (Combat.projectiles) som flyger i en bråkdels sekund och gör skadan först när den träffar.
    Soldater styrs via stegkön (Jobs) som övriga enheter, så Units.update gör själva förflyttningen. */
 (function (CityBuilder) {
@@ -28,6 +28,7 @@
   const POST_TOLERANCE = 3;           // så nära posten räknas en fri soldat som på plats
   const SEPARATION_SPEED = 0.8;       // hur fort soldater trycks isär (rutor per sekund)
   const MELEE_RANGE = 2;              // attackRange upp till detta är närstrid, över det en projektil
+  const MELEE_REACH = 1;              // närstrid mot en enhet: avståndet mellan mittpunkterna (så att de kan stå bredvid varandra i stället för på samma plats)
   const BUILDING_REACH = 0.6;         // en byggnad är en hel ruta: räckhållet räknas från kanten, inte mitten
 
   // Mål är enheter (x, y = mitten) eller byggnader (x, y = rutan). Mittpunkt och prioritet (lägre = angrips först):
@@ -217,7 +218,7 @@
     },
 
     // Soldater får inte stå på varandra: de som är närmare än soldierSpacing trycks isär (mjukt, högst SEPARATION_SPEED rutor per sekund).
-    // En soldat i närstrid stannar på sin ruta (närstrid kräver samma ruta som målet), övriga får flytta över gränsen om rutan går att beträda.
+    // Alla trycks isär, men bara över gränsen till en ruta som går att beträda. Närstrid kräver bara att man står nära (MELEE_REACH), så ingen behöver stå i någon annan.
     separate(deltaSeconds) {
       const gap = settings().soldierSpacing, reach = SEPARATION_SPEED * deltaSeconds, cells = new Map();
       // Soldater som är på väg in i sin garnison trycks inte undan: de måste få nå dörren
@@ -230,12 +231,13 @@
         if (list) list.push(index); else cells.set(key, [index]);
       });
       const shift = (unit, dx, dy) => {
-        let x = unit.x + dx, y = unit.y + dy;
-        if (unit.target) { // stannar på sin ruta
-          const tileX = Math.floor(unit.x), tileY = Math.floor(unit.y);
-          x = Math.min(tileX + .95, Math.max(tileX + .05, x)); y = Math.min(tileY + .95, Math.max(tileY + .05, y));
-        } else if ((Math.floor(x) !== Math.floor(unit.x) || Math.floor(y) !== Math.floor(unit.y)) && CityBuilder.Pathfinder.tileCost(Math.floor(x), Math.floor(y)) === Infinity) return;
-        unit.x = x; unit.y = y;
+        // Går rörelsen inte (ruta som inte går att beträda) glider soldaten längs hindret i stället för att fastna
+        const move = (x, y) => {
+          if ((Math.floor(x) !== Math.floor(unit.x) || Math.floor(y) !== Math.floor(unit.y)) && CityBuilder.Pathfinder.tileCost(Math.floor(x), Math.floor(y)) === Infinity) return false;
+          unit.x = x; unit.y = y;
+          return true;
+        };
+        move(unit.x + dx, unit.y + dy) || move(unit.x + dx, unit.y) || move(unit.x, unit.y + dy);
       };
       soldiers.forEach((unit, index) => {
         const cx = Math.floor(unit.x / gap), cy = Math.floor(unit.y / gap);
@@ -292,10 +294,10 @@
         Math.hypot(centreX(target) - anchor.x, centreY(target) - anchor.y) <= anchor.radius * settings().leashFactor;
     },
 
-    // Närstrid mot en enhet kräver samma ruta, annars räknas avståndet (mot en byggnad från dess kant)
+    // Närstrid mot en enhet kräver att den står alldeles intill, annars räknas avståndet (mot en byggnad från dess kant)
     inReach(unit, target) {
       const range = unit.definition.attackRange;
-      if (range <= MELEE_RANGE && !isBuilding(target)) return Math.floor(unit.x) === Math.floor(target.x) && Math.floor(unit.y) === Math.floor(target.y);
+      if (range <= MELEE_RANGE && !isBuilding(target)) return Math.hypot(target.x - unit.x, target.y - unit.y) <= MELEE_REACH;
       return Math.hypot(centreX(target) - unit.x, centreY(target) - unit.y) <= range + (isBuilding(target) ? BUILDING_REACH : 0);
     },
 
