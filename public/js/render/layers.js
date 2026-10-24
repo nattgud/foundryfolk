@@ -168,8 +168,10 @@
   const PATH_IMAGES = { partial: 'images/paths/path.png', worn: 'images/paths/path_worn.png' };
   const PATH_CHUNK = 16;                 // rutor per bricka
   const PATH_CHECK_MS = 100;             // hur ofta en bricka kontrolleras efter ändringar
+  const PATH_FADE_MS = 350;              // en bricka som ändras tonas över från sin förra bild (bara på hög grafik)
   const PATH_KEEP_MS = 20000;            // oanvända brickor släpps efter så här lång tid
   const PATH_WIDTH = 0.6;                // stigens bredd i rutor
+  const PATH_EDGE = 0.11;                // den mjuka kantens bredd i rutor (ca 4 px) vid medel och hög grafik
   const PATH_ALPHA = [0, 0.225, 0.45, 0.675, 0.9, 1]; // nivå 1-4: slitage under 100 %, nivå 5: minst 100 %
   const GRID = PATH_CHUNK + 2;           // brickan + en ruta runt om, för att se grannarna
   const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
@@ -177,15 +179,15 @@
   const built = new Uint8Array(GRID * GRID);
   const ground = new Uint8Array(GRID * GRID);
   const pathChunks = new Map();
-  const pathStyle = { tileSize: 0, partialImage: null, wornImage: null, partial: '#655', worn: '#777' };
+  const pathStyle = { tileSize: 0, soft: false, partialImage: null, wornImage: null, partial: '#655', worn: '#777' };
 
   const wearLevel = wear => (wear >= 1 ? 5 : Math.round(wear * 4));
 
   // Mönstren byggs om när bilderna eller rutstorleken ändras (t.ex. "Shapes only")
-  const updatePathStyle = (context, tileSize) => {
+  const updatePathStyle = (context, tileSize, soft) => {
     const config = Object.assign({}, PATH_IMAGES, Config.settings.pathImages); // valfritt i settings.js
     const partialImage = Assets.get(config.partial) || null, wornImage = Assets.get(config.worn) || null;
-    if (partialImage === pathStyle.partialImage && wornImage === pathStyle.wornImage && tileSize === pathStyle.tileSize) return;
+    if (partialImage === pathStyle.partialImage && wornImage === pathStyle.wornImage && tileSize === pathStyle.tileSize && soft === pathStyle.soft) return;
     const makePattern = (image, fallback) => {
       if (!image) return fallback;
       try {
@@ -195,7 +197,7 @@
       } catch (error) { return fallback; }
     };
     Object.assign(pathStyle, {
-      tileSize, partialImage, wornImage,
+      tileSize, soft, partialImage, wornImage,
       partial: makePattern(partialImage, '#655'),
       worn: makePattern(wornImage, null) || makePattern(partialImage, '#777'),
     });
@@ -225,7 +227,7 @@
   // hörnen blir rundade). Allt blir en enda form som fylls med mönstret en gång per slitagenivå, begränsad till
   // rutorna på den nivån. Då får överlappande delar aldrig dubbel genomskinlighet. Mot en byggnad fortsätter
   // stigen in i byggnadens ruta. Brickan ritas bara inom sin egen yta: grannbrickan fortsätter exakt vid kanten.
-  const drawPathChunk = (chunk, tileSize) => {
+  const drawPathChunk = (chunk, tileSize, soft) => {
     const size = PATH_CHUNK * tileSize;
     if (!chunk.canvas) chunk.canvas = document.createElement('canvas');
     const canvas = chunk.canvas, context = canvas.getContext('2d');
@@ -267,7 +269,7 @@
     // Världskoordinater, så att mönstret fortsätter obrutet mellan brickor
     context.setTransform(1, 0, 0, 1, -chunk.cx * size, -chunk.cy * size);
     context.lineCap = context.lineJoin = 'round';
-    context.lineWidth = tileSize * PATH_WIDTH;
+    const width = tileSize * PATH_WIDTH, edge = tileSize * PATH_EDGE;
     for (let level = 1; level <= 5; level++) {
       const list = rects[level];
       if (!list.length) continue;
@@ -275,17 +277,28 @@
       context.beginPath();
       for (let k = 0; k < list.length; k += 2) context.rect(list[k], list[k + 1], tileSize, tileSize);
       context.clip();
-      context.globalAlpha = PATH_ALPHA[level];
       context.strokeStyle = level === 5 ? pathStyle.worn : pathStyle.partial;
-      context.stroke(shape);
+      const alpha = PATH_ALPHA[level];
+      if (soft) {
+        // Mjuk kant: tre linjer, bredast och svagast först, så att kanten går från osynlig till full över ca PATH_EDGE. Alfavärdena
+        // är valda så att de tre lagren tillsammans ger 1/3, 2/3 och hela den slitagenivåns genomskinlighet
+        for (let step = 0; step < 3; step++) {
+          context.lineWidth = width + edge * 2 * (2 - step) / 2;
+          context.globalAlpha = step === 0 ? alpha / 3 : (alpha / 3) / (1 - alpha * step / 3);
+          context.stroke(shape);
+        }
+      } else {
+        context.lineWidth = width; context.globalAlpha = alpha;
+        context.stroke(shape);
+      }
       context.restore();
     }
   };
 
   let lastPathPrune = 0;
   Renderer.addLayer('paths', (context, renderer) => {
-    const range = renderer.visibleTileRange(), tileSize = renderer.tileSize, now = performance.now();
-    updatePathStyle(context, tileSize);
+    const range = renderer.visibleTileRange(), tileSize = renderer.tileSize, now = performance.now(), gfx = CityBuilder.Options.gfx;
+    updatePathStyle(context, tileSize, gfx.softEdges);
 
     for (let cy = Math.floor(range.minY / PATH_CHUNK); cy <= Math.floor(range.maxY / PATH_CHUNK); cy++) {
       for (let cx = Math.floor(range.minX / PATH_CHUNK); cx <= Math.floor(range.maxX / PATH_CHUNK); cx++) {
@@ -298,11 +311,30 @@
           chunk.checkedAt = now;
           const hash = readPathGrid(chunk);
           if (hash !== chunk.hash) {
+            const fade = gfx.pathFade && chunk.hash !== -1;   // första ritningen av en bricka (hash -1) tonas inte
+            if (fade && !chunk.fadeFrom) {                    // pågår redan en toning fortsätter den från samma bild
+              const from = chunk.fadeFrom = chunk.fadeCanvas || (chunk.fadeCanvas = document.createElement('canvas'));
+              const size = PATH_CHUNK * tileSize;
+              from.width = from.height = size;               // (nollställer också bilden)
+              if (chunk.canvas) from.getContext('2d').drawImage(chunk.canvas, 0, 0);
+            }
+            if (fade) chunk.fadeAt = now; else chunk.fadeFrom = null;
             chunk.hash = hash;
-            if (hash) drawPathChunk(chunk, tileSize); else chunk.canvas = null; // tom bricka: släpp canvasen
+            if (hash) drawPathChunk(chunk, tileSize, gfx.softEdges); else chunk.canvas = null; // tom bricka: släpp canvasen
           }
         }
-        if (chunk.canvas) context.drawImage(chunk.canvas, cx * PATH_CHUNK * tileSize, cy * PATH_CHUNK * tileSize);
+        const x = cx * PATH_CHUNK * tileSize, y = cy * PATH_CHUNK * tileSize;
+        if (chunk.fadeFrom) {
+          // Den nya bilden tonas in över den gamla: ändrade rutor växer fram i stället för att hoppa
+          const progress = (now - chunk.fadeAt) / PATH_FADE_MS;
+          if (progress >= 1 || !gfx.pathFade) chunk.fadeFrom = null;
+          else {
+            context.drawImage(chunk.fadeFrom, x, y);
+            if (chunk.canvas) { context.globalAlpha = progress; context.drawImage(chunk.canvas, x, y); context.globalAlpha = 1; }
+            continue;
+          }
+        }
+        if (chunk.canvas) context.drawImage(chunk.canvas, x, y);
       }
     }
 
@@ -381,7 +413,8 @@
 
   Renderer.addLayer('units', (context, renderer) => {
     const tileSize = renderer.tileSize, now = performance.now(); // animationen går på verklig tid: lika snabb vid 30 som vid 144 fps
-    context.imageSmoothingQuality = 'high';
+    const gfx = CityBuilder.Options.gfx;
+    context.imageSmoothingQuality = gfx.smoothing ? 'high' : 'low';
     const view = renderer.viewBounds(tileSize * 2);
     for (const unit of World.units) {
       if (outside(view, unit.x * tileSize, unit.y * tileSize) || hidden(unit)) { unit.lastX = unit.x; unit.lastY = unit.y; continue; } // förflyttningen utanför bild ger ingen riktning
@@ -401,7 +434,7 @@
         // 150 ms eftersläp så att enheten inte växlar mellan gå och stå mellan bildrutor
         const moving = now - (unit.lastMoveAt ?? -1e9) < 150;
         // Flera kolumner = animation (både stilla och gående), annars kolumn 0
-        const column = cols > 1 ? Math.floor(now / 1000 * (definition.animFps || 8) + (unit.animOffset ??= Math.random() * 100)) % cols : 0;
+        const column = cols > 1 && gfx.spriteAnimation ? Math.floor(now / 1000 * (definition.animFps || 8) + (unit.animOffset ??= Math.random() * 100)) % cols : 0;
 
         // Rad: 9+ rader = 8 riktningar, 5+ = 4 riktningar (diagonal -> sidoriktning), 2+ = rad 1 för all gång, 1 = rad 0 för allt
         const map = definition.rows || ROWS;
@@ -527,7 +560,8 @@
     const unit = renderer.tileSize * Vision.cellSize(), view = renderer.viewBounds(0), now = performance.now();
     const minX = Math.floor(view.left / unit) - 1, minY = Math.floor(view.top / unit) - 1;
     const cols = Math.floor(view.right / unit) + 2 - minX, rows = Math.floor(view.bottom / unit) + 2 - minY;
-    const factor = 2 ** Math.ceil(Math.log2(Math.max(1, unit * renderer.zoom * renderer.pixelRatio / FOG_STEP)));   // uppskalning, i tvåpotenser
+    const soft = CityBuilder.Options.gfx.softFog;   // lägre grafik: hård dimkant, ingen uppskalad mask
+    const factor = soft ? 2 ** Math.ceil(Math.log2(Math.max(1, unit * renderer.zoom * renderer.pixelRatio / FOG_STEP))) : 1;   // uppskalning, i tvåpotenser
     const key = [minX, minY, cols, rows, factor].join();
     if (key !== fog.key || fog.version !== Vision.version || (fog.state === 2 && now - fog.at > FOG_FADE_MS)) {
       fog.key = key; fog.version = Vision.version; fog.at = now;
@@ -535,7 +569,7 @@
       if (fog.state) {
         const smooth = fog.mask.getContext('2d');
         fog.mask.width = cols * factor; fog.mask.height = rows * factor;
-        smooth.imageSmoothingEnabled = true;
+        smooth.imageSmoothingEnabled = soft;
         smooth.drawImage(fog.cells, 0, 0, fog.mask.width, fog.mask.height);
       }
     }
@@ -576,7 +610,7 @@
   };
   Renderer.addLayer('ui', (context, renderer) => {
     const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize);
-    const time = performance.now() / 1000;
+    const time = performance.now() / 1000, pulse = CityBuilder.Options.gfx.pulse;   // utan puls står ikonerna stilla
     for (const building of World.buildings) {
       if (outside(view, building.x * tileSize, building.y * tileSize) || hidden(building)) continue;
       if (building.player !== Players.HUMAN) continue;   // fiendens byggnader visar inga status- eller effektivitetsikoner (och ingen arbetsframgång)
@@ -587,7 +621,7 @@
         const efficiencyIcon = Assets.get(ICON_DIR + (bad ? 'efficiency_bad' : 'efficiency_warn') + '.png') || Assets.get(ICON_DIR + (bad ? 'warning_red' : 'warning_grey') + '.png');
         if (efficiencyIcon) {
           // Pulserar som statusikonerna (röd = snabbare och kraftigare, som "error"). Mittpunkten ligger fast i hörnet.
-          const wave = (Math.sin(time * (bad ? 6 : 3.5)) + 1) / 2, iconSize = tileSize * .36 * (1 + wave * (bad ? .3 : .15));
+          const wave = pulse ? (Math.sin(time * (bad ? 6 : 3.5)) + 1) / 2 : .5, iconSize = tileSize * .36 * (1 + wave * (bad ? .3 : .15));
           const centerX = (building.x + 1) * tileSize - tileSize * .18 - 1, centerY = building.y * tileSize + tileSize * .18 + 1;
           context.globalAlpha = .7 + .3 * wave;
           context.drawImage(efficiencyIcon, centerX - iconSize / 2, centerY - iconSize / 2, iconSize, iconSize);
@@ -598,7 +632,7 @@
       const icon = name && Assets.get(ICON_DIR + name + '.png');
       if (icon) {
         const urgent = name === 'error', still = name === 'paused';
-        const wave = still ? 0 : (Math.sin(time * (urgent ? 6 : 3.5)) + 1) / 2;
+        const wave = still ? 0 : pulse ? (Math.sin(time * (urgent ? 6 : 3.5)) + 1) / 2 : .5;
         const size = tileSize / 2 * (1 + wave * (urgent ? .3 : .15));
         context.globalAlpha = still ? 1 : .7 + .3 * wave;
         context.drawImage(icon, (building.x + .5) * tileSize - size / 2, (building.y + .5) * tileSize - size / 2, size, size);

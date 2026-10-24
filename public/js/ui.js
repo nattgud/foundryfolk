@@ -861,6 +861,7 @@
       const button = byId('resourceWindowToggle');
 
       overlay.hidden = !this.resourceWindowOpen;
+      CityBuilder.Game.paused = this.resourceWindowOpen || !!this.mainMenuOpen;   // spelet står stilla medan resursfönstret är öppet
       button.setAttribute(
         'aria-expanded',
         String(this.resourceWindowOpen)
@@ -960,7 +961,7 @@
           const line = make('div', 'resource-flow-row' + (row.perMinute ? '' : ' is-idle') + (row.locked ? ' is-locked' : ''));
           const bar = make('span', 'resource-flow-bar');
           bar.style.width = row.perMinute ? Math.max(4, Math.round(row.perMinute / top * 100)) + '%' : '0';
-          line.append(bar, make('span', 'resource-flow-label', (row.locked ? '🔒 ' : '') + this.flowLabel(row.label)), make('span', 'resource-flow-value', row.perMinute.toFixed(1) + ' ' + t('/min')));
+          line.append(bar, make('span', 'resource-flow-label', (row.locked ? '🔒 ' : '') + this.flowLabel(row.label)), make('span', 'resource-flow-value', row.perMinute.toFixed(1) + t('/min')));
           box.append(line);
         }
         if (!rows.length) box.append(make('div', 'resource-flow-none', t('Nothing uses this')));
@@ -970,8 +971,10 @@
       const usedRows = rowsFor(used, users.use), madeRows = rowsFor(made, users.make);
       const net = made.reduce((sum, row) => sum + row.perMinute, 0) - used.reduce((sum, row) => sum + row.perMinute, 0);
       const title = make('div', 'resource-flow-title');
-      title.append(make('strong', '', this.resourceName(resourceId)), make('span', 'resource-flow-net' + (net < -0.05 ? ' is-negative' : ''), (net > 0 ? '+' : '') + net.toFixed(1) + ' ' + t('/min')));
-      panel.replaceChildren(title, column(t('Used by'), usedRows), column(t('Produced by'), madeRows), make('p', 'resource-flow-note', t('Average over the last 5 minutes')));
+      const netLabel = make('span', 'resource-flow-net' + (net < -0.05 ? ' is-negative' : ''), (net > 0 ? '+' : '') + net.toFixed(1) + t('/min'));
+      netLabel.title = t('Average over the last 5 minutes');   // förklaringen ligger i en tooltip: tar ingen plats
+      title.append(make('strong', '', this.resourceName(resourceId)), netLabel);
+      panel.replaceChildren(title, column(t('Used by'), usedRows), column(t('Produced by'), madeRows));
     },
 
     // ---- Marknaden: fönster där varor köps och säljs för mynt (Economy.buy / Economy.sell) ----------------------------------
@@ -2135,6 +2138,7 @@
         }
 
         .resource-window-list {
+          min-height: 0;
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 6px;
@@ -2157,20 +2161,19 @@
         .resource-detail.is-clickable:hover { background: rgb(255 255 255 / 6%); }
         .resource-detail.is-selected { border-color: #e5bc58; background: rgb(229 188 88 / 10%); }
 
-        .resource-flow { max-height: 240px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; padding: 10px 14px 12px; border-top: 1px solid var(--line); font-size: 12px; }
+        .resource-flow { flex: none; max-height: min(280px, 45vh); overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; padding: 6px 12px 8px;   /* flex: none: rutan krymper inte när listan är lång, den visar allt den har */ border-top: 1px solid var(--line); font-size: 12px; }
         .resource-flow-title { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; }
         .resource-flow-title strong { font-size: 14px; }
         .resource-flow-net { color: #6ec27b; font-weight: 600; }
         .resource-flow-net.is-negative { color: #e5534b; }
-        .resource-flow-column h4 { margin: 0 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--dim); }
-        .resource-flow-row { position: relative; display: flex; justify-content: space-between; gap: 8px; padding: 2px 6px; margin-bottom: 2px; overflow: hidden; border-radius: 3px; }
+        .resource-flow-column h4 { margin: 0 0 2px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--dim); }
+        .resource-flow-row { position: relative; display: flex; justify-content: space-between; gap: 8px; padding: 1px 6px; margin-bottom: 1px; overflow: hidden; border-radius: 3px; }
         .resource-flow-row.is-idle { color: var(--dim); }
         .resource-flow-row.is-locked { opacity: .6; }
         .resource-flow-bar { position: absolute; inset: 0 auto 0 0; background: rgb(255 255 255 / 10%); }
         .resource-flow-label, .resource-flow-value { position: relative; white-space: nowrap; }
-        .resource-flow-none, .resource-flow-hint, .resource-flow-note { color: var(--dim); }
+        .resource-flow-none, .resource-flow-hint { color: var(--dim); }
         .resource-flow-hint { grid-column: 1 / -1; margin: 0; }
-        .resource-flow-note { grid-column: 1 / -1; margin: 2px 0 0; font-size: 11px; }
 
         .resource-detail {
           display: flex;

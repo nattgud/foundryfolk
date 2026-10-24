@@ -4,6 +4,9 @@
    - FPS counter: visas uppe till vänster, precis under resursfältet.
    - Frame rate: obegränsad eller 30 FPS (Game.frame hoppar över bildrutor som kommer för tidigt).
    - Autosave: 30 s, 1, 2, 5 eller 15 min (Save.setAutosaveInterval).
+   - Graphics: 0 Minimum, 1 Low, 2 Medium, 3 High (standard, som spelet var förut). Bara det visuella: allt i spelet fungerar lika. Nivåerna slår av
+     (se Options.gfx): stigarnas toning och mjuka kant, pulserande ikoner, mjuk dimkant, bildutjämning, enheternas rörelseanimation, högupplöst canvas, snabb minikarta
+     och CSS-animationer. 'Shapes only' är en egen inställning och ingår inte.
    - Shapes only: ritar kartan (canvas) utan bilder, med reservformerna och färgerna. Menyer påverkas inte.
    - Statistics: byggnader, arbetare, bärare, djur m.m.
 
@@ -20,7 +23,8 @@
     [30000, '30 seconds'], [60000, '1 minute'], [120000, '2 minutes'], [300000, '5 minutes'], [900000, '15 minutes'],
   ];
   const FPS_CHOICES = [[0, 'Unlimited'], [30, '30 FPS']];
-  const DEFAULTS = { showFps: false, autosaveMs: 30000, fpsLimit: 0, shapesOnly: false };
+  const GRAPHICS_CHOICES = ['Minimum', 'Low', 'Medium', 'High'];   // index = nivå
+  const DEFAULTS = { showFps: false, autosaveMs: 30000, fpsLimit: 0, shapesOnly: false, graphics: GRAPHICS_CHOICES.length - 1 };
 
   const Options = {
     settings: { ...DEFAULTS },
@@ -32,6 +36,7 @@
         const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
         if (typeof saved.showFps === 'boolean') this.settings.showFps = saved.showFps;
         if (typeof saved.shapesOnly === 'boolean') this.settings.shapesOnly = saved.shapesOnly;
+        if (Number.isInteger(saved.graphics) && saved.graphics >= 0 && saved.graphics < GRAPHICS_CHOICES.length) this.settings.graphics = saved.graphics;
         if (AUTOSAVE_CHOICES.some(([value]) => value === saved.autosaveMs)) this.settings.autosaveMs = saved.autosaveMs;
         if (FPS_CHOICES.some(([value]) => value === saved.fpsLimit)) this.settings.fpsLimit = saved.fpsLimit;
       } catch (error) { /* ingen lagring tillgänglig: standardvärden */ }
@@ -47,8 +52,31 @@
       this.apply();
     },
 
+    // Vad grafiknivån tillåter. Renderaren, minikartan och enheterna frågar här: Options.gfx.pulse osv.
+    get gfx() {
+      const level = this.settings.graphics;
+      return {
+        level,
+        pixelRatio: Math.min(devicePixelRatio || 1, [1, 1, 1.5, Infinity][level]),   // canvasens upplösning
+        spriteAnimation: level >= 1,   // enheternas rörelseanimation (annars stilla bild)
+        pulse: level >= 2,             // pulserande ikoner och markeringar
+        softFog: level >= 2,           // mjuk kant på dimman
+        softEdges: level >= 2,         // mjuk kant på stigarna
+        skipCovered: level <= 1,       // ritar inte det som ligger under resurs- och byggfältet
+        smoothing: level >= 2,         // bildutjämning av kartans bilder (av: skarpare och billigare)
+        pathFade: level >= 3,          // stigar tonas in när de slits
+        minimapMs: [100, 60, 30, 30][level],   // minikartans ritintervall
+      };
+    },
+
     // Lägger in inställningarna i spelet
     apply() {
+      document.body.classList.toggle('gfx-min', this.settings.graphics === 0);   // slår av CSS-animationer (se injectStyles)
+      if (this.appliedGraphics !== this.settings.graphics) {
+        this.appliedGraphics = this.settings.graphics;
+        const renderer = CityBuilder.Renderer;
+        if (renderer && renderer.canvas) renderer.resize();   // upplösningen följer nivån
+      }
       if (this.fpsElement) {
         this.fpsElement.hidden = !this.settings.showFps;
         this.positionFpsCounter();
@@ -165,6 +193,18 @@
           select(AUTOSAVE_CHOICES, this.settings.autosaveMs, value => this.set('autosaveMs', Number(value))),
           t('How often the game saves automatically')),
         ...(CityBuilder.Sound ? CityBuilder.Sound.settingRows(row, make) : []),
+        row(t('Graphics'), (() => {
+          const wrap = make('div', 'audio-control'), label = make('span', 'graphics-label');
+          const slider = make('input', 'audio-slider');
+          slider.type = 'range'; slider.min = '0'; slider.max = String(GRAPHICS_CHOICES.length - 1); slider.step = '1';
+          slider.value = String(this.settings.graphics);
+          slider.setAttribute('aria-label', t('Graphics'));
+          const paint = () => { label.textContent = t(GRAPHICS_CHOICES[this.settings.graphics]); };
+          slider.oninput = () => { this.set('graphics', Number(slider.value)); paint(); };
+          paint();
+          wrap.append(slider, label);
+          return wrap;
+        })(), t('Lower levels turn off animations and effects to save battery and processing power')),
         row(t('Shapes only'), toggle('shapesOnly'), t('Draws the map without images (faster)')),
         make('div', 'main-menu-note', t('The game always pauses when the window loses focus.'))
       );
@@ -248,6 +288,8 @@
       const style = document.createElement('style');
       style.id = 'optionsStyles';
       style.textContent = `
+        .graphics-label { min-width: 56px; font-variant-numeric: tabular-nums; }
+        body.gfx-min *, body.gfx-min *::before, body.gfx-min *::after { animation: none !important; transition: none !important; }
         #fpsCounter {
           position: fixed;
           left: 8px;

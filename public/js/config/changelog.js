@@ -4,6 +4,12 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.7.72': [
+      'Target times on the early levels were far too long and are now much shorter. Beat them for more stars',
+      'New Graphics setting (Minimum to High) turns off animations and effects on weaker devices. Worn paths now fade in smoothly on High',
+      'Worn paths get soft edges on Medium and High. Lower graphics levels skip what is hidden behind the top and bottom bars',
+      'The all-resources window pauses the game, and its info box keeps its full height and uses less space',
+    ],
     '0.7.71': [
       'Fixed goals sometimes showing as completed from the start: goal progress is now stored in each saved game',
       'The goals panel shows the level name and keeps clear of the minimap and its zoom buttons',

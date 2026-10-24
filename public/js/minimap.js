@@ -353,7 +353,7 @@
       requestAnimationFrame(() => this.frame());
       if (document.hidden || !World.headquarters) return;
       const now = performance.now();
-      if (now - this.lastDraw < DRAW_INTERVAL_MS) return;
+      if (now - this.lastDraw < (CityBuilder.Options ? CityBuilder.Options.gfx.minimapMs : DRAW_INTERVAL_MS)) return;
       this.lastDraw = now;
       this.draw(now);
     },
@@ -497,7 +497,7 @@
 
       // Markeringar runt spelarens byggnader: problem (samlare utan resurser = röd ring med utropstecken, ineffektiva = orange eller röd ring)
       // och, när en byggnad är vald, alla byggnader av samma typ (vit ring, den valda i guld)
-      const selected = CityBuilder.Game && CityBuilder.Game.selectedBuilding, pulse = (Math.sin(now / 250) + 1) / 2;
+      const selected = CityBuilder.Game && CityBuilder.Game.selectedBuilding, pulse = CityBuilder.Options?.gfx.pulse === false ? 1 : (Math.sin(now / 250) + 1) / 2;
       const Behaviors = CityBuilder.Behaviors;
       for (const building of World.buildings) {
         if (building === World.headquarters || building.buildProgress < 1) continue;

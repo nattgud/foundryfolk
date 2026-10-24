@@ -16,12 +16,22 @@
       this.context = this.canvas.getContext('2d');
       addEventListener('resize', () => this.resize());
       this.resize();
+      // Resurs- och byggfältet täcker nästan helt (92 %) det som ritas bakom dem: höjderna sparas så att lägre grafik kan hoppa över den ytan
+      this.covered = { top: 0, bottom: 0 };
+      const measure = () => {
+        const top = CityBuilder.byId('top'), bottom = CityBuilder.byId('bottom');
+        this.covered.top = top ? top.getBoundingClientRect().bottom : 0;
+        this.covered.bottom = bottom ? Math.max(this.covered.top, bottom.getBoundingClientRect().top) : innerHeight;
+      };
+      if (window.ResizeObserver) { const observer = new ResizeObserver(measure); ['top', 'bottom'].forEach(id => CityBuilder.byId(id) && observer.observe(CityBuilder.byId(id))); }
+      addEventListener('resize', measure);
+      measure();
       this.camera.x = -innerWidth / 2 + this.tileSize / 2;
       this.camera.y = -innerHeight / 2 + this.tileSize / 2;
     },
 
     resize() {
-      this.pixelRatio = devicePixelRatio || 1;
+      this.pixelRatio = CityBuilder.Options ? CityBuilder.Options.gfx.pixelRatio : devicePixelRatio || 1;
       this.canvas.width = innerWidth * this.pixelRatio;
       this.canvas.height = innerHeight * this.pixelRatio;
     },
@@ -92,9 +102,18 @@
       context.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
       context.fillStyle = '#14181c';
       context.fillRect(0, 0, innerWidth, innerHeight);
+      const gfx = CityBuilder.Options.gfx;
+      context.save();   // klippytan nollställs efter bildrutan
+      context.imageSmoothingEnabled = gfx.smoothing;
+      if (gfx.skipCovered && this.covered.bottom > this.covered.top) {   // ritar bara det som syns mellan fälten
+        context.beginPath();
+        context.rect(0, this.covered.top, innerWidth, this.covered.bottom - this.covered.top);
+        context.clip();
+      }
       context.scale(this.zoom, this.zoom);
       context.translate(-this.camera.x, -this.camera.y);
       for (const layer of this.layers) layer.draw(context, this);
+      context.restore();
     },
   };
 

@@ -455,6 +455,10 @@
 
   const KILL_SECONDS = 25, DESTROY_SECONDS = 150, ELIMINATE_SECONDS = 1200;
 
+  // Kalibrering mot spelade nivåer: nivå 10 beräknades till 45 min men klaras på ca 20, så de tidiga nivåerna skalas ner (≈0,55).
+  // Skalningen avtar mot 1 vid nivå 40, där tiderna ännu inte är mätta mot spelare.
+  const parScale = level => Math.min(1, 0.55 + 0.45 * Math.max(0, level - 10) / 30);
+
   const parSeconds = (items, level) => {
     const workers = 2 + Math.floor(level / 10);   // producers a player typically runs at once
     let seconds = 240 + 6 * level;
@@ -488,7 +492,7 @@
       ids.add('watchtower');
     }
     seconds += setupSeconds(ids);
-    return Math.round(seconds / 10) * 10;
+    return Math.round(seconds * parScale(level) / 10) * 10;
   };
 
   // Military goals (types 'soldiers', 'kills', 'destroy', 'eliminate'; see evaluate)
