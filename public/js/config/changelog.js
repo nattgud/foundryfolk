@@ -4,6 +4,17 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.7.0': [
+      'Soldiers keep their distance: they no longer stand on top of each other and look like one unit. The ring around a soldier is 1 px',
+      'Sounds for arrows, melee, hits, deaths, destroyed buildings and for every kind of worker (chopping, mining, picking, digging, fishing, hunting, planting, crafting, smelting)',
+      'Carriers follow your buildings: 1 per building and 5 per warehouse. They decrease again when buildings are removed',
+      'Custom map: clearer effect from every setting, percentages in the preview, and a wider two-column window on large screens',
+      'The main menu is sorted in groups: playing on, save and load, new game and maps, then information and settings',
+      'The Market is rebuilt: click it to open a trading window where you buy and sell goods for coins (selling pays half the price)',
+      'Buttons that cannot be used right now (too expensive, locked, disabled) have a red border and a red tint, and locked buildings show a big padlock',
+      'Every building now shows what it imports and what it exports, with amounts, even when the stock is empty (red = missing)',
+      'Resource window: click a resource to see how much per minute goes to each building type (and construction), and where it comes from',
+    ],
     '0.6.3': [
       'The Planter only plants on completely empty grass: never on roads and worn paths',
     ],

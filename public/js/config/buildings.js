@@ -773,29 +773,25 @@ CityBuilder.Config.buildings = {
     buildDuration: 60
   },
 
-  // Köper varor för mynt. Priserna gör att marknaden är en nödventil för sällsynta varor, inte ett sätt att slippa gruvorna.
+  // Handelsplats: klickar man på den öppnas ett fönster där varor köps och säljs för mynt direkt (Economy.buy och Economy.sell).
+  // Priserna (mynt per styck) gör att marknaden är en nödventil för sällsynta varor, inte ett sätt att slippa gruvorna.
+  // Försäljning ger sellFactor av priset. Silver och guld handlas inte: de blir mynt i myntverket.
   market: {
     name: 'Market',
     category: 'trade',
     symbol: 'MK',
     color: '#d98f3a',
     buildCost: { plank: 10, stone: 8, brick: 6 },
-    boost: null,
-    job: {
-      kind: 'craft',
-      choices: [
-        { inputs: { coins: 3 }, outputs: { plank: 1 } },
-        { inputs: { coins: 3 }, outputs: { stone: 1 } },
-        { inputs: { coins: 5 }, outputs: { brick: 1 } },
-        { inputs: { coins: 4 }, outputs: { charcoal: 1 } },
-        { inputs: { coins: 6 }, outputs: { leather: 1 } },
-        { inputs: { coins: 6 }, outputs: { salt: 1 } },
-        { inputs: { coins: 8 }, outputs: { iron: 1 } },
-        { inputs: { coins: 25 }, outputs: { crystal: 1 } },
-        { inputs: { coins: 30 }, outputs: { gemstone: 1 } },
-        { inputs: { coins: 40 }, outputs: { moonstone: 1 } }
-      ],
-      craftSeconds: 6
+    isMarket: true,
+    market: {
+      sellFactor: 0.5,
+      prices: {
+        wood: 2, plank: 3, stone: 3, clay: 3, sand: 2, limestone: 4, brick: 5, charcoal: 4, coal: 4,
+        grain: 2, flour: 3, bread: 5, meat: 3, fish: 3, leather: 6, salt: 6,
+        iron_ore: 6, copper_ore: 6, tin_ore: 6, iron: 8, copper: 10, tin: 10, bronze: 14,
+        straw: 2, tar: 4, apples: 2, berries: 2, mushrooms: 3, herbs: 4, bone: 3, steel: 18,
+        crystal: 25, gemstone: 30, moonstone: 40,
+      },
     },
     buildDuration: 60
   },

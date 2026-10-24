@@ -16,6 +16,7 @@
 setFactor(0.1, 'talisman');
   setFactor(0.08, 'gold gemstone moonstone fallen_star ancient_relic');
   const MIN_CAPACITY = 5;
+  const FLOW_BUCKET = 10, FLOW_WINDOW = 300;   // sekunder
 
   const Economy = {
     // Lager, tak och "på väg" räknas per spelare. Alla funktioner tar spelare som sista parameter (standard = den mänskliga spelaren).
@@ -63,8 +64,9 @@ setFactor(0.1, 'talisman');
     canAfford(cost, player) { return Object.entries(cost).every(([resourceId, amount]) => this.freeAmount(resourceId, player) >= amount); },
 
     // Drar kostnaden från lagren. Returnerar false (utan att ta något) om resurserna inte räcker.
-    spend(cost, player) {
+    spend(cost, player, trade = false) {
       if (!this.canAfford(cost, player)) return false;
+      if (!trade) for (const resourceId in cost) this.record(player, 'use', resourceId, 'construction', cost[resourceId]);
       const storages = this.storages(player);
       for (const resourceId in cost) {
         let remaining = cost[resourceId];
@@ -85,6 +87,69 @@ setFactor(0.1, 'talisman');
       }
       return best;
     },
+    // ---- Flöden: vart resurserna går och varifrån de kommer (visas i resursfönstret) -------------------------------
+    // record(spelare, 'use' | 'make', resurs, etikett, antal): etikett = byggnadstyp (eller 'construction'). Bara spelarens egna räknas.
+    // Sparas i hinkar om FLOW_BUCKET sekunder och bara de senaste FLOW_WINDOW sekunderna.
+    flows: { use: {}, make: {} },
+    now: () => CityBuilder.Logistics?.time || 0,
+    record(player, kind, resourceId, label, amount = 1) {
+      if (player !== Players.HUMAN || !(amount > 0)) return;
+      const labels = (this.flows[kind][resourceId] = this.flows[kind][resourceId] || {});
+      const buckets = (labels[label] = labels[label] || []);
+      const bucket = Math.floor(this.now() / FLOW_BUCKET);
+      if (buckets.length && buckets[buckets.length - 1][0] === bucket) buckets[buckets.length - 1][1] += amount; else buckets.push([bucket, amount]);
+      while (buckets.length && buckets[0][0] < bucket - FLOW_WINDOW / FLOW_BUCKET) buckets.shift();
+    },
+    // [{ label, perMinute, total }] för resursen, störst först. Räknat på de senaste FLOW_WINDOW sekunderna (kortare i början av spelet, men aldrig kortare än 30 s).
+    flow(kind, resourceId) {
+      const now = this.now(), from = Math.floor(now / FLOW_BUCKET) - FLOW_WINDOW / FLOW_BUCKET + 1, seconds = Math.max(30, Math.min(FLOW_WINDOW, now));
+      const rows = [];
+      for (const [label, buckets] of Object.entries(this.flows[kind][resourceId] || {})) {
+        const total = buckets.reduce((sum, [bucket, amount]) => (bucket >= from ? sum + amount : sum), 0);
+        if (total > 0) rows.push({ label, total, perMinute: total * 60 / seconds });
+      }
+      return rows.sort((a, b) => b.total - a.total);
+    },
+
+    // ---- Handel (Market) ---------------------------------------------------------------------------------------------
+    // Hur många till får plats av resursen (taket minus lagret och det som är på väg)?
+    room(resourceId, player = Players.HUMAN) {
+      const { stored, incoming } = this.stats(player);
+      return Math.max(0, this.capacity(resourceId, player) - (stored[resourceId] || 0) - (incoming[resourceId] || 0));
+    },
+    marketOf(player = Players.HUMAN) {
+      return World.buildings.find(building => building.player === player && building.definition.isMarket && building.buildProgress >= 1);
+    },
+    buyPrice: resourceId => Config.buildings.market.market.prices[resourceId],
+    sellPrice(resourceId) {
+      const price = this.buyPrice(resourceId);
+      return price === undefined ? undefined : Math.max(1, Math.floor(price * Config.buildings.market.market.sellFactor));
+    },
+    // Köper så många (högst amount) som mynten och lagerplatsen räcker till. Returnerar antalet.
+    buy(resourceId, amount, player = Players.HUMAN) {
+      const price = this.buyPrice(resourceId);
+      if (price === undefined || !this.marketOf(player)) return 0;
+      const count = Math.min(amount, Math.floor(this.freeAmount('coins', player) / price), this.room(resourceId, player));
+      if (count <= 0 || !this.spend({ coins: count * price }, player, true)) return 0;
+      this.addToNearestStorage(resourceId, count, World.hqOf(player), player);
+      this.updateStats();
+      this.record(player, 'use', 'coins', 'market', count * price);
+      this.record(player, 'make', resourceId, 'market', count);
+      return count;
+    },
+    // Säljer så många (högst amount) som finns fria och som mynten får plats. Returnerar antalet.
+    sell(resourceId, amount, player = Players.HUMAN) {
+      const price = this.sellPrice(resourceId);
+      if (price === undefined || !this.marketOf(player)) return 0;
+      const count = Math.min(amount, this.freeAmount(resourceId, player), Math.floor(this.room('coins', player) / price));
+      if (count <= 0 || !this.spend({ [resourceId]: count }, player, true)) return 0;
+      this.addToNearestStorage('coins', count * price, World.hqOf(player), player);
+      this.updateStats();
+      this.record(player, 'use', resourceId, 'market', count);
+      this.record(player, 'make', 'coins', 'market', count * price);
+      return count;
+    },
+
     // Tillbakalämning (rivning m.m.) tas alltid emot, även över taket, så att inget försvinner
     addToNearestStorage(resourceId, amount, nearPosition, player) {
       const near = nearPosition || World.headquarters;

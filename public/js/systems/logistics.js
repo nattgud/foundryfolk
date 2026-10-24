@@ -6,7 +6,7 @@
   const { Config, World, Utils, Jobs, Economy, Behaviors, Players } = CityBuilder;
 
   // Standardvärden: saknas en inställning i cfg() används dessa (planeringen stannar annars helt)
-  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, baseCarriers: 5, carriersPerBuilding: 1.5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40, unreachableSeconds: 30 }, Config.settings.logistics);
+  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, baseCarriers: 5, carriersPerBuilding: 1, carriersPerStorage: 5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40, unreachableSeconds: 30 }, Config.settings.logistics);
 
   const Logistics = {
     tasks: [],              // äldsta först
@@ -122,16 +122,20 @@
       queue.push(Math.max(this.time || 0, queue[queue.length - 1] ?? 0) + Config.settings.military.carrierRespawnSeconds);
     },
 
-    // Antalet bärare följer antalet byggnader: bas + 1,5 per färdig byggnad (per spelare). Överskott tas bort när de är lediga.
+    // Antalet bärare följer byggnaderna: bas + 1 per färdig byggnad + 5 per färdigt lager (per spelare). Rivs eller förstörs något
+    // minskar antalet igen: överskott tas bort när bärarna är lediga.
     balanceCarriers() {
-      const { baseCarriers = 5, carriersPerBuilding = 1.5 } = cfg();
+      const { baseCarriers, carriersPerBuilding, carriersPerStorage } = cfg();
       for (const player of Players.active) {
         const hq = World.hqOf(player);
         if (!hq) continue;
-        let buildings = 0;
-        for (const building of World.buildings) if (building.player === player && building.buildProgress >= 1 && building !== hq) buildings++;
+        let wanted = 0;
+        for (const building of World.buildings) {
+          if (building.player !== player || building.buildProgress < 1 || building === hq) continue;
+          wanted += building.definition.isStorage ? carriersPerStorage : carriersPerBuilding;
+        }
         const waiting = (this.lost[player] = (this.lost[player] || []).filter(time => time > (this.time || 0))).length; // dödade, ännu inte ersatta
-        const target = Math.max(0, baseCarriers + Math.floor(buildings * carriersPerBuilding) - waiting);
+        const target = Math.max(0, baseCarriers + wanted - waiting);
 
         const carriers = World.units.filter(unit => unit.definition.isHauler && unit.player === player);
         for (let count = carriers.length; count < target; count++) World.spawnUnit('carrier', hq.x, hq.y, null, player);

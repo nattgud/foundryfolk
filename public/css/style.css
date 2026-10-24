@@ -5,6 +5,8 @@
   --text: #e8ecef;
   --dim: #7b858e;
   --accent: #5fb55f;
+  --bad-line: #b4443d;       /* knappar som inte går att använda just nu (för dyra, låsta, inaktiverade) */
+  --bad-bg: rgb(180 68 61 / 20%);
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font: 13px system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
@@ -13,6 +15,7 @@ canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; t
 button { background: #252d34; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
 button:active { background: #313b44; }
 button.on { border-color: var(--accent); background: #26402b; }
+button:disabled, button.unavailable { border-color: var(--bad-line); background: #35201f; background-image: linear-gradient(var(--bad-bg), var(--bad-bg)); cursor: not-allowed; }
 
 #top { position: fixed; top: 0; left: 0; right: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .res { display: flex; align-items: center; gap: 4px; }

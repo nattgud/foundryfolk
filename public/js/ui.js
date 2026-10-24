@@ -631,6 +631,7 @@
         if (event.key === 'Escape' && this.resourceWindowOpen) {
           this.toggleResourceWindow(false);
         }
+        if (event.key === 'Escape') this.closeMarket();
       };
 
       document.addEventListener('keydown', this.resourceEscapeHandler);
@@ -703,6 +704,9 @@
       this.attachTooltip(item, () => this.resourceTooltip(resourceId), true);
 
       if (!compact) {
+        item.dataset.resource = resourceId;
+        item.classList.add('is-clickable');
+        item.onclick = event => { if (!event.target.closest('.resource-favorite')) this.selectResourceFlow(resourceId); };
         const favorite = document.createElement('button');
         favorite.type = 'button';
         favorite.className = 'resource-favorite';
@@ -797,8 +801,13 @@
         list.appendChild(this.createResourceItem(id));
       }
 
-      dialog.append(header, list);
+      const detail = document.createElement('div');
+      detail.id = 'resourceWindowDetail';
+      detail.className = 'resource-flow';
+
+      dialog.append(header, list, detail);
       overlay.appendChild(dialog);
+      this.renderResourceFlow(true);
 
       overlay.addEventListener('pointerdown', event => {
         if (event.target === overlay) {
@@ -827,6 +836,144 @@
         overlay.querySelector('.resource-window-close').focus();
       } else {
         button.focus();
+      }
+    },
+
+    // ---- Resursstatistik: klicka på en resurs i fönstret för att se vart den går och varifrån den kommer ------------------
+
+    selectResourceFlow(resourceId) {
+      this.flowResource = this.flowResource === resourceId ? null : resourceId;
+      this.renderResourceFlow(true);
+    },
+
+    flowLabel: label => label === 'construction' ? t('Construction') : UI.buildingName(label),
+
+    // Ritar om panelen (högst en gång per sekund om inte force)
+    renderResourceFlow(force) {
+      const panel = byId('resourceWindowDetail');
+      if (!panel) return;
+      const now = performance.now();
+      if (!force && now - (this.flowDrawn || 0) < 1000) return;
+      this.flowDrawn = now;
+
+      document.querySelectorAll('#resourceWindowList .resource-detail').forEach(item => item.classList.toggle('is-selected', item.dataset.resource === this.flowResource));
+      const resourceId = this.flowResource;
+      if (!resourceId) { panel.replaceChildren(Object.assign(document.createElement('p'), { className: 'resource-flow-hint', textContent: t('Click a resource to see where it goes.') })); return; }
+
+      const make = (tag, className, text) => Object.assign(document.createElement(tag), { className, ...(text !== undefined ? { textContent: text } : {}) });
+      const column = (title, rows) => {
+        const box = make('div', 'resource-flow-column');
+        box.append(make('h4', '', title));
+        const top = rows[0]?.perMinute || 1;
+        for (const row of rows) {
+          const line = make('div', 'resource-flow-row');
+          const bar = make('span', 'resource-flow-bar');
+          bar.style.width = Math.max(4, Math.round(row.perMinute / top * 100)) + '%';
+          line.append(bar, make('span', 'resource-flow-label', this.flowLabel(row.label)), make('span', 'resource-flow-value', row.perMinute.toFixed(1) + ' ' + t('/min')));
+          box.append(line);
+        }
+        if (!rows.length) box.append(make('div', 'resource-flow-none', t('Nothing yet')));
+        return box;
+      };
+      const used = Economy.flow('use', resourceId), made = Economy.flow('make', resourceId);
+      const net = made.reduce((sum, row) => sum + row.perMinute, 0) - used.reduce((sum, row) => sum + row.perMinute, 0);
+      const title = make('div', 'resource-flow-title');
+      title.append(make('strong', '', this.resourceName(resourceId)), make('span', 'resource-flow-net' + (net < -0.05 ? ' is-negative' : ''), (net > 0 ? '+' : '') + net.toFixed(1) + ' ' + t('/min')));
+      panel.replaceChildren(title, column(t('Used by'), used), column(t('Produced by'), made), make('p', 'resource-flow-note', t('Average over the last 5 minutes')));
+    },
+
+    // ---- Marknaden: fönster där varor köps och säljs för mynt (Economy.buy / Economy.sell) ----------------------------------
+
+    openMarket() {
+      if (!this.marketOverlay) this.createMarket();
+      this.marketOverlay.hidden = false;
+      this.updateMarket(true);
+    },
+
+    closeMarket() { if (this.marketOverlay) this.marketOverlay.hidden = true; },
+
+    createMarket() {
+      const make = (tag, className, text) => Object.assign(document.createElement(tag), { className, ...(text !== undefined ? { textContent: text } : {}) });
+      const state = this.market = { mode: 'buy', amount: 5, rows: {}, modeButtons: {}, amountButtons: {} };
+      const overlay = this.marketOverlay = make('div', 'resource-window-overlay');
+      overlay.hidden = true;
+      const dialog = make('section', 'resource-window market-window');
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+
+      const close = make('button', 'resource-window-close', '×');
+      close.type = 'button';
+      close.onclick = () => this.closeMarket();
+      state.coins = make('span', 'market-coins');
+      const header = make('header', 'resource-window-header');
+      header.append(make('strong', '', t('Market')), state.coins, close);
+
+      const bar = make('div', 'market-bar');
+      const choose = (group, buttons, value, key) => {
+        const button = make('button', '', key === 'mode' ? t(value === 'buy' ? 'Buy' : 'Sell') : '×' + value);
+        button.type = 'button';
+        button.onclick = () => { state[key] = value; this.updateMarket(true); };
+        buttons[value] = button;
+        group.appendChild(button);
+      };
+      const modes = make('div', 'market-group'), amounts = make('div', 'market-group');
+      for (const mode of ['buy', 'sell']) choose(modes, state.modeButtons, mode, 'mode');
+      for (const amount of [1, 5, 10, 25]) choose(amounts, state.amountButtons, amount, 'amount');
+      bar.append(modes, amounts);
+
+      const list = make('div', 'market-list');
+      for (const resourceId of Object.keys(Config.buildings.market.market.prices)) {
+        const row = make('div', 'market-row');
+        const button = make('button', 'market-trade');
+        button.type = 'button';
+        button.onclick = () => {
+          const done = Economy[state.mode](resourceId, state.amount);
+          if (done) CityBuilder.Sound?.play('drop');
+          this.updateMarket(true);
+        };
+        const name = make('span', 'market-name'), stock = make('span', 'market-stock'), price = make('span', 'market-price');
+        name.innerHTML = this.resourceChip(resourceId) + `<span>${this.resourceName(resourceId)}</span>`;
+        row.append(name, stock, price, button);
+        state.rows[resourceId] = { row, stock, price, button };
+        list.appendChild(row);
+      }
+
+      dialog.append(header, bar, list);
+      overlay.appendChild(dialog);
+      overlay.addEventListener('pointerdown', event => { if (event.target === overlay) this.closeMarket(); });
+      document.body.appendChild(overlay);
+    },
+
+    // Uppdaterar fönstret på plats (bara det som ändrats skrivs om). Stänger det om marknaden försvunnit.
+    updateMarket(force) {
+      const state = this.market;
+      if (!state || this.marketOverlay.hidden) return;
+      if (!Economy.marketOf()) return this.closeMarket();
+      const buying = state.mode === 'buy', verb = t(buying ? 'Buy' : 'Sell');
+      const coins = Economy.freeAmount('coins');
+      const coinsHtml = this.resourceChip('coins', Economy.totalAmount('coins') + ' / ' + Economy.capacity('coins'));
+      if (state.coinsHtml !== coinsHtml) state.coins.innerHTML = state.coinsHtml = coinsHtml;
+      for (const key in state.modeButtons) state.modeButtons[key].classList.toggle('on', key === state.mode);
+      for (const key in state.amountButtons) state.amountButtons[key].classList.toggle('on', +key === state.amount);
+
+      for (const resourceId in state.rows) {
+        const { stock, price, button } = state.rows[resourceId];
+        const unit = buying ? Economy.buyPrice(resourceId) : Economy.sellPrice(resourceId);
+        const free = Economy.freeAmount(resourceId);
+        const count = Math.min(state.amount, buying
+          ? Math.min(Math.floor(coins / unit), Economy.room(resourceId))
+          : Math.min(free, Math.floor(Economy.room('coins') / unit)));
+        const reason = count > 0 ? '' : buying
+          ? (Math.floor(coins / unit) < 1 ? t('Not enough coins') : t('No room in storage'))
+          : (free < 1 ? t('Nothing to sell') : t('No room for the coins'));
+        const html = count > 0 ? `${verb} ${count} · ${this.resourceChip('coins', count * unit)}` : verb;
+        const stockText = Economy.totalAmount(resourceId) + ' / ' + Economy.capacity(resourceId);
+        if (stock.textContent !== stockText) stock.textContent = stockText;
+        if (price.dataset.unit !== String(unit)) { price.dataset.unit = unit; price.innerHTML = this.resourceChip('coins', unit); }
+        if (button.dataset.html !== html) { button.dataset.html = html; button.innerHTML = html; }
+        button.disabled = count <= 0;
+        button.classList.toggle('unavailable', count <= 0);
+        button.title = reason;
       }
     },
 
@@ -977,15 +1124,36 @@
 
       if (view === 'main') {
         if (level) body.append(make('div', 'main-menu-level', level.custom ? level.name : t('Level {level}: {name}', { level: level.level, name: level.name })));
-        if (CityBuilder.Levels?.completed && !level?.custom) body.append(button(t('Next level'), () => CityBuilder.Levels.advance(), '', '⏭'));
+        const gap = () => make('div', 'main-menu-gap');
+        const restart = button(level?.custom ? t('Restart map') : t('Restart level'), () => this.renderMainMenu('confirm', {
+          text: level?.custom ? t('Restart this map? Progress on this map is lost. Manual saves are unchanged.') : t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
+          confirmLabel: level?.custom ? t('Restart map') : t('Restart level'),
+          danger: true,
+          back: 'main',
+          onConfirm: () => CityBuilder.Levels.restart(),
+        }), '', '🔄');
+        const newGame = button(t('New game'), () => this.renderMainMenu('confirm', {
+          text: t('New game resets the game and autosave, and generates new maps. Manual saves are unchanged.'),
+          confirmLabel: t('Start a new game'),
+          danger: true,
+          back: 'main',
+          onConfirm: () => {
+            if (!requireSaveSystem()) return;
+            CityBuilder.Levels?.newRun();
+            saveSystem.newGame();
+            this.toggleMainMenu(false);
+          },
+        }), '', '✨');
+        // Grupper: spela vidare - spara och ladda - ny omgång och banor - information och inställningar
         body.append(
           button(t('Continue'), () => this.toggleMainMenu(false), '', '▶'),
+          ...(CityBuilder.Levels?.completed && !level?.custom ? [button(t('Next level'), () => CityBuilder.Levels.advance(), '', '⏭')] : []),
+          gap(),
           button(t('Save game'), () => this.renderMainMenu('save'), '', '💾'),
           button(t('Load game'), entries.size ? () => this.renderMainMenu('load') : null, '', '📂'),
-          button(t('Statistics'), () => this.renderMainMenu('stats'), '', '📊'),
-          button(t('How to play'), () => this.openTutorial(), '', '❓'),
-          button('Changelog', () => this.openChangelog(), '', '📜'),
-          button(t('Settings'), () => this.renderMainMenu('options'), '', '⚙️'),
+          gap(),
+          restart,
+          newGame,
           button(t('Custom map'), () => this.renderMainMenu('custom'), '', '🗺️'),
           ...(level?.custom ? [button(t('Back to the levels'), () => this.renderMainMenu('confirm', {
             text: t('Return to your levels? The custom map is kept in its autosave and in your manual saves.'),
@@ -993,25 +1161,11 @@
             back: 'main',
             onConfirm: () => CityBuilder.Levels.leaveCustom(),
           }), '', '↩️')] : []),
-          button(level?.custom ? t('Restart map') : t('Restart level'), () => this.renderMainMenu('confirm', {
-            text: level?.custom ? t('Restart this map? Progress on this map is lost. Manual saves are unchanged.') : t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
-            confirmLabel: level?.custom ? t('Restart map') : t('Restart level'),
-            danger: true,
-            back: 'main',
-            onConfirm: () => CityBuilder.Levels.restart(),
-          }), '', '🔄'),
-          button(t('New game'), () => this.renderMainMenu('confirm', {
-            text: t('New game resets the game and autosave, and generates new maps. Manual saves are unchanged.'),
-            confirmLabel: t('Start a new game'),
-            danger: true,
-            back: 'main',
-            onConfirm: () => {
-              if (!requireSaveSystem()) return;
-              CityBuilder.Levels?.newRun();
-              saveSystem.newGame();
-              this.toggleMainMenu(false);
-            },
-          }), '', '✨')
+          gap(),
+          button(t('Statistics'), () => this.renderMainMenu('stats'), '', '📊'),
+          button(t('How to play'), () => this.openTutorial(), '', '❓'),
+          button('Changelog', () => this.openChangelog(), '', '📜'),
+          button(t('Settings'), () => this.renderMainMenu('options'), '', '⚙️')
         );
         if (window.version) body.append(make('div', 'main-menu-note', 'Version ' + window.version));
       } else if (view === 'save') {
@@ -1069,6 +1223,7 @@
         CityBuilder.CustomMap.fillSetup(body, make, button, () => this.renderMainMenu('main'));
       }
 
+      dialog.classList.toggle('is-wide', view === 'custom');
       dialog.replaceChildren(header, body);
       // I inställningarna behålls fokus på språkvalet efter ett byte
       (body.querySelector(view === 'options' ? 'select, button:not(:disabled)' : 'button:not(:disabled)') || close).focus();
@@ -1441,6 +1596,10 @@
         #bottom .building-option.unaffordable .icon {
           opacity: .4;
         }
+        #bottom .building-option.unaffordable, #bottom .building-option.locked {
+          border-color: var(--bad-line);
+          background: #35201f linear-gradient(var(--bad-bg), var(--bad-bg));
+        }
 
         .icon {
           position: relative;
@@ -1561,6 +1720,18 @@
           opacity: .35;
           filter: grayscale(1);
         }
+        /* Stort hänglås över låsta byggnader */
+        #bottom .building-option.locked::after {
+          content: '🔒';
+          position: absolute;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          font-size: 30px;
+          text-shadow: 0 2px 6px #000;
+          pointer-events: none;
+        }
+        #bottom .building-option.locked .build-count { display: none; }
 
         .level-stars {
           font-size: 34px;
@@ -1589,6 +1760,29 @@
         .info-short {
           color: #e5736f;
         }
+        .info-dim {
+          opacity: .45;
+        }
+
+        /* Import och export i infopanelen */
+        .trade-row {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 2px 10px;
+          margin-top: 3px;
+        }
+        .trade-label {
+          min-width: 78px;
+          color: var(--dim);
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: .04em;
+        }
+        .trade-any { display: inline-flex; align-items: center; gap: 3px; }
+        .trade-any i { color: var(--dim); font-style: normal; }
+        .trade-any b { margin-left: 3px; font-weight: normal; }
+        .trade-any b.info-short { color: #e5736f; }
 
         /* Resursfält */
 
@@ -1662,6 +1856,7 @@
 
         /* Resursfönster */
 
+        .resource-window-overlay[hidden],
         #resourceWindowOverlay[hidden] {
           display: none;
         }
@@ -1677,8 +1872,8 @@
         }
 
         .resource-window {
-          width: min(440px, 100%);
-          max-height: min(75vh, 600px);
+          width: min(520px, 100%);
+          max-height: min(85vh, 680px);
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -1716,6 +1911,33 @@
           padding: 10px;
           overflow-y: auto;
         }
+
+        .market-coins { margin-left: auto; margin-right: 12px; }
+        .market-bar { display: flex; justify-content: space-between; gap: 8px; padding: 10px 14px 0; }
+        .market-group { display: flex; gap: 4px; }
+        .market-list { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px 14px; overflow-y: auto; }
+        .market-row { display: grid; grid-template-columns: minmax(0, 1fr) 70px 44px 128px; align-items: center; gap: 8px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; background: rgb(255 255 255 / 2%); }
+        .market-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .market-stock { color: var(--dim); text-align: right; }
+        .market-trade { white-space: nowrap; padding: 4px 8px; }
+        @media (max-width: 520px) { .market-row { grid-template-columns: minmax(0, 1fr) 44px 112px; } .market-stock { display: none; } }
+
+        .resource-detail.is-clickable { cursor: pointer; }
+        .resource-detail.is-clickable:hover { background: rgb(255 255 255 / 6%); }
+        .resource-detail.is-selected { border-color: #e5bc58; background: rgb(229 188 88 / 10%); }
+
+        .resource-flow { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; padding: 10px 14px 12px; border-top: 1px solid var(--line); font-size: 12px; }
+        .resource-flow-title { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; }
+        .resource-flow-title strong { font-size: 14px; }
+        .resource-flow-net { color: #6ec27b; font-weight: 600; }
+        .resource-flow-net.is-negative { color: #e5534b; }
+        .resource-flow-column h4 { margin: 0 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--dim); }
+        .resource-flow-row { position: relative; display: flex; justify-content: space-between; gap: 8px; padding: 2px 6px; margin-bottom: 2px; overflow: hidden; border-radius: 3px; }
+        .resource-flow-bar { position: absolute; inset: 0 auto 0 0; background: rgb(255 255 255 / 10%); }
+        .resource-flow-label, .resource-flow-value { position: relative; white-space: nowrap; }
+        .resource-flow-none, .resource-flow-hint, .resource-flow-note { color: var(--dim); }
+        .resource-flow-hint { grid-column: 1 / -1; margin: 0; }
+        .resource-flow-note { grid-column: 1 / -1; margin: 2px 0 0; font-size: 11px; }
 
         .resource-detail {
           display: flex;
@@ -1775,6 +1997,12 @@
 
         .main-menu {
           width: min(360px, 100%);
+          max-height: min(92vh, 720px);
+        }
+
+        .main-menu.is-wide {
+          width: min(780px, 100%);
+          max-height: min(92vh, 780px);
         }
 
         .main-menu-body {
@@ -1801,6 +2029,8 @@
           font-size: 14px;
           text-align: left;
         }
+
+        .main-menu-gap { height: 6px; flex: none; }
 
         .main-menu-icon {
           display: inline-block;
@@ -1891,6 +2121,8 @@
         const windowAmount = byId('resourceWindowAmount_' + resourceId);
         if (windowAmount) { windowAmount.textContent = amount; windowAmount.classList.toggle('is-full', full); }
       }
+      if (this.resourceWindowOpen) this.renderResourceFlow();
+      this.updateMarket();
 
       const carriers = World.units.filter(unit => unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN);
       const idleCarriers = carriers.filter(
@@ -1982,6 +2214,37 @@
     },
 
     // { wood: 2 } -> ikoner med antal (infopanelen, verktygstips). Antal 0 hoppas över.
+    // Vad byggnaden importerar (hämtar från lagret) och exporterar (levererar till lagret), alltid, även när lagret är tomt.
+    // Import: mängd i huset / mest huset håller (röd när det saknas). Alternativa varor (äter kött / fisk / bröd) visas som en grupp.
+    // Export: mängd som väntar på att hämtas (grå när det inte finns något just nu).
+    tradeOf(building) {
+      const definition = building.definition, job = definition.job, Behaviors = CityBuilder.Behaviors;
+      if (!job) return { imports: [], exports: [] };
+      const stock = building.inputStock;
+      const imports = Object.entries(CityBuilder.Garrison.isGarrison(building) ? Object.fromEntries(Object.entries(Config.units[CityBuilder.Garrison.trainingType(building)].training.inputs).map(([id, amount]) => [id, Behaviors.inputBuffer(amount)])) : Behaviors.requiredResources(building))
+        .map(([id, capacity]) => ({ ids: [id], have: stock[id] || 0, capacity }));
+      for (const group of Behaviors.eatGroups(building)) imports.push({ ids: group.any, have: Behaviors.eatStock(building, group) });
+
+      const made = job.kind === 'craft' ? Behaviors.recipe(building).outputs : job.outputs && Object.keys(job.outputs).length ? job.outputs : job.outputResource ? { [job.outputResource]: 1 } : {};
+      const exports = Object.keys({ ...made, ...building.outputStock }).map(id => ({ ids: [id], have: building.outputStock[id] || 0 }));
+      return { imports, exports };
+    },
+
+    tradeHtml(building) {
+      const { imports, exports } = this.tradeOf(building);
+      const row = (icon, label, title, entries, missingClass) => entries.length
+        ? `<div class="trade-row" title="${title}"><span class="trade-label">${icon} ${label}</span>${entries.map(entry => {
+          const amount = entry.capacity ? `${entry.have}/${entry.capacity}` : entry.have;
+          const cls = entry.have > 0 ? '' : missingClass;
+          return entry.ids.length > 1
+            ? `<span class="trade-any">${entry.ids.map(id => this.resourceChip(id)).join('<i>/</i>')}<b class="${cls}">${amount}</b></span>`
+            : this.resourceChip(entry.ids[0], amount, cls);
+        }).join('')}</div>`
+        : '';
+      return row('⬇', t('Imports'), t('Delivered here by carriers'), imports, 'info-short') +
+        row('⬆', t('Exports'), t('Carried from here to storage'), exports, 'info-dim');
+    },
+
     resourceIconsHtml(amounts, shortage) {
       return Object.entries(amounts || {})
         .filter(([, amount]) => amount > 0)
@@ -2024,6 +2287,7 @@
       const job = definition.job;
 
       if (definition.isStorage) lines.push(t('Stores resources'));
+      if (definition.isMarket) lines.push(t('Buy and sell goods for coins. Click it to trade.'));
       if (definition.aura) {
         lines.push(t('Boosts all your buildings within {n} tiles: output +{yield}%, soldiers train {training}% faster',
           { n: definition.aura.radius, yield: Math.round(definition.aura.yield * 100), training: Math.round(definition.aura.training * 100) }));
@@ -2037,16 +2301,7 @@
           : t('Gathering: {source} → {output}', { source: this.terrainName(job.sourceTerrain), output }));
         if (this.getBuildingRange(definition)) lines.push(t('Range: {n} tiles', { n: this.getBuildingRange(definition) }));
       } else if (job?.kind === 'craft' && job.choices) {
-        // Få val: ett recept per rad. Många val med samma insats (Market): en rad med alla varor.
-        if (job.choices.length <= 3) {
-          for (const { inputs, outputs } of job.choices) lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.resourceIconsHtml(inputs), outputs: this.resourceIconsHtml(outputs) }));
-        } else {
-          const currency = Object.keys(job.choices[0].inputs)[0];
-          lines.push(t('Exchanges {currency} for: {goods}', {
-            currency: this.resourceChip(currency),
-            goods: job.choices.map(({ outputs }) => this.resourceChip(Object.keys(outputs)[0])).join(' '),
-          }));
-        }
+        for (const { inputs, outputs } of job.choices) lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.resourceIconsHtml(inputs), outputs: this.resourceIconsHtml(outputs) }));
         lines.push(t('Choose what it makes in the info panel'));
       } else if (job?.kind === 'craft') {
         const inputs = this.resourceIconsHtml(job.inputs);
@@ -2245,6 +2500,7 @@
           : '';
 
         const choiceButton = own && building.definition.job?.choices ? '<button id="choiceButton"></button>' : '';
+        const marketButton = own && building.definition.isMarket && building.buildProgress >= 1 ? `<button id="marketButton">${t('Trade')}</button>` : '';
         const boostButton = own && this.boostAvailable(building.definition) ? '<button id="boostButton"></button>' : '';
 
         const demolishButton = own && building !== World.headquarters
@@ -2260,7 +2516,7 @@
 
         panel.innerHTML =
           `<div><b>${this.buildingName(building.definition)}</b><br><span id="infoStatus"></span></div>` +
-          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${trainButtons}${stanceButton}${choiceButton}${boostButton}${pauseButton}${demolishButton}</div>`;
+          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${marketButton}${trainButtons}${stanceButton}${choiceButton}${boostButton}${pauseButton}${demolishButton}</div>`;
 
         if (byId('stanceButton')) {
           byId('stanceButton').onclick = () => {
@@ -2276,6 +2532,8 @@
         if (byId('choiceButton')) {
           byId('choiceButton').onclick = () => { building.choice = ((building.choice || 0) + 1) % building.definition.job.choices.length; };
         }
+
+        if (byId('marketButton')) byId('marketButton').onclick = () => this.openMarket();
 
         if (byId('boostButton')) {
           byId('boostButton').onclick = () => { building.boostOn = !building.boostOn; };
@@ -2299,8 +2557,7 @@
         : this.statusHtml(building.status);
 
       const range = this.getBuildingRange(building.definition);
-      const imports = building.definition.isStorage ? '' : this.resourceIconsHtml(building.inputStock);
-      const exports = building.definition.isStorage ? '' : this.resourceIconsHtml(building.outputStock);
+      const trade = building.definition.isStorage ? '' : this.tradeHtml(building);
 
       // Garnison: soldater (inne + ute), vald träning och vad den kostar, och markering av vald soldattyp
       let garrisonHtml = '';
@@ -2322,8 +2579,7 @@
         : statusText +
           (this.efficiencyText(building) ? `<br>${this.efficiencyText(building)}` : '') +
           garrisonHtml +
-          (imports ? `<br>${t('Import: {list}', { list: imports })}` : '') +
-          (exports ? `<br>${t('Export: {list}', { list: exports })}` : '') +
+          trade +
           (range ? `<br>${t('Range: {n} tiles', { n: range })}` : '') +
           (building.hp < building.maxHp ? `<br>${t('Health: {hp}', { hp: Math.ceil(building.hp) })}` : '');
 

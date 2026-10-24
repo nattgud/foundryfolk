@@ -403,7 +403,7 @@
       if (definition.isSoldier) {
         context.beginPath();
         context.arc(pixelX, pixelY, definition.imageSize / 2 + 1, 0, Math.PI * 2);
-        context.lineWidth = 2;
+        context.lineWidth = 1;
         context.strokeStyle = colors[unit.player] || '#fff';
         context.stroke();
       }

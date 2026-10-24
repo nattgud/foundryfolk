@@ -664,9 +664,9 @@
   const MAX_CUSTOM_ENEMIES = 3;
   const DIFFICULTIES = [1, 18, 35, 60, 90, 120];                    // enemy strength as a level (the AI works from the level, see AI.level)
   const TEAM_CHOICES = ['own', 'you', 'a', 'b', 'c'];               // own = plays for itself, you = on the player's team, a-c = enemy teams
-  const SEA = [0.08, 0.14, 0.2, 0.27, 0.34];                        // Config.world.tuning per step
-  const MOUNTAIN = [0.99, 0.88, 0.76, 0.68, 0.6];
-  const FOREST = [0.55, 0.8, 1, 1.4, 2];
+  const SEA = [0.02, 0.12, 0.2, 0.3, 0.42];                        // Config.world.tuning per step
+  const MOUNTAIN = [1.1, 0.9, 0.76, 0.64, 0.52];
+  const FOREST = [0.4, 0.7, 1, 1.5, 2.4];
   const RICHNESS = [0.25, 0.6, 1, 1.5, 2.2];
   const BASIC_TERRAIN = ['rock', 'clay', 'limestone', 'berry_bush', 'herbs', 'mushrooms', 'apple_tree'];
   const integer = (value, min, max, fallback) => { const n = Math.floor(Number(value)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback; };
@@ -708,7 +708,7 @@
       rivals: settings.enemies.length, teams, aiLevels,
       seed: settings.seed,
       keep, twists: [],
-      tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.85, 0.4 * richness), scatteredOre: 0.01 * richness, forest: FOREST[settings.forest] },
+      tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.85, 0.4 * richness), scatteredOre: 0.01 * richness * richness, forest: FOREST[settings.forest] },
       unlocks: [],
       goal: { items: [{ key: 'm:eliminate', type: 'eliminate', amount: settings.enemies.filter(enemy => enemy.team !== 'you').length }], par: 0 },
       needs: ['iron_ore', 'tree', 'rock', 'clay', 'coal'],

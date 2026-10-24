@@ -28,6 +28,10 @@
   const note = (frequency, time, start, length, level = 1) =>
     time < start || time > start + length ? 0 : Math.sin(TAU * frequency * (time - start)) * Math.pow(1 - (time - start) / length, 2) * level;
 
+  const noise = () => Math.random() * 2 - 1;
+  const EFFECT = { pitch: 0.08, cooldown: 0.1, maxVoices: 3 };
+  const WORK = { volume: 0.5, pitch: 0.1, cooldown: 0.15, maxVoices: 3 };
+
   const DEFAULT_SOUNDS = {
     click: { synth: render(0.05, (time, p) => Math.sin(TAU * 1600 * time) * Math.pow(1 - p, 3) * 0.45), volume: 0.6, cooldown: 0.04, maxVoices: 3 },
     build: { synth: render(0.22, (time, p) => (Math.sin(TAU * (170 - 90 * p) * time) * 0.8 + (Math.random() * 2 - 1) * 0.3 * (1 - p)) * Math.pow(1 - p, 2)), maxVoices: 3 },
@@ -43,6 +47,22 @@
     },
     // Larm: en siren som växlar mellan två toner, två varv
     alarm: { synth: render(1.2, (time, p) => (Math.sign(Math.sin(TAU * (Math.floor(time * 3.3) % 2 ? 640 : 880) * time)) * 0.5 + Math.sin(TAU * (Math.floor(time * 3.3) % 2 ? 640 : 880) * time) * 0.5) * 0.35 * Math.min(1, (1 - p) * 4)), volume: 0.9, pitch: 0, maxVoices: 1, cooldown: 5 },
+    // Strid
+    arrow: { synth: render(0.25, (time, p) => (noise() * 0.22 * Math.sin(Math.PI * p) + note(240, time, 0, 0.12) * 0.25)), volume: 0.6, ...EFFECT },
+    swing: { synth: render(0.18, (time, p) => noise() * 0.28 * Math.sin(Math.PI * p)), volume: 0.6, ...EFFECT },
+    hit: { synth: render(0.12, (time, p) => (Math.sin(TAU * (130 - 70 * p) * time) * 0.6 + noise() * 0.25 * (1 - p)) * Math.pow(1 - p, 2)), volume: 0.6, ...EFFECT, cooldown: 0.08 },
+    died: { synth: render(0.4, (time, p) => Math.sin(TAU * (320 - 200 * p) * time) * 0.35 * Math.pow(1 - p, 1.5)), volume: 0.6, ...EFFECT },
+    destroyed: { synth: (() => { let low = 0; return render(0.6, (time, p) => { low += (noise() - low) * 0.25; return low * 1.4 * Math.pow(1 - p, 1.5); }); })(), volume: 0.8, ...EFFECT },
+    // Arbete: ett slag per arbetsvarv (se Behaviors.workSound)
+    chop: { synth: render(0.14, (time, p) => (Math.sin(TAU * 170 * time) * 0.7 + noise() * 0.35 * Math.pow(1 - p, 4)) * Math.pow(1 - p, 3)), ...WORK },
+    mine: { synth: render(0.12, (time, p) => (Math.sin(TAU * 1400 * time) * 0.35 + Math.sin(TAU * 2100 * time) * 0.2) * Math.pow(1 - p, 4)), ...WORK },
+    pick: { synth: render(0.12, (time, p) => noise() * 0.2 * Math.sin(Math.PI * p)), ...WORK },
+    dig: { synth: (() => { let low = 0; return render(0.22, (time, p) => { low += (noise() - low) * 0.3; return low * 0.9 * (1 - p); }); })(), ...WORK },
+    fish: { synth: render(0.28, (time, p) => noise() * 0.22 * Math.pow(Math.sin(Math.PI * p), 2) + Math.sin(TAU * (500 + 400 * p) * time) * 0.1 * (1 - p)), ...WORK },
+    hunt: { synth: render(0.16, (time, p) => Math.sin(TAU * 90 * time) * 0.6 * Math.pow(1 - p, 2)), ...WORK },
+    plant: { synth: render(0.14, (time, p) => Math.sin(TAU * (300 + 300 * p) * time) * 0.4 * Math.pow(1 - p, 2)), ...WORK },
+    craft: { synth: render(0.14, (time, p) => (Math.sin(TAU * 700 * time) * 0.4 + noise() * 0.3 * Math.pow(1 - p, 5)) * Math.pow(1 - p, 5)), ...WORK },
+    smelt: { synth: render(0.4, (time, p) => noise() * 0.18 * Math.sin(Math.PI * Math.pow(p, 0.7))), ...WORK },
     drop: { synth: render(0.04, (time, p) => Math.sin(TAU * 900 * time) * Math.pow(1 - p, 3) * 0.3), volume: 0.5, cooldown: 0.05, maxVoices: 4 },
   };
 

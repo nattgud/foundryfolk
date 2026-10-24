@@ -166,7 +166,7 @@
           return;
         }
 
-        for (const resourceId in inputs) building.inputStock[resourceId] -= inputs[resourceId];
+        for (const resourceId in inputs) { building.inputStock[resourceId] -= inputs[resourceId]; Behaviors.note(building, 'use', resourceId, inputs[resourceId]); }
         building.isCrafting = true;
         building.trainingUnit = kind;
         // Talisman (boost) och monumentets aura gör träningen snabbare

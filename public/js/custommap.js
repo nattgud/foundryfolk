@@ -61,11 +61,12 @@
       canvas.width = canvas.height = PREVIEW_SIZE * 4;
       const caption = make('div', 'main-menu-note custom-caption', t('The preview is approximate: a base can end up a few tiles from where it is shown.'));
       const legend = make('div', 'custom-legend');
-      CLASS_NAMES.forEach((name, i) => {
-        const item = make('span', 'custom-legend-item');
+      const labels = CLASS_NAMES.map((name, i) => {
+        const item = make('span', 'custom-legend-item'), label = make('span', '', t(name));
         const swatch = make('i'); swatch.style.background = COLORS[i];
-        item.append(swatch, document.createTextNode(t(name)));
+        item.append(swatch, label);
         legend.append(item);
+        return label;
       });
 
       let timer = 0;
@@ -82,6 +83,10 @@
           context.fill();
           context.lineWidth = 2; context.strokeStyle = '#0b0d10'; context.stroke();
         }
+        // Andel av kartan per sort: siffrorna visar effekten av reglagen även när det är svårt att se på bilden
+        const counts = new Array(CLASS_NAMES.length).fill(0);
+        for (const kind of cells) counts[kind]++;
+        labels.forEach((label, i) => { label.textContent = `${t(CLASS_NAMES[i])} ${Math.round(100 * counts[i] / cells.length)}%`; });
         canvas.classList.remove('is-busy');
       };
       const refresh = () => {
@@ -140,13 +145,18 @@
       const seedControl = make('div', 'custom-control'); seedControl.append(seed, reroll);
 
       const replaces = Levels.custom ? make('div', 'main-menu-note', t('The custom map you are playing now is replaced. Your levels are kept.')) : make('div', 'main-menu-note', t('Your game on the levels is saved first, and you can return to it from the menu.'));
-      body.append(
-        canvas, legend, caption,
+      // Två spalter på bred skärm: förhandsvisningen till vänster, reglagen till höger
+      const side = make('div', 'custom-side'), main = make('div', 'custom-main'), layout = make('div', 'custom-layout');
+      side.append(canvas, legend, caption, replaces);
+      main.append(
         make('div', 'stats-heading', t('Enemies')), row(t('Number of enemies'), count), enemyRows,
         make('div', 'stats-heading', t('Land')),
         slider('water', t('Water')), slider('mountains', t('Mountains')), slider('forest', t('Forest')), slider('resources', t('Resources')),
-        row(t('Map number'), seedControl),
-        replaces,
+        row(t('Map number'), seedControl)
+      );
+      layout.append(side, main);
+      body.append(
+        layout,
         button(t('Start custom map'), () => { normalize(); this.persist(); Levels.startCustom(settings); }),
         button(t('Back'), back)
       );
@@ -160,6 +170,12 @@
       style.textContent = `
         .custom-preview { position: static; inset: auto; width: 100%; height: auto; aspect-ratio: 1; flex: none; border: 1px solid var(--line); border-radius: 8px; background: #0b0d10; image-rendering: pixelated; transition: opacity .15s; }
         .custom-preview.is-busy { opacity: .55; }
+        .custom-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+        .custom-side, .custom-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        @media (min-width: 700px) {
+          .custom-layout { grid-template-columns: 300px minmax(0, 1fr); align-items: start; }
+          .custom-slider { width: 160px; }
+        }
         .custom-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--dim); }
         .custom-legend-item { display: inline-flex; align-items: center; gap: 5px; }
         .custom-legend-item i, .custom-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }

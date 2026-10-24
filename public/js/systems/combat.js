@@ -25,7 +25,8 @@
   const settings = () => Config.settings.military;
   const TIMERS = ['attackCooldownLeft', 'scanTimer', 'repathTimer', 'orderCooldown', 'homeSearchTimer'];
   const HOME_SEARCH_SECONDS = 2;      // hur ofta en fri soldat letar efter en ledig garnison
-  const POST_TOLERANCE = 1.5;         // så nära posten räknas en fri soldat som på plats
+  const POST_TOLERANCE = 3;           // så nära posten räknas en fri soldat som på plats
+  const SEPARATION_SPEED = 0.8;       // hur fort soldater trycks isär (rutor per sekund)
   const MELEE_RANGE = 2;              // attackRange upp till detta är närstrid, över det en projektil
   const BUILDING_REACH = 0.6;         // en byggnad är en hel ruta: räckhållet räknas från kanten, inte mitten
 
@@ -71,9 +72,11 @@
       attacker.attackCooldownLeft = definition.attackCooldown;
       if (definition.attackRange <= MELEE_RANGE) {
         this.effects.push({ x1: attacker.x, y1: attacker.y, x2: centreX(target), y2: centreY(target), life: 0.18 });
+        CityBuilder.Sound?.play('swing', { x: attacker.x, y: attacker.y });
         this.damage(target, amount, attacker);
         return;
       }
+      CityBuilder.Sound?.play('arrow', { x: attacker.x, y: attacker.y });
       const { projectileSpeed, projectileMinSeconds, projectileMaxSeconds } = settings();
       const distance = Math.hypot(centreX(target) - attacker.x, centreY(target) - attacker.y);
       this.projectiles.push({
@@ -112,6 +115,7 @@
     damage(target, amount, attacker) {
       if (target.hp == null || target.removed) return;
       this.raiseAlarm(target, attacker);
+      CityBuilder.Sound?.play('hit', { x: centreX(target), y: centreY(target) });
       target.hp -= amount;
       if (target.hp <= 0) this.kill(target, attacker);
     },
@@ -122,6 +126,7 @@
       if (attacker?.player === Players.HUMAN && Players.isHostile(Players.HUMAN, target.player)) Levels?.onDefeated?.(target);
       if (isBuilding(target)) return this.destroyBuilding(target);
       const unit = target;
+      if (unit.definition.isSoldier) CityBuilder.Sound?.play('died', { x: unit.x, y: unit.y });
       CityBuilder.Logistics.abortTask(unit); // en bärare som dör släpper sina reservationer
       if (unit.definition.isHauler) CityBuilder.Logistics.carrierLost(unit);
       Garrison.release(unit);
@@ -130,6 +135,7 @@
 
     // En förstörd byggnad är som en riven, men inget lämnas tillbaka (innehållet går förlorat)
     destroyBuilding(building) {
+      CityBuilder.Sound?.play('destroyed', { x: building.x, y: building.y });
       CityBuilder.Construction.dismantle(building, false);
       const game = CityBuilder.Game;
       if (game?.selectedBuilding === building) game.selectBuilding(null);
@@ -190,6 +196,7 @@
         if (unit.definition.isSoldier && !unit.removed) this.updateSoldier(unit, deltaSeconds);
       }
 
+      this.separate(deltaSeconds);
       this.updateProjectiles(deltaSeconds);
       for (const effect of this.effects) effect.life -= deltaSeconds;
       this.effects = this.effects.filter(effect => effect.life > 0);
@@ -207,6 +214,44 @@
         const enemy = this.findEnemy(building.player, building.x + .5, building.y + .5, Garrison.radius(building));
         if (enemy) Garrison.deploy(building, enemy);
       }
+    },
+
+    // Soldater får inte stå på varandra: de som är närmare än soldierSpacing trycks isär (mjukt, högst SEPARATION_SPEED rutor per sekund).
+    // En soldat i närstrid stannar på sin ruta (närstrid kräver samma ruta som målet), övriga får flytta över gränsen om rutan går att beträda.
+    separate(deltaSeconds) {
+      const gap = settings().soldierSpacing, reach = SEPARATION_SPEED * deltaSeconds, cells = new Map();
+      // Soldater som är på väg in i sin garnison trycks inte undan: de måste få nå dörren
+      const arriving = unit => unit.mode === 'return' && unit.goal && isBuilding(unit.goal) && Math.hypot(unit.goal.x + .5 - unit.x, unit.goal.y + .5 - unit.y) < 2;
+      const soldiers = World.units.filter(unit => unit.definition.isSoldier && !unit.removed && !arriving(unit));
+      if (soldiers.length < 2) return;
+      const cellKey = (cx, cy) => cx * 100003 + cy;
+      soldiers.forEach((unit, index) => {
+        const key = cellKey(Math.floor(unit.x / gap), Math.floor(unit.y / gap)), list = cells.get(key);
+        if (list) list.push(index); else cells.set(key, [index]);
+      });
+      const shift = (unit, dx, dy) => {
+        let x = unit.x + dx, y = unit.y + dy;
+        if (unit.target) { // stannar på sin ruta
+          const tileX = Math.floor(unit.x), tileY = Math.floor(unit.y);
+          x = Math.min(tileX + .95, Math.max(tileX + .05, x)); y = Math.min(tileY + .95, Math.max(tileY + .05, y));
+        } else if ((Math.floor(x) !== Math.floor(unit.x) || Math.floor(y) !== Math.floor(unit.y)) && CityBuilder.Pathfinder.tileCost(Math.floor(x), Math.floor(y)) === Infinity) return;
+        unit.x = x; unit.y = y;
+      };
+      soldiers.forEach((unit, index) => {
+        const cx = Math.floor(unit.x / gap), cy = Math.floor(unit.y / gap);
+        for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+          for (const otherIndex of cells.get(cellKey(cx + i, cy + j)) || []) {
+            if (otherIndex <= index) continue;   // varje par en gång
+            const other = soldiers[otherIndex];
+            let dx = other.x - unit.x, dy = other.y - unit.y, distance = Math.hypot(dx, dy);
+            if (distance >= gap) continue;
+            if (distance < 1e-3) { const angle = CityBuilder.Utils.hash(index, otherIndex, 55) * Math.PI * 2; dx = Math.cos(angle); dy = Math.sin(angle); distance = 0; }
+            const unitLength = distance || 1, amount = Math.min(reach, (gap - distance) / 2);
+            shift(unit, -dx / unitLength * amount, -dy / unitLength * amount);
+            shift(other, dx / unitLength * amount, dy / unitLength * amount);
+          }
+        }
+      });
     },
 
     updateSoldier(unit, deltaSeconds) {

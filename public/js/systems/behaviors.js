@@ -102,6 +102,7 @@
     // Allt huset ska ha levererat: insatser (upp till kapacitet) och utrustning
     requiredResources(building) {
       const behavior = this.forBuilding(building), boost = building.boostOn && this.boostOf(building);
+      if (!behavior) return {};
       return {
         ...(behavior.inputCapacities ? behavior.inputCapacities(building) : {}),
         ...(boost ? { [boost.resource]: this.inputBuffer(1) } : {}),
@@ -127,6 +128,7 @@
         if (!(building.meals[i] > 0)) {
           const id = group.any.reduce((best, r) => (building.inputStock[r] || 0) > (building.inputStock[best] || 0) ? r : best);
           building.inputStock[id]--;
+          this.note(building, 'use', id);
           building.meals[i] = group.every || 1;
         }
         building.meals[i]--;
@@ -172,11 +174,15 @@
       eff.summary = total >= 5 ? { seconds: total, ratio: work / total, reasons: Object.entries(reasons).map(([r, s]) => [r, s / total]).sort((a, b) => b[1] - a[1]) } : null;
     },
 
+    // Flödesstatistik (Economy.record): byggnaden förbrukade ('use') eller levererade ('make') en vara
+    note: (building, kind, resourceId, amount = 1) => CityBuilder.Economy.record(building.player, kind, resourceId, building.type, amount),
+
     // Lämnar det arbetaren bär i huset (jägarens alla varor, annars en)
     deposit(worker, building) {
       if (worker.carriedResource && !building.removed) {
         for (const [resourceId, amount] of Object.entries(worker.carriedOutputs || { [worker.carriedResource]: 1 })) {
           building.outputStock[resourceId] = (building.outputStock[resourceId] || 0) + amount;
+          this.note(building, 'make', resourceId, amount);
         }
       }
       worker.carriedResource = null;
@@ -203,6 +209,7 @@
       if (!(building.boostLeft > 0)) {
         if (!(building.inputStock[boost.resource] > 0)) return false;
         building.inputStock[boost.resource]--;
+        this.note(building, 'use', boost.resource);
         building.boostLeft = boost.cycles;
       }
       building.boostLeft--;
@@ -283,6 +290,7 @@
           prey.heldFor = 0;
           worker.huntTarget = prey;
         }),
+        Jobs.run(() => Behaviors.workSound(building)),
         Jobs.wait(job.workSeconds || 2, job.workLabel || 'Hunting'),
         Jobs.run(() => {
           const target = worker.huntTarget;
@@ -325,6 +333,7 @@
 
       worker.stepQueue = [
         Jobs.walkTo(target.x, target.y, stopBeside),
+        Jobs.run(() => Behaviors.workSound(building, target.tile.terrainType)),
         Jobs.wait(job.workSeconds, 'Gathering'),
         Jobs.run(() => {
           if (target.tile.remainingAmount <= 0) return false; // någon annan hann före
@@ -382,12 +391,14 @@
         Behaviors.eat(building);
         for (const resourceId in inputs) {
           building.inputStock[resourceId] -= inputs[resourceId];
+          Behaviors.note(building, 'use', resourceId, inputs[resourceId]);
         }
 
         building.isCrafting = true;
         building.craftOutputs = Behaviors.yielded(building, recipe.outputs, Behaviors.useBoost(building));
         building.craftTimeLeft = job.craftSeconds;
         building.craftTotalTime = building.craftTimeLeft;
+        Behaviors.workSound(building);
       }
 
       building.status = 'Working';
@@ -400,10 +411,28 @@
         for (const resourceId in outputs) {
           building.outputStock[resourceId] =
             (building.outputStock[resourceId] || 0) + outputs[resourceId];
+          Behaviors.note(building, 'make', resourceId, outputs[resourceId]);
         }
       }
     },
   });
+
+  // Arbetsljud (systems/sound.js): vilket ljud en byggnads arbete ger. terrain = terrängen arbetaren samlar från (om någon).
+  const SOFT_TERRAIN = new Set(['berry_bush', 'herbs', 'mushrooms', 'apple_tree', 'fallen_star', 'moonstone', 'ancient_altar']);
+  const DIGGING_TERRAIN = new Set(['clay', 'sand', 'bog', 'cursed_ground', 'tar_pit']);
+  Behaviors.workSound = (building, terrain) => {
+    const job = building.definition.job;
+    let id;
+    if (job.kind === 'craft') id = /smelter|foundry|burner/.test(building.type || '') ? 'smelt' : 'craft';
+    else if (job.kind === 'plant') id = 'plant';
+    else if (job.sourceUnit) id = 'hunt';
+    else if (terrain === 'water') id = 'fish';
+    else if (terrain === 'tree') id = 'chop';
+    else if (SOFT_TERRAIN.has(terrain)) id = 'pick';
+    else if (DIGGING_TERRAIN.has(terrain)) id = 'dig';
+    else id = 'mine';
+    CityBuilder.Sound?.play(id, { x: building.x, y: building.y });
+  };
 
   // Planterare: arbetaren går till en slumpad ledig gräsruta på avstånd minRadius-maxRadius och planterar ett träd (amount: [min, max] trä).
   // Insatserna (frön, vatten) förbrukas när arbetaren går ut, och lämnas tillbaka om rutan hunnit bli upptagen.
@@ -437,9 +466,10 @@
       const spot = this.findSpot(building, job);
       if (!spot) { worker.status = 'No room to plant'; worker.idleCooldown = 10; return; }
 
-      for (const id in job.inputs) building.inputStock[id] -= job.inputs[id];
+      for (const id in job.inputs) { building.inputStock[id] -= job.inputs[id]; Behaviors.note(building, 'use', id, job.inputs[id]); }
       worker.stepQueue = [
         Jobs.walkTo(spot.x, spot.y),
+        Jobs.run(() => Behaviors.workSound(building)),
         Jobs.wait(job.workSeconds, 'Planting'),
         Jobs.run(() => {
           const tile = World.getTile(spot.x, spot.y);

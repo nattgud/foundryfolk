@@ -61,6 +61,7 @@
     selectBuilding(building) {
       this.selectedBuilding = building || null;
       byId('info').dataset.buildingId = ''; // tvingar infopanelen att byggas om
+      if (building?.definition.isMarket && building.player === CityBuilder.Players.HUMAN && building.buildProgress >= 1) UI.openMarket();
     },
 
     tryBuild(buildingType, x, y) {

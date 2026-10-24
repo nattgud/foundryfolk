@@ -50,6 +50,21 @@ CityBuilder.Config.settings = {
       // error: 'sounds/error.mp3',
       // levelComplete: 'sounds/level_complete.mp3',
       // drop: 'sounds/drop.mp3',
+      // alarm: 'sounds/alarm.mp3',
+      // arrow: 'sounds/arrow.mp3',          // pil avfyras
+      // swing: 'sounds/swing.mp3',          // närstrid
+      // hit: 'sounds/hit.mp3',              // träff
+      // died: 'sounds/died.mp3',            // soldat dör
+      // destroyed: 'sounds/destroyed.mp3',  // byggnad förstörs
+      // chop: 'sounds/chop.mp3',            // träd (skogshuggare)
+      // mine: 'sounds/mine.mp3',            // sten och malm
+      // pick: 'sounds/pick.mp3',            // bär, örter, svamp, äpplen
+      // dig: 'sounds/dig.mp3',              // lera och sand
+      // fish: 'sounds/fish.mp3',            // fiskare
+      // hunt: 'sounds/hunt.mp3',            // jägare
+      // plant: 'sounds/plant.mp3',          // planterare
+      // craft: 'sounds/craft.mp3',          // förädlare
+      // smelt: 'sounds/smelt.mp3',          // smältverk, gjuteri, kolbrännare
     },
     music: ["music/theme.mp3"],
   },
@@ -59,6 +74,7 @@ CityBuilder.Config.settings = {
     attackRadius: 75,          // räckvidd (rutor) i attackläge: soldaterna söker upp fiender så här långt bort
     buildingHp: 100,           // livspoäng för en byggnad som saknar eget maxHp
     leashFactor: 1.25,         // en soldat jagar inte längre bort än searchRadius * detta från sin byggnad eller post
+    soldierSpacing: 0.45,      // minsta avstånd (rutor, ca 16 px) mellan två soldater: de ska inte stå på varandra och se ut som en enhet
     scanIntervalSeconds: 0.5,  // hur ofta byggnader och soldater letar efter fiender
     repathSeconds: 0.5,        // minsta tid mellan omräkningar av vägen mot ett rörligt mål
     retrySeconds: 2,           // väntetid innan en soldat försöker igen efter att något inte gick att nå
