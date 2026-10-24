@@ -295,6 +295,25 @@
     }
   };
 
+  // Blandar brickans förra bild (fadeFrom) och nya bild (canvas): gammal * (1 - p) + ny * p, på en delad canvas. Mellanläget hamnar
+  // därmed mellan de två (lägger man bara den nya ovanpå den gamla blir stigen för stark mitt i toningen och faller tillbaka).
+  const blend = document.createElement('canvas');
+  const blendPath = (chunk, progress, size) => {
+    if (blend.width !== size) blend.width = blend.height = size;
+    const context = blend.getContext('2d');
+    context.globalCompositeOperation = 'copy';
+    context.globalAlpha = 1 - progress;
+    context.drawImage(chunk.fadeFrom, 0, 0);
+    if (chunk.canvas) {
+      context.globalCompositeOperation = 'lighter';   // adderar förmultiplicerade färger: en exakt blandning
+      context.globalAlpha = progress;
+      context.drawImage(chunk.canvas, 0, 0);
+    }
+    context.globalCompositeOperation = 'source-over';
+    context.globalAlpha = 1;
+    return blend;
+  };
+
   let lastPathPrune = 0;
   Renderer.addLayer('paths', (context, renderer) => {
     const range = renderer.visibleTileRange(), tileSize = renderer.tileSize, now = performance.now(), gfx = CityBuilder.Options.gfx;
@@ -312,27 +331,26 @@
           const hash = readPathGrid(chunk);
           if (hash !== chunk.hash) {
             const fade = gfx.pathFade && chunk.hash !== -1;   // första ritningen av en bricka (hash -1) tonas inte
-            if (fade && !chunk.fadeFrom) {                    // pågår redan en toning fortsätter den från samma bild
-              const from = chunk.fadeFrom = chunk.fadeCanvas || (chunk.fadeCanvas = document.createElement('canvas'));
-              const size = PATH_CHUNK * tileSize;
-              from.width = from.height = size;               // (nollställer också bilden)
-              if (chunk.canvas) from.getContext('2d').drawImage(chunk.canvas, 0, 0);
-            }
-            if (fade) chunk.fadeAt = now; else chunk.fadeFrom = null;
+            if (fade) {
+              // Toningen startar från det som syns nu: den förra bilden, eller mitt i en pågående toning den halvvägs blandade bilden
+              const size = PATH_CHUNK * tileSize, from = chunk.fadeCanvas || (chunk.fadeCanvas = document.createElement('canvas'));
+              const current = chunk.fadeFrom ? blendPath(chunk, Math.min(1, (now - chunk.fadeAt) / PATH_FADE_MS), size) : chunk.canvas;
+              if (current !== from) {
+                if (from.width !== size) from.width = from.height = size; else from.getContext('2d').clearRect(0, 0, size, size);
+                if (current) from.getContext('2d').drawImage(current, 0, 0);
+              }
+              chunk.fadeFrom = from; chunk.fadeAt = now;
+            } else chunk.fadeFrom = null;
             chunk.hash = hash;
             if (hash) drawPathChunk(chunk, tileSize, gfx.softEdges); else chunk.canvas = null; // tom bricka: släpp canvasen
           }
         }
         const x = cx * PATH_CHUNK * tileSize, y = cy * PATH_CHUNK * tileSize;
         if (chunk.fadeFrom) {
-          // Den nya bilden tonas in över den gamla: ändrade rutor växer fram i stället för att hoppa
+          // Den gamla bilden tonas över i den nya: ändrade rutor växer fram i stället för att hoppa
           const progress = (now - chunk.fadeAt) / PATH_FADE_MS;
           if (progress >= 1 || !gfx.pathFade) chunk.fadeFrom = null;
-          else {
-            context.drawImage(chunk.fadeFrom, x, y);
-            if (chunk.canvas) { context.globalAlpha = progress; context.drawImage(chunk.canvas, x, y); context.globalAlpha = 1; }
-            continue;
-          }
+          else { context.drawImage(blendPath(chunk, progress, PATH_CHUNK * tileSize), x, y); continue; }
         }
         if (chunk.canvas) context.drawImage(chunk.canvas, x, y);
       }

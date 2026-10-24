@@ -4,6 +4,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.7.73': [
+      'Fixed the path fade: a worn path now fades smoothly to its new look instead of overshooting and jumping back',
+    ],
     '0.7.72': [
       'Target times on the early levels were far too long and are now much shorter. Beat them for more stars',
       'New Graphics setting (Minimum to High) turns off animations and effects on weaker devices. Worn paths now fade in smoothly on High',
