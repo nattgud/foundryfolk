@@ -461,6 +461,14 @@
       'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.': 'När du attackeras ljuder en siren, och en röd pil på minikartan pekar mot striden i några sekunder.',
       'Nothing uses this': 'Inget använder den',
       'Adds {n} carriers': 'Ger {n} bärare',
+      'Hotkey: {key}': 'Snabbknapp: {key}',
+      'Press {key} again to demolish': 'Tryck {key} igen för att riva',
+      'Health: {hp}/{max}': 'Hälsa: {hp}/{max}',
+      'Hotkeys': 'Snabbknappar',
+      'A red ring with ! means a gatherer finds nothing to gather. An orange or red ring means the building stands still most of the time. Select a building to ring all buildings of the same type.': 'En röd ring med ! betyder att en samlare inte hittar något att samla. En orange eller röd ring betyder att byggnaden står still större delen av tiden. Markera en byggnad för att ringa in alla byggnader av samma typ.',
+      'Press a number to open that category in the build menu, then a number to choose a building. Esc goes back one step. Hover over a button to see its key.': 'Tryck på en siffra för att öppna den kategorin i byggmenyn, och sedan en siffra för att välja byggnad. Esc går tillbaka ett steg. Håll muspekaren över en knapp för att se dess tangent.',
+      'With one of your buildings selected: P pauses, B turns the boost on or off, R changes what it makes, T opens trading, S switches between attack and defence, Z X C V train soldiers, and Delete demolishes (press it twice).': 'Med en av dina byggnader markerad: P pausar, B slår boosten på eller av, R byter vad den gör, T öppnar handel, S växlar mellan attack och försvar, Z X C V tränar soldater och Delete river (tryck två gånger).',
+      'Enemy buildings only show their health, nothing about what they import, export or produce.': 'Fiendens byggnader visar bara sin hälsa, inget om vad de importerar, exporterar eller producerar.',
     },
 
     de: {
@@ -872,6 +880,14 @@
       'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.': 'Wenn du angegriffen wirst, ertönt eine Sirene, und ein roter Pfeil auf der Minikarte zeigt einige Sekunden lang auf den Kampf.',
       'Nothing uses this': 'Nichts verwendet das',
       'Adds {n} carriers': 'Gibt {n} Träger',
+      'Hotkey: {key}': 'Tastenkürzel: {key}',
+      'Press {key} again to demolish': 'Drücke {key} erneut zum Abreißen',
+      'Health: {hp}/{max}': 'Gesundheit: {hp}/{max}',
+      'Hotkeys': 'Tastenkürzel',
+      'A red ring with ! means a gatherer finds nothing to gather. An orange or red ring means the building stands still most of the time. Select a building to ring all buildings of the same type.': 'Ein roter Ring mit ! bedeutet, dass ein Sammler nichts zum Sammeln findet. Ein oranger oder roter Ring bedeutet, dass das Gebäude die meiste Zeit stillsteht. Wähle ein Gebäude, um alle Gebäude desselben Typs einzukreisen.',
+      'Press a number to open that category in the build menu, then a number to choose a building. Esc goes back one step. Hover over a button to see its key.': 'Drücke eine Zahl, um diese Kategorie im Baumenü zu öffnen, dann eine Zahl, um ein Gebäude zu wählen. Esc geht einen Schritt zurück. Halte die Maus über einen Knopf, um seine Taste zu sehen.',
+      'With one of your buildings selected: P pauses, B turns the boost on or off, R changes what it makes, T opens trading, S switches between attack and defence, Z X C V train soldiers, and Delete demolishes (press it twice).': 'Mit einem deiner Gebäude ausgewählt: P pausiert, B schaltet den Boost ein oder aus, R ändert, was es herstellt, T öffnet den Handel, S wechselt zwischen Angriff und Verteidigung, Z X C V bilden Soldaten aus und Entf reißt ab (zweimal drücken).',
+      'Enemy buildings only show their health, nothing about what they import, export or produce.': 'Feindliche Gebäude zeigen nur ihre Gesundheit, nichts darüber, was sie importieren, exportieren oder herstellen.',
     },
 
     es: {
@@ -1283,6 +1299,14 @@
       'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.': 'Cuando te atacan suena una sirena y una flecha roja en el minimapa señala el combate durante unos segundos.',
       'Nothing uses this': 'Nada lo usa',
       'Adds {n} carriers': 'Aporta {n} porteadores',
+      'Hotkey: {key}': 'Atajo: {key}',
+      'Press {key} again to demolish': 'Pulsa {key} otra vez para demoler',
+      'Health: {hp}/{max}': 'Salud: {hp}/{max}',
+      'Hotkeys': 'Atajos de teclado',
+      'A red ring with ! means a gatherer finds nothing to gather. An orange or red ring means the building stands still most of the time. Select a building to ring all buildings of the same type.': 'Un anillo rojo con ! significa que un recolector no encuentra nada que recoger. Un anillo naranja o rojo significa que el edificio está parado casi todo el tiempo. Selecciona un edificio para marcar todos los del mismo tipo.',
+      'Press a number to open that category in the build menu, then a number to choose a building. Esc goes back one step. Hover over a button to see its key.': 'Pulsa un número para abrir esa categoría del menú de construcción y luego otro para elegir un edificio. Esc retrocede un paso. Pasa el ratón por un botón para ver su tecla.',
+      'With one of your buildings selected: P pauses, B turns the boost on or off, R changes what it makes, T opens trading, S switches between attack and defence, Z X C V train soldiers, and Delete demolishes (press it twice).': 'Con uno de tus edificios seleccionado: P pausa, B activa o desactiva el impulso, R cambia lo que produce, T abre el comercio, S alterna entre ataque y defensa, Z X C V entrenan soldados y Supr demuele (pulsa dos veces).',
+      'Enemy buildings only show their health, nothing about what they import, export or produce.': 'Los edificios enemigos solo muestran su salud, nada sobre lo que importan, exportan o producen.',
     },
   };
 

@@ -494,6 +494,49 @@
       }
       context.globalAlpha = 1;
 
+      // Markeringar runt spelarens byggnader: problem (samlare utan resurser = röd ring med utropstecken, ineffektiva = orange eller röd ring)
+      // och, när en byggnad är vald, alla byggnader av samma typ (vit ring, den valda i guld)
+      const selected = CityBuilder.Game && CityBuilder.Game.selectedBuilding, pulse = (Math.sin(now / 250) + 1) / 2;
+      const Behaviors = CityBuilder.Behaviors;
+      for (const building of World.buildings) {
+        if (building === World.headquarters || building.buildProgress < 1) continue;
+        const own = building.player === Players.HUMAN;
+        if (!own && !Vision.sees(Players.HUMAN, building)) continue;
+        const x = toX(building.x + 0.5), y = toY(building.y + 0.5);
+        if (Math.hypot(x - radius, y - radius) > radius + marker) continue;
+        const same = selected && !selected.removed && building.type === selected.type && building.player === selected.player;
+        const problem = own ? Behaviors.problemOf(building) : null;
+        if (same) {
+          context.strokeStyle = building === selected ? '#ffd23f' : '#fff';
+          context.lineWidth = 2;
+          context.globalAlpha = .75 + .25 * pulse;
+          context.beginPath();
+          context.arc(x, y, marker * .95 + 2, 0, Math.PI * 2);
+          context.stroke();
+        }
+        if (problem) {
+          const noResources = problem === 'noResources';
+          context.strokeStyle = noResources || problem === 'bad' ? '#ff3b30' : '#ffb020';
+          context.lineWidth = noResources ? 2.5 : 2;
+          context.globalAlpha = noResources ? .6 + .4 * pulse : 1;
+          context.beginPath();
+          context.arc(x, y, marker * .95 + (same ? 5 : 2), 0, Math.PI * 2);
+          context.stroke();
+          if (noResources) {
+            context.globalAlpha = 1;
+            context.fillStyle = '#fff';
+            context.font = `bold ${Math.max(9, marker + 3)}px system-ui, sans-serif`;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.strokeStyle = '#05080a';
+            context.lineWidth = 3;
+            context.strokeText('!', x, y + 0.5);
+            context.fillText('!', x, y + 0.5);
+          }
+        }
+      }
+      context.globalAlpha = 1;
+
       // Soldater: små cirklar (röda för andra spelare, blå för dina egna)
       const dot = Math.max(2, Math.round(scale * 1.2));
       for (const unit of World.units) {

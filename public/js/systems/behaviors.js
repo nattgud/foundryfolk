@@ -174,6 +174,20 @@
       eff.summary = total >= 5 ? { seconds: total, ratio: work / total, reasons: Object.entries(reasons).map(([r, s]) => [r, s / total]).sort((a, b) => b[1] - a[1]) } : null;
     },
 
+    // Byggnadens problem (för markeringarna på minimapen): 'noResources' = samlaren hittar inget att samla (eller jaga),
+    // 'bad' / 'warn' = står still större delen av tiden (se settings.efficiency), annars null. Pausade och ofärdiga byggnader har inga problem.
+    problemOf(building) {
+      const job = building.definition.job;
+      if (!job || building.buildProgress < 1 || building.paused) return null;
+      if (job.kind === 'gather') {
+        const status = CityBuilder.I18n.canonicalStatus(building.status || '');
+        if (status === 'No resources' || status === 'No deer in range') return 'noResources';
+      }
+      const summary = building.eff && building.eff.summary, limits = Object.assign({ minSeconds: 30, warnBelow: .6, badBelow: .3 }, Config.settings.efficiency);
+      if (summary && summary.seconds >= limits.minSeconds && summary.ratio < limits.warnBelow) return summary.ratio < limits.badBelow ? 'bad' : 'warn';
+      return null;
+    },
+
     // Flödesstatistik (Economy.record): byggnaden förbrukade ('use') eller levererade ('make') en vara
     note: (building, kind, resourceId, amount = 1) => CityBuilder.Economy.record(building.player, kind, resourceId, building.type, amount),
 

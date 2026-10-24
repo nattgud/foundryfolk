@@ -591,6 +591,7 @@
     const time = performance.now() / 1000;
     for (const building of World.buildings) {
       if (outside(view, building.x * tileSize, building.y * tileSize) || hidden(building)) continue;
+      if (building.player !== Players.HUMAN) continue;   // fiendens byggnader visar inga status- eller effektivitetsikoner (och ingen arbetsframgång)
       // Ineffektiv en längre tid: liten ikon uppe till höger (Config.settings.efficiency: minSeconds, warnBelow, badBelow)
       const summary = building.eff && building.eff.summary, limits = Object.assign({ minSeconds: 30, warnBelow: .6, badBelow: .3 }, Config.settings.efficiency);
       if (summary && !building.paused && summary.seconds >= limits.minSeconds && summary.ratio < limits.warnBelow) {

@@ -4,6 +4,12 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.7.3': [
+      'Hotkeys for the build menu: a number opens a category and then a number picks a building (Esc goes back). With one of your buildings selected: P pause, B boost, R change recipe, T trade, S attack/defence, Z X C V train soldiers, Delete demolish (press twice). The keys never use Ctrl, Alt or Cmd, and are shown when you hover over a button',
+      'The minimap rings buildings with problems: a red ring with ! when a gatherer finds nothing to gather, and an orange or red ring when a building stands still most of the time',
+      'Select a building and the minimap rings all buildings of the same type',
+      'Enemy buildings only show their name and health: no imports, exports, efficiency, storage, soldiers or status icons',
+    ],
     '0.7.2': [
       'Soldiers no longer get stuck in each other: melee fighters stand next to their target instead of inside it, and soldiers slide along obstacles when they are pushed apart',
       'Bigger stores give more carriers: warehouse +5, large warehouse +10, great depot +25',

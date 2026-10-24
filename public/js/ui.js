@@ -96,6 +96,7 @@
       if (CityBuilder.Sound) CityBuilder.Sound.install();     // ljud (effekter och musik)
 
       this.buildBuildMenu(buildMenu);
+      this.initHotkeys();
       this.initMapInspection();
       this.createCopyrightLabel();
       this.createGoalPanel();
@@ -287,10 +288,11 @@
       { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'Resource goals show the icon and the name of the resource. The timer shows your time against the target time. Be faster for more stars.'] },
       { title: 'Resources', target: ['#top'], lines: ['The top bar shows what is in your stores. Tap "All resources" for the full list.', 'A number turns orange when the stores are full for that resource. Build a warehouse for more room.', 'Tap a resource in the list to see which buildings use it and which make it, per minute. Buildings that could use it but do not right now are shown too.', 'The list only shows the resources you can use at your current level. More appear as you unlock buildings.'] },
       { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap a building, tree, rock or water to see what it is.'] },
-      { title: 'Minimap', target: ['#minimap', '#minimapMode', '#minimapZoomIn', '#minimapZoomOut'], lines: ['The minimap shows the area around you. The white box is what you see on screen.', 'Use + and − to zoom it, and the small button to change what it shows.', 'Your buildings are coloured squares. Enemies you have spotted are red.'] },
+      { title: 'Minimap', target: ['#minimap', '#minimapMode', '#minimapZoomIn', '#minimapZoomOut'], lines: ['The minimap shows the area around you. The white box is what you see on screen.', 'Use + and − to zoom it, and the small button to change what it shows.', 'Your buildings are coloured squares. Enemies you have spotted are red.', 'A red ring with ! means a gatherer finds nothing to gather. An orange or red ring means the building stands still most of the time. Select a building to ring all buildings of the same type.'] },
       { title: 'Build menu', target: ['#bottom .build-categories'], category: null, lines: ['The build menu is at the bottom. Each icon is a category of buildings.', 'Tap a category to open it. New buildings unlock as you complete levels.'] },
       { title: 'Locked or too expensive', target: ['#bottom .building-option'], category: 'gathering', lines: ['A grey button with a dashed border, a stroke and a padlock is locked. Move the mouse over it to see at which level it unlocks. Only the next few levels are shown.', 'A button with a red border is unlocked, but you cannot afford it yet. Move the mouse over it to see the cost.'] },
       { title: 'Place a building', target: ['#build_woodcutter'], category: 'forestry', lines: ['Tap a building to select it. Move the mouse over it to see its cost and what it does.', 'Then tap the ground to place it. A preview follows you and shows whether it fits. You can only build near your own buildings, and not in the fog.', 'Tap the building again, or Cancel, to stop placing.'] },
+      { title: 'Hotkeys', target: ['#bottom .build-categories'], category: null, lines: ['Press a number to open that category in the build menu, then a number to choose a building. Esc goes back one step. Hover over a button to see its key.', 'With one of your buildings selected: P pauses, B turns the boost on or off, R changes what it makes, T opens trading, S switches between attack and defence, Z X C V train soldiers, and Delete demolishes (press it twice).'] },
       { title: 'Select, pause and demolish', mock: 'pause', lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
       { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
       { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
@@ -299,7 +301,7 @@
       { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
       { title: 'Find the enemy', target: ['#build_watchtower'], category: 'military', lines: ['From level 15 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
       { title: 'Train soldiers', target: ['#build_garrison', '#build_guard_tower'], category: 'military', lines: ['Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.', 'Each soldier needs weapons and armour, which carriers deliver to the building.'] },
-      { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.', 'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.'] },
+      { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.', 'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.', 'Enemy buildings only show their health, nothing about what they import, export or produce.'] },
     ],
 
     // Handledningen (spelet pausas medan den är öppen). Varje sida lyser upp det den förklarar.
@@ -1344,7 +1346,7 @@
             image: category.image,
             symbol: category.symbol
           },
-          tooltip: () => this.tooltipContent(t(category.name)),
+          tooltip: () => this.tooltipContent(t(category.name), null, this.hotkeyLines(this.categoryKey(categoryId))),
           showOnTouch: true,
         });
 
@@ -1382,7 +1384,7 @@
             tooltip: () => this.tooltipContent(
               this.buildingName(buildingId),
               building.buildCost,
-              [...(lockedLine ? ['🔒 ' + lockedLine] : Economy.canAfford(building.buildCost) ? [] : ['⚠ ' + t('Not enough resources')]), ...this.describeBuilding(building)]
+              [...(lockedLine ? ['🔒 ' + lockedLine] : Economy.canAfford(building.buildCost) ? [] : ['⚠ ' + t('Not enough resources')]), ...this.describeBuilding(building), ...this.hotkeyLines(this.buildingKey(button))]
             ),
           });
 
@@ -1407,6 +1409,98 @@
         this.categoryToggles.set(categoryId, toggle);
         this.categorySubmenus.set(categoryId, submenu);
       }
+    },
+
+    // ---- Snabbknappar -------------------------------------------------------------------------------------------------
+    // Enkla tangenter utan Ctrl, Alt, Cmd eller Shift, så att de aldrig krockar med webbläsarens kortkommandon. Siffror gäller byggmenyn:
+    // en siffra öppnar kategori nummer N, och när en kategori är öppen väljer siffran byggnad nummer N i den (Esc backar ett steg).
+    // Siffrorna läses från tangentens läge (event.code), så de fungerar på alla tangentbord. Den elfte kategorin har - (minus).
+    // Bokstäver gäller den markerade byggnaden: P paus, B boost, R byt recept, T handla, S attack/försvar, Z X C V utbilda soldattyp, Delete riv (trycks två gånger).
+    HOTKEYS: { pauseButton: 'p', boostButton: 'b', choiceButton: 'r', marketButton: 't', stanceButton: 's', demolishButton: 'Delete' },
+    TRAIN_KEYS: ['z', 'x', 'c', 'v'],
+    MENU_KEYS: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-'],
+
+    hotkeyLines: key => key ? [t('Hotkey: {key}', { key: `<kbd>${key.length === 1 ? key.toUpperCase() : key}</kbd>` })] : [],
+
+    // Tangenten för kategori nummer N (bland de synliga) och för en byggnadsknapp i sin undermeny
+    categoryKey(categoryId) { return this.MENU_KEYS[[...this.categoryToggles.keys()].indexOf(categoryId)]; },
+    buildingKey(button) { const index = [...(button.parentElement?.children || [])].indexOf(button); return index >= 0 && index < 10 ? this.MENU_KEYS[index] : undefined; },
+
+    // Tangentens namn oberoende av tangentbordslayout: siffror från läget, bokstäver från tecknet. Null för allt som inte är en snabbknapp.
+    hotkeyName(event) {
+      if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return null;
+      const digit = /^(?:Digit|Numpad)(\d)$/.exec(event.code);
+      if (digit) return digit[1];
+      if (event.code === 'Minus' || event.code === 'NumpadSubtract') return '-';
+      return event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    },
+
+    initHotkeys() {
+      document.addEventListener('keydown', event => {
+        if (event.defaultPrevented || event.repeat) return;
+        if (event.target.closest && event.target.closest('input, select, textarea, [contenteditable]')) return;
+        if (document.querySelector('.resource-window-overlay:not([hidden])')) return; // en ruta (meny, handledning, resurser, marknad) är öppen
+        const key = this.hotkeyName(event);
+        if (key && this.handleHotkey(key)) event.preventDefault();
+      });
+    },
+
+    // Returnerar true om tangenten användes
+    handleHotkey(key) {
+      const game = CityBuilder.Game, selected = game.selectedBuilding;
+
+      if (key === 'Escape') { // ett steg tillbaka: placering, öppen kategori, vald byggnad, markerad terräng
+        if (game.placingType) game.setPlacingType(null);
+        else if (this.openCategoryId) this.setOpenCategory(null);
+        else if (selected) game.selectBuilding(null);
+        else if (this.inspectedTile) this.inspectTile(null);
+        else return false;
+        return true;
+      }
+
+      const menuIndex = this.MENU_KEYS.indexOf(key);
+      if (menuIndex >= 0) {
+        if (this.openCategoryId && key !== '-') { // en kategori är öppen: siffran väljer byggnad
+          const button = [...this.categorySubmenus.get(this.openCategoryId).children][menuIndex];
+          if (!button) return false;
+          button.click();
+          return true;
+        }
+        const categoryId = [...this.categoryToggles.keys()][menuIndex];
+        if (!categoryId) return false;
+        this.setOpenCategory(this.openCategoryId === categoryId ? null : categoryId);
+        return true;
+      }
+
+      // Den markerade byggnadens knappar (bara spelarens egna har några)
+      const panel = byId('info');
+      if (!selected || panel.style.display === 'none') return false;
+      const trainIndex = this.TRAIN_KEYS.indexOf(key);
+      const button = trainIndex >= 0 ? panel.querySelectorAll('.train-button')[trainIndex]
+        : byId(Object.keys(this.HOTKEYS).find(id => this.HOTKEYS[id].toLowerCase() === key.toLowerCase() || (id === 'demolishButton' && key === 'Backspace')));
+      if (!button || button.disabled) return false;
+      if (button.id === 'demolishButton') { // rivning kräver en andra tryckning (inom 3 sekunder)
+        if (!(performance.now() - (this.demolishArmedAt || -1e9) < 3000)) {
+          this.demolishArmedAt = performance.now();
+          this.showToast(t('Press {key} again to demolish', { key: 'Delete' }));
+          return true;
+        }
+        this.demolishArmedAt = 0;
+      }
+      button.click();
+      return true;
+    },
+
+    // Knapparna i infopanelen visar sin snabbknapp när man håller muspekaren över dem
+    applyHotkeyTitles(panel) {
+      for (const id in this.HOTKEYS) {
+        const button = byId(id);
+        if (!button) continue;
+        const base = button.dataset.baseTitle ?? '';
+        const key = this.HOTKEYS[id];
+        button.title = (base ? base + ' ' : '') + `[${key.length === 1 ? key.toUpperCase() : key}]`;
+      }
+      panel.querySelectorAll('.train-button').forEach((button, index) => { if (this.TRAIN_KEYS[index]) button.title = `[${this.TRAIN_KEYS[index].toUpperCase()}]`; });
     },
 
     setOpenCategory(categoryId) {
@@ -1752,6 +1846,19 @@
 
         #buildTooltip .tooltip-cost {
           color: var(--dim);
+        }
+
+        #buildTooltip .tooltip-detail kbd {
+          display: inline-block;
+          min-width: 18px;
+          padding: 0 5px;
+          border: 1px solid #5b6670;
+          border-bottom-width: 2px;
+          border-radius: 4px;
+          background: #252d34;
+          text-align: center;
+          font: inherit;
+          font-weight: 600;
         }
 
         #buildTooltip .tooltip-detail {
@@ -2533,20 +2640,25 @@
       const rect = { left, top, width: size, height: size, right: left + size, bottom: top + size };
 
       const key = (building
-        ? `b${building.id}:${I18n().language}:${building.status}:${building.buildProgress < 1 ? this.timeLeft(building) : 'done'}:${this.efficiencyText(building)}`
+        ? (building.player === CityBuilder.Players.HUMAN
+          ? `b${building.id}:${I18n().language}:${building.status}:${building.buildProgress < 1 ? this.timeLeft(building) : 'done'}:${this.efficiencyText(building)}`
+          : `e${building.id}:${I18n().language}:${Math.ceil(building.hp)}:${building.buildProgress < 1 ? this.timeLeft(building) : 'done'}`)
         : `t${tile.x},${tile.y}:${node.tile.remainingAmount}`) +
         `@${Math.round(left)},${Math.round(top)},${Math.round(size)}`;
 
       if (key === this.mapTooltipKey && this.tooltipOwner === 'map') return;
 
+      const enemy = building && building.player !== CityBuilder.Players.HUMAN;
       const content = building
         ? this.tooltipContent(
             this.buildingName(building.definition),
             null,
             [
               ...(building.buildProgress < 1 ? [t('Constructing {time}', { time: this.timeLeft(building) })] : []),
-              ...(this.efficiencyText(building) ? [this.efficiencyText(building)] : []),
-              ...this.describeBuilding(building.definition),
+              ...(enemy ? [t('Health: {hp}/{max}', { hp: Math.ceil(building.hp), max: Math.ceil(building.maxHp) })] : [
+                ...(this.efficiencyText(building) ? [this.efficiencyText(building)] : []),
+                ...this.describeBuilding(building.definition),
+              ]),
             ]
           )
         : this.tooltipContent(node.name, null, this.describeTerrainNode(node));
@@ -2640,12 +2752,14 @@
         ? t('Under construction {time}', { time: this.timeLeft(building) })
         : this.statusHtml(building.status);
 
+      // Fiendens byggnader: bara namn, byggstatus och hälsa. Import, export, effektivitet, lager och soldater är spelarens egna uppgifter.
+      const own = building.player === CityBuilder.Players.HUMAN;
       const range = this.getBuildingRange(building.definition);
-      const trade = building.definition.isStorage ? '' : this.tradeHtml(building);
+      const trade = building.definition.isStorage || !own ? '' : this.tradeHtml(building);
 
       // Garnison: soldater (inne + ute), vald träning och vad den kostar, och markering av vald soldattyp
       let garrisonHtml = '';
-      if (building.buildProgress >= 1 && CityBuilder.Garrison.isGarrison(building)) {
+      if (own && building.buildProgress >= 1 && CityBuilder.Garrison.isGarrison(building)) {
         const Garrison = CityBuilder.Garrison, chosen = Garrison.trainingType(building);
         const roster = Object.entries(Garrison.ensure(building).garrison)
           .map(([kind, count]) => `${count} ${lower(this.unitName(kind))}`).join(', ');
@@ -2658,7 +2772,9 @@
         for (const button of byId('info').querySelectorAll('.train-button')) button.classList.toggle('on', button.dataset.kind === chosen);
       }
 
-      const html = building.definition.isStorage
+      const html = !own
+        ? [building.buildProgress < 1 ? statusText : null, t('Health: {hp}/{max}', { hp: Math.ceil(building.hp), max: Math.ceil(building.maxHp) })].filter(Boolean).join('<br>')
+        : building.definition.isStorage
         ? t('Storage: {list}', { list: this.resourceIconsHtml(building.storedGoods) || t('empty') })
         : statusText +
           (this.efficiencyText(building) ? `<br>${this.efficiencyText(building)}` : '') +
@@ -2688,8 +2804,9 @@
       if (byId('choiceButton')) {
         const recipe = CityBuilder.Behaviors.recipe(building);
         setButton('choiceButton', `⇄ ${this.resourceIconsHtml(recipe.outputs)} ← ${this.resourceIconsHtml(recipe.inputs)}`);
-        byId('choiceButton').title = t('Click to change what it makes');
+        byId('choiceButton').dataset.baseTitle = t('Click to change what it makes');
       }
+      this.applyHotkeyTitles(panel);
       if (byId('boostButton')) {
         const boost = CityBuilder.Behaviors.boostOf(building);
         setButton('boostButton', `${this.resourceChip(boost.resource)} ${t(building.boostOn ? 'Boost on' : 'Boost off')}`, building.boostOn);
