@@ -29,3 +29,11 @@ button:disabled, button.unavailable { border-color: var(--bad-line); background:
 #info { position: fixed; left: 8px; right: 8px; bottom: 70px; display: none; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
 
 #toast { position: fixed; bottom: 80px; left: 50%; max-width: calc(100% - 24px); z-index: 30; transform: translateX(-50%); display: none; padding: 10px 16px; text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; pointer-events: none; }
+
+/* Felruta (js/core/errors.js) */
+#errorBanner { position: fixed; left: 12px; bottom: 90px; z-index: 60; max-width: min(420px, calc(100% - 24px)); display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--bad-line); border-radius: 8px; user-select: text; -webkit-user-select: text; }
+.error-actions { display: flex; gap: 6px; justify-content: flex-end; }
+#errorDetails { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: rgb(0 0 0 / 55%); }
+.error-dialog { width: min(640px, calc(100% - 24px)); max-height: calc(100% - 24px); display: flex; flex-direction: column; gap: 8px; padding: 14px; background: #1a2026; border: 1px solid var(--line); border-radius: 8px; }
+.error-dialog h3, .error-dialog p { margin: 0; }
+.error-dialog textarea { flex: 1; min-height: 220px; resize: none; background: #101418; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px; font: 11px/1.4 ui-monospace, monospace; user-select: text; -webkit-user-select: text; }

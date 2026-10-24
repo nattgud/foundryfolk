@@ -53,13 +53,18 @@
 
   const typeOf = building => building.type || Object.keys(CityBuilder.Config.buildings).find(id => CityBuilder.Config.buildings[id] === building.definition);
 
+  const BACKUP_KEY = 'citybuilder.backup';   // kopia av en sparning som inte gick att återställa helt (rörs aldrig av autosparningen)
+
+  // Läser en sparning. Finns den men inte går att läsa (trasig eller från en äldre version) hoppas den över och spelaren får veta det.
   const readSlot = id => {
     const raw = read(PREFIX + id);
     if (!raw) return null;
     try {
       const data = JSON.parse(raw);
-      return data && data.format === FORMAT ? data : null;
-    } catch (e) { return null; }
+      if (data && data.format === FORMAT) return data;
+      CityBuilder.Errors.notify(`The saved game in slot "${id}" has an unsupported format and was skipped`, 'load');
+    } catch (error) { CityBuilder.Errors.report(error, `load: unreadable saved game "${id}"`); }
+    return null;
   };
 
   const Save = {
@@ -194,18 +199,23 @@
       };
     },
 
+    // Återställer en sparning. Varje del för sig, så att ett fel i en inte tar med sig resten. Returnerar antalet delar som misslyckades.
     apply(data) {
-      const { World, Economy, Game, Config } = CityBuilder;
+      const { World, Economy, Game, Config, Errors } = CityBuilder;
       const headquarters = World.headquarters;
+      let failed = 0;
+      const part = (name, fn) => { try { fn(); } catch (error) { failed++; Errors.report(error, 'load: ' + name); } };
 
       // Terrängen först: byggnader och arbetare kan bero på den
-      for (const [x, y, changed] of data.tiles || []) {
-        const tile = World.getTile(x, y);
-        if (!tile) continue;
-        Object.assign(tile, changed);
-        if (changed.wear > 0) CityBuilder.Systems.pathDecay?.touch(tile); // slitna stigar börjar om sin vilotid (pathdecay.js)
-      }
-      World.animalsByChunk = new Map(CityBuilder.Animals.migrate(data.animalChunks || data.deerChunks || []));
+      part('terrain', () => {
+        for (const [x, y, changed] of data.tiles || []) {
+          const tile = World.getTile(x, y);
+          if (!tile) continue;
+          Object.assign(tile, changed);
+          if (changed.wear > 0) CityBuilder.Systems.pathDecay?.touch(tile); // slitna stigar börjar om sin vilotid (pathdecay.js)
+        }
+      });
+      part('animals', () => { World.animalsByChunk = new Map(CityBuilder.Animals.migrate(data.animalChunks || data.deerChunks || [])); });
 
       for (const saved of data.buildings || []) {
         try {
@@ -223,7 +233,8 @@
 
           restoreFields(building, saved.fields);
         } catch (error) {
-          console.warn('Kunde inte återställa byggnaden', saved, error);
+          failed++;
+          Errors.report(error, `load: building ${saved && saved.type}`);
         }
       }
       for (const building of World.buildings) {
@@ -232,34 +243,40 @@
         building.incomingCount = {};
       }
 
-      restoreFields(headquarters, data.headquarters);
-      for (const player of data.eliminated || []) CityBuilder.Combat.eliminate(player, true);   // World.init skapar alla rivaler på nytt: de utslagna tas bort igen
-      for (const rival of data.rivals || []) {
-        const hq = World.hqOf(rival.player);
-        if (hq) restoreFields(hq, rival.fields);
-      }
+      part('headquarters', () => restoreFields(headquarters, data.headquarters));
+      part('rivals', () => {
+        for (const player of data.eliminated || []) CityBuilder.Combat.eliminate(player, true);   // World.init skapar alla rivaler på nytt: de utslagna tas bort igen
+        for (const rival of data.rivals || []) {
+          const hq = World.hqOf(rival.player);
+          if (hq) restoreFields(hq, rival.fields);
+        }
+      });
 
-      for (const saved of data.soldiers || []) {
-        if (!Config.units[saved.kind]?.isSoldier) continue;
-        const unit = CityBuilder.Combat.spawnSoldier(saved.kind, 0, 0, saved.player);
-        unit.x = saved.x;
-        unit.y = saved.y;
-        unit.hp = saved.hp ?? unit.hp;
-      }
+      part('soldiers', () => {
+        for (const saved of data.soldiers || []) {
+          if (!Config.units[saved.kind]?.isSoldier) continue;
+          const unit = CityBuilder.Combat.spawnSoldier(saved.kind, 0, 0, saved.player);
+          if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) { unit.x = saved.x; unit.y = saved.y; }
+          unit.hp = saved.hp ?? unit.hp;
+        }
+      });
 
-      const haulers = World.units.filter(unit => unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN).length;
-      for (let i = haulers; i < (data.carriers || 0); i++) World.spawnUnit('carrier', 0, 0);
+      part('carriers', () => {
+        const haulers = World.units.filter(unit => unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN).length;
+        for (let i = haulers; i < (data.carriers || 0); i++) World.spawnUnit('carrier', 0, 0);
 
-      // Det bärarna hade i famnen när det sparades lämnas tillbaka i lagret
-      for (const [resourceId, amount] of Object.entries(data.carried || {})) {
-        Economy.addToNearestStorage(resourceId, amount, headquarters);
-      }
+        // Det bärarna hade i famnen när det sparades lämnas tillbaka i lagret
+        for (const [resourceId, amount] of Object.entries(data.carried || {})) {
+          if (Config.resources[resourceId] && Number.isFinite(amount)) Economy.addToNearestStorage(resourceId, amount, headquarters);
+        }
+      });
 
       if (Game && Number.isInteger(data.speedIndex) && Config.settings.gameSpeeds[data.speedIndex]) {
         Game.speedIndex = data.speedIndex;
         const speedButton = document.getElementById('speedButton');
         if (speedButton) speedButton.textContent = Config.settings.gameSpeeds[data.speedIndex] + 'x';
       }
+      return failed;
     },
 
     // reason är en engelsk text som ui.js översätter (t.ex. 'unknown save slot'). detail skrivs bara till konsolen.
@@ -269,13 +286,18 @@
       return false;
     },
 
+    // Autosparning: misslyckas den (lagringen full eller blockerad) märker spelaren inget annars, och tror att spelet är sparat
+    autosave() {
+      if (this.save('autosave') === false && this.lastError && this.ready && !this.suspended) CityBuilder.Errors.notify(`Autosave failed: ${this.lastError}`, 'save');
+    },
+
     // Startar om autosparningens timer med ett nytt intervall (millisekunder)
     setAutosaveInterval(ms) {
       if (!(ms > 0)) return;
       this.autosaveMs = ms;
       if (!this.ready) return; // applyStart startar timern
       clearInterval(this.timer);
-      this.timer = setInterval(() => this.save('autosave'), this.autosaveMs);
+      this.timer = setInterval(() => this.autosave(), this.autosaveMs);
     },
 
     // Returnerar true/false. Vid misslyckande finns orsaken i Save.lastError (och i webbläsarens konsol).
@@ -322,7 +344,8 @@
       this.installTileTracker();
       const pending = read(PENDING_KEY);
       remove(PENDING_KEY);
-      this.startData = readSlot(pending || this.slot());
+      this.startSlot = pending || this.slot();
+      this.startData = readSlot(this.startSlot);
       const data = this.startData, levels = CityBuilder.Levels;
       if (data && levels) { if (data.custom) levels.restoreCustom(data.custom); else levels.restore(data.level, data.runSeed); }
     },
@@ -333,14 +356,20 @@
       this.startData = null;
       let restored = false;
       if (data) {
-        try { this.apply(data); restored = true; } catch (error) { console.error('Kunde inte återställa sparningen', error); }
+        let failed = 1;
+        try { failed = this.apply(data); } catch (error) { CityBuilder.Errors.report(error, 'load'); }
+        restored = failed < 1;
+        // Delvis återställd: autosparningen skriver snart över sparningen med det som lyckades, så originalet läggs undan först
+        if (!restored && write(BACKUP_KEY, read(PREFIX + this.startSlot) || '')) {
+          CityBuilder.Errors.notify(`The saved game could not be fully restored. A copy of the original was kept in browser storage under "${BACKUP_KEY}"`, 'load');
+        }
       }
 
       this.ready = true;
       clearInterval(this.timer);
-      this.timer = setInterval(() => this.save('autosave'), this.autosaveMs);
+      this.timer = setInterval(() => this.autosave(), this.autosaveMs);
       addEventListener('pagehide', () => this.save('autosave'));
-      document.addEventListener('visibilitychange', () => { if (document.hidden) this.save('autosave'); });
+      document.addEventListener('visibilitychange', () => { if (document.hidden) this.autosave(); });
       return restored;
     },
   };

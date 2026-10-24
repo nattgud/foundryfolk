@@ -4,6 +4,15 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.7.7': [
+      'Safer game: unexpected errors are caught and shown in a small box with details you can copy, instead of silently freezing the game',
+      'Saved games that are damaged or from an old version no longer break the game. Parts that cannot be restored are skipped, and a copy of the original save is kept',
+      'You are told if autosaving fails (for example when browser storage is full)',
+      'Hotkeys: a number always picks a build category (also while another is open), and the letters Q W E R T Y U I O P pick the building in the open category',
+      'There are more wild animals, and they recover faster after hunting',
+      'Sound files are now loaded in advance, so custom sounds such as level complete play from the file instead of the built-in sound',
+      'The guide is split in two: a short one for new players that covers only the basics and opens when you start, and an Advanced guide in the menu with everything else (new hotkeys, wild animals, soldiers sharing tiles and what to do if something goes wrong)',
+    ],
     '0.7.6': [
       'Soldiers now move between tiles like every other unit and can no longer get stuck in each other. Soldiers standing still on the same tile spread out inside it, and fighting soldiers share a tile',
       'Removed the shading on grass, mountains and water',

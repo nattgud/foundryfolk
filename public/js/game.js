@@ -1,7 +1,7 @@
 /* Spelloop och spelarhandlingar. Systemen körs i ordningen Config.settings.systemOrder. */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Pathfinder, Economy, UI, byId } = CityBuilder;
+  const { Config, World, Pathfinder, Economy, UI, Errors, byId } = CityBuilder;
   const t = (text, variables) => CityBuilder.t(text, variables);
 
   const Game = {
@@ -44,7 +44,7 @@
         this.installFocusPause();
         L.set(1, t('Almost ready'));
         requestAnimationFrame(time => { this.lastFrameTime = time; this.frame(time); L.done(); });
-      } catch (error) { L.fail(error); throw error; }
+      } catch (error) { Errors.report(error, 'start'); L.fail(error); throw error; }
     },
 
     // Spelet pausas alltid när fönstret förlorar fokus eller fliken göms
@@ -112,16 +112,19 @@
 
       // Ett fel i ett system får aldrig stoppa hela spelet (t.ex. en gammal sparning med oväntade data): felet loggas en gång per sort och övriga system går vidare
       for (const system of this.systems) {
-        try { system.update(deltaSeconds); } catch (error) { this.reportError(error); }
+        try { system.update(deltaSeconds); } catch (error) { Errors.report(error, 'simulation'); } // ett felaktigt system stoppar inte övriga
       }
+      this.dropBrokenUnits();
     },
 
-    reportedErrors: new Set(),
-    reportError(error) {
-      const key = String(error && (error.stack || error.message || error)).split('\n').slice(0, 2).join('|');
-      if (this.reportedErrors.has(key)) return;
-      this.reportedErrors.add(key);
-      console.error('Fel i simuleringen (spelet fortsätter):', error);
+    // Enheter med ogiltigt läge (NaN) kan förgifta sökningar och ritning: de tas bort och felet rapporteras
+    dropBrokenUnits() {
+      let broken = null;
+      for (const unit of World.units) if (!Number.isFinite(unit.x) || !Number.isFinite(unit.y)) (broken ||= []).push(unit);
+      for (const unit of broken || []) {
+        Errors.notify(`Removed a unit with an invalid position (${unit.kind})`, 'simulation');
+        CityBuilder.Behaviors.removeUnit(unit);
+      }
     },
 
     frame(time) {
@@ -147,7 +150,7 @@
         CityBuilder.Renderer.draw();
         UI.refresh();
         if (options) options.recordFrame(time, performance.now() - started, simulatedSeconds);
-      } catch (error) { this.reportError(error); }
+      } catch (error) { Errors.report(error, 'draw'); }
       next(); // loopen fortsätter alltid, även om en ritning eller panel kastade fel
     },
   };

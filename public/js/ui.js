@@ -281,33 +281,42 @@
       if (CityBuilder.Options) CityBuilder.Options.positionFpsCounter();
     },
 
-    // Handledning: en sida per del av spelet. Varje sida lyser upp det den förklarar (target = CSS-väljare, flera går bra) och kan först
-    // öppna en byggkategori (category). mock: en bild av infopanelen för det som inte syns förrän man markerat en byggnad.
-    TUTORIAL: [
-      { title: 'Welcome', lines: ['Build a settlement, grow your economy and, in time, defeat the rival base.', 'Each step lights up the part of the screen it explains.'] },
-      { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'Resource goals show the icon and the name of the resource. The timer shows your time against the target time. Be faster for more stars.'] },
-      { title: 'Resources', target: ['#top'], lines: ['The top bar shows what is in your stores. Tap "All resources" for the full list.', 'A number turns orange when the stores are full for that resource. Build a warehouse for more room.', 'Tap a resource in the list to see which buildings use it and which make it, per minute. Buildings that could use it but do not right now are shown too.', 'The list only shows the resources you can use at your current level. More appear as you unlock buildings.'] },
-      { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap a building, tree, rock or water to see what it is.'] },
-      { title: 'Minimap', target: ['#minimap', '#minimapMode', '#minimapZoomIn', '#minimapZoomOut'], lines: ['The minimap shows the area around you. The white box is what you see on screen.', 'Use + and − to zoom it, and the small button to change what it shows.', 'Your buildings are coloured squares. Enemies you have spotted are red.', 'A red ring with ! means a gatherer finds nothing to gather. An orange or red ring means the building stands still most of the time. Select a building to ring all buildings of the same type.'] },
-      { title: 'Build menu', target: ['#bottom .build-categories'], category: null, lines: ['The build menu is at the bottom. Each icon is a category of buildings.', 'Tap a category to open it. New buildings unlock as you complete levels.'] },
-      { title: 'Locked or too expensive', target: ['#bottom .building-option'], category: 'gathering', lines: ['A grey button with a dashed border, a stroke and a padlock is locked. Move the mouse over it to see at which level it unlocks. Only the next few levels are shown.', 'A button with a red border is unlocked, but you cannot afford it yet. Move the mouse over it to see the cost.'] },
-      { title: 'Place a building', target: ['#build_woodcutter'], category: 'forestry', lines: ['Tap a building to select it. Move the mouse over it to see its cost and what it does.', 'Then tap the ground to place it. A preview follows you and shows whether it fits. You can only build near your own buildings, and not in the fog.', 'Tap the building again, or Cancel, to stop placing.'] },
-      { title: 'Hotkeys', target: ['#bottom .build-categories'], category: null, lines: ['Press a number to open that category in the build menu, then a number to choose a building. Esc goes back one step. Hover over a button to see its key.', 'With one of your buildings selected: P pauses, B turns the boost on or off, R changes what it makes, T opens trading, S switches between attack and defence, Z X C V train soldiers, and Delete demolishes (press it twice).'] },
-      { title: 'Select, pause and demolish', mock: 'pause', lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
-      { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
-      { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
-      { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25.'] },
-      { title: 'Speed and menu', target: ['#speedButton', '#mainMenuButton'], lines: ['Change the game speed here.', 'The menu button opens save, load, settings and this guide. You can also start a custom map with your own settings, and use several save slots.'] },
-      { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
-      { title: 'Find the enemy', target: ['#build_watchtower'], category: 'military', lines: ['From level 15 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
-      { title: 'Train soldiers', target: ['#build_garrison', '#build_guard_tower'], category: 'military', lines: ['Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.', 'Each soldier needs weapons and armour, which carriers deliver to the building.'] },
-      { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.', 'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.', 'Enemy buildings only show their health, nothing about what they import, export or produce.'] },
-    ],
+    // Handledningar: en sida per del av spelet. Grunderna (basics) visas automatiskt för nya spelare och ska vara korta; resten (advanced) finns i menyn.
+    // Varje sida lyser upp det den förklarar (target = CSS-väljare, flera går bra) och kan först öppna en byggkategori (category).
+    // mock: en bild av infopanelen för det som inte syns förrän man markerat en byggnad.
+    TUTORIAL: {
+      basics: [
+        { title: 'Welcome', lines: ['Welcome to Foundryfolk! You build a settlement: gather resources, make goods and grow stronger.', 'Each step lights up the part of the screen it explains.', 'This short guide covers the basics. You can open it again from the menu at any time.'] },
+        { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'The goals tell you what to build next. Start with the first one.'] },
+        { title: 'Resources', target: ['#top'], lines: ['The top bar shows what you have in store, for example wood, planks and stone.', 'You start with a little. Your buildings make more.'] },
+        { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap a building, tree, rock or water to see what it is.'] },
+        { title: 'Build menu', target: ['#bottom .build-categories'], category: null, lines: ['The build menu is at the bottom. Each icon is a category of buildings.', 'Tap a category to open it. New buildings unlock as you complete levels.'] },
+        { title: 'Place a building', target: ['#build_woodcutter'], category: 'forestry', lines: ['Try it with the highlighted Woodcutter. Tap it to select it, and move the mouse over it to see its cost and what it does.', 'Then tap the ground next to some trees to place it. A preview follows you and shows whether it fits. You can only build near your own buildings, and not in the fog.', 'Tap the building again, or Cancel, to stop placing.'] },
+        { title: 'Then let it work', target: ['#mainMenuButton'], lines: ['A finished building works by itself. Workers gather or make goods, and carriers bring them where they are needed. You do not control them.', 'Keep an eye on your goals and build what they ask for. When you want to know more, open the menu here and choose Advanced guide.'] },
+      ],
+      advanced: [
+        { title: 'Resources', target: ['#top'], lines: ['The top bar shows what is in your stores. Tap "All resources" for the full list.', 'A number turns orange when the stores are full for that resource. Build a warehouse for more room.', 'Tap a resource in the list to see which buildings use it and which make it, per minute. Buildings that could use it but do not right now are shown too.', 'The list only shows the resources you can use at your current level. More appear as you unlock buildings.'] },
+        { title: 'Minimap', target: ['#minimap', '#minimapMode', '#minimapZoomIn', '#minimapZoomOut'], lines: ['The minimap shows the area around you. The white box is what you see on screen.', 'Use + and − to zoom it, and the small button to change what it shows.', 'Your buildings are coloured squares. Enemies you have spotted are red.', 'A red ring with ! means a gatherer finds nothing to gather. An orange or red ring means the building stands still most of the time. Select a building to ring all buildings of the same type.'] },
+        { title: 'Locked or too expensive', target: ['#bottom .building-option'], category: 'gathering', lines: ['A grey button with a dashed border, a stroke and a padlock is locked. Move the mouse over it to see at which level it unlocks. Only the next few levels are shown.', 'A button with a red border is unlocked, but you cannot afford it yet. Move the mouse over it to see the cost.'] },
+        { title: 'Hotkeys', target: ['#bottom .build-categories'], category: null, lines: ['Press a number to open a category in the build menu (you can switch category at any time), then a letter on the top row, Q W E R T Y U I O P, to choose a building in it. Esc goes back one step. Hover over a button to see its key.', 'While one of your buildings is selected, the letters control it instead: P pauses, B turns the boost on or off, R changes what it makes, T opens trading, S switches between attack and defence, Z X C V train soldiers, and Delete demolishes (press it twice).'] },
+        { title: 'Select, pause and demolish', mock: 'pause', lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
+        { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
+        { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
+        { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25.'] },
+        { title: 'Wild animals', lines: ['Deer, moose, foxes and rabbits roam the land and spread berries, herbs and mushrooms. A Hunters Cottage sends a hunter after the nearest animal in range. Every kind of animal gives the same meat and leather.', 'Animals have young faster the fewer there are nearby. You can hunt an area empty for a while, but never a whole region. Animals only live on land you can see.'] },
+        { title: 'Speed and menu', target: ['#speedButton', '#mainMenuButton'], lines: ['Change the game speed here.', 'The menu button opens save, load, settings and this guide. You can also start a custom map with your own settings, and use several save slots.'] },
+        { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
+        { title: 'Find the enemy', target: ['#build_watchtower'], category: 'military', lines: ['From level 15 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
+        { title: 'Train soldiers', target: ['#build_garrison', '#build_guard_tower'], category: 'military', lines: ['Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.', 'Each soldier needs weapons and armour, which carriers deliver to the building.'] },
+        { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.', 'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.', 'Enemy buildings only show their health, nothing about what they import, export or produce.', 'Soldiers walk like other units. Several soldiers on one tile spread out inside it, and soldiers who fight stand on the same tile.'] },
+        { title: 'If something goes wrong', lines: ['If the game hits an unexpected error, a small box appears and the game keeps running. Tap Details to see what happened and copy it into a report.', 'The game saves by itself, and you are told if saving fails. If an old saved game cannot be fully restored, a copy of the original is kept.'] },
+      ],
+    },
 
     // Handledningen (spelet pausas medan den är öppen). Varje sida lyser upp det den förklarar.
-    openTutorial() {
+    openTutorial(kind = 'basics') {
       this.hideTooltip();
-      const game = CityBuilder.Game, pages = this.TUTORIAL, categoryBefore = this.openCategoryId;
+      const game = CityBuilder.Game, pages = this.TUTORIAL[kind], categoryBefore = this.openCategoryId;
       game.paused = true;
       let page = 0;
       if (!byId('tutorialStyles')) {
@@ -341,7 +350,7 @@
       const header = document.createElement('header');
       header.className = 'resource-window-header';
       const title = document.createElement('strong');
-      title.textContent = t('How to play');
+      title.textContent = t(kind === 'basics' ? 'How to play' : 'Advanced guide');
       header.appendChild(title);
       const body = document.createElement('div');
       body.className = 'main-menu-body';
@@ -411,7 +420,7 @@
         for (const text of lines) add('main-menu-note', t(text));
         skip.textContent = t('Skip');
         back.textContent = t('Back'); back.disabled = page === 0;
-        next.textContent = page === pages.length - 1 ? t('Start playing') : t('Next');
+        next.textContent = page === pages.length - 1 ? t(kind === 'basics' ? 'Start playing' : 'Close') : t('Next');
       };
       const onKey = event => {
         if (event.key === 'Escape') close();
@@ -1236,7 +1245,8 @@
           }), '', '↩️')] : []),
           gap(),
           button(t('Statistics'), () => this.renderMainMenu('stats'), '', '📊'),
-          button(t('How to play'), () => this.openTutorial(), '', '❓'),
+          button(t('How to play'), () => this.openTutorial('basics'), '', '❓'),
+          button(t('Advanced guide'), () => this.openTutorial('advanced'), '', '📖'),
           button('Changelog', () => this.openChangelog(), '', '📜'),
           button(t('Settings'), () => this.renderMainMenu('options'), '', '⚙️')
         );
@@ -1418,19 +1428,22 @@
     },
 
     // ---- Snabbknappar -------------------------------------------------------------------------------------------------
-    // Enkla tangenter utan Ctrl, Alt, Cmd eller Shift, så att de aldrig krockar med webbläsarens kortkommandon. Siffror gäller byggmenyn:
-    // en siffra öppnar kategori nummer N, och när en kategori är öppen väljer siffran byggnad nummer N i den (Esc backar ett steg).
-    // Siffrorna läses från tangentens läge (event.code), så de fungerar på alla tangentbord. Den elfte kategorin har - (minus).
-    // Bokstäver gäller den markerade byggnaden: P paus, B boost, R byt recept, T handla, S attack/försvar, Z X C V utbilda soldattyp, Delete riv (trycks två gånger).
+    // Enkla tangenter utan Ctrl, Alt, Cmd eller Shift, så att de aldrig krockar med webbläsarens kortkommandon. Byggmenyn har två skilda tangentrader,
+    // så att ett tryck aldrig är tvetydigt: siffror väljer kategori (alltid, även när en annan är öppen) och bokstäverna Q W E R T Y U I O P
+    // väljer byggnad nummer 1-10 i den öppna kategorin (Esc backar ett steg). Siffrorna läses från tangentens läge (event.code) och
+    // bokstäverna från tecknet, så det som står i tipset är det som står på tangenten. Den elfte kategorin har - (minus).
+    // Bokstäver gäller i stället den markerade byggnaden så länge en är markerad: P paus, B boost, R byt recept, T handla, S attack/försvar,
+    // Z X C V utbilda soldattyp, Delete riv (trycks två gånger).
     HOTKEYS: { pauseButton: 'p', boostButton: 'b', choiceButton: 'r', marketButton: 't', stanceButton: 's', demolishButton: 'Delete' },
     TRAIN_KEYS: ['z', 'x', 'c', 'v'],
-    MENU_KEYS: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-'],
+    CATEGORY_KEYS: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-'],
+    BUILD_KEYS: ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
 
     hotkeyLines: key => key ? [t('Hotkey: {key}', { key: `<kbd>${key.length === 1 ? key.toUpperCase() : key}</kbd>` })] : [],
 
     // Tangenten för kategori nummer N (bland de synliga) och för en byggnadsknapp i sin undermeny
-    categoryKey(categoryId) { return this.MENU_KEYS[[...this.categoryToggles.keys()].indexOf(categoryId)]; },
-    buildingKey(button) { const index = [...(button.parentElement?.children || [])].indexOf(button); return index >= 0 && index < 10 ? this.MENU_KEYS[index] : undefined; },
+    categoryKey(categoryId) { return this.CATEGORY_KEYS[[...this.categoryToggles.keys()].indexOf(categoryId)]; },
+    buildingKey(button) { const index = [...(button.parentElement?.children || [])].indexOf(button); return index >= 0 ? this.BUILD_KEYS[index] : undefined; },
 
     // Tangentens namn oberoende av tangentbordslayout: siffror från läget, bokstäver från tecknet. Null för allt som inte är en snabbknapp.
     hotkeyName(event) {
@@ -1464,17 +1477,20 @@
         return true;
       }
 
-      const menuIndex = this.MENU_KEYS.indexOf(key);
-      if (menuIndex >= 0) {
-        if (this.openCategoryId && key !== '-') { // en kategori är öppen: siffran väljer byggnad
-          const button = [...this.categorySubmenus.get(this.openCategoryId).children][menuIndex];
-          if (!button) return false;
-          button.click();
-          return true;
-        }
-        const categoryId = [...this.categoryToggles.keys()][menuIndex];
-        if (!categoryId) return false;
+      const categoryId = [...this.categoryToggles.keys()][this.CATEGORY_KEYS.indexOf(key)];
+      if (categoryId) {
+        if (selected) game.selectBuilding(null);  // menyn är det nya målet: bokstäverna ska bygga, inte styra den markerade byggnaden
         this.setOpenCategory(this.openCategoryId === categoryId ? null : categoryId);
+        return true;
+      }
+      if (this.CATEGORY_KEYS.includes(key)) return false;
+
+      // En byggnad i den öppna kategorin (men bokstäverna går till den markerade byggnaden så länge en är markerad)
+      const buildIndex = this.BUILD_KEYS.indexOf(key);
+      if (buildIndex >= 0 && this.openCategoryId && !(selected && byId('info').style.display !== 'none')) {
+        const button = this.categorySubmenus.get(this.openCategoryId).children[buildIndex];
+        if (!button) return false;
+        button.click();
         return true;
       }
 

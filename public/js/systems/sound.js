@@ -128,6 +128,7 @@
       this.sfxGain.connect(context.destination);
       this.musicGain.connect(context.destination);
       this.applySettings();
+      this.preload();
       return context;
     },
 
@@ -136,7 +137,15 @@
       const existing = this.sounds.get(id);
       const merged = { volume: 1, maxVoices: 4, cooldown: 0.03, pitch: 0.06, ...(existing || {}), ...definition, voices: existing ? existing.voices : 0, last: -1 };
       if (definition.file || definition.synth) merged.buffer = null; // ny källa: bygg om bufferten
+      if (definition.file) { merged.loading = false; merged.fileBuffer = null; }
       this.sounds.set(id, merged);
+      if (this.context && merged.file) this.bufferFor(merged);
+    },
+
+    // Hämtar alla ljudfiler direkt när ljudet startat. Annars började hämtningen först första gången ljudet skulle spelas, och då
+    // spelades syntetljudet i stället (så ett ljud som bara hörs en gång, som banan klar, hördes aldrig från filen).
+    preload() {
+      for (const definition of this.sounds.values()) if (definition.file) this.bufferFor(definition);
     },
 
     bufferFor(definition) {
@@ -145,10 +154,10 @@
       if (definition.file && !definition.loading) {
         definition.loading = true;
         fetch(definition.file)
-          .then(response => response.arrayBuffer())
+          .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.arrayBuffer(); })
           .then(data => context.decodeAudioData(data))
           .then(buffer => { definition.fileBuffer = buffer; definition.buffer = buffer; })
-          .catch(() => { /* syntetljudet används */ });
+          .catch(error => console.warn(`Could not load the sound file ${definition.file} (${error.message ?? error}): using the built-in sound`));
       }
       if (definition.synth && !definition.synthBuffer) {
         const samples = definition.synth(context.sampleRate);
