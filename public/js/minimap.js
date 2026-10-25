@@ -484,7 +484,7 @@
       const marker = Math.max(4, Math.round(scale * 2));
       const rivalColor = '#e5534b';  // andra spelares byggnader och soldater: röda
       for (const building of World.buildings) {
-        if (building === World.headquarters || (building.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, building))) continue;
+        if (building === World.headquarters || building.definition.pile || (building.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, building))) continue;
         const x = toX(building.x + 0.5), y = toY(building.y + 0.5);
         if (Math.hypot(x - radius, y - radius) > radius + marker) continue;
         context.globalAlpha = building.buildProgress >= 1 ? 1 : 0.55;
@@ -500,7 +500,7 @@
       const selected = CityBuilder.Game && CityBuilder.Game.selectedBuilding, pulse = CityBuilder.Options?.gfx.pulse === false ? 1 : (Math.sin(now / 250) + 1) / 2;
       const Behaviors = CityBuilder.Behaviors;
       for (const building of World.buildings) {
-        if (building === World.headquarters || building.buildProgress < 1) continue;
+        if (building === World.headquarters || building.buildProgress < 1 || building.definition.pile) continue;
         const own = building.player === Players.HUMAN;
         if (!own && !Vision.sees(Players.HUMAN, building)) continue;
         const x = toX(building.x + 0.5), y = toY(building.y + 0.5);

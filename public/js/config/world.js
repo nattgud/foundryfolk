@@ -83,7 +83,7 @@
   //   oreShare:      andel av bergets kärna som blir malm
   //   scatteredOre:  chans per ruta att vara ett utspritt malmfynd (före stenvillkoret). Lägre = färre fynd
   //   forest:        faktor på trädens täthet
-  const TUNING = { sea: 0.2, mountain: 0.76, oreShare: 0.40, scatteredOre: 0.01, forest: 1 };
+  const TUNING = { sea: 0.2, mountain: 0.76, oreShare: 0.40, scatteredOre: 0.01, forest: 1.1 };
   const tuning = { ...TUNING };
   // Malm utanför berg: enstaka fynd på en eller två rutor, väldigt utspridda och helst intill vanlig sten.
   const SCATTERED_ORE_FAR_CHANCE = 0.2;    // andel av fynden som får ligga utan sten i närheten (1 = överallt, 0 = bara intill sten)

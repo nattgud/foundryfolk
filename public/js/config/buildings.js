@@ -2,7 +2,7 @@ CityBuilder.Config.buildings = {
 // Lagring
   hq: {
     name: 'Base',
-    category: 'storage',
+    category: 'trade',
     symbol: 'B',
     color: '#c9a227',
     buildCost: {},
@@ -13,9 +13,24 @@ CityBuilder.Config.buildings = {
     buildDuration: 5
   },
 
+  // Det som blir kvar när en byggnad rivs ligger här på marken tills bärarna hämtat det (Construction.dismantle). Går inte att bygga eller välja i menyn.
+  pile: {
+    name: 'Pile of goods',
+    category: 'trade',
+    symbol: '•',
+    color: '#8a6a43',
+    buildCost: {},
+    hiddenInMenu: true,
+    pile: true,
+    carriers: 0,
+    maxHp: null,
+    vision: 0,
+    buildDuration: 0
+  },
+
   warehouse: {
     name: 'Warehouse',
-    category: 'storage',
+    category: 'trade',
     symbol: 'W',
     color: '#a88a2a',
     buildCost: { wood: 3, plank: 1 },
@@ -27,7 +42,7 @@ CityBuilder.Config.buildings = {
  
   large_warehouse: {
     name: 'Large Warehouse',
-    category: 'storage',
+    category: 'trade',
     symbol: 'LW',
     color: '#b89a35',
     buildCost: { plank: 8, stone: 6, brick: 4, hammer: 1 },
@@ -39,7 +54,7 @@ CityBuilder.Config.buildings = {
  
   great_depot: {
     name: 'Great Depot',
-    category: 'storage',
+    category: 'trade',
     symbol: 'GW',
     color: '#c9ab40',
     buildCost: { plank: 20, stone: 20, brick: 12, steel: 4, limestone: 8, bronze: 4, hammer: 2 },
@@ -52,7 +67,7 @@ CityBuilder.Config.buildings = {
   // Skogsbruk
   woodcutter: {
     name: 'Woodcutter',
-    category: 'forestry',
+    category: 'construction',
     symbol: 'WC',
     color: '#7a5230',
     buildCost: { plank: 2 },
@@ -68,7 +83,7 @@ CityBuilder.Config.buildings = {
   },
   sawmill: {
     name: 'Sawmill',
-    category: 'forestry',
+    category: 'construction',
     symbol: 'SM',
     color: '#b5875a',
     buildCost: { wood: 5, stone: 4 },
@@ -84,7 +99,7 @@ CityBuilder.Config.buildings = {
   // Planterar träd: en frö och lite vatten ger ett nytt träd med 5-10 trä på en slumpad ledig gräsruta 5-10 rutor bort
   planter: {
     name: 'Planter',
-    category: 'forestry',
+    category: 'construction',
     symbol: 'PL',
     color: '#176d22',
     buildCost: { wood: 5, stone: 4 },
@@ -104,7 +119,7 @@ CityBuilder.Config.buildings = {
   // Jordbruk och mat
   apple_gatherer: {
     name: 'Apple Gatherer',
-    category: 'farming',
+    category: 'food',
     symbol: 'AG',
     color: '#536c38',
     buildCost: { plank: 4, wood: 4 },
@@ -120,7 +135,7 @@ CityBuilder.Config.buildings = {
 
   berry_gatherer: {
     name: 'Berry Gatherer',
-    category: 'farming',
+    category: 'food',
     symbol: 'BG',
     color: '#465c35',
     buildCost: { plank: 4, wood: 4 },
@@ -136,7 +151,7 @@ CityBuilder.Config.buildings = {
 
   herb_gatherer: {
     name: 'Herb Gatherer',
-    category: 'farming',
+    category: 'food',
     symbol: 'HG',
     color: '#526b40',
     buildCost: { plank: 4, wood: 4 },
@@ -153,7 +168,7 @@ CityBuilder.Config.buildings = {
 
   mushroom_gatherer: {
     name: 'Mushroom Gatherer',
-    category: 'farming',
+    category: 'food',
     symbol: 'MG',
     color: '#7a5c80',
     buildCost: { plank: 4, wood: 4 },
@@ -170,7 +185,7 @@ CityBuilder.Config.buildings = {
 
   farm: {
     name: 'Farm',
-    category: 'farming',
+    category: 'food',
     symbol: 'F',
     color: '#b8a22e',
     buildCost: { plank: 6, wood: 5, stone: 4 },
@@ -187,7 +202,7 @@ CityBuilder.Config.buildings = {
   },
   stables: {
     name: 'Stables',
-    category: 'farming',
+    category: 'war',
     symbol: 'HB',
     color: '#8b5e3c',
     buildCost: { plank: 8, wood: 6, stone: 4 },
@@ -201,7 +216,7 @@ CityBuilder.Config.buildings = {
   },
   hunters_cottage: {
     name: 'Hunters Cottage',
-    category: 'farming',
+    category: 'food',
     symbol: 'HC',
     color: '#8a7b3e',
     buildCost: { plank: 6, wood: 5, stone: 4 },
@@ -219,7 +234,7 @@ CityBuilder.Config.buildings = {
   },
   fishing_hut: {
     name: 'Fishing Hut',
-    category: 'farming',
+    category: 'food',
     symbol: 'FH',
     color: '#1fa6be',
     buildCost: { plank: 6, wood: 5, stone: 4 },
@@ -236,7 +251,7 @@ CityBuilder.Config.buildings = {
   // Insamling av grundmaterial
   well: {
     name: 'Well',
-    category: 'gathering',
+    category: 'food',
     symbol: 'WE',
     color: '#00aaff',
     buildCost: { plank: 3, stone: 7 },
@@ -252,7 +267,7 @@ CityBuilder.Config.buildings = {
 
   sand_collector: {
     name: 'Sand Collector',
-    category: 'gathering',
+    category: 'construction',
     symbol: 'SC',
     color: '#c9b887',
     buildCost: { plank: 4 },
@@ -269,7 +284,7 @@ CityBuilder.Config.buildings = {
 
   clay_pit: {
     name: 'Clay Pit',
-    category: 'gathering',
+    category: 'construction',
     symbol: 'CP',
     color: '#946b58',
     buildCost: { plank: 4, stone: 3 },
@@ -286,7 +301,7 @@ CityBuilder.Config.buildings = {
 
   limestone_quarry: {
     name: 'Limestone Quarry',
-    category: 'gathering',
+    category: 'construction',
     symbol: 'LQ',
     color: '#b8b4a5',
     buildCost: { plank: 4, stone: 4 },
@@ -305,7 +320,7 @@ CityBuilder.Config.buildings = {
   // Gruvbrytning och stenbrott
   quarry: {
     name: 'Quarry',
-    category: 'mining',
+    category: 'construction',
     symbol: 'Q',
     color: '#7d8790',
     buildCost: { plank: 5, wood: 4 },
@@ -322,7 +337,7 @@ CityBuilder.Config.buildings = {
   // Gruvbrytning och stenbrott
   rock_crusher: {
     name: 'Rock crusher',
-    category: 'gathering',
+    category: 'construction',
     symbol: 'RC',
     color: '#5d6368',
     buildCost: { plank: 8 },
@@ -340,7 +355,7 @@ CityBuilder.Config.buildings = {
 
   iron_mine: {
     name: 'Iron Mine',
-    category: 'mining',
+    category: 'metalwork',
     symbol: 'IM',
     color: '#7b6f6a',
     buildCost: { plank: 6, stone: 5 },
@@ -359,7 +374,7 @@ CityBuilder.Config.buildings = {
 
   copper_mine: {
     name: 'Copper Mine',
-    category: 'mining',
+    category: 'metalwork',
     symbol: 'CM',
     color: '#c87f35',
     buildCost: { plank: 6, stone: 5 },
@@ -378,7 +393,7 @@ CityBuilder.Config.buildings = {
 
   tin_mine: {
     name: 'Tin Mine',
-    category: 'mining',
+    category: 'metalwork',
     symbol: 'TM',
     color: '#9ba3a5',
     buildCost: { plank: 6, stone: 5 },
@@ -397,7 +412,7 @@ CityBuilder.Config.buildings = {
 
   coal_mine: {
     name: 'Coal Mine',
-    category: 'mining',
+    category: 'metalwork',
     symbol: 'CO',
     color: '#34363d',
     buildCost: { plank: 6, stone: 5 },
@@ -416,7 +431,7 @@ CityBuilder.Config.buildings = {
 
   gold_mine: {
     name: 'Gold Mine',
-    category: 'mining',
+    category: 'valuables',
     symbol: 'GM',
     color: '#827044',
     buildCost: { plank: 8, stone: 6 },
@@ -435,7 +450,7 @@ CityBuilder.Config.buildings = {
 
   silver_mine: {
     name: 'Silver Mine',
-    category: 'mining',
+    category: 'valuables',
     symbol: 'SM',
     color: '#b9c1ca',
     buildCost: { plank: 8, stone: 6 },
@@ -454,7 +469,7 @@ CityBuilder.Config.buildings = {
 
   gemstone_mine: {
     name: 'Gemstone Mine',
-    category: 'mining',
+    category: 'valuables',
     symbol: 'GM',
     color: '#765aa8',
     buildCost: { plank: 8, stone: 6 },
@@ -473,7 +488,7 @@ CityBuilder.Config.buildings = {
 
   salt_mine: {
     name: 'Salt Mine',
-    category: 'mining',
+    category: 'valuables',
     symbol: 'SM',
     color: '#d6d0bd',
     buildCost: { plank: 6, stone: 6 },
@@ -492,7 +507,7 @@ CityBuilder.Config.buildings = {
 
   sulfur_mine: {
     name: 'Sulfur Mine',
-    category: 'mining',
+    category: 'valuables',
     symbol: 'SU',
     color: '#d6c83f',
     buildCost: { plank: 6, stone: 6 },
@@ -513,7 +528,7 @@ CityBuilder.Config.buildings = {
 
   mill: {
     name: 'Mill',
-    category: 'processing',
+    category: 'food',
     symbol: 'M',
     color: '#d6d6d6',
     buildCost: { plank: 7, stone: 7 },
@@ -530,7 +545,7 @@ CityBuilder.Config.buildings = {
 
   bakery: {
     name: 'Bakery',
-    category: 'processing',
+    category: 'food',
     symbol: 'B',
     color: '#d98a3d',
     buildCost: { plank: 7, stone: 7 },
@@ -545,7 +560,7 @@ CityBuilder.Config.buildings = {
 
   brickworks: {
     name: 'Brickworks',
-    category: 'processing',
+    category: 'construction',
     symbol: 'BW',
     color: '#b97a45',
     buildCost: { plank: 7, stone: 6 },
@@ -560,7 +575,7 @@ CityBuilder.Config.buildings = {
 
   iron_smelter: {
     name: 'Iron Smelter',
-    category: 'processing',
+    category: 'metalwork',
     symbol: 'IS',
     color: '#6b7fa6',
     buildCost: { plank: 7, stone: 8 },
@@ -575,7 +590,7 @@ CityBuilder.Config.buildings = {
 
   copper_smelter: {
     name: 'Copper Smelter',
-    category: 'processing',
+    category: 'metalwork',
     symbol: 'CS',
     color: '#d08a3a',
     buildCost: { plank: 7, stone: 8 },
@@ -590,7 +605,7 @@ CityBuilder.Config.buildings = {
 
   tin_smelter: {
     name: 'Tin Smelter',
-    category: 'processing',
+    category: 'metalwork',
     symbol: 'TS',
     color: '#aeb8bb',
     buildCost: { plank: 7, stone: 8 },
@@ -605,7 +620,7 @@ CityBuilder.Config.buildings = {
 
   silver_smelter: {
     name: 'Silver Smelter',
-    category: 'processing',
+    category: 'valuables',
     symbol: 'SI',
     color: '#9fb6c9',
     buildCost: { plank: 7, stone: 8 },
@@ -620,7 +635,7 @@ CityBuilder.Config.buildings = {
 
   gold_smelter: {
     name: 'Gold Smelter',
-    category: 'processing',
+    category: 'valuables',
     symbol: 'GS',
     color: '#d1a93a',
     buildCost: { plank: 7, stone: 8 },
@@ -635,7 +650,7 @@ CityBuilder.Config.buildings = {
 
   bronze_foundry: {
     name: 'Bronze Foundry',
-    category: 'processing',
+    category: 'metalwork',
     symbol: 'BF',
     color: '#a87949',
     buildCost: { plank: 8, stone: 8 },
@@ -650,7 +665,7 @@ CityBuilder.Config.buildings = {
 
   charcoal_burner: {
     name: 'Charcoal Burner',
-    category: 'processing',
+    category: 'construction',
     symbol: 'CB',
     color: '#45454a',
     buildCost: { wood: 5, stone: 4 },
@@ -666,7 +681,7 @@ CityBuilder.Config.buildings = {
 
   kitchen: {
     name: 'Kitchen',
-    category: 'processing',
+    category: 'food',
     symbol: 'KI',
     color: '#c9784a',
     buildCost: { plank: 7, stone: 6 },
@@ -684,7 +699,7 @@ CityBuilder.Config.buildings = {
   },
   glassworks: {
     name: 'Glassworks',
-    category: 'processing',
+    category: 'construction',
     symbol: 'GL',
     color: '#7fb8c4',
     buildCost: { plank: 8, stone: 8, brick: 4 },
@@ -698,7 +713,7 @@ CityBuilder.Config.buildings = {
   },
   steelworks: {
     name: 'Steelworks',
-    category: 'processing',
+    category: 'metalwork',
     symbol: 'ST',
     color: '#7c8ba0',
     buildCost: { plank: 8, stone: 8, brick: 4 },
@@ -713,7 +728,7 @@ CityBuilder.Config.buildings = {
   // Verktygstillverkning. 'auto': byggnaden gör det påslagna verktyg som det finns minst av (spelaren slår av/på verktyg i infopanelen)
   toolsmith: {
     name: 'Toolsmith',
-    category: 'crafting',
+    category: 'metalwork',
     symbol: 'TO',
     color: '#9a8f7a',
     buildCost: { plank: 8, stone: 8 },
@@ -727,7 +742,7 @@ CityBuilder.Config.buildings = {
   },
   swordsmith: {
     name: 'Swordsmith',
-    category: 'crafting',
+    category: 'war',
     symbol: 'SW',
     color: '#9aa4b2',
     buildCost: { plank: 8, stone: 8 },
@@ -742,7 +757,7 @@ CityBuilder.Config.buildings = {
 
   bowyer: {
     name: 'Bowyer',
-    category: 'crafting',
+    category: 'war',
     symbol: 'BY',
     color: '#a8784a',
     buildCost: { plank: 8, stone: 4 },
@@ -757,7 +772,7 @@ CityBuilder.Config.buildings = {
 
   leatherworker: {
     name: 'Leatherworker',
-    category: 'crafting',
+    category: 'war',
     symbol: 'LT',
     color: '#7a5632',
     buildCost: { plank: 6, stone: 4 },
@@ -773,7 +788,7 @@ CityBuilder.Config.buildings = {
 
   armorsmith: {
     name: 'Armorsmith',
-    category: 'crafting',
+    category: 'war',
     symbol: 'AM',
     color: '#8794ad',
     buildCost: { plank: 8, stone: 8 },
@@ -958,7 +973,7 @@ CityBuilder.Config.buildings = {
 
   guard_tower: {
     name: 'Guard Tower',
-    category: 'military',
+    category: 'war',
     symbol: 'GT',
     color: '#46a083',
     buildCost: { wood: 5, plank: 6, stone: 10 },
@@ -976,7 +991,7 @@ CityBuilder.Config.buildings = {
   // Utkikstorn: ser långt men gör inget annat. Ger synfält så att nya platser går att bygga på.
   watchtower: {
     name: 'Watchtower',
-    category: 'military',
+    category: 'war',
     symbol: 'WT',
     color: '#8fc1ad',
     buildCost: { plank: 2, stone: 3 },
@@ -987,7 +1002,7 @@ CityBuilder.Config.buildings = {
 
   garrison: {
     name: 'Garrison',
-    category: 'military',
+    category: 'war',
     symbol: 'GA',
     color: '#357a65',
     buildCost: { plank: 15, stone: 20, brick: 8, hammer: 2 },
@@ -1006,7 +1021,7 @@ CityBuilder.Config.buildings = {
   // repeatPlacement: placeringsläget stannar kvar efter varje bygge så att en hel mur kan läggas i ett svep.
   wall: {
     name: 'Wall',
-    category: 'military',
+    category: 'war',
     symbol: 'W',
     color: '#8a8f98',
     buildCost: { stone: 3 },
@@ -1018,7 +1033,7 @@ CityBuilder.Config.buildings = {
   // Slutbyggnad: alla egna byggnader inom radien producerar mer och soldater tränas snabbare. Bara ett per spelare.
   monument: {
     name: 'Resonance Monument',
-    category: 'special',
+    category: 'magic',
     symbol: '★',
     color: '#e8c547',
     buildCost: { plank: 10, stone: 10, fallen_star: 5, ancient_relic: 5, moonstone: 10, crystal: 20, limestone: 12, bronze: 10, hammer: 3 },

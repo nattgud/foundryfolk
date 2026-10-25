@@ -6,6 +6,13 @@
 
   CityBuilder.Changelog = {
     '0.8.1': [
+      'On narrow phones the category buttons shrink to fit the width of the screen, so all of them stay on one row',
+      'The build menu is sorted by what is used together, in seven categories: Construction (wood, stone, clay, sand, bricks and glass), Food (farm, well, mill, bakery, kitchen and gatherers), Metalwork (iron, copper, tin and coal mines, smelters and the Toolsmith), Valuables (gold, silver, gems, salt and sulfur), War, Magic and Trade (warehouses, Market and Mint). Buildings in a category are listed in the order they unlock',
+      'The inefficiency icon (and its ring on the minimap) only appears once a building has been working for 45 seconds, so new buildings no longer warn while they wait for their first deliveries',
+      'Slightly more trees on every map, and each tree now gives 8 wood instead of 5, so sparse levels no longer run short of wood',
+      'The selected building in the build menu is marked by its border only, so a button that is red because you cannot afford it stays red',
+      'The resource bar at the top now shows what you need most: your favorites first, then the resources your goals and buildings use most. It follows the level and changes at most every ten seconds',
+      'When you demolish a building, everything it held stays on the ground as a pile: the goods, the tools, half of the build cost and what its worker carried. Carriers take the pile to the nearest store, so nothing is lost',
       'One Toolsmith replaces the Hammersmith, Picksmith, Axesmith and Scythesmith. It makes whichever tool you have least of, and you choose which tools it may make with a switch for each in its panel. Old saved games keep working: the old smiths become Toolsmiths that make the same tool as before',
       'The guide no longer dims the part of the screen it explains when it is opened from the menu',
     ],

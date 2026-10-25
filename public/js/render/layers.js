@@ -370,7 +370,10 @@
       const isFinished = building.buildProgress >= 1, image = Assets.get(building.definition.image);
       context.globalAlpha = isFinished ? (building.paused ? .5 : 1) : .7;
 
-      if (image) context.drawImage(image, x, y, tileSize, tileSize);
+      if (building.definition.pile) { // hög på marken: en jordhög, varorna ritas som ikoner nedan
+        context.fillStyle = 'rgb(70 50 30 / 70%)';
+        context.beginPath(); context.ellipse(x + tileSize / 2, y + tileSize * .62, tileSize * .38, tileSize * .24, 0, 0, Math.PI * 2); context.fill();
+      } else if (image) context.drawImage(image, x, y, tileSize, tileSize);
       else {
         context.fillStyle = building.definition.color;
         context.fillRect(x + 3, y + 3, tileSize - 6, tileSize - 6);
@@ -385,7 +388,7 @@
         context.fillStyle = '#5fb55f'; context.fillRect(x + 3, y + tileSize - 8, (tileSize - 6) * building.buildProgress, 5);
       } else if (!building.definition.isStorage) {
         renderer.drawResourceIcons(context, building.inputStock, x, y + tileSize - 10);
-        renderer.drawResourceIcons(context, building.outputStock, x, y + 1);
+        renderer.drawResourceIcons(context, building.outputStock, x, y + (building.definition.pile ? tileSize * .42 : 1));
       }
       if (building.player !== CityBuilder.Players.HUMAN) { // andra spelares byggnader: ram i spelarens färg
         context.strokeStyle = CityBuilder.Config.settings.playerColors[building.player] || '#fff'; context.lineWidth = 2;
@@ -633,9 +636,9 @@
       if (outside(view, building.x * tileSize, building.y * tileSize) || hidden(building)) continue;
       if (building.player !== Players.HUMAN) continue;   // fiendens byggnader visar inga status- eller effektivitetsikoner (och ingen arbetsframgång)
       // Ineffektiv en längre tid: liten ikon uppe till höger (Config.settings.efficiency: minSeconds, warnBelow, badBelow)
-      const summary = building.eff && building.eff.summary, limits = Object.assign({ minSeconds: 30, warnBelow: .6, badBelow: .3 }, Config.settings.efficiency);
-      if (summary && !building.paused && summary.seconds >= limits.minSeconds && summary.ratio < limits.warnBelow) {
-        const bad = summary.ratio < limits.badBelow;
+      const inefficiency = CityBuilder.Behaviors.inefficiency(building);
+      if (inefficiency) {
+        const bad = inefficiency === 'bad';
         const efficiencyIcon = Assets.get(ICON_DIR + (bad ? 'efficiency_bad' : 'efficiency_warn') + '.png') || Assets.get(ICON_DIR + (bad ? 'warning_red' : 'warning_grey') + '.png');
         if (efficiencyIcon) {
           // Pulserar som statusikonerna (röd = snabbare och kraftigare, som "error"). Mittpunkten ligger fast i hörnet.

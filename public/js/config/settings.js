@@ -37,7 +37,7 @@ CityBuilder.Config.settings = {
     baseCarriers: 20,
     lowStock: 20
   },
-  efficiency: { windowSeconds: 60, minSeconds: 5, warnBelow: .6, badBelow: .3 },
+  efficiency: { windowSeconds: 60, minSeconds: 5, minAge: 45, warnBelow: .6, badBelow: .3 },
   zoom: { min: .5, max: 2.5 },
   toastDurationMs: 3500,
   useImages: true,

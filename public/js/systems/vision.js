@@ -124,7 +124,7 @@
       this.nextRefresh = this.time + settings.interval;
       this.version++;
       for (const building of World.buildings) {
-        if (building.buildProgress < 1) continue;
+        if (building.buildProgress < 1 || building.definition.pile) continue;
         this.stamp(building.player, building.x + .5, building.y + .5, building.definition.vision ?? settings.building, expiry);
       }
       for (const unit of World.units) {

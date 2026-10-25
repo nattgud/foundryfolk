@@ -12,7 +12,7 @@
       let best, bestDistance = limit;
       for (const building of World.buildings) {
         const distance = Math.hypot(building.x - x, building.y - y);
-        if (building.player === player && building.buildProgress >= 1 && distance <= bestDistance) { best = building; bestDistance = distance; }
+        if (building.player === player && building.buildProgress >= 1 && !building.definition.pile && distance <= bestDistance) { best = building; bestDistance = distance; }
       }
       return best;
     },
@@ -25,17 +25,30 @@
     isHidden(x, y, player) { return !Players.isAI(player) && !CityBuilder.Vision.visible(player, x, y); },
 
     // Tar bort en byggnad. Soldater som bor där blir fria (de söker sig till en annan garnison eller vaktar platsen).
-    // salvage = riven av ägaren: halva byggkostnaden och allt byggnaden höll (lager, in- och utbuffert, det arbetaren bär)
-    // går till närmaste lager. Förstörd i strid (salvage = false): innehållet går förlorat.
+    // salvage = riven av ägaren: halva byggkostnaden och allt byggnaden höll (lager, in- och utbuffert, verktyg, det arbetaren bär)
+    // blir kvar på marken som en hög, och bärarna för den till lagren. Inget försvinner. Förstörd i strid (salvage = false): innehållet går förlorat.
     dismantle(building, salvage) {
       Behaviors.forBuilding(building)?.onDemolished?.(building);
       World.removeBuilding(building);
-      const player = building.player;
-      if (!salvage) return;
-      Economy.refund(building.definition.buildCost, player);
-      const give = (resourceId, amount) => { if (amount > 0) Economy.addToNearestStorage(resourceId, amount, building, player); };
-      for (const stock of [building.inputStock, building.outputStock, building.storedGoods]) for (const resourceId in stock) give(resourceId, stock[resourceId]);
-      if (typeof building.workerUnit?.carriedResource === 'string') give(building.workerUnit.carriedResource, 1);
+      if (!salvage || building.definition.pile) return;
+      const goods = {};
+      const add = (resourceId, amount) => { if (amount > 0) goods[resourceId] = (goods[resourceId] || 0) + amount; };
+      for (const resourceId in building.definition.buildCost) add(resourceId, Math.floor(building.definition.buildCost[resourceId] / 2));
+      for (const stock of [building.inputStock, building.outputStock, building.storedGoods]) for (const resourceId in stock) add(resourceId, stock[resourceId]);
+      if (typeof building.workerUnit?.carriedResource === 'string') add(building.workerUnit.carriedResource, 1);
+      this.dropPile(building.x, building.y, building.player, goods);
+    },
+
+    // Lägger varorna som en hög på rutan (finns redan en hög där fylls den på)
+    dropPile(x, y, player, goods) {
+      if (!Object.keys(goods).length) return;
+      let pile = World.buildingAt(x, y);
+      if (!pile) {
+        pile = World.placeBuilding('pile', x, y, true, player);
+        pile.hp = pile.maxHp = null;   // går inte att skada
+      }
+      if (!pile.definition.pile) return;
+      for (const resourceId in goods) pile.outputStock[resourceId] = (pile.outputStock[resourceId] || 0) + goods[resourceId];
     },
 
     build(buildingType, x, y, player = Players.HUMAN) {

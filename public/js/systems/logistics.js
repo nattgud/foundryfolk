@@ -74,10 +74,16 @@
       if ((this.planningTimer -= deltaSeconds) <= 0) {
         this.planningTimer = cfg().planningIntervalSeconds;
         Economy.updateStats();
+        this.clearPiles();
         this.balanceCarriers(); this.purgeInvalidTasks(); this.rebuildCounters(); this.requestMissingInputs(); this.orders = null; this.flushSurplusToStorage(); this.orders = null;
       }
       this.time = (this.time || 0) + deltaSeconds;
       this.assignTasksToCarriers();
+    },
+
+    // Tomma högar (det som blev kvar efter en rivning) försvinner när bärarna hämtat allt
+    clearPiles() {
+      for (const building of World.buildings) if (building.definition.pile && !Utils.sumValues(building.outputStock)) World.removeBuilding(building);
     },
 
     // Räknar om alla reservationer och "på väg"-tal från de verkliga uppdragen, så att inget läckage kan blockera lager.
@@ -194,7 +200,7 @@
           for (let n = 0; n < surplus; n++) {
             if (this.full(building.player)) break;
             if (this.deliverDirect(building, resourceId)) continue;
-            if (Economy.isFull(resourceId, building.player)) break;
+            if (Economy.isFull(resourceId, building.player) && !building.definition.pile) break;   // högar töms även över lagertaket, så inget blir kvar
             const storage = Economy.nearestStorage(building);
             if (!storage || this.isUnreachable(building, storage)) break; // spelare utan lager (t.ex. slagen rival): inget att leverera till
             this.createTask(building, storage, resourceId);

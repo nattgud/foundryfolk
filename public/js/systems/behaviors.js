@@ -184,9 +184,15 @@
         const status = CityBuilder.I18n.canonicalStatus(building.status || '');
         if (status === 'No resources' || status === 'No animals in range') return 'noResources';
       }
-      const summary = building.eff && building.eff.summary, limits = Object.assign({ minSeconds: 30, warnBelow: .6, badBelow: .3 }, Config.settings.efficiency);
-      if (summary && summary.seconds >= limits.minSeconds && summary.ratio < limits.warnBelow) return summary.ratio < limits.badBelow ? 'bad' : 'warn';
-      return null;
+      return this.inefficiency(building);
+    },
+
+    // 'bad' / 'warn' om byggnaden står still större delen av tiden, annars null. Räknas först när den arbetat en stund (settings.efficiency.minAge),
+    // så att en nybyggd byggnad som väntar på sina första leveranser inte varnar i onödan.
+    inefficiency(building) {
+      const summary = building.eff && building.eff.summary, limits = Object.assign({ minSeconds: 30, minAge: 45, warnBelow: .6, badBelow: .3 }, Config.settings.efficiency);
+      if (!summary || building.paused || building.eff.time < limits.minAge || summary.seconds < limits.minSeconds || summary.ratio >= limits.warnBelow) return null;
+      return summary.ratio < limits.badBelow ? 'bad' : 'warn';
     },
 
     // Flödesstatistik (Economy.record): byggnaden förbrukade ('use') eller levererade ('make') en vara

@@ -216,6 +216,7 @@
 
       stats.finished = 0; stats.underConstruction = 0;
       for (const building of World.buildings) {
+        if (building.definition.pile) continue;
         if (building.buildProgress >= 1) stats.finished++; else stats.underConstruction++;
         const id = building.type || '';
         const name = CityBuilder.I18n.nameOf('building', id, building.definition && building.definition.name);

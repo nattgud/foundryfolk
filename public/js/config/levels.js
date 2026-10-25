@@ -695,7 +695,7 @@
   const TEAM_CHOICES = ['own', 'you', 'a', 'b', 'c'];               // own = plays for itself, you = on the player's team, a-c = enemy teams
   const SEA = [0.02, 0.12, 0.2, 0.3, 0.42];                        // Config.world.tuning per step
   const MOUNTAIN = [1.1, 0.9, 0.76, 0.64, 0.52];
-  const FOREST = [0.4, 0.7, 1, 1.5, 2.4];
+  const FOREST = [0.4, 0.7, 1.1, 1.5, 2.4];
   const RICHNESS = [0.25, 0.6, 1, 1.5, 2.2];
   const BASIC_TERRAIN = ['rock', 'clay', 'limestone', 'berry_bush', 'herbs', 'mushrooms', 'apple_tree'];
   const integer = (value, min, max, fallback) => { const n = Math.floor(Number(value)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback; };

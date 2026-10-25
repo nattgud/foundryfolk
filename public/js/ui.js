@@ -11,51 +11,16 @@
 
   // Kategorier i menyn. Byggnader väljer kategori med building.category.
   const CATEGORIES = {
-    storage: {
-      name: 'Storage & logistics',
-      symbol: '📦'
-    },
-    forestry: {
-      name: 'Forestry',
-      symbol: '🌲'
-    },
-    farming: {
-      name: 'Farming & food',
-      symbol: '🌾'
-    },
-    gathering: {
-      name: 'Gathering & raw materials',
-      symbol: '🧺'
-    },
-    mining: {
-      name: 'Mining & quarrying',
-      symbol: '⛏️'
-    },
-    processing: {
-      name: 'Processing & materials',
-      symbol: '⚙️'
-    },
-    crafting: {
-      name: 'Crafting & tools',
-      symbol: '🔨'
-    },
-    trade: {
-      name: 'Trade & coinage',
-      symbol: '🪙'
-    },
-    military: {
-      name: 'Military',
-      symbol: '⚔️'
-    },
-    magic: {
-      name: 'Magic & ancient sites',
-      symbol: '✦'
-    },
-    special: {
-      name: 'Special buildings',
-      symbol: '★'
-    }
+    construction: { name: 'Construction', symbol: '🧱' },
+    food: { name: 'Food', symbol: '🌾' },
+    metalwork: { name: 'Metalwork', symbol: '⚒️' },
+    valuables: { name: 'Valuables', symbol: '💎' },
+    war: { name: 'War', symbol: '⚔️' },
+    magic: { name: 'Magic', symbol: '✦' },
+    trade: { name: 'Trade', symbol: '📦' }
   };
+
+
 
   for (const [id, category] of Object.entries(CATEGORIES)) {
     category.image = `images/ui/categories/${id}.png?v=${version}`;
@@ -300,13 +265,13 @@
         { title: 'Resources', target: ['#top'], lines: ['The top bar shows what you have in store, for example wood, planks and stone.', 'You start with a little, including some tools. Your buildings make more.'] },
         { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap or hover over a building, tree, rock or water to see what it is.'] },
         { title: 'Build menu', target: ['#bottom .build-categories'], category: null, lines: ['The build menu is at the bottom. Each icon is a category of buildings.', 'Tap a category to open it. New buildings unlock as you complete levels.'] },
-        { title: 'Place a building', target: ['#build_woodcutter'], category: 'forestry', lines: ['Try it with the highlighted Woodcutter. Tap it to select it, and move the mouse over it to see its cost and what it does.', 'Then tap the ground next to some trees to place it. A preview follows you and shows whether it fits. You can only build near your own buildings, and not in the fog.', 'Tap the building again, or Cancel, to stop placing.'] },
+        { title: 'Place a building', target: ['#build_woodcutter'], category: 'construction', lines: ['Try it with the highlighted Woodcutter. Tap it to select it, and move the mouse over it to see its cost and what it does.', 'Then tap the ground next to some trees to place it. A preview follows you and shows whether it fits. You can only build near your own buildings, and not in the fog.', 'Tap the building again, or Cancel, to stop placing.'] },
         { title: 'Then let it work', target: ['#mainMenuButton'], lines: ['A finished building works by itself. Workers gather or make goods, and carriers bring them where they are needed. You do not control them.', 'Keep an eye on your goals and build what they ask for. When you want to know more, open the menu here and choose Advanced guide.'] },
       ],
       advanced: [
         { title: 'Resources', target: ['#top'], lines: ['The top bar shows what is in your stores. Tap "All resources" for the full list.', 'A number turns orange when the stores are full for that resource. Build a warehouse for more room.', 'Tap a resource in the list to see which buildings use it and which make it, per minute. Buildings that could use it but do not right now are shown too.', 'The list only shows the resources you can use at your current level. More appear as you unlock buildings.'] },
         { title: 'Minimap', target: ['#minimap', '#minimapMode', '#minimapZoomIn', '#minimapZoomOut'], lines: ['The minimap shows the area around you. The white box is what you see on screen.', 'Use + and − to zoom it, and the small button to change what it shows.', 'Your buildings are coloured squares. Enemies you have spotted are red.', 'A red ring with ! means a gatherer finds nothing to gather. An orange or red ring means the building stands still most of the time. Select a building to ring all buildings of the same type.'] },
-        { title: 'Locked or too expensive', target: ['#bottom .building-option'], category: 'gathering', lines: ['A grey button with a dashed border, a stroke and a padlock is locked. Move the mouse over it to see at which level it unlocks. Only the next few levels are shown.', 'A button with a red border is unlocked, but you cannot afford it yet. Move the mouse over it to see the cost.'] },
+        { title: 'Locked or too expensive', target: ['#bottom .building-option'], category: 'construction', lines: ['A grey button with a dashed border, a stroke and a padlock is locked. Move the mouse over it to see at which level it unlocks. Only the next few levels are shown.', 'A button with a red border is unlocked, but you cannot afford it yet. Move the mouse over it to see the cost.'] },
         { title: 'Hotkeys', target: ['#bottom .build-categories'], category: null, lines: ['Press a number to open a category in the build menu (you can switch category at any time), then a letter on the top row, Q W E R T Y U I O P, to choose a building in it. Esc goes back one step. Hover over a button to see its key.', 'While one of your buildings is selected, the letters control it instead: P pauses, B turns the boost on or off, R changes what it makes, T opens trading, S switches between attack and defence, Z X C V train soldiers, and Delete demolishes (press it twice).'] },
         { title: 'Select, pause and demolish', mock: 'pause', lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
         { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
@@ -318,8 +283,8 @@
         { title: 'Wild animals', lines: ['Deer, moose, foxes and rabbits roam the land and spread berries, herbs and mushrooms. A Hunters Cottage sends a hunter after the nearest animal in range. Every kind of animal gives the same meat and leather.', 'Animals have young faster the fewer there are nearby. You can hunt an area empty for a while, but never a whole region. Animals only live on land you can see.'] },
         { title: 'Speed and menu', target: ['#speedButton', '#mainMenuButton'], lines: ['Change the game speed here.', 'The menu button opens save, load, settings and this guide. You can also start a custom map with your own settings, and use several save slots.'] },
         { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
-        { title: 'Find the enemy', target: ['#build_watchtower'], category: 'military', lines: ['From level 39 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
-        { title: 'Train soldiers', target: ['#build_garrison', '#build_guard_tower'], category: 'military', lines: ['Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.', 'Each soldier needs weapons and armour, which carriers deliver to the building.'] },
+        { title: 'Find the enemy', target: ['#build_watchtower'], category: 'war', lines: ['From level 39 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
+        { title: 'Train soldiers', target: ['#build_garrison', '#build_guard_tower'], category: 'war', lines: ['Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.', 'Each soldier needs weapons and armour, which carriers deliver to the building.'] },
         { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.', 'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.', 'Enemy buildings only show their health, nothing about what they import, export or produce.', 'Soldiers walk like other units. Several soldiers on one tile spread out inside it, and soldiers who fight stand on the same tile.'] },
         { title: 'If something goes wrong', lines: ['If the game hits an unexpected error, a small box appears and the game keeps running. Tap Details to see what happened and copy it into a report.', 'The game saves by itself, and you are told if saving fails. If an old saved game cannot be fully restored, a copy of the original is kept.'] },
       ],
@@ -675,31 +640,41 @@
       document.addEventListener('keydown', this.resourceEscapeHandler);
     },
 
+    // Resurserna i fältet längst upp: favoriterna först, sedan det som behövs mest (se resourceDemand), bland det spelaren kan ha nytta av nu
     getPinnedResourceIds() {
-      const ids = Object.keys(Config.resources);
+      const ids = Object.keys(Config.resources), favorites = ids.filter(id => this.resourceFavorites.has(id));
+      const known = this.knownResources(), demand = this.resourceDemand();
+      const rest = ids.filter(id => !this.resourceFavorites.has(id) && known.has(id)).sort((a, b) => (demand[b] || 0) - (demand[a] || 0));   // lika: som i konfigurationen
+      return [...favorites, ...rest].slice(0, this.maxPinnedResources);
+    },
 
-      const favorites = ids.filter(id => this.resourceFavorites.has(id));
-      const important = ids.filter(id =>
-        !this.resourceFavorites.has(id) &&
-        (
-          Config.resources[id].quickAccess ||
-          Config.resources[id].important
-        )
-      );
-
-      const result = [...favorites, ...important];
-      const included = new Set(result);
-
-      for (const id of ids) {
-        if (result.length >= this.maxPinnedResources) break;
-
-        if (!included.has(id)) {
-          result.push(id);
-          included.add(id);
+    // Hur mycket varje resurs behövs: ej klarade mål (mest), egna byggnader som tar den som insats, verktyg, mat eller boost (även de som byggs),
+    // och vad som faktiskt förbrukats den senaste tiden
+    resourceDemand() {
+      const demand = {}, Levels = CityBuilder.Levels, add = (id, amount) => { demand[id] = (demand[id] || 0) + amount; };
+      for (const item of Levels?.current ? Levels.progress() : []) if (item.resource && !item.done) add(item.resource, 20);
+      const cache = this.takesCache = this.takesCache || new Map();
+      for (const building of World?.buildings || []) {
+        if (building.player !== CityBuilder.Players.HUMAN || building.definition.pile) continue;
+        let takes = cache.get(building.type);
+        if (!takes) {
+          const definition = building.definition, job = definition.job || {};
+          takes = new Set([job.inputs, definition.requiredEquipment, ...(job.choices || []).map(choice => choice.inputs), ...(job.trains || []).map(kind => Config.units[kind]?.training?.inputs)]
+            .flatMap(amounts => Object.keys(amounts || {})));
+          for (const group of [].concat(job.eats || [])) group.any.forEach(id => takes.add(id));
+          cache.set(building.type, takes);
         }
+        for (const id of takes) add(id, 1);
       }
+      for (const id in Config.resources) for (const row of Economy.flow('use', id)) add(id, row.perMinute);
+      return demand;
+    },
 
-      return result;
+    // Bygger om fältet bara när ordningen ändrats, och högst var tionde sekund, så att det inte hoppar
+    updatePinnedResources(now) {
+      if (now - (this.pinnedCheckedAt || 0) < 10000) return;
+      this.pinnedCheckedAt = now;
+      if (this.getPinnedResourceIds().join() !== this.pinnedKey) this.renderPinnedResources();
     },
 
     createResourceItem(resourceId, compact = false) {
@@ -804,9 +779,10 @@
 
       container.replaceChildren();
 
-      for (const id of this.getPinnedResourceIds()) {
-        container.appendChild(this.createResourceItem(id, true));
-      }
+      const ids = this.getPinnedResourceIds();
+      this.pinnedKey = ids.join();
+      this.pinnedCheckedAt = performance.now();
+      for (const id of ids) container.appendChild(this.createResourceItem(id, true));
     },
 
     createResourceWindow() {
@@ -1354,6 +1330,10 @@
         groups.get(categoryId).push(buildingId);
       }
 
+      // Inom en kategori i den ordning de låses upp (lika: som i konfigurationen), så att en kedja läses från råvara till färdig vara
+      const unlockLevel = id => CityBuilder.Levels?.unlockLevel(id) ?? 1;
+      for (const buildingIds of groups.values()) buildingIds.sort((a, b) => unlockLevel(a) - unlockLevel(b));
+
       for (const [categoryId, buildingIds] of groups) {
         if (!buildingIds.length) groups.delete(categoryId);
       }
@@ -1748,10 +1728,22 @@
           overflow: visible;
         }
 
+        /* Kategorierna står på en rad och krymper efter skärmens bredd (smal mobil i stående läge) i stället för att brytas till flera rader */
         #bottom .build-categories {
           display: flex;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           gap: 6px;
+        }
+        #bottom .build-categories .build-category-toggle {
+          flex: 0 1 48px;
+          min-width: 0;
+          padding: 5px 2px;
+        }
+        #bottom .build-category-toggle .icon {
+          width: 100%;
+          max-width: 36px;
+          height: auto;
+          aspect-ratio: 1;
         }
 
         #bottom .build-submenu {
@@ -1794,12 +1786,17 @@
           pointer-events: none;
         }
 
-        #bottom .build-category-toggle[aria-expanded="true"],
-        #bottom .icon-button.building-option.on {
+        #bottom .build-category-toggle[aria-expanded="true"] {
           border-color: var(--accent);
           background: #2d5a36;
           box-shadow: 0 0 0 1px var(--accent), 0 0 10px rgb(95 181 95 / 55%);
         }
+        /* Vald byggnad: bara ramen markerar valet, så att en ruta som är röd för att den är för dyr förblir röd */
+        #bottom .icon-button.building-option.on {
+          border-color: var(--accent);
+          box-shadow: 0 0 0 1px var(--accent), 0 0 10px rgb(95 181 95 / 55%);
+        }
+        #bottom .icon-button.building-option.on:not(.unaffordable):not(.locked) { background: #252d34; }
 
         #bottom .building-option.unaffordable .icon {
           opacity: .4;
@@ -2371,6 +2368,7 @@
         if (windowAmount) { windowAmount.textContent = amount; windowAmount.classList.toggle('is-full', full); }
       }
       if (this.resourceWindowOpen) { this.renderResourceFlow(); this.updateKnownResources(); }
+      this.updatePinnedResources(performance.now());
       this.updateMarket();
 
       const carriers = World.units.filter(unit => unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN);
@@ -2746,7 +2744,7 @@
         const marketButton = own && building.definition.isMarket && building.buildProgress >= 1 ? `<button id="marketButton">${t('Trade')}</button>` : '';
         const boostButton = own && this.boostAvailable(building.definition) ? '<button id="boostButton"></button>' : '';
 
-        const demolishButton = own && building !== World.headquarters
+        const demolishButton = own && building !== World.headquarters && !building.definition.pile
           ? `<button id="demolishButton">${t('Demolish')}</button>`
           : '';
 
@@ -2843,6 +2841,8 @@
         ? [building.buildProgress < 1 ? statusText : null, t('Health: {hp}/{max}', { hp: Math.ceil(building.hp), max: Math.ceil(building.maxHp) })].filter(Boolean).join('<br>')
         : building.definition.isStorage
         ? t('Storage: {list}', { list: this.resourceIconsHtml(building.storedGoods) || t('empty') })
+        : building.definition.pile
+        ? t('On the ground: {list}', { list: this.resourceIconsHtml(building.outputStock) || t('empty') })
         : statusText +
           (this.efficiencyText(building) ? `<br>${this.efficiencyText(building)}` : '') +
           garrisonHtml +
