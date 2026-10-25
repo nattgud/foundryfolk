@@ -331,6 +331,8 @@
       const game = CityBuilder.Game, pages = this.TUTORIAL[kind], categoryBefore = this.openCategoryId;
       game.paused = true;
       let page = 0;
+      const menu = byId('mainMenuOverlay'); // huvudmenyn göms medan guiden visas (annars mörkar dess bakgrund även det som lyses upp)
+      if (menu) menu.hidden = true;
       if (!byId('tutorialStyles')) {
         const style = document.createElement('style');
         style.id = 'tutorialStyles';
@@ -379,6 +381,7 @@
       const close = () => {
         cancelAnimationFrame(frame); spotlight.remove(); overlay.remove(); removeEventListener('keydown', onKey);
         this.setOpenCategory(categoryBefore ?? null);
+        if (menu) menu.hidden = !this.mainMenuOpen;
         game.paused = !!this.mainMenuOpen;
       };
       const skip = button(close), back = button(() => { page--; render(); });

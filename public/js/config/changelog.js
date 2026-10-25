@@ -5,6 +5,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.8.1': [
+      'The guide no longer dims the part of the screen it explains when it is opened from the menu',
+    ],
     '0.8.0': [
       'Every resource now has a real use. Tools are needed to work: axes for woodcutters, scythes for farms and herb gatherers, knives for hunters, mushroom gatherers and leatherworkers, saws for sawmills, shovels for clay pits, sand collectors and planters, and pickaxes for quarries and mines. A tool is delivered once, is not used up, and comes back when you demolish the building',
       'You start every level with a good stock of tools and hammers so you cannot get stuck. The new Toolsmith makes knives, saws and shovels. Hammers are used up when larger buildings are built',
