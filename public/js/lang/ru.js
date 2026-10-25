@@ -411,7 +411,6 @@
       'training {n}% faster': 'обучение на {n}% быстрее',
       'output +{n}%': 'производство +{n}%',
       'Boost with {item}: {effect}': 'Усиление с помощью {item}: {effect}',
-      'Click to change what it makes': 'Нажмите, чтобы сменить, что оно делает',
       'Boost on': 'Усиление включено',
       'Boost off': 'Усиление выключено',
       'Uses {item} to make this building more productive': 'Использует {item}, чтобы здание работало продуктивнее',

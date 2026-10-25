@@ -5,6 +5,9 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.8.2': [
+      'Buildings that can make several things (Kitchen, Mill, Farm, Alchemist) now show one radio button per recipe in their panel, with the ingredients and the result, where exactly one is selected. The R hotkey still steps to the next recipe',
+    ],
     '0.8.1': [
       'On narrow phones the category buttons shrink to fit the width of the screen, so all of them stay on one row',
       'The build menu is sorted by what is used together, in seven categories: Construction (wood, stone, clay, sand, bricks and glass), Food (farm, well, mill, bakery, kitchen and gatherers), Metalwork (iron, copper, tin and coal mines, smelters and the Toolsmith), Valuables (gold, silver, gems, salt and sulfur), War, Magic and Trade (warehouses, Market and Mint). Buildings in a category are listed in the order they unlock',

@@ -2738,9 +2738,11 @@
 
         const spellButtons = own && building.definition.spells ? building.definition.spells.map(spell => `<button class="spell-button" data-spell="${spell.id}"></button>`).join('') : '';
         const choices = own && building.definition.job?.choices;
-        const choiceButton = !choices ? '' : building.definition.job.auto   // Toolsmith: en av/på-knapp per verktyg, annars en knapp som bläddrar bland valen
+        // Toolsmith: en av/på-knapp per verktyg. Övriga med val (kök, kvarn ...): en alternativknapp per recept, där bara ett är valt.
+        // Gruppen tar emot snabbtangenten R (nästa recept).
+        const choiceButton = !choices ? '' : building.definition.job.auto
           ? building.definition.job.choices.map((choice, index) => `<button class="tool-toggle" data-index="${index}"></button>`).join('')
-          : '<button id="choiceButton"></button>';
+          : `<div id="choiceButton" class="choice-group">${building.definition.job.choices.map((choice, index) => `<button class="choice-radio" data-index="${index}"></button>`).join('')}</div>`;
         const marketButton = own && building.definition.isMarket && building.buildProgress >= 1 ? `<button id="marketButton">${t('Trade')}</button>` : '';
         const boostButton = own && this.boostAvailable(building.definition) ? '<button id="boostButton"></button>' : '';
 
@@ -2779,7 +2781,9 @@
         }
 
         if (byId('choiceButton')) {
-          byId('choiceButton').onclick = () => { building.choice = ((building.choice || 0) + 1) % building.definition.job.choices.length; };
+          const choose = index => { building.choice = index; };
+          for (const radio of panel.querySelectorAll('.choice-radio')) radio.onclick = event => { event.stopPropagation(); choose(+radio.dataset.index); };
+          byId('choiceButton').onclick = () => choose(((building.choice || 0) + 1) % building.definition.job.choices.length);   // snabbtangenten R
         }
 
         if (byId('marketButton')) byId('marketButton').onclick = () => this.openMarket();
@@ -2871,9 +2875,16 @@
         button.classList.toggle('on', Boolean(on));
       };
       if (byId('choiceButton')) {
-        const recipe = CityBuilder.Behaviors.recipe(building);
-        setButton('choiceButton', `⇄ ${this.resourceIconsHtml(recipe.outputs)} ← ${this.resourceIconsHtml(recipe.inputs)}`);
-        byId('choiceButton').dataset.baseTitle = t('Click to change what it makes');
+        const choices = building.definition.job.choices, chosen = building.choice || 0;
+        panel.querySelectorAll('.choice-radio').forEach(radio => {
+          const { inputs, outputs } = choices[+radio.dataset.index], selected = +radio.dataset.index === chosen;
+          const made = this.resourceIconsHtml(outputs), takes = this.resourceIconsHtml(inputs);
+          const html = `${selected ? '●' : '○'} ${takes ? takes + ' → ' : ''}${made}`;
+          if (radio.dataset.html !== html) { radio.dataset.html = html; radio.innerHTML = html; }
+          radio.classList.toggle('on', selected);
+          const plain = amounts => Object.entries(amounts || {}).map(([id, amount]) => `${amount} ${this.resourceName(id)}`).join(' + ');
+          radio.title = inputs && Object.keys(inputs).length ? t('Processing: {inputs} → {outputs}', { inputs: plain(inputs), outputs: plain(outputs) }) : t('Producing: {outputs}', { outputs: plain(outputs) });
+        });
       }
       if (building.definition.job?.auto) {
         const Behaviors = CityBuilder.Behaviors, current = Behaviors.autoChoice(building), choices = building.definition.job.choices;

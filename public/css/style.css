@@ -15,7 +15,8 @@ canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; t
 button { background: #252d34; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
 button:active { background: #313b44; }
 button.on { border-color: var(--accent); background: #26402b; }
-button.tool-toggle { display: inline-flex; align-items: center; gap: 4px; }
+button.tool-toggle, button.choice-radio { display: inline-flex; align-items: center; gap: 4px; }
+.choice-group { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 button.tool-toggle:not(.on) { opacity: .5; }
 button.tool-toggle.making { box-shadow: 0 0 0 2px #ffd23f; }
 button:disabled, button.unavailable { border-color: var(--bad-line); background: #35201f; background-image: linear-gradient(var(--bad-bg), var(--bad-bg)); cursor: not-allowed; }

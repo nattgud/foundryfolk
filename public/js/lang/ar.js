@@ -411,7 +411,6 @@
       'training {n}% faster': 'تدريب أسرع بنسبة {n}%',
       'output +{n}%': 'إنتاج +{n}%',
       'Boost with {item}: {effect}': 'التعزيز بـ{item}: {effect}',
-      'Click to change what it makes': 'اضغط لتغيير ما ينتجه',
       'Boost on': 'التعزيز مفعّل',
       'Boost off': 'التعزيز متوقف',
       'Uses {item} to make this building more productive': 'يستخدم {item} لجعل هذا المبنى أكثر إنتاجية',

@@ -410,7 +410,6 @@
       'training {n}% faster': '訓練が {n}% 速くなる',
       'output +{n}%': '生産 +{n}%',
       'Boost with {item}: {effect}': '{item} でブースト：{effect}',
-      'Click to change what it makes': 'クリックで作るものを切り替え',
       'Boost on': 'ブースト オン',
       'Boost off': 'ブースト オフ',
       'Uses {item} to make this building more productive': '{item} を使ってこの建物の生産性を高めます',

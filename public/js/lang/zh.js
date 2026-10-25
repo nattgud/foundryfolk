@@ -410,7 +410,6 @@
       'training {n}% faster': '训练快 {n}%',
       'output +{n}%': '产量 +{n}%',
       'Boost with {item}: {effect}': '使用 {item} 增强：{effect}',
-      'Click to change what it makes': '点击更换它生产的东西',
       'Boost on': '增强已开启',
       'Boost off': '增强已关闭',
       'Uses {item} to make this building more productive': '消耗 {item} 来提高这座建筑的产量',

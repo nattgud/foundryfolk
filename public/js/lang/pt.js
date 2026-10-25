@@ -411,7 +411,6 @@
       'training {n}% faster': 'treino {n}% mais rápido',
       'output +{n}%': 'produção +{n}%',
       'Boost with {item}: {effect}': 'Reforço com {item}: {effect}',
-      'Click to change what it makes': 'Clique para mudar o que ela produz',
       'Boost on': 'Reforço ligado',
       'Boost off': 'Reforço desligado',
       'Uses {item} to make this building more productive': 'Usa {item} para tornar esta construção mais produtiva',
