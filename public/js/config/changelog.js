@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.1': [
+      'One Toolsmith replaces the Hammersmith, Picksmith, Axesmith and Scythesmith. It makes whichever tool you have least of, and you choose which tools it may make with a switch for each in its panel. Old saved games keep working: the old smiths become Toolsmiths that make the same tool as before',
       'The guide no longer dims the part of the screen it explains when it is opened from the menu',
     ],
     '0.8.0': [

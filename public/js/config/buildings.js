@@ -710,68 +710,7 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 45
   },
-  // Verktygstillverkning
-  hammersmith: {
-    name: 'Hammersmith',
-    category: 'crafting',
-    symbol: 'HS',
-    color: '#8a8f99',
-    buildCost: { plank: 8, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { iron: 1, wood: 1 },
-      outputs: { hammer: 1 },
-      craftSeconds: 12
-    },
-    buildDuration: 45
-  },
-
-  picksmith: {
-    name: 'Picksmith',
-    category: 'crafting',
-    symbol: 'PS',
-    color: '#7b92a8',
-    buildCost: { plank: 8, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { iron: 1, wood: 1 },
-      outputs: { pickaxe: 1 },
-      craftSeconds: 12
-    },
-    buildDuration: 45
-  },
-
-  axesmith: {
-    name: 'Axesmith',
-    category: 'crafting',
-    symbol: 'AS',
-    color: '#a0958a',
-    buildCost: { plank: 8, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { iron: 1, wood: 1 },
-      outputs: { axe: 1 },
-      craftSeconds: 12
-    },
-    buildDuration: 45
-  },
-
-  scythesmith: {
-    name: 'Scythesmith',
-    category: 'crafting',
-    symbol: 'SS',
-    color: '#8da58f',
-    buildCost: { plank: 8, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { iron: 1, wood: 1 },
-      outputs: { scythe: 1 },
-      craftSeconds: 12
-    },
-    buildDuration: 45
-  },
-
-  
+  // Verktygstillverkning. 'auto': byggnaden gör det påslagna verktyg som det finns minst av (spelaren slår av/på verktyg i infopanelen)
   toolsmith: {
     name: 'Toolsmith',
     category: 'crafting',
@@ -780,11 +719,8 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 8, stone: 8 },
     job: {
       kind: 'craft',
-      choices: [
-        { inputs: { iron: 1, wood: 1 }, outputs: { knife: 1 } },
-        { inputs: { iron: 1, wood: 1 }, outputs: { saw: 1 } },
-        { inputs: { iron: 1, wood: 1 }, outputs: { shovel: 1 } }
-      ],
+      auto: true,
+      choices: ['hammer', 'pickaxe', 'axe', 'scythe', 'shovel', 'saw', 'knife'].map(tool => ({ inputs: { iron: 1, wood: 1 }, outputs: { [tool]: 1 } })),
       craftSeconds: 12
     },
     buildDuration: 45

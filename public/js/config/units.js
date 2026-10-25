@@ -164,11 +164,8 @@ CityBuilder.Config.units = {
 
       charcoal_burner: { image: 'images/units/worker_digger.png', imageCarrying: 'images/units/worker_digger_carry.png' },
 
-      hammersmith: { image: 'images/units/worker_blacksmith.png', imageCarrying: 'images/units/worker_blacksmith_carry.png' },
-      picksmith: { image: 'images/units/worker_blacksmith.png', imageCarrying: 'images/units/worker_blacksmith_carry.png' },
-      axesmith: { image: 'images/units/worker_blacksmith.png', imageCarrying: 'images/units/worker_blacksmith_carry.png' },
-      scythesmith: { image: 'images/units/worker_blacksmith.png', imageCarrying: 'images/units/worker_blacksmith_carry.png' },
-      
+      toolsmith: { image: 'images/units/worker_blacksmith.png', imageCarrying: 'images/units/worker_blacksmith_carry.png' },
+
       crystal_gatherer: { image: 'images/units/worker_collector.png', imageCarrying: 'images/units/worker_collector_carry.png' },
       moonstone_gatherer: { image: 'images/units/worker_mystic.png', imageCarrying: 'images/units/worker_mystic_carry.png' },
       relic_hunter: { image: 'images/units/worker_adventurer.png', imageCarrying: 'images/units/worker_adventurer_carry.png' },

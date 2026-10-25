@@ -218,9 +218,33 @@
 
     // ---- Val, boost och aura -----------------------------------------------------------------------------------------
     // job.choices: [{ inputs, outputs }]: byggnaden gör ett val åt gången (Market, Mint). Spelaren väljer med building.choice (index).
+    // job.auto (Toolsmith): byggnaden väljer själv det påslagna val vars vara det finns minst av. Avslagna val sparas som bitmask i building.recipesOff.
     recipe(building) {
       const job = building.definition.job;
-      return job.choices ? job.choices[building.choice] || job.choices[0] : job;
+      if (!job.choices) return job;
+      return job.choices[job.auto ? this.autoChoice(building) : building.choice] || job.choices[0];
+    },
+
+    recipeEnabled: (building, index) => !((building.recipesOff || 0) & (1 << index)),
+
+    // Index på det påslagna valet med minst lager (lagren plus det byggnaden själv har tillverkat); vid lika vinner det första
+    autoChoice(building) {
+      const { Economy } = CityBuilder;
+      let best = 0, fewest = Infinity;
+      building.definition.job.choices.forEach((choice, index) => {
+        if (!this.recipeEnabled(building, index)) return;
+        const amount = Object.entries(choice.outputs).reduce((sum, [id, count]) => sum + (Economy.totalAmount(id, building.player) + (building.outputStock[id] || 0)) / count, 0);
+        if (amount < fewest) { fewest = amount; best = index; }
+      });
+      return best;
+    },
+
+    // Slår ett val av eller på. Minst ett val måste vara påslaget.
+    toggleRecipe(building, index) {
+      const choices = building.definition.job.choices;
+      const on = choices.filter((choice, i) => this.recipeEnabled(building, i)).length;
+      if (this.recipeEnabled(building, index) && on <= 1) return;
+      building.recipesOff = (building.recipesOff || 0) ^ (1 << index);
     },
 
     // Byggnadens boost (se settings.boosts) eller null. definition.boost åsidosätter jobbtypens standard.

@@ -310,7 +310,7 @@
         { title: 'Hotkeys', target: ['#bottom .build-categories'], category: null, lines: ['Press a number to open a category in the build menu (you can switch category at any time), then a letter on the top row, Q W E R T Y U I O P, to choose a building in it. Esc goes back one step. Hover over a button to see its key.', 'While one of your buildings is selected, the letters control it instead: P pauses, B turns the boost on or off, R changes what it makes, T opens trading, S switches between attack and defence, Z X C V train soldiers, and Delete demolishes (press it twice).'] },
         { title: 'Select, pause and demolish', mock: 'pause', lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
         { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
-        { title: 'Tools', lines: ['Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.', 'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and smiths make more once they unlock.', 'Hammers are different: they are used up when you build larger buildings. Fine buildings also use limestone, bronze and steel.'] },
+        { title: 'Tools', lines: ['Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.', 'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and the Toolsmith makes more once it unlocks. It makes the tool you have least of, and you can switch tools on or off in its panel.', 'Hammers are different: they are used up when you build larger buildings. Fine buildings also use limestone, bronze and steel.'] },
         { title: 'Food and meals', lines: ['Miners get hungry. Meat, fish or bread keeps a basic mine going, but the deep mines (gold, silver, gemstones, salt and sulfur) want proper meals from a Kitchen.', 'A Kitchen cooks meals from meat, fish, flour, apples, berries and mushrooms. Tap it to change the recipe.'] },
         { title: 'Leftovers and spells', lines: ['Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones. They are only kept when there is room, so they never hold up the main product.', 'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach: new trees, berries, rocks or ore appear on free grass around the spot. A spell costs goods from your store, and each enchanter rests a short while after casting.'] },
         { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
@@ -2549,6 +2549,9 @@
           ? t('Hunting: {source} → {output}', { source: Array.isArray(job.sourceUnit) ? t('Animals') : this.unitName(job.sourceUnit), output })
           : t('Gathering: {source} → {output}', { source: this.terrainName(job.sourceTerrain), output }));
         if (this.getBuildingRange(definition)) lines.push(t('Range: {n} tiles', { n: this.getBuildingRange(definition) }));
+      } else if (job?.kind === 'craft' && job.auto) {
+        lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.resourceIconsHtml(job.choices[0].inputs), outputs: job.choices.map(choice => this.resourceChip(Object.keys(choice.outputs)[0])).join('') }));
+        lines.push(t('Makes the tool there is least of, among those switched on. Click a tool to switch it on or off'));
       } else if (job?.kind === 'craft' && job.choices) {
         for (const { inputs, outputs } of job.choices) lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.resourceIconsHtml(inputs), outputs: this.resourceIconsHtml(outputs) }));
         lines.push(t('Choose what it makes in the info panel'));
@@ -2736,7 +2739,10 @@
           : '';
 
         const spellButtons = own && building.definition.spells ? building.definition.spells.map(spell => `<button class="spell-button" data-spell="${spell.id}"></button>`).join('') : '';
-        const choiceButton = own && building.definition.job?.choices ? '<button id="choiceButton"></button>' : '';
+        const choices = own && building.definition.job?.choices;
+        const choiceButton = !choices ? '' : building.definition.job.auto   // Toolsmith: en av/på-knapp per verktyg, annars en knapp som bläddrar bland valen
+          ? building.definition.job.choices.map((choice, index) => `<button class="tool-toggle" data-index="${index}"></button>`).join('')
+          : '<button id="choiceButton"></button>';
         const marketButton = own && building.definition.isMarket && building.buildProgress >= 1 ? `<button id="marketButton">${t('Trade')}</button>` : '';
         const boostButton = own && this.boostAvailable(building.definition) ? '<button id="boostButton"></button>' : '';
 
@@ -2768,6 +2774,10 @@
 
         for (const button of panel.querySelectorAll('.spell-button')) {
           button.onclick = () => CityBuilder.Game.beginSpell(building, button.dataset.spell);
+        }
+
+        for (const button of panel.querySelectorAll('.tool-toggle')) {
+          button.onclick = () => CityBuilder.Behaviors.toggleRecipe(building, +button.dataset.index);
         }
 
         if (byId('choiceButton')) {
@@ -2825,6 +2835,10 @@
           (casting ? `<br>${t('Tap a spot on the map, up to {n} tiles from here', { n: building.definition.spellRange })}` : '');
       }
 
+      // Toolsmith: vilket verktyg som tillverkas nu
+      const making = own && building.buildProgress >= 1 && building.definition.job?.auto
+        ? `<br>${t('Making: {item}', { item: this.resourceName(Object.keys(CityBuilder.Behaviors.recipe(building).outputs)[0]) })}` : '';
+
       const html = !own
         ? [building.buildProgress < 1 ? statusText : null, t('Health: {hp}/{max}', { hp: Math.ceil(building.hp), max: Math.ceil(building.maxHp) })].filter(Boolean).join('<br>')
         : building.definition.isStorage
@@ -2832,6 +2846,7 @@
         : statusText +
           (this.efficiencyText(building) ? `<br>${this.efficiencyText(building)}` : '') +
           garrisonHtml +
+          making +
           spellHtml +
           trade +
           (range ? `<br>${t('Range: {n} tiles', { n: range })}` : '') +
@@ -2859,6 +2874,21 @@
         const recipe = CityBuilder.Behaviors.recipe(building);
         setButton('choiceButton', `⇄ ${this.resourceIconsHtml(recipe.outputs)} ← ${this.resourceIconsHtml(recipe.inputs)}`);
         byId('choiceButton').dataset.baseTitle = t('Click to change what it makes');
+      }
+      if (building.definition.job?.auto) {
+        const Behaviors = CityBuilder.Behaviors, current = Behaviors.autoChoice(building), choices = building.definition.job.choices;
+        const enabled = choices.filter((choice, index) => Behaviors.recipeEnabled(building, index)).length;
+        panel.querySelectorAll('.tool-toggle').forEach(button => {
+          const index = +button.dataset.index, id = Object.keys(choices[index].outputs)[0], on = Behaviors.recipeEnabled(building, index);
+          const stock = CityBuilder.Economy.totalAmount(id, building.player), item = this.resourceName(id);
+          const html = `${on ? '✓' : '✕'} ${this.resourceChip(id)}${item} <b>${stock}</b>`;
+          if (button.dataset.html !== html) { button.dataset.html = html; button.innerHTML = html; }
+          button.classList.toggle('on', on);
+          button.classList.toggle('making', on && index === current);
+          button.title = !on ? t('{item}: {n} in stock. Click to switch on', { item, n: stock })
+            : enabled <= 1 ? t('At least one tool must stay on')
+            : t('{item}: {n} in stock. Click to switch off', { item, n: stock });
+        });
       }
       for (const button of panel.querySelectorAll('.spell-button')) {
         const spell = CityBuilder.Spells.find(building, button.dataset.spell), html = `${t(spell.name)} ${this.resourceIconsHtml(spell.cost, true)}`;

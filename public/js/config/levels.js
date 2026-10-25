@@ -78,7 +78,7 @@
     coal_mine: 9, leatherworker: 9,
     large_warehouse: 10, limestone_quarry: 10,
     enchanter: 12, iron_mine: 12, iron_smelter: 13,
-    axesmith: 14, picksmith: 14, toolsmith: 14, hammersmith: 15, scythesmith: 15, steelworks: 16,
+    toolsmith: 14, steelworks: 16,
     copper_mine: 18, tin_mine: 18, copper_smelter: 19, tin_smelter: 19,
     bronze_foundry: 20, rock_crusher: 20, salt_mine: 21, sulfur_mine: 21,
     great_depot: 22, silver_mine: 23, silver_smelter: 24, mint: 25, market: 26, gold_mine: 27, gold_smelter: 28,

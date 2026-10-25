@@ -53,6 +53,9 @@
 
   const typeOf = building => building.type || Object.keys(CityBuilder.Config.buildings).find(id => CityBuilder.Config.buildings[id] === building.definition);
 
+  // Byggnader som slagits ihop med andra (äldre sparningar): gammal typ -> [ny typ, vara den gör]. De blir en Toolsmith som bara gör sitt gamla verktyg.
+  const MERGED = { hammersmith: ['toolsmith', 'hammer'], picksmith: ['toolsmith', 'pickaxe'], axesmith: ['toolsmith', 'axe'], scythesmith: ['toolsmith', 'scythe'] };
+
   const BACKUP_KEY = 'citybuilder.backup';   // kopia av en sparning som inte gick att återställa helt (rörs aldrig av autosparningen)
 
   // Läser en sparning. Finns den men inte går att läsa (trasig eller från en äldre version) hoppas den över och spelaren får veta det.
@@ -220,6 +223,8 @@
 
       for (const saved of data.buildings || []) {
         try {
+          const [merged, tool] = MERGED[saved.type] || [];
+          if (merged) saved.type = merged;
           const building = World.placeBuilding(saved.type, saved.x, saved.y, false, saved.fields.player) || World.buildingAt(saved.x, saved.y);
           if (!building || building.type === 'hq') continue;
 
@@ -233,6 +238,7 @@
           }
 
           restoreFields(building, saved.fields);
+          if (tool) building.recipesOff = building.definition.job.choices.reduce((mask, choice, index) => (tool in choice.outputs ? mask : mask | (1 << index)), 0);
         } catch (error) {
           failed++;
           Errors.report(error, `load: building ${saved && saved.type}`);
