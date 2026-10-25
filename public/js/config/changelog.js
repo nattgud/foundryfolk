@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.2': [
+      'The panel of a building now says clearly what it takes in (Imports), what it uses (Tools: shown with a ✓ when in place and a red ✕ when missing, never counted as imports) and what it gives out (Exports). When all recipes make the same thing, as in the Kitchen, a recipe only shows its ingredients and how many you get',
       'Buildings that can make several things (Kitchen, Mill, Farm, Alchemist) now show one radio button per recipe in their panel, with the ingredients and the result, where exactly one is selected. The R hotkey still steps to the next recipe',
     ],
     '0.8.1': [

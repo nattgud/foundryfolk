@@ -309,6 +309,7 @@
       'No room for it here': 'لا مكان لها هنا',
       'Not finished yet': 'لم يكتمل بعد',
       'Tools': 'الأدوات',
+      'Needed to work. Delivered once and never used up': 'مطلوبة للعمل. تُسلَّم مرة واحدة ولا تُستهلك أبدًا',
       'Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.': 'تحتاج مبانٍ كثيرة إلى أداة قبل أن تعمل: الحطّاب يحتاج فأسًا، والمزرعة أو جامع الأعشاب منجلًا، وكوخ الصيادين أو جامع الفطر سكينًا، والمنشرة منشارًا، وحفرة الطين أو جامع الرمل مجرفة، والمحاجر والمناجم معولًا. يجلب الحمّالون الأداة مرة واحدة ولا تُستهلك.',
       'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and the Toolsmith makes more once it unlocks. It makes the tool you have least of, and you can switch tools on or off in its panel.': 'تبدأ بمخزون وافر من الأدوات فلا تعلق في البداية. هدم المبنى يعيد أداته، ويصنع حدّاد الأدوات المزيد عند فتحه. يصنع الأداة التي لديك أقل منها، ويمكنك تشغيل الأدوات أو إيقافها في لوحته.',
       'Makes the tool there is least of, among those switched on. Click a tool to switch it on or off': 'يصنع الأداة الأقل مخزونًا بين الأدوات المفعّلة. اضغط على أداة لتشغيلها أو إيقافها',

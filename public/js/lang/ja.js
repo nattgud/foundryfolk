@@ -308,6 +308,7 @@
       'No room for it here': 'ここには場所がありません',
       'Not finished yet': 'まだ完成していません',
       'Tools': '道具',
+      'Needed to work. Delivered once and never used up': '作業に必要です。一度だけ届けられ、消費されません',
       'Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.': '多くの建物は作業に道具が必要です。木こり小屋には斧、農場や薬草採集所には鎌、狩人の小屋やキノコ採集所にはナイフ、製材所にはのこぎり、粘土採掘場や砂採集所にはシャベル、採石場や鉱山にはつるはしです。道具は運搬人が一度届けるだけで、消費されません。',
       'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and the Toolsmith makes more once it unlocks. It makes the tool you have least of, and you can switch tools on or off in its panel.': '最初から十分な道具があるので、序盤で行き詰まることはありません。建物を解体すると道具が戻り、道具鍛冶が解放されるとさらに作れます。道具鍛冶は在庫が最も少ない道具を作り、パネルで道具のオン／オフを切り替えられます。',
       'Makes the tool there is least of, among those switched on. Click a tool to switch it on or off': 'オンになっている道具のうち、在庫が最も少ないものを作ります。道具をクリックするとオン／オフを切り替えられます',

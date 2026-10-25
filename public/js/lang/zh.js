@@ -308,6 +308,7 @@
       'No room for it here': '这里没有空间',
       'Not finished yet': '尚未完工',
       'Tools': '工具',
+      'Needed to work. Delivered once and never used up': '工作所必需。只送一次，永不消耗',
       'Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.': '许多建筑需要工具才能工作：伐木场需要斧头，农场或草药采集所需要镰刀，猎人小屋或蘑菇采集所需要刀，锯木厂需要锯子，黏土坑或沙子采集所需要铁锹，采石场和矿山需要镐。搬运工只送一次工具，它不会被消耗。',
       'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and the Toolsmith makes more once it unlocks. It makes the tool you have least of, and you can switch tools on or off in its panel.': '你一开始就有充足的工具，所以前期不会卡住。拆除建筑会归还它的工具，工具匠解锁后可以制造更多。它会制造你库存最少的工具，你也可以在它的面板中开关各种工具。',
       'Makes the tool there is least of, among those switched on. Click a tool to switch it on or off': '在已开启的工具中，制造库存最少的那一种。点击工具即可开启或关闭',

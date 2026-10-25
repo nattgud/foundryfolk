@@ -2465,19 +2465,22 @@
     // Export: mängd som väntar på att hämtas (grå när det inte finns något just nu).
     tradeOf(building) {
       const definition = building.definition, job = definition.job, Behaviors = CityBuilder.Behaviors;
-      if (!job) return { imports: [], exports: [] };
-      const stock = building.inputStock;
+      if (!job) return { imports: [], tools: [], exports: [] };
+      const stock = building.inputStock, equipment = definition.requiredEquipment || {};
+      // Insatser som förbrukas. Verktyg (requiredEquipment) förbrukas inte och visas för sig.
       const imports = Object.entries(CityBuilder.Garrison.isGarrison(building) ? Object.fromEntries(Object.entries(Config.units[CityBuilder.Garrison.trainingType(building)].training.inputs).map(([id, amount]) => [id, Behaviors.inputBuffer(amount)])) : Behaviors.requiredResources(building))
+        .filter(([id]) => !(id in equipment))
         .map(([id, capacity]) => ({ ids: [id], have: stock[id] || 0, capacity }));
+      const tools = Object.entries(equipment).map(([id, need]) => ({ id, have: stock[id] || 0, need }));
       for (const group of Behaviors.eatGroups(building)) imports.push({ ids: group.any, have: Behaviors.eatStock(building, group) });
 
       const made = job.kind === 'craft' ? Behaviors.recipe(building).outputs : job.outputs && Object.keys(job.outputs).length ? job.outputs : job.outputResource ? { [job.outputResource]: 1 } : {};
       const exports = Object.keys({ ...made, ...building.outputStock }).map(id => ({ ids: [id], have: building.outputStock[id] || 0 }));
-      return { imports, exports };
+      return { imports, tools, exports };
     },
 
     tradeHtml(building) {
-      const { imports, exports } = this.tradeOf(building);
+      const { imports, tools, exports } = this.tradeOf(building);
       const row = (icon, label, title, entries, missingClass) => entries.length
         ? `<div class="trade-row" title="${title}"><span class="trade-label">${icon} ${label}</span>${entries.map(entry => {
           const amount = entry.capacity ? `${entry.have}/${entry.capacity}` : entry.have;
@@ -2487,7 +2490,11 @@
             : this.resourceChip(entry.ids[0], amount, cls);
         }).join('')}</div>`
         : '';
-      return row('⬇', t('Imports'), t('Delivered here by carriers'), imports, 'info-short') +
+      // Verktyg: används men förbrukas inte. ✓ när de finns på plats, ✕ (rött) när de saknas.
+      const toolRow = tools.length
+        ? `<div class="trade-row" title="${t('Needed to work. Delivered once and never used up')}"><span class="trade-label">🛠 ${t('Tools')}</span>${tools.map(tool => this.resourceChip(tool.id, tool.have >= tool.need ? '✓' : '✕', tool.have >= tool.need ? '' : 'info-short')).join('')}</div>`
+        : '';
+      return row('⬇', t('Imports'), t('Delivered here by carriers'), imports, 'info-short') + toolRow +
         row('⬆', t('Exports'), t('Carried from here to storage'), exports, 'info-dim');
     },
 
@@ -2878,7 +2885,9 @@
         const choices = building.definition.job.choices, chosen = building.choice || 0;
         panel.querySelectorAll('.choice-radio').forEach(radio => {
           const { inputs, outputs } = choices[+radio.dataset.index], selected = +radio.dataset.index === chosen;
-          const made = this.resourceIconsHtml(outputs), takes = this.resourceIconsHtml(inputs);
+          // Ger alla recept samma vara (köket: alltid en måltid) visas bara hur många man får. Varan syns under Exports.
+          const same = choices.every(choice => Object.keys(choice.outputs).join() === Object.keys(outputs).join());
+          const made = same ? Object.values(outputs).reduce((sum, amount) => sum + amount, 0) : this.resourceIconsHtml(outputs), takes = this.resourceIconsHtml(inputs);
           const html = `${selected ? '●' : '○'} ${takes ? takes + ' → ' : ''}${made}`;
           if (radio.dataset.html !== html) { radio.dataset.html = html; radio.innerHTML = html; }
           radio.classList.toggle('on', selected);
