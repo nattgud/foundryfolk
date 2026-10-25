@@ -274,7 +274,7 @@
         { title: 'Locked or too expensive', target: ['#bottom .building-option'], category: 'construction', lines: ['A grey button with a dashed border, a stroke and a padlock is locked. Move the mouse over it to see at which level it unlocks. Only the next few levels are shown.', 'A button with a red border is unlocked, but you cannot afford it yet. Move the mouse over it to see the cost.'] },
         { title: 'Hotkeys', target: ['#bottom .build-categories'], category: null, lines: ['Press a number to open a category in the build menu (you can switch category at any time), then a letter on the top row, Q W E R T Y U I O P, to choose a building in it. Esc goes back one step. Hover over a button to see its key.', 'While one of your buildings is selected, the letters control it instead: P pauses, B turns the boost on or off, R changes what it makes, T opens trading, S switches between attack and defence, Z X C V train soldiers, and Delete demolishes (press it twice).'] },
         { title: 'Select, pause and demolish', mock: 'pause', lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
-        { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
+        { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'Imports are on the left of the arrow and exports on the right. Tools the building needs are shown next to its name. They are delivered once and never used up.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
         { title: 'Tools', lines: ['Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.', 'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and the Toolsmith makes more once it unlocks. It makes the tool you have least of, and you can switch tools on or off in its panel.', 'Hammers are different: they are used up when you build larger buildings. Fine buildings also use limestone, bronze and steel.'] },
         { title: 'Food and meals', lines: ['Miners get hungry. Meat, fish or bread keeps a basic mine going, but the deep mines (gold, silver, gemstones, salt and sulfur) want proper meals from a Kitchen.', 'A Kitchen cooks meals from meat, fish, flour, apples, berries and mushrooms. Tap it to change the recipe.'] },
         { title: 'Leftovers and spells', lines: ['Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones. They are only kept when there is room, so they never hold up the main product.', 'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach: new trees, berries, rocks or ore appear on free grass around the spot. A spell costs goods from your store, and each enchanter rests a short while after casting.'] },
@@ -2012,16 +2012,12 @@
           display: flex;
           flex-wrap: wrap;
           align-items: center;
-          gap: 2px 10px;
+          gap: 2px 8px;
           margin-top: 3px;
         }
-        .trade-label {
-          min-width: 78px;
-          color: var(--dim);
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: .04em;
-        }
+        .trade-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
+        .trade-arrow { color: var(--dim); }
+        .trade-tools { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; vertical-align: middle; font-weight: normal; }
         .trade-any { display: inline-flex; align-items: center; gap: 3px; }
         .trade-any i { color: var(--dim); font-style: normal; }
         .trade-any b { margin-left: 3px; font-weight: normal; }
@@ -2479,23 +2475,29 @@
       return { imports, tools, exports };
     },
 
+    // En rad: importikoner → exportikoner. Röd siffra = saknas, grå = inget väntar just nu.
     tradeHtml(building) {
-      const { imports, tools, exports } = this.tradeOf(building);
-      const row = (icon, label, title, entries, missingClass) => entries.length
-        ? `<div class="trade-row" title="${title}"><span class="trade-label">${icon} ${label}</span>${entries.map(entry => {
+      const { imports, exports } = this.tradeOf(building);
+      const group = (entries, title, missingClass) => entries.length
+        ? `<span class="trade-group" title="${title}">${entries.map(entry => {
           const amount = entry.capacity ? `${entry.have}/${entry.capacity}` : entry.have;
           const cls = entry.have > 0 ? '' : missingClass;
           return entry.ids.length > 1
             ? `<span class="trade-any">${entry.ids.map(id => this.resourceChip(id)).join('<i>/</i>')}<b class="${cls}">${amount}</b></span>`
             : this.resourceChip(entry.ids[0], amount, cls);
-        }).join('')}</div>`
+        }).join('')}</span>`
         : '';
-      // Verktyg: används men förbrukas inte. ✓ när de finns på plats, ✕ (rött) när de saknas.
-      const toolRow = tools.length
-        ? `<div class="trade-row" title="${t('Needed to work. Delivered once and never used up')}"><span class="trade-label">🛠 ${t('Tools')}</span>${tools.map(tool => this.resourceChip(tool.id, tool.have >= tool.need ? '✓' : '✕', tool.have >= tool.need ? '' : 'info-short')).join('')}</div>`
+      return imports.length || exports.length
+        ? `<div class="trade-row">${group(imports, t('Delivered here by carriers'), 'info-short')}<span class="trade-arrow">→</span>${group(exports, t('Carried from here to storage'), 'info-dim')}</div>`
         : '';
-      return row('⬇', t('Imports'), t('Delivered here by carriers'), imports, 'info-short') + toolRow +
-        row('⬆', t('Exports'), t('Carried from here to storage'), exports, 'info-dim');
+    },
+
+    // Verktyg (används men förbrukas inte) intill byggnadens namn: ✓ när de finns på plats, ✕ (rött) när de saknas.
+    toolsHtml(building) {
+      const { tools } = this.tradeOf(building);
+      return tools.length
+        ? `<span class="trade-tools" title="${t('Needed to work. Delivered once and never used up')}">${tools.map(tool => this.resourceChip(tool.id, tool.have >= tool.need ? '✓' : '✕', tool.have >= tool.need ? '' : 'info-short')).join('')}</span>`
+        : '';
     },
 
     resourceIconsHtml(amounts, shortage) {
@@ -2765,7 +2767,7 @@
         const stanceButton = own && CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton"></button>' : '';
 
         panel.innerHTML =
-          `<div><b>${this.buildingName(building.definition)}</b><br><span id="infoStatus"></span></div>` +
+          `<div><b>${this.buildingName(building.definition)}</b><span id="infoTools"></span><br><span id="infoStatus"></span></div>` +
           `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${marketButton}${trainButtons}${spellButtons}${stanceButton}${choiceButton}${boostButton}${pauseButton}${demolishButton}</div>`;
 
         if (byId('stanceButton')) {
@@ -2818,7 +2820,6 @@
 
       // Fiendens byggnader: bara namn, byggstatus och hälsa. Import, export, effektivitet, lager och soldater är spelarens egna uppgifter.
       const own = building.player === CityBuilder.Players.HUMAN;
-      const range = this.getBuildingRange(building.definition);
       const trade = building.definition.isStorage || !own ? '' : this.tradeHtml(building);
 
       // Garnison: soldater (inne + ute), vald träning och vad den kostar, och markering av vald soldattyp
@@ -2860,7 +2861,6 @@
           making +
           spellHtml +
           trade +
-          (range ? `<br>${t('Range: {n} tiles', { n: range })}` : '') +
           (building.hp < building.maxHp ? `<br>${t('Health: {hp}', { hp: Math.ceil(building.hp) })}` : '');
 
       // Uppdateras bara vid ändring, så att bilderna inte laddas om varje bildruta
@@ -2868,6 +2868,12 @@
       if (status.dataset.html !== html) {
         status.dataset.html = html;
         status.innerHTML = html;
+      }
+      const toolsHtml = own && !building.definition.isStorage ? this.toolsHtml(building) : '';
+      const tools = byId('infoTools');
+      if (tools.dataset.html !== toolsHtml) {
+        tools.dataset.html = toolsHtml;
+        tools.innerHTML = toolsHtml;
       }
 
       if (byId('pauseButton')) {
