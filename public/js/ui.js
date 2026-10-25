@@ -2550,9 +2550,12 @@
       return Object.entries(Config.buildings).some(([id, other]) => other.job?.outputs && boost.resource in other.job.outputs && (!levels || levels.isUnlocked(id)));
     },
 
-    describeBuilding(definition) {
+    // building (valfri): en byggd byggnad, vars utdata visas med boost, aura och trollformler inräknade
+    describeBuilding(definition, building) {
       const lines = [];
       const job = definition.job;
+      const factor = building ? CityBuilder.Behaviors.yieldFactor(building) : 1;
+      const amountsOf = amounts => factor === 1 ? amounts : Object.fromEntries(Object.entries(amounts).map(([id, amount]) => [id, Math.round(amount * factor * 10) / 10]));
 
       if (definition.isStorage) lines.push(t('Stores resources'));
       if (definition.isStorage && definition.carriers) lines.push(t('Adds {n} carriers', { n: definition.carriers }));
@@ -2564,7 +2567,7 @@
       }
 
       if (job?.kind === 'gather') {
-        const output = this.resourceChip(job.outputResource ?? Object.keys(job.outputs || {})[0]);
+        const output = this.resourceChip(job.outputResource ?? Object.keys(job.outputs || {})[0], factor === 1 ? undefined : Math.round(factor * 10) / 10);
         lines.push(job.sourceUnit
           ? t('Hunting: {source} → {output}', { source: Array.isArray(job.sourceUnit) ? t('Animals') : this.unitName(job.sourceUnit), output })
           : t('Gathering: {source} → {output}', { source: this.terrainName(job.sourceTerrain), output }));
@@ -2573,11 +2576,11 @@
         lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.resourceIconsHtml(job.choices[0].inputs), outputs: job.choices.map(choice => this.resourceChip(Object.keys(choice.outputs)[0])).join('') }));
         lines.push(t('Makes the tool there is least of, among those switched on. Click a tool to switch it on or off'));
       } else if (job?.kind === 'craft' && job.choices) {
-        for (const { inputs, outputs } of job.choices) lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.resourceIconsHtml(inputs), outputs: this.resourceIconsHtml(outputs) }));
+        for (const { inputs, outputs } of job.choices) lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.resourceIconsHtml(inputs), outputs: this.resourceIconsHtml(amountsOf(outputs)) }));
         lines.push(t('Choose what it makes in the info panel'));
       } else if (job?.kind === 'craft') {
         const inputs = this.resourceIconsHtml(job.inputs);
-        const outputs = this.resourceIconsHtml(job.outputs);
+        const outputs = this.resourceIconsHtml(amountsOf(job.outputs));
         lines.push(inputs ? t('Processing: {inputs} → {outputs}', { inputs, outputs }) : t('Producing: {outputs}', { outputs }));
       } else if (job?.kind === 'plant') {
         lines.push(t('Plants a tree {min}-{max} tiles away: {inputs} → {wood} wood', {
@@ -2706,7 +2709,7 @@
 
       const key = (building
         ? (building.player === CityBuilder.Players.HUMAN
-          ? `b${building.id}:${I18n().language}:${building.status}:${building.buildProgress < 1 ? this.timeLeft(building) : 'done'}:${this.efficiencyText(building)}`
+          ? `b${building.id}:${I18n().language}:${building.status}:${building.buildProgress < 1 ? this.timeLeft(building) : 'done'}:${this.efficiencyText(building)}:${CityBuilder.Behaviors.yieldFactor(building)}`
           : `e${building.id}:${I18n().language}:${Math.ceil(building.hp)}:${building.buildProgress < 1 ? this.timeLeft(building) : 'done'}`)
         : `t${tile.x},${tile.y}:${node.tile.remainingAmount}`) +
         `@${Math.round(left)},${Math.round(top)},${Math.round(size)}`;
@@ -2722,7 +2725,7 @@
               ...(building.buildProgress < 1 ? [t('Constructing {time}', { time: this.timeLeft(building) })] : []),
               ...(enemy ? [t('Health: {hp}/{max}', { hp: Math.ceil(building.hp), max: Math.ceil(building.maxHp) })] : [
                 ...(this.efficiencyText(building) ? [this.efficiencyText(building)] : []),
-                ...this.describeBuilding(building.definition),
+                ...this.describeBuilding(building.definition, building),
               ]),
             ]
           )

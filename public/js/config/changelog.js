@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.2': [
+      'The output shown when you hover a building now includes boost, monument and spell bonuses, so you see the effect straight away',
       'More varied Enchanter spells. Grove, Earthsong and Ley Line still create deposits (Bloom and Stonecall are folded into them). New: Wild Surge (animals breed 20 times as fast for a while), Frenzy (workers and workshops work twice as fast), Bounty (buildings make double output), Swift Wind (carriers walk twice as fast) and Withering (enemy soldiers drop to 25% health). The effects show as a coloured ring on the map',
       'Building panel: the tools a building needs sit next to its name, imports and exports are one line (imports → exports), and the range text is gone since the map already shows the range',
       'The game sounds no longer pause the music you play in other apps (Spotify and others) on phones. The game music is off by default on touch screens, and can be turned on in the settings',

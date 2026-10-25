@@ -284,6 +284,13 @@
       return best;
     },
 
+    // Hur många gånger så stor utdata byggnaden ger just nu: boost (när den är påslagen och har vara), aura och trollformler
+    yieldFactor(building) {
+      const boost = building.definition.job && this.boostOf(building);
+      const boosting = boost && building.boostOn && (building.boostLeft > 0 || building.inputStock[boost.resource] > 0);
+      return 1 + (boosting && boost.yield || 0) + this.auraBonus(building, 'yield') + CityBuilder.Spells.bonus(building, 'yield');
+    },
+
     // Utdata med boost och aura. Bråkdelar sparas i building.yieldCarry, så +10 % betyder en extra vara var tionde omgång.
     yielded(building, outputs, boosted) {
       const boost = boosted && this.boostOf(building);
