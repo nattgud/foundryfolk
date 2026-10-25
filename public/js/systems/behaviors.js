@@ -199,9 +199,21 @@
           building.outputStock[resourceId] = (building.outputStock[resourceId] || 0) + amount;
           this.note(building, 'make', resourceId, amount);
         }
+        this.addByproducts(building, building.definition.job.byproducts);
       }
       worker.carriedResource = null;
       worker.carriedOutputs = null;
+    },
+
+    // Biprodukter (job.byproducts, t.ex. aska och tjära vid kolbränning) är en bonus: de lagras bara om det finns plats
+    // (utbufferten och centrallagret), så att de aldrig stoppar huvudprodukten
+    addByproducts(building, byproducts) {
+      for (const resourceId in byproducts || {}) {
+        const amount = byproducts[resourceId];
+        if (building.removed || Utils.sumValues(building.outputStock) + amount > Config.settings.outputBufferCapacity || CityBuilder.Economy.isFull(resourceId, building.player)) continue;
+        building.outputStock[resourceId] = (building.outputStock[resourceId] || 0) + amount;
+        this.note(building, 'make', resourceId, amount);
+      }
     },
 
     // ---- Val, boost och aura -----------------------------------------------------------------------------------------
@@ -428,6 +440,7 @@
             (building.outputStock[resourceId] || 0) + outputs[resourceId];
           Behaviors.note(building, 'make', resourceId, outputs[resourceId]);
         }
+        Behaviors.addByproducts(building, recipe.byproducts);
       }
     },
   });

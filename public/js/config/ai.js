@@ -17,7 +17,7 @@ CityBuilder.Config.ai = {
   patienceSeconds: 30,
   maxPerType: 12,
   explore: { step: 33, maxScouts: 36 },
-  attack: { fromLevel: 16, soldiers: [6, 2, 40], maxTowers: 12, afterSeconds: 1800 },   // datorn anfaller från bana fromLevel, när den har [start, +per bana, tak] soldater, tidigast afterSeconds in i spelet och bara om den sett något av motståndaren
+  attack: { fromLevel: 40, soldiers: [6, 2, 40], maxTowers: 12, afterSeconds: 1800 },   // datorn anfaller från bana fromLevel, när den har [start, +per bana, tak] soldater, tidigast afterSeconds in i spelet och bara om den sett något av motståndaren
   build: [
     ['woodcutter', 2], ['sawmill', 1], ['quarry', 1], ['warehouse', 1], ['woodcutter', 3],
     ['guard_tower', 1], ['garrison', 1], ['quarry', 2], ['sawmill', 2], ['guard_tower', 2],

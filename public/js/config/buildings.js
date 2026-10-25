@@ -30,7 +30,7 @@ CityBuilder.Config.buildings = {
     category: 'storage',
     symbol: 'LW',
     color: '#b89a35',
-    buildCost: { plank: 8, stone: 6, brick: 4 },
+    buildCost: { plank: 8, stone: 6, brick: 4, hammer: 1 },
     isStorage: true,
     capacity: 200,
     carriers: 10,
@@ -42,7 +42,7 @@ CityBuilder.Config.buildings = {
     category: 'storage',
     symbol: 'GW',
     color: '#c9ab40',
-    buildCost: { plank: 20, stone: 20, brick: 12, iron: 4 },
+    buildCost: { plank: 20, stone: 20, brick: 12, steel: 4, limestone: 8, bronze: 4, hammer: 2 },
     isStorage: true,
     capacity: 600,
     carriers: 25,
@@ -56,6 +56,7 @@ CityBuilder.Config.buildings = {
     symbol: 'WC',
     color: '#7a5230',
     buildCost: { plank: 2 },
+    requiredEquipment: { axe: 1 },
     job: {
       kind: 'gather',
       sourceTerrain: 'tree',
@@ -71,6 +72,7 @@ CityBuilder.Config.buildings = {
     symbol: 'SM',
     color: '#b5875a',
     buildCost: { wood: 5, stone: 4 },
+    requiredEquipment: { saw: 1 },
     job: {
       kind: 'craft',
       inputs: { wood: 1 },
@@ -86,6 +88,7 @@ CityBuilder.Config.buildings = {
     symbol: 'PL',
     color: '#176d22',
     buildCost: { wood: 5, stone: 4 },
+    requiredEquipment: { shovel: 1 },
     job: {
       kind: 'plant',
       inputs: { seeds: 1, water: 1 },
@@ -137,6 +140,7 @@ CityBuilder.Config.buildings = {
     symbol: 'HG',
     color: '#526b40',
     buildCost: { plank: 4, wood: 4 },
+    requiredEquipment: { scythe: 1 },
     job: {
       kind: 'gather',
       sourceTerrain: 'herbs',
@@ -153,6 +157,7 @@ CityBuilder.Config.buildings = {
     symbol: 'MG',
     color: '#7a5c80',
     buildCost: { plank: 4, wood: 4 },
+    requiredEquipment: { knife: 1 },
     job: {
       kind: 'gather',
       sourceTerrain: 'mushrooms',
@@ -169,10 +174,13 @@ CityBuilder.Config.buildings = {
     symbol: 'F',
     color: '#b8a22e',
     buildCost: { plank: 6, wood: 5, stone: 4 },
+    requiredEquipment: { scythe: 1 },
     job: {
       kind: 'craft',
-      inputs: { },
-      outputs: { grain: 2, straw: 1, seeds: 1 },
+      choices: [
+        { outputs: { grain: 2, straw: 1, seeds: 1 } },
+        { inputs: { grain: 2, water: 1 }, outputs: { animal: 2 } }
+      ],
       craftSeconds: 8
     },
     buildDuration: 20
@@ -185,7 +193,7 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 8, wood: 6, stone: 4 },
     job: {
       kind: 'craft',
-      inputs: { grain: 3, water: 1 },
+      inputs: { animal: 1, grain: 3, water: 1 },
       outputs: { horse: 1 },
       craftSeconds: 40
     },
@@ -197,12 +205,14 @@ CityBuilder.Config.buildings = {
     symbol: 'HC',
     color: '#8a7b3e',
     buildCost: { plank: 6, wood: 5, stone: 4 },
+    requiredEquipment: { knife: 1 },
     job: {
       kind: 'gather',
       sourceUnit: Object.keys(CityBuilder.Config.units).filter(id => CityBuilder.Config.units[id].isAnimal),
       searchRadius: 20,
       workLabel: "Hunting",
       outputs: { meat: 1, leather: 1 },
+      byproducts: { bone: 1 },
       craftSeconds: 1
     },
     buildDuration: 15
@@ -246,6 +256,7 @@ CityBuilder.Config.buildings = {
     symbol: 'SC',
     color: '#c9b887',
     buildCost: { plank: 4 },
+    requiredEquipment: { shovel: 1 },
     job: {
       kind: 'gather',
       sourceTerrain: 'sand',
@@ -262,6 +273,7 @@ CityBuilder.Config.buildings = {
     symbol: 'CP',
     color: '#946b58',
     buildCost: { plank: 4, stone: 3 },
+    requiredEquipment: { shovel: 1 },
     job: {
       kind: 'gather',
       sourceTerrain: 'clay',
@@ -278,8 +290,10 @@ CityBuilder.Config.buildings = {
     symbol: 'LQ',
     color: '#b8b4a5',
     buildCost: { plank: 4, stone: 4 },
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 4 },
       sourceTerrain: 'limestone',
       searchRadius: 20,
       outputResource: 'limestone',
@@ -295,6 +309,7 @@ CityBuilder.Config.buildings = {
     symbol: 'Q',
     color: '#7d8790',
     buildCost: { plank: 5, wood: 4 },
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
       sourceTerrain: 'rock',
@@ -311,8 +326,10 @@ CityBuilder.Config.buildings = {
     symbol: 'RC',
     color: '#5d6368',
     buildCost: { plank: 8 },
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 4 },
       sourceTerrain: 'mountain',
       searchRadius: 25,
       outputResource: 'sand',
@@ -328,9 +345,10 @@ CityBuilder.Config.buildings = {
     color: '#7b6f6a',
     buildCost: { plank: 6, stone: 5 },
     placeOnTerrain: 'iron_ore',
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
+      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 2 },
       sourceTerrain: 'iron_ore',
       searchRadius: 10,
       outputResource: 'iron_ore',
@@ -346,9 +364,10 @@ CityBuilder.Config.buildings = {
     color: '#c87f35',
     buildCost: { plank: 6, stone: 5 },
     placeOnTerrain: 'copper_ore',
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
+      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 2 },
       sourceTerrain: 'copper_ore',
       searchRadius: 10,
       outputResource: 'copper_ore',
@@ -364,9 +383,10 @@ CityBuilder.Config.buildings = {
     color: '#9ba3a5',
     buildCost: { plank: 6, stone: 5 },
     placeOnTerrain: 'tin_ore',
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
+      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 2 },
       sourceTerrain: 'tin_ore',
       searchRadius: 10,
       outputResource: 'tin_ore',
@@ -382,9 +402,10 @@ CityBuilder.Config.buildings = {
     color: '#34363d',
     buildCost: { plank: 6, stone: 5 },
     placeOnTerrain: 'coal',
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
+      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 2 },
       sourceTerrain: 'coal',
       searchRadius: 10,
       outputResource: 'coal',
@@ -400,9 +421,10 @@ CityBuilder.Config.buildings = {
     color: '#827044',
     buildCost: { plank: 8, stone: 6 },
     placeOnTerrain: 'gold_ore',
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
+      eats: { any: ['meal'], every: 3 },
       sourceTerrain: 'gold_ore',
       searchRadius: 10,
       outputResource: 'gold_ore',
@@ -418,9 +440,10 @@ CityBuilder.Config.buildings = {
     color: '#b9c1ca',
     buildCost: { plank: 8, stone: 6 },
     placeOnTerrain: 'silver_ore',
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
+      eats: { any: ['meal'], every: 3 },
       sourceTerrain: 'silver_ore',
       searchRadius: 10,
       outputResource: 'silver_ore',
@@ -436,9 +459,10 @@ CityBuilder.Config.buildings = {
     color: '#765aa8',
     buildCost: { plank: 8, stone: 6 },
     placeOnTerrain: 'gemstone',
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
+      eats: { any: ['meal'], every: 3 },
       sourceTerrain: 'gemstone',
       searchRadius: 10,
       outputResource: 'gemstone',
@@ -454,12 +478,13 @@ CityBuilder.Config.buildings = {
     color: '#d6d0bd',
     buildCost: { plank: 6, stone: 6 },
     placeOnTerrain: 'salt_ore',
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
+      eats: { any: ['meal'], every: 3 },
       sourceTerrain: 'salt_ore',
       searchRadius: 10,
-      outputResource: 'salt',
+      outputResource: 'salt_ore',
       workSeconds: 30
     },
     buildDuration: 20
@@ -472,9 +497,10 @@ CityBuilder.Config.buildings = {
     color: '#d6c83f',
     buildCost: { plank: 6, stone: 6 },
     placeOnTerrain: 'sulfur',
+    requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread'], every: 2 },
+      eats: { any: ['meal'], every: 3 },
       sourceTerrain: 'sulfur',
       searchRadius: 10,
       outputResource: 'sulfur',
@@ -493,8 +519,10 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 7, stone: 7 },
     job: {
       kind: 'craft',
-      inputs: { grain: 2 },
-      outputs: { flour: 1 },
+      choices: [
+        { inputs: { grain: 2 }, outputs: { flour: 1 } },
+        { inputs: { salt_ore: 2 }, outputs: { salt: 2 } }
+      ],
       craftSeconds: 8
     },
     buildDuration: 20
@@ -630,11 +658,58 @@ CityBuilder.Config.buildings = {
       kind: 'craft',
       inputs: { wood: 2 },
       outputs: { charcoal: 1 },
+      byproducts: { tar: 1, ash: 1 },
       craftSeconds: 10
     },
     buildDuration: 30
   },
 
+  kitchen: {
+    name: 'Kitchen',
+    category: 'processing',
+    symbol: 'KI',
+    color: '#c9784a',
+    buildCost: { plank: 7, stone: 6 },
+    job: {
+      kind: 'craft',
+      choices: [
+        { inputs: { meat: 1, mushrooms: 2 }, outputs: { meal: 3 } },
+        { inputs: { flour: 1, apples: 1, berries: 2 }, outputs: { meal: 3 } },
+        { inputs: { fish: 1, mushrooms: 1, berries: 1 }, outputs: { meal: 2 } },
+        { inputs: { meat: 1, apples: 1 }, outputs: { meal: 2 } }
+      ],
+      craftSeconds: 12
+    },
+    buildDuration: 30
+  },
+  glassworks: {
+    name: 'Glassworks',
+    category: 'processing',
+    symbol: 'GL',
+    color: '#7fb8c4',
+    buildCost: { plank: 8, stone: 8, brick: 4 },
+    job: {
+      kind: 'craft',
+      inputs: { sand: 3, ash: 1 },
+      outputs: { glass: 2 },
+      craftSeconds: 12
+    },
+    buildDuration: 45
+  },
+  steelworks: {
+    name: 'Steelworks',
+    category: 'processing',
+    symbol: 'ST',
+    color: '#7c8ba0',
+    buildCost: { plank: 8, stone: 8, brick: 4 },
+    job: {
+      kind: 'craft',
+      inputs: { iron: 1, coal: 1 },
+      outputs: { steel: 1 },
+      craftSeconds: 15
+    },
+    buildDuration: 45
+  },
   // Verktygstillverkning
   hammersmith: {
     name: 'Hammersmith',
@@ -697,6 +772,23 @@ CityBuilder.Config.buildings = {
   },
 
   
+  toolsmith: {
+    name: 'Toolsmith',
+    category: 'crafting',
+    symbol: 'TO',
+    color: '#9a8f7a',
+    buildCost: { plank: 8, stone: 8 },
+    job: {
+      kind: 'craft',
+      choices: [
+        { inputs: { iron: 1, wood: 1 }, outputs: { knife: 1 } },
+        { inputs: { iron: 1, wood: 1 }, outputs: { saw: 1 } },
+        { inputs: { iron: 1, wood: 1 }, outputs: { shovel: 1 } }
+      ],
+      craftSeconds: 12
+    },
+    buildDuration: 45
+  },
   swordsmith: {
     name: 'Swordsmith',
     category: 'crafting',
@@ -733,6 +825,7 @@ CityBuilder.Config.buildings = {
     symbol: 'LT',
     color: '#7a5632',
     buildCost: { plank: 6, stone: 4 },
+    requiredEquipment: { knife: 1 },
     job: {
       kind: 'craft',
       inputs: { leather: 3 },
@@ -750,7 +843,7 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 8, stone: 8 },
     job: {
       kind: 'craft',
-      inputs: { iron: 4, leather: 1 },
+      inputs: { steel: 3, leather: 1 },
       outputs: { iron_armor: 1 },
       craftSeconds: 20
     },
@@ -763,7 +856,7 @@ CityBuilder.Config.buildings = {
     category: 'trade',
     symbol: 'MI',
     color: '#cdbb6a',
-    buildCost: { plank: 8, stone: 10, brick: 6 },
+    buildCost: { plank: 8, stone: 10, brick: 6, limestone: 4, bronze: 4, hammer: 1 },
     boost: null,
     job: {
       kind: 'craft',
@@ -784,7 +877,7 @@ CityBuilder.Config.buildings = {
     category: 'trade',
     symbol: 'MK',
     color: '#d98f3a',
-    buildCost: { plank: 10, stone: 8, brick: 6 },
+    buildCost: { plank: 10, stone: 8, brick: 6, limestone: 4, hammer: 1 },
     isMarket: true,
     market: {
       sellFactor: 0.5,
@@ -792,7 +885,7 @@ CityBuilder.Config.buildings = {
         wood: 2, plank: 3, stone: 3, clay: 3, sand: 2, limestone: 4, brick: 5, charcoal: 4, coal: 4,
         grain: 2, flour: 3, bread: 5, meat: 3, fish: 3, leather: 6, salt: 6,
         iron_ore: 6, copper_ore: 6, tin_ore: 6, iron: 8, copper: 10, tin: 10, bronze: 14,
-        straw: 2, apples: 2, berries: 2, mushrooms: 3, herbs: 4,
+        straw: 2, apples: 2, berries: 2, mushrooms: 3, herbs: 4, glass: 6, meal: 6,
         crystal: 25, gemstone: 30, moonstone: 40,
       },
     },
@@ -872,11 +965,13 @@ CityBuilder.Config.buildings = {
     category: 'magic',
     symbol: 'AL',
     color: '#6f4fa8',
-    buildCost: { plank: 10, stone: 10, brick: 6 },
+    buildCost: { plank: 10, stone: 10, brick: 6, hammer: 1 },
     job: {
       kind: 'craft',
-      inputs: { crystal: 1, herbs: 2, salt: 1 },
-      outputs: { potion: 2 },
+      choices: [
+        { inputs: { crystal: 1, herbs: 2, mushrooms: 1, glass: 1, salt: 1 }, outputs: { potion: 2 } },
+        { inputs: { bone: 2, sulfur: 1 }, outputs: { cursed_ash: 1 } }
+      ],
       craftSeconds: 15
     },
     buildDuration: 60
@@ -887,7 +982,19 @@ CityBuilder.Config.buildings = {
     category: 'magic',
     symbol: 'EN',
     color: '#3f8f6a',
-    buildCost: { plank: 12, stone: 10, brick: 6 },
+    buildCost: { plank: 12, stone: 10, brick: 6, hammer: 1 },
+    // Engångsformler: kostar varor ur lagret och förvandlar 'count' lediga gräsrutor inom 'radius' runt målet till nya fyndigheter
+    // ('terrains' = vikter, 'amount' = mängd per ruta, annars terrängens standard). Målet får ligga högst spellRange rutor från
+    // förtrollaren, och varje förtrollare vilar spellCooldown sekunder efter en formel. Biprodukterna ben, aska och tjära får här sitt värde.
+    spellRange: 30,
+    spellCooldown: 20,
+    spells: [
+      { id: 'grove', name: 'Grove', cost: { ash: 4, seeds: 2 }, radius: 3, count: 7, terrains: { tree: 1 }, amount: [5, 10] },
+      { id: 'bloom', name: 'Bloom', cost: { bone: 3, ash: 2 }, radius: 3, count: 6, terrains: { berry_bush: 2, apple_tree: 1, herbs: 2, mushrooms: 2 } },
+      { id: 'stonecall', name: 'Stonecall', cost: { tar: 3, bone: 2 }, radius: 3, count: 6, terrains: { rock: 3, clay: 2, sand: 2, limestone: 1 } },
+      { id: 'earthsong', name: 'Earthsong', cost: { cursed_ash: 2, tar: 2 }, radius: 2, count: 4, terrains: { iron_ore: 3, coal: 3, copper_ore: 1, tin_ore: 1 } },
+      { id: 'leyline', name: 'Ley Line', cost: { cursed_ash: 3, moonstone: 1 }, radius: 2, count: 3, terrains: { silver_ore: 2, gold_ore: 1, gemstone: 1, crystal: 1 } },
+    ],
     job: {
       kind: 'craft',
       inputs: { wood: 4, moonstone: 1 },
@@ -902,7 +1009,7 @@ CityBuilder.Config.buildings = {
     category: 'magic',
     symbol: 'SH',
     color: '#c9b6e8',
-    buildCost: { plank: 12, stone: 14, brick: 8 },
+    buildCost: { plank: 12, stone: 14, brick: 8, limestone: 6, bronze: 6, hammer: 2 },
     job: {
       kind: 'craft',
       inputs: { ancient_relic: 1, gemstone: 2, gold: 1 },
@@ -947,7 +1054,7 @@ CityBuilder.Config.buildings = {
     category: 'military',
     symbol: 'GA',
     color: '#357a65',
-    buildCost: { plank: 15, stone: 20, brick: 8 },
+    buildCost: { plank: 15, stone: 20, brick: 8, hammer: 2 },
     job: {
       kind: 'garrison',
       capacity: 10,
@@ -978,7 +1085,7 @@ CityBuilder.Config.buildings = {
     category: 'special',
     symbol: '★',
     color: '#e8c547',
-    buildCost: { plank: 10, stone: 10, fallen_star: 5, ancient_relic: 5, moonstone: 10, crystal: 20 },
+    buildCost: { plank: 10, stone: 10, fallen_star: 5, ancient_relic: 5, moonstone: 10, crystal: 20, limestone: 12, bronze: 10, hammer: 3 },
     isWinBuilding: true,
     unique: true,
     aura: { radius: 30, yield: 0.1, training: 0.25 },

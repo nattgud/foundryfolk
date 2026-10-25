@@ -112,6 +112,7 @@
       Renderer.hoverTile = tile;
 
       if (game.placingType) { game.tryBuild(game.placingType, tile.x, tile.y); return; }
+      if (game.casting) { game.castSpell(tile.x, tile.y); return; }
 
       const building = CityBuilder.World.seenBuildingAt(tile.x, tile.y);
       game.selectBuilding(building);

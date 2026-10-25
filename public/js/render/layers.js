@@ -618,7 +618,7 @@
   // och äldre svenska texter ger samma ikon. Arbetarens status går före byggnadens.
   const ICON_DIR = 'images/ui/icons/';
   const STATUS_ICONS = {
-    'No resources': 'warning_grey', 'Local stock full': 'warning_grey', 'Central storage full': 'warning_red', 'Tools missing': 'warning_grey',
+    'No resources': 'warning_grey', 'Local stock full': 'warning_grey', 'Central storage full': 'warning_red', 'Tools missing': 'tools_missing',
     'No animals in range': 'warning_grey', 'Paused': 'paused', 'Missing export': 'error', "Can't reach": 'error',
   };
   const statusIcon = status => {
@@ -648,6 +648,16 @@
       }
       const name = statusIcon(building.workerUnit?.status) || statusIcon(building.status);
       const icon = name && Assets.get(ICON_DIR + name + '.png');
+      if (!icon && name === 'tools_missing') {   // saknas bilden (images/ui/icons/tools_missing.png) ritas en orange bricka med korsade verktyg
+        const wave = pulse ? (Math.sin(time * 3.5) + 1) / 2 : .5, radius = tileSize * .25 * (1 + wave * .15), cx = (building.x + .5) * tileSize, cy = (building.y + .5) * tileSize;
+        context.globalAlpha = .75 + .25 * wave;
+        context.fillStyle = '#e08a1e'; context.strokeStyle = '#fff'; context.lineWidth = Math.max(1.5, tileSize * .05);
+        context.beginPath(); context.arc(cx, cy, radius, 0, Math.PI * 2); context.fill(); context.stroke();
+        const k = radius * .55;
+        context.beginPath(); context.moveTo(cx - k, cy + k); context.lineTo(cx + k, cy - k); context.moveTo(cx - k, cy - k); context.lineTo(cx + k, cy + k); context.stroke();
+        context.globalAlpha = 1;
+        continue;
+      }
       if (icon) {
         const urgent = name === 'error', still = name === 'paused';
         const wave = still ? 0 : pulse ? (Math.sin(time * (urgent ? 6 : 3.5)) + 1) / 2 : .5;
@@ -700,6 +710,24 @@
     context.strokeStyle = `rgba(${color},.9)`;
     context.lineWidth = 2;
     context.strokeRect(px + 1, py + 1, size - 2, size - 2);
+  });
+
+  // Väntande trollformel: ringen visar vad formeln träffar (grön om målet går att välja, annars röd) och en svag ring förtrollarens räckvidd
+  Renderer.addLayer('spellGhost', (context, renderer) => {
+    const casting = CityBuilder.Game.casting;
+    if (!casting || !renderer.hoverTile) return;
+    const { building, spell } = casting, { x, y } = renderer.hoverTile, size = renderer.tileSize;
+    const reach = building.definition.spellRange * size, centre = { x: (building.x + .5) * size, y: (building.y + .5) * size };
+    const ok = CityBuilder.Spells.problem(building, spell, x, y);
+    const color = ok === null || ok === 'cooldown' || ok === 'cost' ? '95,181,95' : '217,83,79';
+    context.lineWidth = 2;
+    context.setLineDash([6, 6]);
+    context.strokeStyle = 'rgba(255,255,255,.35)';
+    context.beginPath(); context.arc(centre.x, centre.y, reach, 0, Math.PI * 2); context.stroke();
+    context.setLineDash([]);
+    context.fillStyle = `rgba(${color},.2)`;
+    context.strokeStyle = `rgba(${color},.9)`;
+    context.beginPath(); context.arc((x + .5) * size, (y + .5) * size, (spell.radius + .5) * size, 0, Math.PI * 2); context.fill(); context.stroke();
   });
 
 })(window.CityBuilder);

@@ -6,7 +6,7 @@
    Namn på saker i spelet (terräng, byggnader, resurser, enheter) slås upp med nameOf(typ, id, engelskt namn).
    Först letar den efter nyckeln "typ.id" (t.ex. "terrain.iron_ore"), sedan översätts det engelska namnet.
 
-   Nytt språk: lägg till en rad i LANGUAGES och en ordlista i DICTIONARIES. Språket sparas i localStorage och kan
+   Nytt språk: lägg till en rad i LANGUAGES och en ordlista i DICTIONARIES, eller en egen fil som zh.js (se längre ner). Språket sparas i localStorage och kan
    bytas när som helst (I18n.setLanguage); alla som lyssnar (I18n.onChange) får veta och ritar om sig. */
 (function (CityBuilder) {
   'use strict';
@@ -38,6 +38,7 @@
   };
 
   // Genus för banornas substantiv (index i adjektivens former). sv: en/ett, de: m/f/n, es: m/f
+  const RTL = new Set();
   const GENDER = {
     sv: { 'Swamp': 1, 'Cursed land': 1, 'Meteor shower': 1 },
     de: { 'Valley': 2, 'Stone desert': 1, 'Crag': 1, 'Cursed land': 2, 'Ruin': 1, 'Clay plain': 1, 'Drought': 1 },
@@ -305,6 +306,29 @@
       'resource.knife': 'Kniv', 'resource.potion': 'Trolldryck', 'resource.crystal': 'Kristall', 'resource.moonstone': 'Månsten',
       'resource.cursed_ash': 'Förbannad aska', 'resource.ancient_relic': 'Forntida relik', 'resource.fallen_star': 'Fallen stjärna', 'resource.enchanted_wood': 'Förtrollat trä',
       'resource.coins': 'Mynt',
+      'resource.glass': 'Glas', 'resource.meal': 'Måltid',
+      'building.kitchen': 'Kök', 'building.glassworks': 'Glasbruk', 'building.steelworks': 'Stålverk', 'building.toolsmith': 'Verktygssmed',
+      'Grove': 'Lund', 'Bloom': 'Blomning', 'Stonecall': 'Stenkallelse', 'Earthsong': 'Jordsång', 'Ley Line': 'Ley-linje',
+      'Also leaves: {list}': 'Lämnar också: {list}',
+      'Casts one-off spells that create new deposits on free grass, up to {n} tiles away. One cast per {s} s for each enchanter.': 'Läser engångsformler som skapar nya fyndigheter på ledig gräsmark, högst {n} rutor bort. En formel per {s} s för varje förtrollare.',
+      '{spell}: {cost} → {terrains}': '{spell}: {cost} → {terrains}',
+      'Resting: {n} s': 'Vilar: {n} s',
+      'Tap a spot on the map, up to {n} tiles from here': 'Tryck på en plats på kartan, högst {n} rutor härifrån',
+      'Cast, then tap a spot on the map: {terrains}': 'Läs formeln och tryck sedan på en plats på kartan: {terrains}',
+      'The enchanter is resting': 'Förtrollaren vilar',
+      'Too far from the enchanter': 'För långt från förtrollaren',
+      'No room for it here': 'Det finns ingen plats för den här',
+      'Not finished yet': 'Inte färdigbyggd än',
+      'Tools': 'Verktyg',
+      'Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.': 'Många byggnader behöver ett verktyg för att kunna arbeta: en skogshuggare behöver en yxa, en gård eller örtsamlare en lie, en jägarstuga eller svampplockare en kniv, ett sågverk en såg, en lergrop eller sandsamlare en spade, och stenbrott och gruvor en spetshacka. Bärarna levererar verktyget en gång och det går inte åt.',
+      'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and smiths make more once they unlock.': 'Du börjar med ett gott lager av verktyg, så du kan inte fastna i början. Rivs en byggnad får du tillbaka dess verktyg, och smederna tillverkar fler när de låsts upp.',
+      'Hammers are different: they are used up when you build larger buildings. Fine buildings also use limestone, bronze and steel.': 'Hammare är annorlunda: de går åt när du bygger större byggnader. De finaste byggnaderna använder också kalksten, brons och stål.',
+      'Food and meals': 'Mat och måltider',
+      'Miners get hungry. Meat, fish or bread keeps a basic mine going, but the deep mines (gold, silver, gemstones, salt and sulfur) want proper meals from a Kitchen.': 'Gruvarbetare blir hungriga. Kött, fisk eller bröd räcker till en enkel gruva, men de djupa gruvorna (guld, silver, ädelstenar, salt och svavel) vill ha riktiga måltider från ett kök.',
+      'A Kitchen cooks meals from meat, fish, flour, apples, berries and mushrooms. Tap it to change the recipe.': 'Ett kök lagar måltider av kött, fisk, mjöl, äpplen, bär och svamp. Tryck på det för att byta recept.',
+      'Leftovers and spells': 'Rester och trollformler',
+      'Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones. They are only kept when there is room, so they never hold up the main product.': 'Vissa byggnader lämnar något extra: kolmilor lämnar tjära och aska, jägare lämnar ben. De sparas bara om det finns plats, så de stoppar aldrig huvudprodukten.',
+      'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach: new trees, berries, rocks or ore appear on free grass around the spot. A spell costs goods from your store, and each enchanter rests a short while after casting.': 'Förtrollaren använder dem till engångsformler. Markera den, välj en formel och tryck på kartan inom räckvidden: nya träd, bär, stenar eller malm dyker upp på ledig gräsmark runt platsen. En formel kostar varor ur lagret, och varje förtrollare vilar en stund efter att den läst en formel.',
       // Byggnader
       'building.hq': 'Bas', 'building.warehouse': 'Lagerhus', 'building.large_warehouse': 'Stort lagerhus', 'building.great_depot': 'Stordepå', 'building.woodcutter': 'Skogshuggare',
       'building.apple_gatherer': 'Äppelplockare', 'building.berry_gatherer': 'Bärplockare', 'building.herb_gatherer': 'Örtsamlare',
@@ -466,9 +490,9 @@
       'A red number means something is missing. A grey number means nothing is waiting right now.': 'Ett rött tal betyder att något saknas. Ett grått tal betyder att inget väntar just nu.',
       'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.': 'Du får 1 bärare per byggnad, och fler per lager: 5 för ett lagerhus, 10 för ett stort lagerhus och 25 för en stordepå.',
       'The Market, which unlocks late in the game, opens a trading window when you tap it.': 'Marknaden, som låses upp sent i spelet, öppnar ett handelsfönster när du trycker på den.',
-      'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25.': 'Köp varor för mynt, eller sälj varor för halva priset. Välj antal med ×1, ×5, ×10 eller ×25.',
+      'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25. Coins are made at the Mint from silver and gold, and are only good for trading.': 'Köp varor för mynt, eller sälj varor för halva priset. Välj antal med ×1, ×5, ×10 eller ×25. Mynt tillverkas i myntverket av silver och guld och används bara till handel.',
       'The menu button opens save, load, settings and this guide. You can also start a custom map with your own settings, and use several save slots.': 'Menyknappen öppnar spara, ladda, inställningar och den här handledningen. Du kan också starta en egen karta med egna inställningar och använda flera sparplatser.',
-      'From level 15 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.': 'Från nivå 15 finns en rivaliserande bas 60–90 rutor bort i okänd riktning. Hitta den med vakttorn: de ser långt.',
+      'From level 39 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.': 'Från nivå 39 finns en rivaliserande bas 60–90 rutor bort i okänd riktning. Hitta den med vakttorn: de ser långt.',
       'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.': 'Fienderna väntar minst 30 minuter innan de anfaller, och bara när de har upptäckt dig.',
       'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.': 'När du attackeras ljuder en siren, och en röd pil på minikartan pekar mot striden i några sekunder.',
       'Nothing uses this': 'Inget använder den',
@@ -482,7 +506,7 @@
       'This short guide covers the basics. You can open it again from the menu at any time.': 'Den här korta guiden går igenom grunderna. Du kan öppna den igen från menyn när du vill.',
       'The goals tell you what to build next. Start with the first one.': 'Målen visar vad du ska bygga härnäst. Börja med det första.',
       'The top bar shows what you have in store, for example wood, planks and stone.': 'Överst ser du vad du har i lager, till exempel trä, plankor och sten.',
-      'You start with a little. Your buildings make more.': 'Du börjar med lite. Dina byggnader tillverkar mer.',
+      'You start with a little, including some tools. Your buildings make more.': 'Du börjar med lite, bland annat några verktyg. Dina byggnader tillverkar mer.',
       'Then let it work': 'Låt det sedan arbeta',
       'A finished building works by itself. Workers gather or make goods, and carriers bring them where they are needed. You do not control them.': 'En färdig byggnad arbetar av sig själv. Arbetare samlar eller tillverkar varor, och bärare tar dem dit de behövs. Du styr dem inte.',
       'Keep an eye on your goals and build what they ask for. When you want to know more, open the menu here and choose Advanced guide.': 'Håll koll på dina mål och bygg det de ber om. Vill du veta mer öppnar du menyn här och väljer Avancerad guide.',
@@ -752,6 +776,29 @@
       'resource.knife': 'Messer', 'resource.potion': 'Trank', 'resource.crystal': 'Kristall', 'resource.moonstone': 'Mondstein',
       'resource.cursed_ash': 'Verfluchte Asche', 'resource.ancient_relic': 'Uraltes Relikt', 'resource.fallen_star': 'Gefallener Stern', 'resource.enchanted_wood': 'Verzaubertes Holz',
       'resource.coins': 'Münzen',
+      'resource.glass': 'Glas', 'resource.meal': 'Mahlzeit',
+      'building.kitchen': 'Küche', 'building.glassworks': 'Glashütte', 'building.steelworks': 'Stahlwerk', 'building.toolsmith': 'Werkzeugschmied',
+      'Grove': 'Hain', 'Bloom': 'Blüte', 'Stonecall': 'Steinruf', 'Earthsong': 'Erdgesang', 'Ley Line': 'Leylinie',
+      'Also leaves: {list}': 'Hinterlässt außerdem: {list}',
+      'Casts one-off spells that create new deposits on free grass, up to {n} tiles away. One cast per {s} s for each enchanter.': 'Wirkt einmalige Zauber, die auf freiem Gras bis zu {n} Felder entfernt neue Vorkommen erschaffen. Ein Zauber pro {s} s und Verzauberer.',
+      '{spell}: {cost} → {terrains}': '{spell}: {cost} → {terrains}',
+      'Resting: {n} s': 'Ruht: {n} s',
+      'Tap a spot on the map, up to {n} tiles from here': 'Tippe auf einen Ort der Karte, höchstens {n} Felder von hier',
+      'Cast, then tap a spot on the map: {terrains}': 'Zaubern, dann auf einen Ort der Karte tippen: {terrains}',
+      'The enchanter is resting': 'Der Verzauberer ruht',
+      'Too far from the enchanter': 'Zu weit vom Verzauberer entfernt',
+      'No room for it here': 'Hier ist kein Platz dafür',
+      'Not finished yet': 'Noch nicht fertig',
+      'Tools': 'Werkzeuge',
+      'Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.': 'Viele Gebäude brauchen ein Werkzeug, bevor sie arbeiten können: ein Holzfäller eine Axt, eine Farm oder ein Kräutersammler eine Sense, eine Jägerhütte oder ein Pilzsammler ein Messer, ein Sägewerk eine Säge, eine Lehmgrube oder ein Sandsammler eine Schaufel, Steinbrüche und Minen eine Spitzhacke. Die Träger bringen das Werkzeug einmal, es wird nicht verbraucht.',
+      'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and smiths make more once they unlock.': 'Du beginnst mit einem guten Vorrat an Werkzeugen und kannst am Anfang nicht stecken bleiben. Beim Abriss eines Gebäudes bekommst du sein Werkzeug zurück, und die Schmiede stellen mehr her, sobald sie freigeschaltet sind.',
+      'Hammers are different: they are used up when you build larger buildings. Fine buildings also use limestone, bronze and steel.': 'Hämmer sind anders: Sie werden beim Bau größerer Gebäude verbraucht. Die feinsten Gebäude brauchen außerdem Kalkstein, Bronze und Stahl.',
+      'Food and meals': 'Essen und Mahlzeiten',
+      'Miners get hungry. Meat, fish or bread keeps a basic mine going, but the deep mines (gold, silver, gemstones, salt and sulfur) want proper meals from a Kitchen.': 'Bergleute bekommen Hunger. Fleisch, Fisch oder Brot genügen für eine einfache Mine, aber die tiefen Minen (Gold, Silber, Edelsteine, Salz und Schwefel) wollen richtige Mahlzeiten aus einer Küche.',
+      'A Kitchen cooks meals from meat, fish, flour, apples, berries and mushrooms. Tap it to change the recipe.': 'Eine Küche kocht Mahlzeiten aus Fleisch, Fisch, Mehl, Äpfeln, Beeren und Pilzen. Tippe darauf, um das Rezept zu wechseln.',
+      'Leftovers and spells': 'Reste und Zauber',
+      'Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones. They are only kept when there is room, so they never hold up the main product.': 'Manche Gebäude hinterlassen etwas Extra: Köhler Teer und Asche, Jäger Knochen. Sie werden nur gelagert, wenn Platz ist, und halten das Hauptprodukt nie auf.',
+      'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach: new trees, berries, rocks or ore appear on free grass around the spot. A spell costs goods from your store, and each enchanter rests a short while after casting.': 'Der Verzauberer nutzt sie für einmalige Zauber. Wähle ihn aus, such einen Zauber und tippe in Reichweite auf die Karte: Auf freiem Gras um die Stelle entstehen neue Bäume, Beeren, Felsen oder Erz. Ein Zauber kostet Waren aus dem Lager, und jeder Verzauberer ruht danach kurz.',
       // Byggnader
       'building.hq': 'Basis', 'building.warehouse': 'Lagerhaus', 'building.large_warehouse': 'Großes Lagerhaus', 'building.great_depot': 'Großdepot', 'building.woodcutter': 'Holzfäller',
       'building.apple_gatherer': 'Apfelsammler', 'building.berry_gatherer': 'Beerensammler', 'building.herb_gatherer': 'Kräutersammler',
@@ -912,9 +959,9 @@
       'A red number means something is missing. A grey number means nothing is waiting right now.': 'Eine rote Zahl bedeutet, dass etwas fehlt. Eine graue Zahl bedeutet, dass gerade nichts wartet.',
       'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.': 'Du bekommst 1 Träger pro Gebäude und mehr pro Lager: 5 für ein Lagerhaus, 10 für ein großes Lagerhaus und 25 für ein Großdepot.',
       'The Market, which unlocks late in the game, opens a trading window when you tap it.': 'Der Markt, der spät im Spiel freigeschaltet wird, öffnet beim Antippen ein Handelsfenster.',
-      'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25.': 'Kaufe Waren für Münzen oder verkaufe sie zum halben Preis. Wähle die Menge mit ×1, ×5, ×10 oder ×25.',
+      'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25. Coins are made at the Mint from silver and gold, and are only good for trading.': 'Kaufe Waren für Münzen oder verkaufe sie zum halben Preis. Wähle die Menge mit ×1, ×5, ×10 oder ×25. Münzen werden in der Münzprägerei aus Silber und Gold hergestellt und dienen nur dem Handel.',
       'The menu button opens save, load, settings and this guide. You can also start a custom map with your own settings, and use several save slots.': 'Die Menütaste öffnet Speichern, Laden, Einstellungen und diese Anleitung. Du kannst auch eine eigene Karte mit eigenen Einstellungen starten und mehrere Speicherplätze nutzen.',
-      'From level 15 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.': 'Ab Stufe 15 liegt eine Rivalenbasis 60–90 Felder entfernt in unbekannter Richtung. Finde sie mit Wachtürmen: Sie sehen weit.',
+      'From level 39 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.': 'Ab Stufe 39 liegt eine Rivalenbasis 60–90 Felder entfernt in unbekannter Richtung. Finde sie mit Wachtürmen: Sie sehen weit.',
       'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.': 'Feinde warten mindestens 30 Minuten, bevor sie angreifen, und nur, wenn sie dich entdeckt haben.',
       'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.': 'Wenn du angegriffen wirst, ertönt eine Sirene, und ein roter Pfeil auf der Minikarte zeigt einige Sekunden lang auf den Kampf.',
       'Nothing uses this': 'Nichts verwendet das',
@@ -928,7 +975,7 @@
       'This short guide covers the basics. You can open it again from the menu at any time.': 'Diese kurze Anleitung zeigt die Grundlagen. Du kannst sie jederzeit im Menü erneut öffnen.',
       'The goals tell you what to build next. Start with the first one.': 'Die Ziele zeigen dir, was du als Nächstes bauen sollst. Beginne mit dem ersten.',
       'The top bar shows what you have in store, for example wood, planks and stone.': 'Die obere Leiste zeigt, was du im Lager hast, zum Beispiel Holz, Bretter und Stein.',
-      'You start with a little. Your buildings make more.': 'Du beginnst mit wenig. Deine Gebäude stellen mehr her.',
+      'You start with a little, including some tools. Your buildings make more.': 'Du beginnst mit wenig, darunter einige Werkzeuge. Deine Gebäude stellen mehr her.',
       'Then let it work': 'Dann lass es arbeiten',
       'A finished building works by itself. Workers gather or make goods, and carriers bring them where they are needed. You do not control them.': 'Ein fertiges Gebäude arbeitet von selbst. Arbeiter sammeln oder stellen Waren her, und Träger bringen sie dorthin, wo sie gebraucht werden. Du steuerst sie nicht.',
       'Keep an eye on your goals and build what they ask for. When you want to know more, open the menu here and choose Advanced guide.': 'Behalte deine Ziele im Blick und baue, was sie verlangen. Willst du mehr wissen, öffne hier das Menü und wähle Erweiterte Anleitung.',
@@ -1198,6 +1245,29 @@
       'resource.knife': 'Cuchillo', 'resource.potion': 'Poción', 'resource.crystal': 'Cristal', 'resource.moonstone': 'Piedra lunar',
       'resource.cursed_ash': 'Ceniza maldita', 'resource.ancient_relic': 'Reliquia antigua', 'resource.fallen_star': 'Estrella caída', 'resource.enchanted_wood': 'Madera encantada',
       'resource.coins': 'Monedas',
+      'resource.glass': 'Vidrio', 'resource.meal': 'Comida',
+      'building.kitchen': 'Cocina', 'building.glassworks': 'Vidriería', 'building.steelworks': 'Acería', 'building.toolsmith': 'Herrero de herramientas',
+      'Grove': 'Arboleda', 'Bloom': 'Floración', 'Stonecall': 'Llamada de piedra', 'Earthsong': 'Canto de la tierra', 'Ley Line': 'Línea ley',
+      'Also leaves: {list}': 'También deja: {list}',
+      'Casts one-off spells that create new deposits on free grass, up to {n} tiles away. One cast per {s} s for each enchanter.': 'Lanza hechizos de un solo uso que crean nuevos yacimientos en hierba libre, hasta {n} casillas de distancia. Un hechizo cada {s} s por encantador.',
+      '{spell}: {cost} → {terrains}': '{spell}: {cost} → {terrains}',
+      'Resting: {n} s': 'Descansa: {n} s',
+      'Tap a spot on the map, up to {n} tiles from here': 'Toca un punto del mapa, a como mucho {n} casillas de aquí',
+      'Cast, then tap a spot on the map: {terrains}': 'Lanza el hechizo y toca un punto del mapa: {terrains}',
+      'The enchanter is resting': 'El encantador descansa',
+      'Too far from the enchanter': 'Demasiado lejos del encantador',
+      'No room for it here': 'No hay espacio aquí',
+      'Not finished yet': 'Aún no está terminado',
+      'Tools': 'Herramientas',
+      'Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.': 'Muchos edificios necesitan una herramienta para trabajar: un leñador un hacha, una granja o un recolector de hierbas una guadaña, una cabaña de cazadores o un recolector de setas un cuchillo, un aserradero una sierra, una arcillera o un recolector de arena una pala, y las canteras y minas un pico. Los porteadores llevan la herramienta una vez y no se gasta.',
+      'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and smiths make more once they unlock.': 'Empiezas con buenas existencias de herramientas, así que no puedes atascarte al principio. Al demoler un edificio recuperas su herramienta, y los herreros fabrican más cuando se desbloquean.',
+      'Hammers are different: they are used up when you build larger buildings. Fine buildings also use limestone, bronze and steel.': 'Los martillos son distintos: se gastan al construir edificios grandes. Los edificios más nobles usan además caliza, bronce y acero.',
+      'Food and meals': 'Comida',
+      'Miners get hungry. Meat, fish or bread keeps a basic mine going, but the deep mines (gold, silver, gemstones, salt and sulfur) want proper meals from a Kitchen.': 'Los mineros tienen hambre. Carne, pescado o pan bastan para una mina sencilla, pero las minas profundas (oro, plata, gemas, sal y azufre) quieren comidas de verdad de una cocina.',
+      'A Kitchen cooks meals from meat, fish, flour, apples, berries and mushrooms. Tap it to change the recipe.': 'Una cocina prepara comidas con carne, pescado, harina, manzanas, bayas y setas. Tócala para cambiar la receta.',
+      'Leftovers and spells': 'Restos y hechizos',
+      'Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones. They are only kept when there is room, so they never hold up the main product.': 'Algunos edificios dejan algo extra: los carboneros dejan alquitrán y ceniza, los cazadores huesos. Solo se guardan si hay espacio, así que nunca frenan el producto principal.',
+      'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach: new trees, berries, rocks or ore appear on free grass around the spot. A spell costs goods from your store, and each enchanter rests a short while after casting.': 'El encantador los aprovecha en hechizos de un solo uso. Selecciónalo, elige un hechizo y toca el mapa dentro de su alcance: aparecen árboles, bayas, rocas o mineral nuevos en la hierba libre alrededor. Un hechizo cuesta bienes del almacén y cada encantador descansa un rato después de lanzarlo.',
       // Byggnader
       'building.hq': 'Base', 'building.warehouse': 'Almacén', 'building.large_warehouse': 'Almacén grande', 'building.great_depot': 'Gran depósito', 'building.woodcutter': 'Leñador',
       'building.apple_gatherer': 'Recolector de manzanas', 'building.berry_gatherer': 'Recolector de bayas', 'building.herb_gatherer': 'Recolector de hierbas',
@@ -1358,9 +1428,9 @@
       'A red number means something is missing. A grey number means nothing is waiting right now.': 'Un número rojo significa que falta algo. Un número gris significa que ahora no hay nada esperando.',
       'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.': 'Obtienes 1 porteador por edificio y más por almacén: 5 por un almacén, 10 por un almacén grande y 25 por un gran depósito.',
       'The Market, which unlocks late in the game, opens a trading window when you tap it.': 'El Mercado, que se desbloquea tarde en el juego, abre una ventana de comercio al tocarlo.',
-      'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25.': 'Compra bienes con monedas o véndelos por la mitad del precio. Elige la cantidad con ×1, ×5, ×10 o ×25.',
+      'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25. Coins are made at the Mint from silver and gold, and are only good for trading.': 'Compra bienes con monedas o véndelos por la mitad del precio. Elige la cantidad con ×1, ×5, ×10 o ×25. Las monedas se acuñan en la Casa de moneda con plata y oro y solo sirven para comerciar.',
       'The menu button opens save, load, settings and this guide. You can also start a custom map with your own settings, and use several save slots.': 'El botón de menú abre guardar, cargar, ajustes y esta guía. También puedes iniciar un mapa personalizado con tus propios ajustes y usar varias ranuras de guardado.',
-      'From level 15 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.': 'Desde el nivel 15 hay una base rival a 60-90 casillas en una dirección desconocida. Encuéntrala con atalayas: ven lejos.',
+      'From level 39 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.': 'Desde el nivel 39 hay una base rival a 60-90 casillas en una dirección desconocida. Encuéntrala con atalayas: ven lejos.',
       'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.': 'Los enemigos esperan al menos 30 minutos antes de atacar, y solo cuando te han descubierto.',
       'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.': 'Cuando te atacan suena una sirena y una flecha roja en el minimapa señala el combate durante unos segundos.',
       'Nothing uses this': 'Nada lo usa',
@@ -1374,7 +1444,7 @@
       'This short guide covers the basics. You can open it again from the menu at any time.': 'Esta guía breve explica lo básico. Puedes abrirla de nuevo desde el menú cuando quieras.',
       'The goals tell you what to build next. Start with the first one.': 'Los objetivos te dicen qué construir a continuación. Empieza por el primero.',
       'The top bar shows what you have in store, for example wood, planks and stone.': 'La barra superior muestra lo que tienes almacenado, por ejemplo madera, tablones y piedra.',
-      'You start with a little. Your buildings make more.': 'Empiezas con poco. Tus edificios producen más.',
+      'You start with a little, including some tools. Your buildings make more.': 'Empiezas con poco, incluidas algunas herramientas. Tus edificios producen más.',
       'Then let it work': 'Después, déjalo trabajar',
       'A finished building works by itself. Workers gather or make goods, and carriers bring them where they are needed. You do not control them.': 'Un edificio terminado trabaja solo. Los trabajadores recogen o fabrican bienes, y los porteadores los llevan donde hacen falta. Tú no los controlas.',
       'Keep an eye on your goals and build what they ask for. When you want to know more, open the menu here and choose Advanced guide.': 'Vigila tus objetivos y construye lo que piden. Si quieres saber más, abre aquí el menú y elige Guía avanzada.',
@@ -1390,6 +1460,20 @@
       'A red ring with ! means a gatherer finds nothing to gather. An orange or red ring means the building stands still most of the time. Select a building to ring all buildings of the same type.': 'Un anillo rojo con ! significa que un recolector no encuentra nada que recoger. Un anillo naranja o rojo significa que el edificio está parado casi todo el tiempo. Selecciona un edificio para marcar todos los del mismo tipo.',
       'Enemy buildings only show their health, nothing about what they import, export or produce.': 'Los edificios enemigos solo muestran su salud, nada sobre lo que importan, exportan o producen.',
     },
+  };
+
+  // Fler språk läggs in av egna filer (lang/zh.js m.fl., laddas före den här): CityBuilder.LanguagePacks.<kod> = { name, locale, gender, words }
+  for (const [code, pack] of Object.entries(CityBuilder.LanguagePacks || {})) {
+    LANGUAGES.push([code, pack.name, pack.locale]);
+    DICTIONARIES[code] = pack.words;
+    GENDER[code] = pack.gender || {};
+    if (pack.rtl) RTL.add(code);
+  }
+
+  // Sätter språk och skrivriktning på dokumentet (arabiska skrivs från höger till vänster)
+  const applyDocument = code => {
+    document.documentElement.lang = code;
+    document.documentElement.dir = RTL.has(code) ? 'rtl' : 'ltr';
   };
 
   const fill = (text, variables) => (variables
@@ -1420,14 +1504,14 @@
         const match = wanted.find(code => LANGUAGES.some(([known]) => known === code));
         if (match) this.choose(match); else this.needsChoice = true;
       }
-      document.documentElement.lang = this.language;
+      applyDocument(this.language);
     },
 
     // Sätter och sparar språket (utan att tala om det för lyssnarna: används före gränssnittet finns)
     choose(code) {
       this.language = code;
       this.needsChoice = false;
-      document.documentElement.lang = code;
+      applyDocument(code);
       try { localStorage.setItem(STORAGE_KEY, code); } catch (error) { /* ignoreras */ }
     },
 
@@ -1482,7 +1566,7 @@
     setLanguage(code) {
       if (!LANGUAGES.some(([known]) => known === code) || code === this.language) return;
       this.language = code;
-      document.documentElement.lang = code;
+      applyDocument(code);
       try { localStorage.setItem(STORAGE_KEY, code); } catch (error) { /* ignoreras */ }
       for (const listener of this.listeners) listener(code);
     },

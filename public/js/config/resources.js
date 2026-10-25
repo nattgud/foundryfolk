@@ -10,6 +10,7 @@ CityBuilder.Config.resources = {
   clay:             { name: 'Clay',             color: '#b0825a' },
   sand:             { name: 'Sand',             color: '#c9b887' },
   limestone:        { name: 'Limestone',        color: '#b8b4a5' },
+  glass:            { name: 'Glass',            color: '#a9d6dc' },
   brick:            { name: 'Brick',            color: '#b97a45' },
   straw:            { name: 'Straw',            color: '#d6c66e' },
   tar:              { name: 'Tar',              color: '#3b3033' },
@@ -29,6 +30,7 @@ CityBuilder.Config.resources = {
   // Mat och dryck
   water:            { name: 'Water',             color: '#00aaff' },
   bread:            { name: 'Bread',             color: '#d98a3d' },
+  meal:             { name: 'Meal',              color: '#c98c5a' },
   fish:             { name: 'Fish',              color: '#6f9cae' },
   salt:             { name: 'Salt',              color: '#e5e1d7' },
 

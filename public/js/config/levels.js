@@ -21,13 +21,13 @@
   const t = (text, variables) => CityBuilder.t(text, variables); // names and tags are translated when read (see lang.js)
   const baseRules = world.rules.slice();
   const MAX_LEVELS = 120;
-  const MISSION_START = 16;     // levels 1-15 train for combat, from here the goals are attack missions
-  const ELIMINATE_START = 26;   // from here the rival's base must be destroyed
+  const MISSION_START = 40;     // levels 1-39 are about the economy and magic (34-39 also train an army), from here the goals are attack missions
+  const ELIMINATE_START = 50;   // from here the rival's base must be destroyed
   const CHAPTER = 10;
-  const RIVALS_FROM = [35, 70];  // a second rival from level 35, a third from level 70 (the player colours allow three)
+  const RIVALS_FROM = [60, 90];  // a second rival from level 60, a third from level 90 (the player colours allow three)
   const FIRST_RIVAL = MISSION_START - 1;   // below this level there is no enemy at all: nobody can attack you before you have learned to defend
   const rivalsAt = level => (level < FIRST_RIVAL ? 0 : 1 + RIVALS_FROM.filter(from => level >= from).length);
-  const ALLIED_FROM = 60;        // with several rivals: each plays for itself (free-for-all) until this level, from here they are allied against you
+  const ALLIED_FROM = 80;        // with several rivals: each plays for itself (free-for-all) until this level, from here they are allied against you
   const alliedAt = level => rivalsAt(level) > 1 && level >= ALLIED_FROM;
   const LEVEL_KEY = 'citybuilder.level';
   const RUN_KEY = 'citybuilder.runSeed';
@@ -74,21 +74,18 @@
     farm: 5, fishing_hut: 5, planter: 6,
     mill: 6, brickworks: 6,
     apple_gatherer: 7, mushroom_gatherer: 7, sand_collector: 7,
-    bakery: 8,
+    bakery: 8, kitchen: 9,
     coal_mine: 9, leatherworker: 9,
-    large_warehouse: 10, limestone_quarry: 10, bowyer: 10, guard_tower: 10, wall: 9,
-    stables: 11,
-    iron_mine: 12, iron_smelter: 13,
-    axesmith: 14, picksmith: 14, hammersmith: 15, scythesmith: 15,
-    swordsmith: 14, garrison: 15, armorsmith: 17,
-    copper_mine: 18, tin_mine: 18, copper_smelter: 20, tin_smelter: 20,
-    bronze_foundry: 22, rock_crusher: 22,
-    salt_mine: 25, sulfur_mine: 25,
-    great_depot: 28,
-    silver_mine: 32, silver_smelter: 33, mint: 34, market: 35, gold_mine: 36, gold_smelter: 37,
-    gemstone_mine: 40, crystal_gatherer: 40, alchemist: 41,
-    moonstone_gatherer: 45, enchanter: 46, fallen_star_collector: 50, relic_hunter: 55, shrine: 56,
-    monument: 58,
+    large_warehouse: 10, limestone_quarry: 10,
+    enchanter: 12, iron_mine: 12, iron_smelter: 13,
+    axesmith: 14, picksmith: 14, toolsmith: 14, hammersmith: 15, scythesmith: 15, steelworks: 16,
+    copper_mine: 18, tin_mine: 18, copper_smelter: 19, tin_smelter: 19,
+    bronze_foundry: 20, rock_crusher: 20, salt_mine: 21, sulfur_mine: 21,
+    great_depot: 22, silver_mine: 23, silver_smelter: 24, mint: 25, market: 26, gold_mine: 27, gold_smelter: 28,
+    glassworks: 29, gemstone_mine: 30, crystal_gatherer: 30, alchemist: 31,
+    moonstone_gatherer: 32, fallen_star_collector: 33, relic_hunter: 34, shrine: 35, monument: 36,
+    // War comes last: the economy and the magic are learned first, then the army (training starts six levels before the first rival)
+    wall: 33, bowyer: 34, guard_tower: 34, stables: 35, swordsmith: 38, garrison: 39, armorsmith: 41,
   };
   const unlockLevelOf = id => UNLOCK[id] ?? 1;
   const PREVIEW_LEVELS = 3;   // så många nivåer framåt visas låsta byggnader i byggmenyn
@@ -328,14 +325,20 @@
 
   /* ---------- Goals ---------- */
   // Militära resurser (vapen, rustningar, hästar) går åt till soldater och ingår inte i banmålen
-  const SKIP_GOAL_RESOURCES = new Set(['water', 'seeds', 'straw', 'bone', 'animal', 'ash', 'cursed_ash', 'coins',
+  const SKIP_GOAL_RESOURCES = new Set(['water', 'seeds', 'straw', 'bone', 'animal', 'ash', 'tar', 'cursed_ash', 'coins',
     'sword', 'bow', 'leather_armor', 'iron_armor', 'horse']);
 
+  // A building makes one of its recipes at a time (choices); by-products count as outputs too
+  const recipesOf = job => job.choices || [job];
   const outputsOf = definition => {
     const job = definition.job;
     if (!job) return [];
-    return [job.outputResource, ...Object.keys(job.outputs || {})].filter(Boolean);
+    return [...new Set(recipesOf(job).flatMap(recipe => [recipe.outputResource, ...Object.keys(recipe.outputs || {}), ...Object.keys(recipe.byproducts || {})]).filter(Boolean))];
   };
+  const makes = (recipe, resourceId) => recipe.outputs?.[resourceId] ?? recipe.byproducts?.[resourceId] ?? (recipe.outputResource === resourceId ? 1 : 0);
+
+  // Tools are not used up: the starting stock covers the first buildings and the smiths make more
+  const startsWith = resourceId => resourceId in CityBuilder.Config.settings.startingResources;
 
   // Resources the map can supply at this level (unlocked buildings + enough terrain left after scarcity)
   const viableResources = (level, keep) => {
@@ -346,11 +349,14 @@
       changed = false;
       for (const [, definition] of buildings) {
         const job = definition.job;
-        const ok = job.kind === 'gather'
-          ? !!job.sourceUnit || job.sourceTerrain === 'water' || (keep[job.sourceTerrain] ?? 1) >= 0.2
-          : Object.keys(job.inputs || {}).every(resourceId => have.has(resourceId));
-        if (!ok) continue;
-        for (const resourceId of outputsOf(definition)) if (!have.has(resourceId)) { have.add(resourceId); changed = true; }
+        if (!Object.keys(definition.requiredEquipment || {}).every(resourceId => have.has(resourceId) || startsWith(resourceId))) continue;   // tools must be obtainable too
+        for (const recipe of recipesOf(job)) {
+          const ok = job.kind === 'gather'
+            ? !!job.sourceUnit || job.sourceTerrain === 'water' || (keep[job.sourceTerrain] ?? 1) >= 0.2
+            : Object.keys(recipe.inputs || {}).every(resourceId => have.has(resourceId));
+          if (!ok) continue;
+          for (const resourceId of outputsOf({ job: recipe })) if (!have.has(resourceId)) { have.add(resourceId); changed = true; }
+        }
       }
     }
     return have;
@@ -366,20 +372,29 @@
     if (guard.includes(resourceId)) return [];
     for (const [id, definition] of Object.entries(CityBuilder.Config.buildings)) {
       const job = definition.job;
-      if (!job || unlockLevelOf(id) > level || !outputsOf(definition).includes(resourceId)) continue;
+      if (!job || unlockLevelOf(id) > level) continue;
+      const recipe = recipesOf(job).find(candidate => makes(candidate, resourceId));
+      if (!recipe) continue;
       if (job.kind === 'gather') return job.sourceTerrain ? [job.sourceTerrain] : [];
-      return Object.keys(job.inputs || {}).flatMap(input => sourcesOf(input, level, [...guard, resourceId]));
+      return Object.keys(recipe.inputs || {}).flatMap(input => sourcesOf(input, level, [...guard, resourceId]));
     }
     return [];
   };
 
-  // Iron on every level (weapons), plus the terrain of the new buildings and of the stock goals
+  // Iron on every level (weapons), plus the terrain behind what the level's new buildings use and the goals ask for
   const needsOf = info => {
     const needs = new Set(['iron_ore']);
     for (const [id, definition] of Object.entries(CityBuilder.Config.buildings)) {
-      if (unlockLevelOf(id) === info.level && definition.job?.kind === 'gather') needs.add(definition.job.sourceTerrain);
+      const job = definition.job;
+      if (unlockLevelOf(id) === info.level && job) {
+        if (job.kind === 'gather') needs.add(job.sourceTerrain);
+        else for (const recipe of recipesOf(job)) for (const input of Object.keys(recipe.inputs || {})) sourcesOf(input, info.level).forEach(terrain => needs.add(terrain));
+      }
     }
-    for (const item of info.goal.items) if (item.type === 'stock') sourcesOf(item.resource, info.level).forEach(terrain => needs.add(terrain));
+    for (const item of info.goal.items) {
+      if (item.type === 'stock') sourcesOf(item.resource, info.level).forEach(terrain => needs.add(terrain));
+      if (item.type === 'build') for (const resourceId of Object.keys(CityBuilder.Config.buildings[item.id].buildCost)) sourcesOf(resourceId, info.level).forEach(terrain => needs.add(terrain));
+    }
     return [...needs].filter(terrain => ENDOWABLE.has(terrain));
   };
 
@@ -404,18 +419,26 @@
     for (const [id, definition] of Object.entries(CityBuilder.Config.buildings)) {
       const job = definition.job;
       if (!job || unlockLevelOf(id) > level) continue;
-      const amount = job.outputs?.[resourceId] ?? (job.outputResource === resourceId ? 1 : 0);
-      if (!amount) continue;
-      const work = job.kind === 'gather' ? job.workSeconds || job.craftSeconds || 6 : job.craftSeconds || 10;
-      const candidate = { seconds: (work + 8) / amount, latency: work + HOP_SECONDS, depth: 1, ids: new Set([id]) };
-      for (const [input, count] of Object.entries(job.inputs || {})) {
-        const source = chain(input, level, [...guard, resourceId]);
-        candidate.seconds += count * source.seconds / amount;
-        candidate.latency = Math.max(candidate.latency, source.latency + work + HOP_SECONDS);
-        candidate.depth = Math.max(candidate.depth, source.depth + 1);
-        source.ids.forEach(ingredient => candidate.ids.add(ingredient));
+      for (const recipe of recipesOf(job)) {
+        const amount = makes(recipe, resourceId);
+        if (!amount) continue;
+        const work = job.kind === 'gather' ? job.workSeconds || job.craftSeconds || 6 : job.craftSeconds || 10;
+        const candidate = { seconds: (work + 8) / amount, latency: work + HOP_SECONDS, depth: 1, ids: new Set([id]) };
+        for (const [input, count] of Object.entries(recipe.inputs || {})) {
+          const source = chain(input, level, [...guard, resourceId]);
+          candidate.seconds += count * source.seconds / amount;
+          candidate.latency = Math.max(candidate.latency, source.latency + work + HOP_SECONDS);
+          candidate.depth = Math.max(candidate.depth, source.depth + 1);
+          source.ids.forEach(ingredient => candidate.ids.add(ingredient));
+        }
+        for (const tool of Object.keys(definition.requiredEquipment || {}).filter(tool => !startsWith(tool))) {   // a tool is made once: it delays the start but is not used up per item
+          const source = chain(tool, level, [...guard, resourceId]);
+          candidate.latency = Math.max(candidate.latency, source.latency + work + HOP_SECONDS);
+          candidate.depth = Math.max(candidate.depth, source.depth + 1);
+          source.ids.forEach(ingredient => candidate.ids.add(ingredient));
+        }
+        if (!best || candidate.seconds < best.seconds) best = candidate;
       }
-      if (!best || candidate.seconds < best.seconds) best = candidate;
     }
     return best || fallback;
   };
@@ -496,11 +519,12 @@
   };
 
   // Military goals (types 'soldiers', 'kills', 'destroy', 'eliminate'; see evaluate)
-  const TRAINING_ARMY = [2, 3, 4, 6, 8, 10];                       // soldiers wanted on levels 10-15
+  const TRAINING_FROM = MISSION_START - 6;
+  const TRAINING_ARMY = [2, 3, 4, 6, 8, 10];                       // soldiers wanted on the six levels before the first rival
   const TARGET_BUILDINGS = ['woodcutter', 'sawmill', 'quarry', 'warehouse', 'guard_tower'];   // what the rival always builds
   const militaryGoals = (level, rand) => {
     const items = [];
-    if (level >= 10 && level < MISSION_START) items.push({ key: 'm:soldiers', type: 'soldiers', amount: TRAINING_ARMY[level - 10] });
+    if (level >= TRAINING_FROM && level < MISSION_START) items.push({ key: 'm:soldiers', type: 'soldiers', amount: TRAINING_ARMY[level - TRAINING_FROM] });
     if (level === MISSION_START - 1) items.push({ key: 'm:destroy:any', type: 'destroy', id: 'any', amount: 1 });
     if (level >= MISSION_START && level < ELIMINATE_START) {
       const first = TARGET_BUILDINGS[Math.floor(rand(60) * TARGET_BUILDINGS.length)];

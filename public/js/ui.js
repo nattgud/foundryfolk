@@ -132,7 +132,7 @@
       const header = document.createElement('header');
       header.className = 'resource-window-header';
       const title = document.createElement('strong');
-      title.textContent = i18n.languages.map(([code, name]) => (({ en: 'Language', sv: 'Språk', de: 'Sprache', es: 'Idioma' })[code] || name)).join(' · ');
+      title.textContent = i18n.languages.map(([code, name]) => (({ en: 'Language', sv: 'Språk', de: 'Sprache', es: 'Idioma', zh: '语言', ja: '言語', ru: 'Язык', pt: 'Idioma', ar: 'اللغة' })[code] || name)).join(' · ');
       header.appendChild(title);
       const body = document.createElement('div');
       body.className = 'main-menu-body';
@@ -297,7 +297,7 @@
       basics: [
         { title: 'Welcome', lines: ['Welcome to Foundryfolk! You build a settlement: gather resources, make goods and grow stronger.', 'Each step lights up the part of the screen it explains.', 'This short guide covers the basics. You can open it again from the menu at any time.'] },
         { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'The goals tell you what to build next. Start with the first one.'] },
-        { title: 'Resources', target: ['#top'], lines: ['The top bar shows what you have in store, for example wood, planks and stone.', 'You start with a little. Your buildings make more.'] },
+        { title: 'Resources', target: ['#top'], lines: ['The top bar shows what you have in store, for example wood, planks and stone.', 'You start with a little, including some tools. Your buildings make more.'] },
         { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap or hover over a building, tree, rock or water to see what it is.'] },
         { title: 'Build menu', target: ['#bottom .build-categories'], category: null, lines: ['The build menu is at the bottom. Each icon is a category of buildings.', 'Tap a category to open it. New buildings unlock as you complete levels.'] },
         { title: 'Place a building', target: ['#build_woodcutter'], category: 'forestry', lines: ['Try it with the highlighted Woodcutter. Tap it to select it, and move the mouse over it to see its cost and what it does.', 'Then tap the ground next to some trees to place it. A preview follows you and shows whether it fits. You can only build near your own buildings, and not in the fog.', 'Tap the building again, or Cancel, to stop placing.'] },
@@ -310,12 +310,15 @@
         { title: 'Hotkeys', target: ['#bottom .build-categories'], category: null, lines: ['Press a number to open a category in the build menu (you can switch category at any time), then a letter on the top row, Q W E R T Y U I O P, to choose a building in it. Esc goes back one step. Hover over a button to see its key.', 'While one of your buildings is selected, the letters control it instead: P pauses, B turns the boost on or off, R changes what it makes, T opens trading, S switches between attack and defence, Z X C V train soldiers, and Delete demolishes (press it twice).'] },
         { title: 'Select, pause and demolish', mock: 'pause', lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
         { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
+        { title: 'Tools', lines: ['Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.', 'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and smiths make more once they unlock.', 'Hammers are different: they are used up when you build larger buildings. Fine buildings also use limestone, bronze and steel.'] },
+        { title: 'Food and meals', lines: ['Miners get hungry. Meat, fish or bread keeps a basic mine going, but the deep mines (gold, silver, gemstones, salt and sulfur) want proper meals from a Kitchen.', 'A Kitchen cooks meals from meat, fish, flour, apples, berries and mushrooms. Tap it to change the recipe.'] },
+        { title: 'Leftovers and spells', lines: ['Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones. They are only kept when there is room, so they never hold up the main product.', 'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach: new trees, berries, rocks or ore appear on free grass around the spot. A spell costs goods from your store, and each enchanter rests a short while after casting.'] },
         { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
-        { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25.'] },
+        { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25. Coins are made at the Mint from silver and gold, and are only good for trading.'] },
         { title: 'Wild animals', lines: ['Deer, moose, foxes and rabbits roam the land and spread berries, herbs and mushrooms. A Hunters Cottage sends a hunter after the nearest animal in range. Every kind of animal gives the same meat and leather.', 'Animals have young faster the fewer there are nearby. You can hunt an area empty for a while, but never a whole region. Animals only live on land you can see.'] },
         { title: 'Speed and menu', target: ['#speedButton', '#mainMenuButton'], lines: ['Change the game speed here.', 'The menu button opens save, load, settings and this guide. You can also start a custom map with your own settings, and use several save slots.'] },
         { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
-        { title: 'Find the enemy', target: ['#build_watchtower'], category: 'military', lines: ['From level 15 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
+        { title: 'Find the enemy', target: ['#build_watchtower'], category: 'military', lines: ['From level 39 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
         { title: 'Train soldiers', target: ['#build_garrison', '#build_guard_tower'], category: 'military', lines: ['Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.', 'Each soldier needs weapons and armour, which carriers deliver to the building.'] },
         { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.', 'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.', 'Enemy buildings only show their health, nothing about what they import, export or produce.', 'Soldiers walk like other units. Several soldiers on one tile spread out inside it, and soldiers who fight stand on the same tile.'] },
         { title: 'If something goes wrong', lines: ['If the game hits an unexpected error, a small box appears and the game keeps running. Tap Details to see what happened and copy it into a report.', 'The game saves by itself, and you are told if saving fails. If an old saved game cannot be fully restored, a copy of the original is kept.'] },
@@ -894,8 +897,10 @@
         if (!job) continue;
         add(job.inputs);
         add(job.outputs);
+        add(job.byproducts);
         if (job.outputResource) known.add(job.outputResource);
         for (const choice of job.choices || []) { add(choice.inputs); add(choice.outputs); }
+        for (const spell of building.spells || []) add(spell.cost);
         for (const group of [].concat(job.eats || [])) group.any.forEach(resourceId => known.add(resourceId));
         for (const kind of job.trains || []) add(Config.units[kind]?.training?.inputs);
       }
@@ -924,9 +929,9 @@
         if (building.isMarket && Config.buildings.market.market.prices[resourceId] !== undefined) { use.add(id); make.add(id); }
         const job = building.job;
         if (!job) continue;
-        const takes = [job.inputs, building.requiredEquipment, ...(job.choices || []).map(choice => choice.inputs), ...(job.trains || []).map(kind => Config.units[kind]?.training?.inputs)];
+        const takes = [job.inputs, building.requiredEquipment, ...(building.spells || []).map(spell => spell.cost), ...(job.choices || []).map(choice => choice.inputs), ...(job.trains || []).map(kind => Config.units[kind]?.training?.inputs)];
         if (takes.some(amounts => amounts && amounts[resourceId] !== undefined) || [].concat(job.eats || []).some(group => group.any.includes(resourceId)) || Behaviors.boostOf(building)?.resource === resourceId) use.add(id);
-        if ([job.outputs, ...(job.choices || []).map(choice => choice.outputs)].some(amounts => amounts && amounts[resourceId] !== undefined) || job.outputResource === resourceId) make.add(id);
+        if ([job.outputs, job.byproducts, ...(job.choices || []).map(choice => choice.outputs)].some(amounts => amounts && amounts[resourceId] !== undefined) || job.outputResource === resourceId) make.add(id);
       }
       const result = { use: [...use], make: [...make] };
       cache.set(resourceId, result);
@@ -1485,7 +1490,8 @@
       const game = CityBuilder.Game, selected = game.selectedBuilding;
 
       if (key === 'Escape') { // ett steg tillbaka: placering, öppen kategori, vald byggnad
-        if (game.placingType) game.setPlacingType(null);
+        if (game.casting) game.casting = null;
+        else if (game.placingType) game.setPlacingType(null);
         else if (this.openCategoryId) this.setOpenCategory(null);
         else if (selected) game.selectBuilding(null);
         else return false;
@@ -2557,6 +2563,14 @@
         lines.push(t('Range: {n} tiles', { n: this.getBuildingRange(definition) }));
       }
 
+      if (job?.byproducts) lines.push(t('Also leaves: {list}', { list: this.resourceIconsHtml(job.byproducts) }));
+      if (definition.spells) {
+        lines.push(t('Casts one-off spells that create new deposits on free grass, up to {n} tiles away. One cast per {s} s for each enchanter.', { n: definition.spellRange, s: definition.spellCooldown }));
+        for (const spell of definition.spells) {
+          lines.push(t('{spell}: {cost} → {terrains}', { spell: t(spell.name), cost: this.resourceIconsHtml(spell.cost), terrains: Object.keys(spell.terrains).map(type => this.terrainName(type)).join(', ') }));
+        }
+      }
+
       if (definition.placeOnTerrain) {
         lines.push(t('Placed on: {terrain}', { terrain: this.terrainName(definition.placeOnTerrain) }));
       }
@@ -2718,6 +2732,7 @@
           ? '<button id="pauseButton"></button>'
           : '';
 
+        const spellButtons = own && building.definition.spells ? building.definition.spells.map(spell => `<button class="spell-button" data-spell="${spell.id}"></button>`).join('') : '';
         const choiceButton = own && building.definition.job?.choices ? '<button id="choiceButton"></button>' : '';
         const marketButton = own && building.definition.isMarket && building.buildProgress >= 1 ? `<button id="marketButton">${t('Trade')}</button>` : '';
         const boostButton = own && this.boostAvailable(building.definition) ? '<button id="boostButton"></button>' : '';
@@ -2735,7 +2750,7 @@
 
         panel.innerHTML =
           `<div><b>${this.buildingName(building.definition)}</b><br><span id="infoStatus"></span></div>` +
-          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${marketButton}${trainButtons}${stanceButton}${choiceButton}${boostButton}${pauseButton}${demolishButton}</div>`;
+          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${marketButton}${trainButtons}${spellButtons}${stanceButton}${choiceButton}${boostButton}${pauseButton}${demolishButton}</div>`;
 
         if (byId('stanceButton')) {
           byId('stanceButton').onclick = () => {
@@ -2746,6 +2761,10 @@
 
         for (const button of panel.querySelectorAll('.train-button')) {
           button.onclick = () => CityBuilder.Garrison.setTrainingType(building, button.dataset.kind);
+        }
+
+        for (const button of panel.querySelectorAll('.spell-button')) {
+          button.onclick = () => CityBuilder.Game.beginSpell(building, button.dataset.spell);
         }
 
         if (byId('choiceButton')) {
@@ -2795,6 +2814,14 @@
         for (const button of byId('info').querySelectorAll('.train-button')) button.classList.toggle('on', button.dataset.kind === chosen);
       }
 
+      // Förtrollare: nedkylning, och en hjälptext medan en formel väntar på sitt mål
+      let spellHtml = '';
+      if (own && building.buildProgress >= 1 && building.definition.spells) {
+        const casting = CityBuilder.Game.casting?.building === building;
+        spellHtml = (building.spellCooldown > 0 ? `<br>${t('Resting: {n} s', { n: Math.ceil(building.spellCooldown) })}` : '') +
+          (casting ? `<br>${t('Tap a spot on the map, up to {n} tiles from here', { n: building.definition.spellRange })}` : '');
+      }
+
       const html = !own
         ? [building.buildProgress < 1 ? statusText : null, t('Health: {hp}/{max}', { hp: Math.ceil(building.hp), max: Math.ceil(building.maxHp) })].filter(Boolean).join('<br>')
         : building.definition.isStorage
@@ -2802,6 +2829,7 @@
         : statusText +
           (this.efficiencyText(building) ? `<br>${this.efficiencyText(building)}` : '') +
           garrisonHtml +
+          spellHtml +
           trade +
           (range ? `<br>${t('Range: {n} tiles', { n: range })}` : '') +
           (building.hp < building.maxHp ? `<br>${t('Health: {hp}', { hp: Math.ceil(building.hp) })}` : '');
@@ -2828,6 +2856,13 @@
         const recipe = CityBuilder.Behaviors.recipe(building);
         setButton('choiceButton', `⇄ ${this.resourceIconsHtml(recipe.outputs)} ← ${this.resourceIconsHtml(recipe.inputs)}`);
         byId('choiceButton').dataset.baseTitle = t('Click to change what it makes');
+      }
+      for (const button of panel.querySelectorAll('.spell-button')) {
+        const spell = CityBuilder.Spells.find(building, button.dataset.spell), html = `${t(spell.name)} ${this.resourceIconsHtml(spell.cost, true)}`;
+        if (button.dataset.html !== html) { button.dataset.html = html; button.innerHTML = html; }
+        button.disabled = building.buildProgress < 1 || building.spellCooldown > 0;
+        button.classList.toggle('on', CityBuilder.Game.casting?.spell === spell);
+        button.title = t('Cast, then tap a spot on the map: {terrains}', { terrains: Object.keys(spell.terrains).map(type => this.terrainName(type)).join(', ') });
       }
       this.applyHotkeyTitles(panel);
       if (byId('boostButton')) {

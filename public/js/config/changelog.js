@@ -5,6 +5,21 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.8.0': [
+      'Every resource now has a real use. Tools are needed to work: axes for woodcutters, scythes for farms and herb gatherers, knives for hunters, mushroom gatherers and leatherworkers, saws for sawmills, shovels for clay pits, sand collectors and planters, and pickaxes for quarries and mines. A tool is delivered once, is not used up, and comes back when you demolish the building',
+      'You start every level with a good stock of tools and hammers so you cannot get stuck. The new Toolsmith makes knives, saws and shovels. Hammers are used up when larger buildings are built',
+      'New Kitchen: cooks proper meals from meat, fish, flour, apples, berries and mushrooms. The deep mines (gold, silver, gemstones, salt and sulfur) need meals',
+      'New Glassworks makes glass from sand and ash, and glass goes into potions together with mushrooms. The Alchemist can also make cursed ash from bones and sulfur',
+      'New Steelworks makes steel from iron and coal for armour and the Great Depot. Salt mines now dig salt ore, which the Mill turns into salt. Farms can raise animals, which the Stables turn into horses',
+      'Charcoal burners leave tar and ash, and hunters leave bones. They are only kept when there is room, so they never hold up production',
+      'The Enchanter now unlocks on level 12 and casts one-off spells that create new trees, berries, herbs, mushrooms, rocks, clay, sand, limestone and ore on free grass nearby. Spells cost tar, ash, bones, seeds, cursed ash and moonstone',
+      'Limestone, bronze and steel go into the finest buildings: Great Depot, Market, Mint, Shrine and Resonance Monument. Coins are only used for trading',
+      'The Kitchen has one more recipe (roast), and the limestone quarry and rock crusher now need food too (meat, fish, bread or a meal)',
+      'Buildings that are missing a tool get an orange badge on the map',
+      'Enemies arrive later: the first rival appears on level 39 instead of 15, with soldier training, military buildings and attack missions moved back. The first 39 levels are about the economy and magic, and war comes last',
+      'New languages: Chinese, Japanese, Russian, Portuguese (Brazil) and Arabic',
+      'The guide has new pages on tools, meals and spells',
+    ],
     '0.7.8': [
       'Tiles are no longer marked when you tap them. The tooltip shows what is on a tile: hover with the mouse, or tap the ground on a touch screen',
       'The selected building in the build menu is clearly marked, and the building follows the pointer as a transparent preview before you place it',

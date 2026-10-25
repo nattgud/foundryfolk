@@ -7,6 +7,7 @@
   const Game = {
     selectedBuilding: null,
     placingType: null,      // byggnadstyp som spelaren håller på att placera
+    casting: null,          // { building, spell }: en trollformel väntar på att spelaren pekar ut ett mål
     speedIndex: 0,          // index i Config.settings.gameSpeeds
     lastFrameTime: 0,
     deltaSeconds: 0,
@@ -56,9 +57,30 @@
       update();
     },
 
-    setPlacingType(buildingType) { this.placingType = buildingType; this.selectedBuilding = null; },
+    setPlacingType(buildingType) { this.placingType = buildingType; this.casting = null; this.selectedBuilding = null; },
+
+    // Trollformler (systems/spells.js): knappen i förtrollarens panel väljer formeln, nästa tryck på kartan läser den
+    beginSpell(building, spellId) {
+      const spell = CityBuilder.Spells.find(building, spellId);
+      this.casting = this.casting && this.casting.spell === spell ? null : { building, spell };
+    },
+
+    castSpell(x, y) {
+      const { building, spell } = this.casting;
+      const problem = CityBuilder.Spells.cast(building, spell, x, y);
+      if (!problem) { this.casting = null; return; }
+      this.refuse({
+        cooldown: () => t('The enchanter is resting'),
+        range: () => t('Too far from the enchanter'),
+        fog: () => t('Hidden in the fog of war'),
+        cost: () => t('Not enough resources'),
+        room: () => t('No room for it here'),
+        unbuilt: () => t('Not finished yet'),
+      }[problem]());
+    },
 
     selectBuilding(building) {
+      if (building !== this.selectedBuilding) this.casting = null;
       this.selectedBuilding = building || null;
       byId('info').dataset.buildingId = ''; // tvingar infopanelen att byggas om
       if (building?.definition.isMarket && building.player === CityBuilder.Players.HUMAN && building.buildProgress >= 1) UI.openMarket();

@@ -25,14 +25,14 @@
   const outputsOf = definition => {
     const job = definition.job;
     if (!job) return [];
-    return job.outputs ? Object.keys(job.outputs) : job.outputResource ? [job.outputResource] : [];
+    return (job.choices || [job]).flatMap(recipe => recipe.outputs ? Object.keys(recipe.outputs) : recipe.outputResource ? [recipe.outputResource] : []);
   };
 
   // Det en byggnad behöver få levererat: insatser, utrustning, mat (en av alternativen) och för garnisoner soldatens utrustning
   const inputsOf = definition => {
     const job = definition.job;
     if (!job) return [];
-    const inputs = [...Object.keys(job.inputs || {}), ...Object.keys(definition.requiredEquipment || {})];
+    const inputs = [...Object.keys((job.choices?.[0] ?? job).inputs || {}), ...Object.keys(definition.requiredEquipment || {})];
     if (job.kind === 'garrison') inputs.push(...Object.keys(Config.units[job.trains[0]].training.inputs));
     for (const group of [].concat(job.eats || [])) inputs.push(group.any[0]);
     return inputs;

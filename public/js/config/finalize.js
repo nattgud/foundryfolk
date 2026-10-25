@@ -24,6 +24,7 @@
       if (!Config.resources[resourceId]) warn(`${id}: okänd kostnadsresurs '${resourceId}'`);
     }
     if (building.boost && !Config.resources[building.boost.resource]) warn(`${id}: okänd boostresurs '${building.boost.resource}'`);
+    for (const resourceId of Object.keys(building.requiredEquipment || {})) if (!Config.resources[resourceId]) warn(`${id}: okänd utrustning '${resourceId}'`);
     if (building.placeOnTerrain && !Config.terrain[building.placeOnTerrain]) warn(`${id}: okänd placeOnTerrain '${building.placeOnTerrain}'`);
 
     const job = building.job;

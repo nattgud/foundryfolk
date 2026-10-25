@@ -13,7 +13,9 @@ CityBuilder.Config.settings = {
   // när capacity djur finns i närheten). Ungen föds högst dispersal rutor bort.
   animalBreeding: { radius: 12, capacity: 6, boost: 6, dispersal: 6 },
   animalTreeSpreadChance: 0.005,
-  startingResources: { wood: 10, plank: 10, stone: 10, hammer: 10 },
+  // Verktyg går inte åt (de följer med huset och kommer tillbaka vid rivning), men varje hus som kräver ett behöver ett eget. Antalen räcker till
+  // de första banornas byggnader, innan smederna öppnar; hammare går åt som byggkostnad.
+  startingResources: { wood: 10, plank: 10, stone: 10, hammer: 15, axe: 12, pickaxe: 12, scythe: 8, shovel: 8, saw: 6, knife: 8 },
   gameSpeeds: [1, 2, 4, 8],
   maxBuildDistance: 35,          // längst avstånd (rutor) från en egen byggnad som man får bygga på
   defaultEquipment: {}, // utrustning som varje produktionshus måste få (kan åsidosättas med requiredEquipment)
@@ -95,5 +97,5 @@ CityBuilder.Config.settings = {
     image: 'images/fog.jpg',   // bakgrundstextur för dimman (en bild mindre än skärmen läggs som mönster, en större täcker skärmen)
     color: '#0b0d10',          // dimmans färg tills bilden laddats, eller utan bild
   },
-  systemOrder: ['ai', 'construction', 'production', 'logistics', 'combat', 'units', 'vision'],
+  systemOrder: ['ai', 'construction', 'production', 'spells', 'logistics', 'combat', 'units', 'vision'],
 };
