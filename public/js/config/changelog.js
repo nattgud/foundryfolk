@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.2': [
+      'The game sounds no longer pause the music you play in other apps (Spotify and others) on phones. The game music is off by default on touch screens, and can be turned on in the settings',
       'The panel of a building now says clearly what it takes in (Imports), what it uses (Tools: shown with a ✓ when in place and a red ✕ when missing, never counted as imports) and what it gives out (Exports). When all recipes make the same thing, as in the Kitchen, a recipe only shows its ingredients and how many you get',
       'Buildings that can make several things (Kitchen, Mill, Farm, Alchemist) now show one radio button per recipe in their panel, with the ingredients and the result, where exactly one is selected. The R hotkey still steps to the next recipe',
     ],

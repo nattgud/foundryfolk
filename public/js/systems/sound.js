@@ -15,7 +15,8 @@
   const t = (text, variables) => CityBuilder.t(text, variables);
 
   const KEY = 'citybuilder.audio';
-  const DEFAULTS = { musicOn: true, musicVolume: 0.5, sfxOn: true, sfxVolume: 0.7 };
+  // Musiken är avstängd från start på pekskärmar: spelets musik tar ljudfokus och pausar spelarens egen musik (Spotify m.m.). Spelaren kan slå på den i inställningarna.
+  const DEFAULTS = { musicOn: !(typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches), musicVolume: 0.5, sfxOn: true, sfxVolume: 0.7 };
   const MAX_VOICES = 24; // samtidiga effekter totalt (mobilvänligt)
   const TAU = Math.PI * 2;
 
@@ -122,6 +123,7 @@
       if (this.context) return this.context;
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) return null;
+      if (navigator.audioSession) navigator.audioSession.type = 'ambient';   // ljudet blandas med andra appars ljud i stället för att pausa dem (iOS)
       const context = this.context = new AudioContextClass();
       this.sfxGain = context.createGain();
       this.musicGain = context.createGain();
