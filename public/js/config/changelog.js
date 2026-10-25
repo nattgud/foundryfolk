@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.2': [
+      'The game can now be installed as an app (PWA) on phones and computers, and it starts without a network connection after the first visit. Add it to the home screen from the browser menu',
       'Fixed: store goals now count what you start with, so tool goals (level 14) are no longer done from the start. The goal is that many more than you begin with',
       'The output shown when you hover a building now includes boost, monument and spell bonuses, so you see the effect straight away',
       'More varied Enchanter spells. Grove, Earthsong and Ley Line still create deposits (Bloom and Stonecall are folded into them). New: Wild Surge (animals breed 20 times as fast for a while), Frenzy (workers and workshops work twice as fast), Bounty (buildings make double output), Swift Wind (carriers walk twice as fast) and Withering (enemy soldiers drop to 25% health). The effects show as a coloured ring on the map',
