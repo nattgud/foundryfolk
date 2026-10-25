@@ -573,7 +573,9 @@
     const scale = info.trial ? 1.4 : info.bounty ? 0.6 : 1;
     const addStock = resource => {
       const factor = storageFactor(resource);
-      const amount = Math.max(3, Math.min(Math.round((12 + level * 1.6) * factor * scale), Math.floor(300 * factor)));
+      // Det man får vid start räknas inte: målet är så många till (annars är t.ex. verktygsmålen klara redan från början)
+      const start = CityBuilder.Config.settings.startingResources[resource] || 0;
+      const amount = start + Math.max(3, Math.min(Math.round((12 + level * 1.6) * factor * scale), Math.floor(300 * factor)));
       add({ key: 's:' + resource, type: 'stock', resource, amount });
     };
     fresh.slice(0, 2).forEach(addStock);
