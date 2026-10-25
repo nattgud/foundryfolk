@@ -671,7 +671,7 @@ CityBuilder.Config.buildings = {
     buildCost: { wood: 5, stone: 4 },
     job: {
       kind: 'craft',
-      inputs: { wood: 2 },
+      inputs: { wood: 1 },
       outputs: { charcoal: 1 },
       byproducts: { tar: 1, ash: 1 },
       craftSeconds: 10
