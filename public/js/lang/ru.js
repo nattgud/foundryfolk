@@ -28,7 +28,6 @@
       'New game': 'Новая игра',
       'Statistics': 'Статистика',
       'Settings': 'Настройки',
-      'Each step lights up the part of the screen it explains.': 'Каждый шаг подсвечивает ту часть экрана, которую объясняет.',
       'Pause stops a building from working. Tap it again to resume.': 'Пауза останавливает работу здания. Нажмите ещё раз, чтобы продолжить.',
       'Train soldiers': 'Обучение солдат',
       'Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.': 'Солдат обучают в гарнизоне или сторожевой башне: выберите здание и тип солдата.',

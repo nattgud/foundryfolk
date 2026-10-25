@@ -27,7 +27,6 @@
       'New game': 'ニューゲーム',
       'Statistics': '統計',
       'Settings': '設定',
-      'Each step lights up the part of the screen it explains.': '各ステップで、説明している画面の部分が光ります。',
       'Pause stops a building from working. Tap it again to resume.': '一時停止すると建物の作業が止まります。もう一度タップすると再開します。',
       'Train soldiers': '兵士を訓練する',
       'Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.': '兵士は兵舎か見張り塔で訓練します。建物を選んで兵士の種類を選びましょう。',

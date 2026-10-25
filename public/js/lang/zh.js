@@ -27,7 +27,6 @@
       'New game': '新游戏',
       'Statistics': '统计',
       'Settings': '设置',
-      'Each step lights up the part of the screen it explains.': '每一步都会高亮屏幕上对应的部分。',
       'Pause stops a building from working. Tap it again to resume.': '暂停会让建筑停止工作。再次点击即可恢复。',
       'Train soldiers': '训练士兵',
       'Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.': '士兵在兵营或警戒塔中训练：选中建筑并选择士兵类型。',

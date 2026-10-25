@@ -28,7 +28,6 @@
       'New game': 'Novo jogo',
       'Statistics': 'Estatísticas',
       'Settings': 'Configurações',
-      'Each step lights up the part of the screen it explains.': 'Cada passo destaca a parte da tela que ele explica.',
       'Pause stops a building from working. Tap it again to resume.': 'Pausar faz a construção parar de trabalhar. Toque de novo para retomar.',
       'Train soldiers': 'Treinar soldados',
       'Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.': 'Os soldados são treinados em um Quartel ou numa Torre de Guarda: selecione a construção e escolha o tipo de soldado.',

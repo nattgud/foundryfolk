@@ -28,7 +28,6 @@
       'New game': 'لعبة جديدة',
       'Statistics': 'الإحصائيات',
       'Settings': 'الإعدادات',
-      'Each step lights up the part of the screen it explains.': 'كل خطوة تضيء الجزء من الشاشة الذي تشرحه.',
       'Pause stops a building from working. Tap it again to resume.': 'الإيقاف المؤقت يوقف المبنى عن العمل. اضغط عليه مرة أخرى للاستئناف.',
       'Train soldiers': 'تدريب الجنود',
       'Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.': 'يُدرَّب الجنود في الثكنة أو برج الحراسة: اختر المبنى ثم نوع الجندي.',

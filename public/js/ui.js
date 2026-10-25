@@ -295,7 +295,7 @@
     // mock: en bild av infopanelen för det som inte syns förrän man markerat en byggnad.
     TUTORIAL: {
       basics: [
-        { title: 'Welcome', lines: ['Welcome to Foundryfolk! You build a settlement: gather resources, make goods and grow stronger.', 'Each step lights up the part of the screen it explains.', 'This short guide covers the basics. You can open it again from the menu at any time.'] },
+        { title: 'Welcome', lines: ['Welcome to Foundryfolk! You build a settlement: gather resources, make goods and grow stronger.', 'This short guide covers the basics. You can open it again from the menu at any time.'] },
         { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'The goals tell you what to build next. Start with the first one.'] },
         { title: 'Resources', target: ['#top'], lines: ['The top bar shows what you have in store, for example wood, planks and stone.', 'You start with a little, including some tools. Your buildings make more.'] },
         { title: 'Move and zoom', lines: ['Drag the map to move it.', 'Scroll with the mouse wheel, or pinch with two fingers, to zoom.', 'Tap or hover over a building, tree, rock or water to see what it is.'] },
