@@ -277,7 +277,7 @@
         { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'Imports are on the left of the arrow and exports on the right. Tools the building needs are shown next to its name. They are delivered once and never used up.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
         { title: 'Tools', lines: ['Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.', 'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and the Toolsmith makes more once it unlocks. It makes the tool you have least of, and you can switch tools on or off in its panel.', 'Hammers are different: they are used up when you build larger buildings. Fine buildings also use limestone, bronze and steel.'] },
         { title: 'Food and meals', lines: ['Miners get hungry. Meat, fish or bread keeps a basic mine going, but the deep mines (gold, silver, gemstones, salt and sulfur) want proper meals from a Kitchen.', 'A Kitchen cooks meals from meat, fish, flour, apples, berries and mushrooms. Tap it to change the recipe.'] },
-        { title: 'Leftovers and spells', lines: ['Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones. They are only kept when there is room, so they never hold up the main product.', 'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach: new trees, berries, rocks or ore appear on free grass around the spot. A spell costs goods from your store, and each enchanter rests a short while after casting.'] },
+        { title: 'Leftovers and spells', lines: ['Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones. They are only kept when there is room, so they never hold up the main product.', 'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach. Some spells create new trees, berries, rocks or ore on free grass around the spot. Others speed up workers, carriers or workshops for a while, double the output of buildings, make animals breed wildly, or leave enemy soldiers with a quarter of their health. A spell costs goods from your store, and each enchanter rests a short while after casting.'] },
         { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
         { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25. Coins are made at the Mint from silver and gold, and are only good for trading.'] },
         { title: 'Wild animals', lines: ['Deer, moose, foxes and rabbits roam the land and spread berries, herbs and mushrooms. A Hunters Cottage sends a hunter after the nearest animal in range. Every kind of animal gives the same meat and leather.', 'Animals have young faster the fewer there are nearby. You can hunt an area empty for a while, but never a whole region. Animals only live on land you can see.'] },
@@ -2500,6 +2500,19 @@
         : '';
     },
 
+    // Vad en formel gör, i en mening (verktygstips och byggnadsbeskrivning)
+    spellEffect(spell) {
+      const n = spell.factor || 1 + (spell.bonus || 0), s = spell.seconds;
+      switch (spell.kind) {
+        case 'surge': return t('Animals here breed {n} times as fast for {s} s', { n, s });
+        case 'pace': return t('Workers and workshops here work {n} times as fast for {s} s', { n, s });
+        case 'yield': return t('Buildings here make {n} times the output for {s} s', { n, s });
+        case 'carriers': return t('Carriers here walk {n} times as fast for {s} s', { n, s });
+        case 'smite': return t('Enemy soldiers here drop to {p}% health', { p: Math.round(spell.health * 100) });
+        default: return Object.keys(spell.terrains).map(type => this.terrainName(type)).join(', ');
+      }
+    },
+
     resourceIconsHtml(amounts, shortage) {
       return Object.entries(amounts || {})
         .filter(([, amount]) => amount > 0)
@@ -2578,9 +2591,9 @@
 
       if (job?.byproducts) lines.push(t('Also leaves: {list}', { list: this.resourceIconsHtml(job.byproducts) }));
       if (definition.spells) {
-        lines.push(t('Casts one-off spells that create new deposits on free grass, up to {n} tiles away. One cast per {s} s for each enchanter.', { n: definition.spellRange, s: definition.spellCooldown }));
+        lines.push(t('Casts one-off spells: new deposits on free grass, faster work, more wildlife and weaker enemies, up to {n} tiles away. One cast per {s} s for each enchanter.', { n: definition.spellRange, s: definition.spellCooldown }));
         for (const spell of definition.spells) {
-          lines.push(t('{spell}: {cost} → {terrains}', { spell: t(spell.name), cost: this.resourceIconsHtml(spell.cost), terrains: Object.keys(spell.terrains).map(type => this.terrainName(type)).join(', ') }));
+          lines.push(t('{spell}: {cost} → {effect}', { spell: t(spell.name), cost: this.resourceIconsHtml(spell.cost), effect: this.spellEffect(spell) }));
         }
       }
 
@@ -2921,7 +2934,7 @@
         if (button.dataset.html !== html) { button.dataset.html = html; button.innerHTML = html; }
         button.disabled = building.buildProgress < 1 || building.spellCooldown > 0;
         button.classList.toggle('on', CityBuilder.Game.casting?.spell === spell);
-        button.title = t('Cast, then tap a spot on the map: {terrains}', { terrains: Object.keys(spell.terrains).map(type => this.terrainName(type)).join(', ') });
+        button.title = t('Cast, then tap a spot on the map: {effect}', { effect: this.spellEffect(spell) });
       }
       this.applyHotkeyTitles(panel);
       if (byId('boostButton')) {

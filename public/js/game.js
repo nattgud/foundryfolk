@@ -76,6 +76,7 @@
         cost: () => t('Not enough resources'),
         room: () => t('No room for it here'),
         unbuilt: () => t('Not finished yet'),
+        nothing: () => t('Nothing here to affect'),
       }[problem]());
     },
 

@@ -934,17 +934,21 @@ CityBuilder.Config.buildings = {
     symbol: 'EN',
     color: '#3f8f6a',
     buildCost: { plank: 12, stone: 10, brick: 6, hammer: 1 },
-    // Engångsformler: kostar varor ur lagret och förvandlar 'count' lediga gräsrutor inom 'radius' runt målet till nya fyndigheter
-    // ('terrains' = vikter, 'amount' = mängd per ruta, annars terrängens standard). Målet får ligga högst spellRange rutor från
-    // förtrollaren, och varje förtrollare vilar spellCooldown sekunder efter en formel. Biprodukterna ben, aska och tjära får här sitt värde.
+    // Engångsformler: kostar varor ur lagret och läses på en plats högst spellRange rutor från förtrollaren; varje förtrollare vilar
+    // spellCooldown sekunder efter en formel. Typerna (kind) och deras fält förklaras i systems/spells.js.
+    // create: förvandlar 'count' lediga gräsrutor inom 'radius' runt målet till nya fyndigheter ('terrains' = vikter, 'amount' = mängd
+    // per ruta, annars terrängens standard). Biprodukterna ben, aska och tjära får här sitt värde.
     spellRange: 30,
     spellCooldown: 20,
     spells: [
-      { id: 'grove', name: 'Grove', cost: { ash: 4, seeds: 2 }, radius: 3, count: 7, terrains: { tree: 1 }, amount: [5, 10] },
-      { id: 'bloom', name: 'Bloom', cost: { bone: 3, ash: 2 }, radius: 3, count: 6, terrains: { berry_bush: 2, apple_tree: 1, herbs: 2, mushrooms: 2 } },
-      { id: 'stonecall', name: 'Stonecall', cost: { tar: 3, bone: 2 }, radius: 3, count: 6, terrains: { rock: 3, clay: 2, sand: 2, limestone: 1 } },
-      { id: 'earthsong', name: 'Earthsong', cost: { cursed_ash: 2, tar: 2 }, radius: 2, count: 4, terrains: { iron_ore: 3, coal: 3, copper_ore: 1, tin_ore: 1 } },
-      { id: 'leyline', name: 'Ley Line', cost: { cursed_ash: 3, moonstone: 1 }, radius: 2, count: 3, terrains: { silver_ore: 2, gold_ore: 1, gemstone: 1, crystal: 1 } },
+      { id: 'grove', name: 'Grove', kind: 'create', cost: { ash: 4, seeds: 2 }, radius: 3, count: 8, terrains: { tree: 3, berry_bush: 1, apple_tree: 1, herbs: 1, mushrooms: 1 }, amount: [5, 10] },
+      { id: 'earthsong', name: 'Earthsong', kind: 'create', cost: { tar: 3, bone: 2 }, radius: 3, count: 6, terrains: { rock: 3, clay: 2, sand: 2, limestone: 1, iron_ore: 2, coal: 2, copper_ore: 1, tin_ore: 1 } },
+      { id: 'leyline', name: 'Ley Line', kind: 'create', cost: { cursed_ash: 3, moonstone: 1 }, radius: 2, count: 3, terrains: { silver_ore: 2, gold_ore: 1, gemstone: 1, crystal: 1 } },
+      { id: 'surge', name: 'Wild Surge', kind: 'surge', cost: { seeds: 3, bone: 3 }, radius: 14, seconds: 40, factor: 20 },
+      { id: 'frenzy', name: 'Frenzy', kind: 'pace', cost: { tar: 3, ash: 3 }, radius: 9, seconds: 30, factor: 2 },
+      { id: 'bounty', name: 'Bounty', kind: 'yield', cost: { enchanted_wood: 2, seeds: 2 }, radius: 9, seconds: 40, bonus: 1 },
+      { id: 'gale', name: 'Swift Wind', kind: 'carriers', cost: { ash: 3, bone: 2 }, radius: 18, seconds: 40, factor: 2 },
+      { id: 'withering', name: 'Withering', kind: 'smite', cost: { cursed_ash: 3, bone: 2 }, radius: 8, health: 0.25 },
     ],
     job: {
       kind: 'craft',

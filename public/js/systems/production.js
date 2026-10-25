@@ -10,7 +10,7 @@
       for (const building of World.buildings) {
         if (building.buildProgress < 1 || !building.definition.job) continue;
         const behavior = Behaviors.forBuilding(building);
-        if (behavior.update) behavior.update(building, deltaSeconds);
+        if (behavior.update) behavior.update(building, deltaSeconds * CityBuilder.Spells.factor('pace', building.x, building.y, building.player));
         Behaviors.trackEfficiency(building, deltaSeconds);
       }
     },
@@ -19,6 +19,6 @@
   CityBuilder.Systems.logistics = { update(deltaSeconds) { CityBuilder.Logistics.update(deltaSeconds); } };
 
   CityBuilder.Systems.units = {
-    update(deltaSeconds) { for (const unit of World.units) CityBuilder.Units.update(unit, deltaSeconds); },
+    update(deltaSeconds) { for (const unit of World.units) CityBuilder.Units.update(unit, deltaSeconds * CityBuilder.Spells.paceOf(unit)); },
   };
 })(window.CityBuilder);

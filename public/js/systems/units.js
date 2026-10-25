@@ -62,8 +62,9 @@
         unit.huntedBy = null;
       }
       if (unit.definition.isAnimal) {
-        if (unit.animalBreedCooldown > 0) unit.animalBreedCooldown -= deltaSeconds;
-        else if (Math.random() < ANIMAL.breedChancePerSecond * (1 + Config.settings.animalBreeding.boost) * deltaSeconds) this.tryAnimalBreed(unit);
+        const surge = CityBuilder.Spells.factor('surge', unit.x, unit.y);   // Wild Surge: många fler ungar en kort stund
+        if (unit.animalBreedCooldown > 0) unit.animalBreedCooldown -= deltaSeconds * surge;
+        else if (Math.random() < ANIMAL.breedChancePerSecond * (1 + Config.settings.animalBreeding.boost) * surge * deltaSeconds) this.tryAnimalBreed(unit, surge);
       }
 
       const step = unit.stepQueue[0];
@@ -443,7 +444,7 @@
     // Förökning styrs av hur många djur som finns i närheten: tomt runt omkring ger (1 + boost) gånger så ofta ungar,
     // och chansen sjunker jämnt till noll när det finns 'capacity' djur i närheten. Ett lokalt område kan jagas tomt, men inte en hel region.
     // Anropas med den högsta möjliga chansen och gallrar här ner till den verkliga.
-    tryAnimalBreed(unit) {
+    tryAnimalBreed(unit, surge = 1) {
       const { radius, capacity, dispersal } = Config.settings.animalBreeding;
       if (!huntingUnlocked()) return; // utan jakt får djuren inte föröka sig
 
@@ -453,7 +454,7 @@
         population++;
         if (other !== unit && Math.hypot(other.x - unit.x, other.y - unit.y) <= radius) nearby++;
       }
-      if (population >= ANIMAL.maxPopulation || Math.random() < nearby / capacity) return;
+      if (population >= ANIMAL.maxPopulation || Math.random() < nearby / (capacity * surge)) return;   // under en Wild Surge får flocken vara tätare
 
       // Ungen föds på en ledig gräs- eller trädruta i närheten (annars på samma ruta)
       const cx = Math.floor(unit.x), cy = Math.floor(unit.y);

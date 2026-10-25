@@ -188,6 +188,7 @@
         custom: levels ? levels.custom || undefined : undefined,   // inställningarna om det är en egen bana
         progress: levels ? levels.snapshot() : undefined,          // målens framsteg och tid hör till just den här sparningen
         speedIndex: Game ? Game.speedIndex : 0,
+        spellZones: CityBuilder.Spells.zones,
         headquarters: captureFields(headquarters, BUILDING_SKIP),
         rivals,
         eliminated: CityBuilder.Players.aiPlayers().filter(player => !CityBuilder.Players.active.includes(player)),
@@ -219,6 +220,7 @@
           if (changed.wear > 0) CityBuilder.Systems.pathDecay?.touch(tile); // slitna stigar börjar om sin vilotid (pathdecay.js)
         }
       });
+      part('spells', () => { CityBuilder.Spells.zones = data.spellZones || []; });
       part('animals', () => { World.animalsByChunk = new Map(CityBuilder.Animals.migrate(data.animalChunks || data.deerChunks || [])); });
 
       for (const saved of data.buildings || []) {

@@ -50,6 +50,7 @@
     // högst var 40:e ms, så rapporteringen kostar nästan ingenting. Utan report går allt i ett svep.
     async init(report = () => {}) {
       CityBuilder.Vision.reset();
+      CityBuilder.Spells.reset();
       Players.team = { ...CityBuilder.Levels?.current?.teams };
       this.addPlayer(Players.HUMAN, 0, 0);
       const rivals = CityBuilder.Levels?.current?.rivals ?? 1, total = rivals * RIVAL_STEPS + warmCount(Players.HUMAN) + rivals * warmCount(Players.ENEMY);

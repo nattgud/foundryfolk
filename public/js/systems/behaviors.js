@@ -287,7 +287,7 @@
     // Utdata med boost och aura. Bråkdelar sparas i building.yieldCarry, så +10 % betyder en extra vara var tionde omgång.
     yielded(building, outputs, boosted) {
       const boost = boosted && this.boostOf(building);
-      const extra = (boost && boost.yield || 0) + this.auraBonus(building, 'yield');
+      const extra = (boost && boost.yield || 0) + this.auraBonus(building, 'yield') + CityBuilder.Spells.bonus(building, 'yield');
       if (!extra) return outputs;
       const carry = building.yieldCarry || (building.yieldCarry = {}), result = {};
       for (const resourceId in outputs) {
