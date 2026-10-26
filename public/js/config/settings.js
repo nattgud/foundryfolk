@@ -101,6 +101,7 @@ CityBuilder.Config.settings = {
   // growth: vad som växer ur marken (terräng -> vara). Skanningen sker var scanSeconds i de chunkar spelaren ser.
   weather: {
     nightDarkness: 0.35,                   // hur mörk natten blir som mest (0-1)
+    nightLight: { building: 2.5, unit: 1, fade: 1 },   // ljust som på dagen på så många rutor runt spelarens byggnader och människor (djur lyser inte), sedan mjuk övergång på 'fade' rutor
     dayLength: 480, startFraction: 0.12,   // ett dygn i speltid, och var i dygnet ett nytt spel börjar (0 = gryning)
     minSeconds: 30, maxSeconds: 180,
     chances: { clear: 50, rain: 18, storm: 10, fog: 14, tornado: 8 },

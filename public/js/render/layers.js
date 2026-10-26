@@ -605,11 +605,33 @@
 
   // Väder och dygn: nattens blå dunkel, regn, dimma, blixtar och tornados. Ritas över allt i världen men före dimman och gränssnittet.
   const frac = value => value - Math.floor(value);
+  // Nattens dunkel ritas i låg upplösning (4 px per ruta) med mjuka ljusfläckar urgröpta runt spelarens byggnader och människor
+  const dusk = document.createElement('canvas'), DUSK_SCALE = 4;
+  function drawNight(context, renderer, view, alpha) {
+    const { building: buildingLight, unit: unitLight, fade } = Config.settings.weather.nightLight, size = renderer.tileSize, Players = CityBuilder.Players, World = CityBuilder.World;
+    const left = Math.floor(view.left / size) - 4, top = Math.floor(view.top / size) - 4, cols = Math.ceil((view.right - view.left) / size) + 8, rows = Math.ceil((view.bottom - view.top) / size) + 8;
+    if (dusk.width !== cols * DUSK_SCALE || dusk.height !== rows * DUSK_SCALE) { dusk.width = cols * DUSK_SCALE; dusk.height = rows * DUSK_SCALE; }
+    const mask = dusk.getContext('2d');
+    mask.setTransform(1, 0, 0, 1, 0, 0); mask.globalCompositeOperation = 'source-over'; mask.clearRect(0, 0, dusk.width, dusk.height);
+    mask.fillStyle = `rgba(8,14,44,${alpha})`; mask.fillRect(0, 0, dusk.width, dusk.height);
+    mask.setTransform(DUSK_SCALE, 0, 0, DUSK_SCALE, -left * DUSK_SCALE, -top * DUSK_SCALE); mask.globalCompositeOperation = 'destination-out';
+    const light = (x, y, radius) => {
+      const reach = radius + fade;
+      if (x + reach < left || x - reach > left + cols || y + reach < top || y - reach > top + rows) return;
+      const glow = mask.createRadialGradient(x, y, 0, x, y, reach);
+      glow.addColorStop(0, 'rgba(0,0,0,1)'); glow.addColorStop(radius / reach, 'rgba(0,0,0,1)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
+      mask.fillStyle = glow; mask.fillRect(x - reach, y - reach, reach * 2, reach * 2);
+    };
+    for (const building of World.buildings) if (building.player === Players.HUMAN && !building.definition.pile) light(building.x + .5, building.y + .5, buildingLight);
+    for (const unit of World.units) if (unit.player === Players.HUMAN) light(unit.x, unit.y, unitLight);
+    context.imageSmoothingEnabled = true;
+    context.drawImage(dusk, left * size, top * size, cols * size, rows * size);
+  }
   Renderer.addLayer('weather', (context, renderer) => {
     const Weather = CityBuilder.Weather, view = renderer.viewBounds(0), width = view.right - view.left, height = view.bottom - view.top, zoom = renderer.zoom;
     const night = Weather.darkness(), now = performance.now() / 1000;
     context.save();
-    if (night > 0) { context.fillStyle = `rgba(8,14,44,${Config.settings.weather.nightDarkness * night})`; context.fillRect(view.left, view.top, width, height); }
+    if (night > 0) drawNight(context, renderer, view, Config.settings.weather.nightDarkness * night);
     const type = Weather.type;
     if (type === 'rain' || type === 'storm') {   // grått dunkel och diagonala streck
       const storm = type === 'storm';
