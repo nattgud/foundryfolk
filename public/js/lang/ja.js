@@ -98,7 +98,7 @@
       'Starts with the focus that has the most to gather nearby. Change it in the info panel': '近くで最も採れるものから始まります。情報パネルで変えられます',
       'Focus and signs': '重点と看板',
       'Mines and gatherers are one building each. A mine is built on a deposit and starts with that ore, and a gatherer starts with what there is most of nearby. Pick another focus with the buttons in the info panel. Only the focuses you have unlocked are shown.': '鉱山と採集所はそれぞれ一つの建物です。鉱山は鉱床の上に建ててその鉱石から始まり、採集所は近くに最も多いものから始まります。情報パネルのボタンで別の重点を選べます。表示されるのは解放済みの重点だけです。',
-      'A small sign on the building shows what it is making now: the ore a mine digs, the food a gatherer picks, the meal in a kitchen or the tool a toolsmith makes.': '建物の小さな看板が、今作っているものを示します。鉱山が掘る鉱石、採集所が摘む食べ物、キッチンの料理、道具鍛冶が作る道具です。',
+      'A small sign on the building shows what it is making now: the ore a mine digs, the food a gatherer picks, the ingredients of the recipe in a kitchen or the tool a toolsmith makes.': '建物の小さな看板が、今作っているものを示します。鉱山が掘る鉱石、採集所が摘む食べ物、キッチンのレシピの材料、道具鍛冶が作る道具です。',
       'Night': '夜',
       'Day': '昼',
       'Clear': '晴れ',

@@ -99,7 +99,7 @@
       'Starts with the focus that has the most to gather nearby. Change it in the info panel': 'Начинает с направления, которого поблизости больше всего. Меняется на панели информации',
       'Focus and signs': 'Направление и вывески',
       'Mines and gatherers are one building each. A mine is built on a deposit and starts with that ore, and a gatherer starts with what there is most of nearby. Pick another focus with the buttons in the info panel. Only the focuses you have unlocked are shown.': 'Шахты и сборщики — по одному зданию. Шахта строится на залежи и начинает с этой руды, а сборщик начинает с того, чего рядом больше всего. Другое направление выбирается кнопками на панели информации. Показаны только открытые направления.',
-      'A small sign on the building shows what it is making now: the ore a mine digs, the food a gatherer picks, the meal in a kitchen or the tool a toolsmith makes.': 'Маленькая вывеска на здании показывает, что оно делает сейчас: руду шахты, еду сборщика, блюдо кухни или инструмент кузнеца инструментов.',
+      'A small sign on the building shows what it is making now: the ore a mine digs, the food a gatherer picks, the ingredients of the recipe in a kitchen or the tool a toolsmith makes.': 'Маленькая вывеска на здании показывает, что оно делает сейчас: руду шахты, еду сборщика, ингредиенты рецепта на кухне или инструмент кузнеца инструментов.',
       'Night': 'Ночь',
       'Day': 'День',
       'Clear': 'Ясно',

@@ -99,7 +99,7 @@
       'Starts with the focus that has the most to gather nearby. Change it in the info panel': 'يبدأ بالتركيز الذي يتوفر منه الأكثر قريبًا. غيّره من لوحة المعلومات',
       'Focus and signs': 'التركيز واللافتات',
       'Mines and gatherers are one building each. A mine is built on a deposit and starts with that ore, and a gatherer starts with what there is most of nearby. Pick another focus with the buttons in the info panel. Only the focuses you have unlocked are shown.': 'المناجم والجامعون مبنى واحد لكل منهما. يُبنى المنجم على مكمن ويبدأ بذلك الخام، ويبدأ الجامع بما هو أكثر قربًا. اختر تركيزًا آخر بأزرار لوحة المعلومات. تظهر فقط التركيزات التي فتحتها.',
-      'A small sign on the building shows what it is making now: the ore a mine digs, the food a gatherer picks, the meal in a kitchen or the tool a toolsmith makes.': 'لافتة صغيرة على المبنى تُظهر ما يصنعه الآن: خام المنجم، وطعام الجامع، ووجبة المطبخ، أو أداة حدّاد الأدوات.',
+      'A small sign on the building shows what it is making now: the ore a mine digs, the food a gatherer picks, the ingredients of the recipe in a kitchen or the tool a toolsmith makes.': 'لافتة صغيرة على المبنى تُظهر ما يصنعه الآن: خام المنجم، وطعام الجامع، ومكوّنات وصفة المطبخ، أو أداة حدّاد الأدوات.',
       'Night': 'ليل',
       'Day': 'نهار',
       'Clear': 'صحو',

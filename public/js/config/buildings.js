@@ -741,10 +741,10 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'craft',
       choices: [
-        { inputs: { meat: 1, mushrooms: 2 }, outputs: { meal: 3 }, sign: 'meat_mushrooms' },
-        { inputs: { flour: 1, apples: 1, berries: 2 }, outputs: { meal: 3 }, sign: 'flour_apples' },
-        { inputs: { fish: 1, mushrooms: 1, berries: 1 }, outputs: { meal: 2 }, sign: 'fish_mushrooms' },
-        { inputs: { meat: 1, apples: 1 }, outputs: { meal: 2 }, sign: 'meat_apples' }
+        { inputs: { meat: 1, mushrooms: 2 }, outputs: { meal: 3 } },
+        { inputs: { flour: 1, apples: 1, berries: 2 }, outputs: { meal: 3 } },
+        { inputs: { fish: 1, mushrooms: 1, berries: 1 }, outputs: { meal: 2 } },
+        { inputs: { meat: 1, apples: 1 }, outputs: { meal: 2 } }
       ],
       craftSeconds: 12
     },

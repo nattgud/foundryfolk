@@ -362,28 +362,28 @@
     }
   });
 
-  // Skylt på byggnader med inriktning eller recept (gruva, samlare, kök, verktygssmed ...): visar vad den gör just nu. Bilden är
-  // images/signs/<nyckel>.png (nyckeln är varans id, eller recept.sign), och saknas den ritas en bricka med varans ikon.
-  const SIGN_DIR = 'images/signs/';
+  // Skylt på byggnader med inriktning eller recept (gruva, samlare, kök, verktygssmed ...): visar vad den gör just nu, med varans bild i en
+  // liten ruta. Recept med samma produkt (köket) visas med sina två första insatser, så att de går att skilja åt.
   const signOf = building => {
     const definition = building.definition, job = definition.job;
     if (!job || building.buildProgress < 1) return null;
-    if (definition.group) { const id = job.outputResource ?? Object.keys(job.outputs || {})[0]; return { key: definition.sign || id, resource: id }; }
+    if (definition.group) return [job.outputResource ?? Object.keys(job.outputs || {})[0]];
     if (!job.choices || definition.isMarket) return null;
     const recipe = CityBuilder.Behaviors.recipe(building), made = Object.keys(recipe.outputs)[0];
-    const distinct = new Set(job.choices.map(choice => Object.keys(choice.outputs)[0])).size > 1;   // lika varor (köket): receptet känns igen på sina insatser
-    const resource = distinct ? made : Object.keys(recipe.inputs || {})[0] || made;
-    return { key: recipe.sign || resource, resource };
+    const distinct = new Set(job.choices.map(choice => Object.keys(choice.outputs)[0])).size > 1;
+    return distinct ? [made] : Object.keys(recipe.inputs || {}).slice(0, 2);
   };
   const drawSign = (context, building, x, y, size) => {
-    const sign = signOf(building);
-    if (!sign) return;
-    const s = size * .4, left = x + size - s - 1, top = y + size - s - 1;
+    const resources = signOf(building);
+    if (!resources) return;
+    const s = size * .4, width = s * resources.length - (resources.length - 1), left = x + size - width - 1, top = y + size - s - 1;
     context.fillStyle = 'rgba(20,16,12,.75)'; context.strokeStyle = 'rgba(232,220,200,.8)'; context.lineWidth = 1;
-    context.fillRect(left, top, s, s); context.strokeRect(left + .5, top + .5, s - 1, s - 1);
-    const image = Assets.get(SIGN_DIR + sign.key + '.png'), resource = Config.resources[sign.resource], icon = image || (resource && Assets.get(resource.image));
-    if (icon) context.drawImage(icon, left + 1, top + 1, s - 2, s - 2);
-    else if (resource) { context.fillStyle = resource.color; context.fillRect(left + 3, top + 3, s - 6, s - 6); }
+    context.fillRect(left, top, width, s); context.strokeRect(left + .5, top + .5, width - 1, s - 1);
+    resources.forEach((id, i) => {
+      const resource = Config.resources[id], icon = resource && Assets.get(resource.image), at = left + i * (s - 1);
+      if (icon) context.drawImage(icon, at + 1, top + 1, s - 2, s - 2);
+      else if (resource) { context.fillStyle = resource.color; context.fillRect(at + 3, top + 3, s - 6, s - 6); }
+    });
   };
 
   Renderer.addLayer('buildings', (context, renderer) => {

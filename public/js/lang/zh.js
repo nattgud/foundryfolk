@@ -98,7 +98,7 @@
       'Starts with the focus that has the most to gather nearby. Change it in the info panel': '起初采集附近可采集最多的东西。可在信息面板中更改',
       'Focus and signs': '侧重与标牌',
       'Mines and gatherers are one building each. A mine is built on a deposit and starts with that ore, and a gatherer starts with what there is most of nearby. Pick another focus with the buttons in the info panel. Only the focuses you have unlocked are shown.': '矿井和采集者各是一座建筑。矿井建在矿藏上，起初采集该矿石；采集者起初采集附近最多的东西。用信息面板里的按钮选择其他侧重。只显示你已解锁的侧重。',
-      'A small sign on the building shows what it is making now: the ore a mine digs, the food a gatherer picks, the meal in a kitchen or the tool a toolsmith makes.': '建筑上的小标牌显示它当前在生产什么：矿井开采的矿石、采集者采摘的食物、厨房做的饭菜，或工具匠制作的工具。',
+      'A small sign on the building shows what it is making now: the ore a mine digs, the food a gatherer picks, the ingredients of the recipe in a kitchen or the tool a toolsmith makes.': '建筑上的小标牌显示它当前在生产什么：矿井开采的矿石、采集者采摘的食物、厨房配方的食材，或工具匠制作的工具。',
       'Night': '夜晚',
       'Day': '白天',
       'Clear': '晴',
