@@ -281,6 +281,7 @@
         { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
         { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25. Coins are made at the Mint from silver and gold, and are only good for trading.'] },
         { title: 'Wild animals', lines: ['Deer, moose, foxes and rabbits roam the land and spread berries, herbs and mushrooms. A Hunters Cottage sends a hunter after the nearest animal in range. Every kind of animal gives the same meat and leather.', 'Animals have young faster the fewer there are nearby. You can hunt an area empty for a while, but never a whole region. Animals only live on land you can see.'] },
+        { title: 'Weather', target: ['#weatherBadge'], lines: ['The weather and the time of day change on their own. Hold the pointer over the symbol to see the weather and what it does.', 'Rain makes plants grow thicker, storms blow them to a free tile next to them, fog shortens how far your buildings see, and a tornado rips up plants and drops them as a few piles you can have carried home. At night the moon is up.'] },
         { title: 'Speed and menu', target: ['#speedButton', '#mainMenuButton'], lines: ['Change the game speed here.', 'The menu button opens save, load, settings and this guide. You can also start a custom map with your own settings, and use several save slots.'] },
         { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
         { title: 'Find the enemy', target: ['#build_watchtower'], category: 'war', lines: ['From level 39 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
@@ -609,6 +610,10 @@
       carrierCount.id = 'carrierCount';
       carrierCount.style.color = '#4fd1e8';
 
+      const weatherBadge = document.createElement('span');   // dygn och väder, fylls i av updateWeatherBadge
+      weatherBadge.id = 'weatherBadge';
+      weatherBadge.style.cssText = 'cursor:help;white-space:nowrap';
+
       const speedButton = document.createElement('button');
       speedButton.type = 'button';
       speedButton.id = 'speedButton';
@@ -624,7 +629,7 @@
       menuButton.setAttribute('aria-haspopup', 'dialog');
       menuButton.onclick = () => this.toggleMainMenu();
 
-      controls.append(allButton, carrierCount, speedButton, menuButton);
+      controls.append(allButton, carrierCount, weatherBadge, speedButton, menuButton);
       resourceBar.append(pinned, controls);
 
       this.createResourceWindow();
@@ -2374,6 +2379,7 @@
 
       byId('carrierCount').textContent =
         t('Carriers {idle}/{total}', { idle: idleCarriers, total: carriers.length });
+      this.updateWeatherBadge();
 
       const builtCounts = {};
       for (const placed of World.buildings) if (placed.player === CityBuilder.Players.HUMAN) builtCounts[placed.type] = (builtCounts[placed.type] || 0) + 1;
@@ -2498,6 +2504,18 @@
       return tools.length
         ? `<span class="trade-tools" title="${t('Needed to work. Delivered once and never used up')}">${tools.map(tool => this.resourceChip(tool.id, tool.have >= tool.need ? '✓' : '✕', tool.have >= tool.need ? '' : 'info-short')).join('')}</span>`
         : '';
+    },
+
+    // Dygn och väder som två ikoner. Texten (verktygstipset) byts bara när något ändras.
+    updateWeatherBadge() {
+      const Weather = CityBuilder.Weather, night = Weather.isNight(), type = Weather.type, badge = byId('weatherBadge');
+      const key = night + type + I18n().language;
+      if (!badge || badge.dataset.key === key) return;
+      badge.dataset.key = key;
+      const icons = { clear: '', rain: '🌧', storm: '⛈', fog: '🌫', tornado: '🌪' };
+      const effects = { clear: 'No effect', rain: 'Plants grow thicker', storm: 'Plants are blown to neighbouring tiles', fog: 'Buildings and units see less far', tornado: 'Rips up plants and drops them in piles' };
+      badge.textContent = (night ? '🌙' : '☀️') + icons[type];
+      badge.title = `${t(night ? 'Night' : 'Day')} · ${t({ clear: 'Clear', rain: 'Rain', storm: 'Storm', fog: 'Fog', tornado: 'Tornado' }[type])}: ${t(effects[type])}`;
     },
 
     // Vad en formel gör, i en mening (verktygstips och byggnadsbeskrivning)

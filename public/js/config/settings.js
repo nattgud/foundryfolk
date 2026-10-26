@@ -97,5 +97,18 @@ CityBuilder.Config.settings = {
     image: 'images/fog.jpg',   // bakgrundstextur för dimman (en bild mindre än skärmen läggs som mönster, en större täcker skärmen)
     color: '#0b0d10',          // dimmans färg tills bilden laddats, eller utan bild
   },
-  systemOrder: ['ai', 'construction', 'production', 'spells', 'logistics', 'combat', 'units', 'vision'],
+  // Väder och dygn (systems/weather.js). Vädret byter slumpvis var minSeconds-maxSeconds; chances = vikter för nästa väder.
+  // growth: vad som växer ur marken (terräng -> vara). Skanningen sker var scanSeconds i de chunkar spelaren ser.
+  weather: {
+    dayLength: 480, startFraction: 0.12,   // ett dygn i speltid, och var i dygnet ett nytt spel börjar (0 = gryning)
+    minSeconds: 30, maxSeconds: 180,
+    chances: { clear: 50, rain: 18, storm: 10, fog: 14, tornado: 8 },
+    growth: { tree: 'wood', apple_tree: 'apples', berry_bush: 'berries', herbs: 'herbs', mushrooms: 'mushrooms' },
+    scanSeconds: 2,
+    rain: { chance: 0.08, cap: 2 },        // chans per skanning att en växt får +1 mängd, högst cap gånger terrängens normala mängd
+    storm: { chance: 0.006 },              // chans per skanning att en växt blåser till en ledig grannruta
+    fog: { vision: 0.55 },                 // andel av synfältet som finns kvar
+    tornado: { every: [15, 25], radius: [2, 4], ripAt: 1.5, dropAt: 7, piles: [1, 4], speed: 0.6 },
+  },
+  systemOrder: ['ai', 'construction', 'production', 'spells', 'logistics', 'combat', 'units', 'weather', 'vision'],
 };

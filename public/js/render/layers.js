@@ -577,6 +577,46 @@
     }
   }
 
+  // Väder och dygn: nattens blå dunkel, regn, dimma, blixtar och tornados. Ritas över allt i världen men före dimman och gränssnittet.
+  const frac = value => value - Math.floor(value);
+  Renderer.addLayer('weather', (context, renderer) => {
+    const Weather = CityBuilder.Weather, view = renderer.viewBounds(0), width = view.right - view.left, height = view.bottom - view.top, zoom = renderer.zoom;
+    const night = Weather.darkness(), now = performance.now() / 1000;
+    context.save();
+    if (night > 0) { context.fillStyle = `rgba(8,14,44,${.5 * night})`; context.fillRect(view.left, view.top, width, height); }
+    const type = Weather.type;
+    if (type === 'rain' || type === 'storm') {   // grått dunkel och diagonala streck
+      const storm = type === 'storm';
+      context.fillStyle = `rgba(30,40,55,${storm ? .22 : .1})`; context.fillRect(view.left, view.top, width, height);
+      context.strokeStyle = 'rgba(190,210,235,.45)'; context.lineWidth = 1 / zoom;
+      const count = storm ? 260 : 130, length = (storm ? 16 : 11) / zoom, fall = (storm ? 900 : 600) / zoom;
+      context.beginPath();
+      for (let i = 0; i < count; i++) {
+        const x = view.left + frac(i * 0.618034 + now * 0.05) * (width + length), y = view.top + frac(i * 0.381966 + now * fall / height * (.8 + (i % 5) * .1)) * height;
+        context.moveTo(x, y); context.lineTo(x - length * .3, y + length);
+      }
+      context.stroke();
+    }
+    if (type === 'fog') { context.fillStyle = `rgba(205,214,220,${.26 + .05 * Math.sin(now * .6)})`; context.fillRect(view.left, view.top, width, height); }
+    if (Weather.flash > 0) { context.fillStyle = `rgba(235,240,255,${.45 * Weather.flash})`; context.fillRect(view.left, view.top, width, height); }
+    const size = renderer.tileSize;
+    for (const tornado of Weather.tornadoes) {   // tratt av grå ellipser som snurrar, med skräp runt
+      const cx = (tornado.x + .5) * size, cy = (tornado.y + .5) * size, reach = tornado.radius * size, grow = Math.min(1, tornado.age / 1.5), fade = Math.min(1, (Config.settings.weather.tornado.dropAt - tornado.age) / 1.5 + .2);
+      context.globalAlpha = Math.max(0, Math.min(1, fade));
+      for (let ring = 0; ring < 7; ring++) {
+        const k = ring / 6, rx = reach * (.25 + .75 * k) * grow, y = cy - (1 - k) * reach * 1.6 * grow, sway = Math.sin(now * 3 + ring) * size * .15;
+        context.fillStyle = `rgba(${95 + ring * 12},${100 + ring * 12},${108 + ring * 12},.6)`;
+        context.beginPath(); context.ellipse(cx + sway, y, rx, rx * .32, 0, 0, Math.PI * 2); context.fill();
+      }
+      context.fillStyle = 'rgba(60,45,30,.8)';
+      for (let i = 0; i < 12; i++) {
+        const a = now * 4 + i * .52, r = reach * (.4 + .6 * frac(i * .37)), lift = frac(i * .61 + now * .5);
+        context.fillRect(cx + Math.cos(a) * r * grow, cy - lift * reach * 1.5 * grow + Math.sin(a) * r * .25, 2 / zoom + 1, 2 / zoom + 1);
+      }
+    }
+    context.restore();
+  });
+
   Renderer.addLayer('fog', (context, renderer) => {
     const unit = renderer.tileSize * Vision.cellSize(), view = renderer.viewBounds(0), now = performance.now();
     const minX = Math.floor(view.left / unit) - 1, minY = Math.floor(view.top / unit) - 1;

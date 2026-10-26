@@ -120,16 +120,17 @@
 
     // Stämplar om alla observatörer och bygger om listan över chunkar som någon ser
     refresh() {
-      const settings = Config.settings.vision, expiry = this.time + settings.ttl;
+      const settings = Config.settings.vision, expiry = this.time + settings.ttl, sight = CityBuilder.Weather.visionFactor();   // dimma kortar alla synfält
+      const reach = radius => Math.max(2, Math.round(radius * sight));
       this.nextRefresh = this.time + settings.interval;
       this.version++;
       for (const building of World.buildings) {
         if (building.buildProgress < 1 || building.definition.pile) continue;
-        this.stamp(building.player, building.x + .5, building.y + .5, building.definition.vision ?? settings.building, expiry);
+        this.stamp(building.player, building.x + .5, building.y + .5, reach(building.definition.vision ?? settings.building), expiry);
       }
       for (const unit of World.units) {
         if (unit.player === Players.NEUTRAL) continue;
-        this.stamp(unit.player, unit.x, unit.y, unit.definition.vision ?? (unit.definition.isSoldier ? settings.soldier : settings.unit), expiry);
+        this.stamp(unit.player, unit.x, unit.y, reach(unit.definition.vision ?? (unit.definition.isSoldier ? settings.soldier : settings.unit)), expiry);
       }
 
       for (const set of this.memory.values()) for (const building of set) if (building.removed) set.delete(building);
