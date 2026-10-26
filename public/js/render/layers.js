@@ -411,6 +411,7 @@
       if (!isFinished) { // byggframsteg
         context.fillStyle = '#000'; context.fillRect(x + 3, y + tileSize - 8, tileSize - 6, 5);
         context.fillStyle = '#5fb55f'; context.fillRect(x + 3, y + tileSize - 8, (tileSize - 6) * building.buildProgress, 5);
+        renderer.drawResourceIcons(context, CityBuilder.Construction.missing(building), x, y + 1);   // det som ännu ska bäras hit
       } else if (!building.definition.isStorage) {
         renderer.drawResourceIcons(context, building.inputStock, x, y + tileSize - 10);
         renderer.drawResourceIcons(context, building.outputStock, x, y + (building.definition.pile ? tileSize * .42 : 1));
@@ -626,7 +627,7 @@
     if (Weather.flash > 0) { context.fillStyle = `rgba(235,240,255,${.45 * Weather.flash})`; context.fillRect(view.left, view.top, width, height); }
     const size = renderer.tileSize;
     for (const tornado of Weather.tornadoes) {   // tratt av grå ellipser som snurrar, med skräp runt
-      const cx = (tornado.x + .5) * size, cy = (tornado.y + .5) * size, reach = tornado.radius * size, grow = Math.min(1, tornado.age / 1.5), fade = Math.min(1, (Config.settings.weather.tornado.dropAt - tornado.age) / 1.5 + .2);
+      const cx = (tornado.x + .5) * size, cy = (tornado.y + .5) * size, reach = tornado.radius * size, grow = Math.min(1, tornado.age / 1.5), fade = Math.min(1, ((tornado.life ?? 7) - tornado.age) / 1.5 + .2);
       context.globalAlpha = Math.max(0, Math.min(1, fade));
       for (let ring = 0; ring < 7; ring++) {
         const k = ring / 6, rx = reach * (.25 + .75 * k) * grow, y = cy - (1 - k) * reach * 1.6 * grow, sway = Math.sin(now * 3 + ring) * size * .15;
@@ -634,7 +635,7 @@
         context.beginPath(); context.ellipse(cx + sway, y, rx, rx * .32, 0, 0, Math.PI * 2); context.fill();
       }
       // Det som tornadon dragit upp virvlar runt i tratten: en bild per vara (högst 28, fördelade efter mängd, minst en av varje)
-      if (tornado.ripped) {
+      if (Object.keys(tornado.collected).length) {
         const goods = Object.entries(tornado.collected), total = goods.reduce((sum, [, amount]) => sum + amount, 0), icons = [];
         for (const [id, amount] of goods) for (let n = Math.max(1, Math.round(amount / total * 28)); n > 0 && icons.length < 28; n--) icons.push(id);
         const icon = size * .38;

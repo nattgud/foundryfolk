@@ -6,6 +6,9 @@
 
   CityBuilder.Changelog = {
     '0.8.6': [
+      'Buildings now need their materials carried to the building site first. The goods are taken from your stores by carriers and the building goes up as they arrive, so a site far from a store takes longer. What is still on its way is shown on the site and in its panel, and demolishing a site gives back what has arrived',
+      'Tornadoes now wander slowly (about one tile every two seconds) for 15 to 30 seconds. Instead of ripping up everything at once they take one unit from every plant within two tiles twice a second, and a tile turns to grass when it runs out. What they have taken is dropped as a few piles at the end',
+      'Target times for all levels are recalculated for this: about 14 % longer on the early levels and 7 % on the late ones',
       'The grimoire now belongs to you, not to one game: the spells you save are kept in your browser and follow you into every level and save, so the more you play, the more spells you find. It holds up to 20',
     ],
     '0.8.5': [

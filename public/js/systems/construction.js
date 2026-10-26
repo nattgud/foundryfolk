@@ -1,5 +1,7 @@
 /* System: byggnation. Räknar upp byggprogress, kör onBuilt och hanterar vinst. Bärare skapas/tas bort av Logistics.balanceCarriers.
-   Construction.build är gemensam för alla spelare (människa och dator): samma platsregler och samma kostnader. */
+   Construction.build är gemensam för alla spelare (människa och dator): samma platsregler och samma kostnader.
+   Byggplatsen (building.needsMaterials) betalas med varor som bärarna hämtar ur lagren (Logistics.requestSiteMaterials); de läggs i
+   inputStock och bygget kan aldrig vara längre kommet än andelen av byggkostnaden som kommit fram. När det är klart förbrukas de. */
 (function (CityBuilder) {
   'use strict';
   const { World, Behaviors, Economy, Pathfinder, Players, Config } = CityBuilder;
@@ -33,7 +35,7 @@
       if (!salvage || building.definition.pile) return;
       const goods = {};
       const add = (resourceId, amount) => { if (amount > 0) goods[resourceId] = (goods[resourceId] || 0) + amount; };
-      for (const resourceId in building.definition.buildCost) add(resourceId, Math.floor(building.definition.buildCost[resourceId] / 2));
+      if (!building.needsMaterials) for (const resourceId in building.definition.buildCost) add(resourceId, Math.floor(building.definition.buildCost[resourceId] / 2));   // en byggplats har bara det som kommit fram
       for (const stock of [building.inputStock, building.outputStock, building.storedGoods]) for (const resourceId in stock) add(resourceId, stock[resourceId]);
       if (typeof building.workerUnit?.carriedResource === 'string') add(building.workerUnit.carriedResource, 1);
       this.dropPile(building.x, building.y, building.player, goods);
@@ -71,6 +73,43 @@
       return best;
     },
 
+    // Det som byggplatserna ännu inte beställt hem (kostnad minus framkommet och på väg): redan lovat, så det kan inte användas två gånger
+    pendingNeed(player) {
+      const pending = {};
+      for (const site of World.buildings) {
+        if (site.player !== player || !site.needsMaterials) continue;
+        for (const resourceId in site.definition.buildCost) {
+          const missing = site.definition.buildCost[resourceId] - (site.inputStock[resourceId] || 0) - (site.incomingCount[resourceId] || 0);
+          if (missing > 0) pending[resourceId] = (pending[resourceId] || 0) + missing;
+        }
+      }
+      return pending;
+    },
+
+    // Räcker lagren till kostnaden, utöver vad pågående byggen redan väntar på?
+    canAfford(cost, player = Players.HUMAN) {
+      const pending = this.pendingNeed(player);
+      return Object.entries(cost).every(([resourceId, amount]) => Economy.freeAmount(resourceId, player) - (pending[resourceId] || 0) >= amount);
+    },
+
+    // Det som ännu saknas på en byggplats (tomt när den inte väntar på något)
+    missing(building) {
+      const missing = {};
+      if (!building.needsMaterials) return missing;
+      for (const resourceId in building.definition.buildCost) {
+        const left = building.definition.buildCost[resourceId] - (building.inputStock[resourceId] || 0);
+        if (left > 0) missing[resourceId] = left;
+      }
+      return missing;
+    },
+
+    // Hur stor del av byggkostnaden som kommit fram (0-1)
+    delivered(building) {
+      const cost = building.definition.buildCost, total = Object.values(cost).reduce((sum, amount) => sum + amount, 0);
+      if (!building.needsMaterials || !total) return 1;
+      return Object.entries(cost).reduce((sum, [resourceId, amount]) => sum + Math.min(amount, building.inputStock[resourceId] || 0), 0) / total;
+    },
+
     build(buildingType, x, y, player = Players.HUMAN) {
       const definition = Config.buildings[buildingType];
       const from = this.nearestOwnBuilding(x, y, player);   // vägen räknas från närmaste egna byggnad, så att utposter långt från basen går att bygga
@@ -82,8 +121,8 @@
       if (!type) return 'terrain';
       if (type !== buildingType && player === Players.HUMAN && CityBuilder.Levels && !CityBuilder.Levels.isUnlocked(type)) return 'locked';   // inriktningen är inte upplåst än
       if (Pathfinder.findPathNow(from.x, from.y, x, y) === null) return 'unreachable';
-      if (!Economy.spend(definition.buildCost, player)) return 'cost';
-      World.placeBuilding(type, x, y, false, player);
+      if (!this.canAfford(definition.buildCost, player)) return 'cost';
+      World.placeBuilding(type, x, y, false, player).needsMaterials = true;   // varorna hämtas av bärarna
       return null;
     },
   };
@@ -92,15 +131,17 @@
   CityBuilder.Systems = CityBuilder.Systems || {};
   CityBuilder.Systems.construction = {
     update(deltaSeconds) {
+      const Construction = CityBuilder.Construction;
       for (const building of World.buildings) {
         if (building.buildProgress >= 1) continue;
 
         const progressIncrement = deltaSeconds / building.definition.buildDuration;
-        building.buildProgress = Math.min(1, building.buildProgress + progressIncrement);
+        building.buildProgress = Math.min(Construction.delivered(building), building.buildProgress + progressIncrement);   // väntar på material som inte kommit fram
 
         if (building.buildProgress < 1) continue;
 
-        // Just färdigbyggd
+        // Just färdigbyggd: materialet är förbrukat
+        if (building.needsMaterials) { building.needsMaterials = false; building.inputStock = {}; }
         if (building.definition.job) {
           const behavior = Behaviors.forBuilding(building);
           if (behavior.onBuilt) behavior.onBuilt(building);

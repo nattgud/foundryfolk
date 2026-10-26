@@ -109,7 +109,15 @@ CityBuilder.Config.settings = {
     rain: { chance: 0.08, cap: 2 },        // chans per skanning att en växt får +1 mängd, högst cap gånger terrängens normala mängd
     storm: { chance: 0.006 },              // chans per skanning att en växt blåser till en ledig grannruta
     fog: { vision: 0.55 },                 // andel av synfältet som finns kvar
-    tornado: { every: [15, 25], radius: [2, 4], ripAt: 1.5, dropAt: 7, piles: [1, 4], speed: 0.6 },
+    tornado: {
+      every: [15, 25],                     // sekunder mellan nya tornados medan vädret varar
+      radius: [2, 2],                      // rutor runt mitten som den river i
+      life: [15, 20], longChance: 0.2, longLife: 30,   // hur länge den virvlar runt (ibland längre)
+      speed: [0.35, 0.65],                 // rutor per sekund (en per ca 2 s), slumpad för varje tornado
+      turn: 0.8,                           // hur mycket färdriktningen slingrar (radianer per sekund, slumpmässigt)
+      tickSeconds: 0.5, takes: 1,          // var 0,5 s minskar varje växtruta inom radien med 'takes'; är den tom blir rutan gräs
+      piles: [1, 4],                       // hur många högar den släpper i slutet
+    },
   },
   systemOrder: ['ai', 'construction', 'production', 'spells', 'logistics', 'combat', 'units', 'weather', 'vision'],
 };

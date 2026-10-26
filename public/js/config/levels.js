@@ -404,7 +404,8 @@
   // What a decent player needs. Every step of a production chain costs time twice: the building has to be placed and built, and
   // goods have to travel between the steps before the next one can start. War adds finding the rival, an army and a long march.
   const HOP_SECONDS = 20;        // a carrier trip between two steps of a chain
-  const SETUP_SECONDS = 45;      // placing a building and collecting its materials (plus its build time)
+  const PLACE_SECONDS = 20;      // placing a building: finding the spot and tapping it
+  const DELIVERY_BASE = 28, DELIVERY_PER_UNIT = 2;   // carriers bring the materials: a first trip, then about two seconds per unit (measured with a few buildings under way)
   const TERRAIN_SECONDS = 60;    // finding and reaching the terrain of a mine or other terrain-bound building
   const DEPTH_FACTOR = 0.25;     // each extra step in a chain slows the flow down by this much (waiting, uneven speeds)
   const EXPLORE_SECONDS = 600;   // finding the rival 60-90 tiles away: watchtowers outward, and some wrong guesses
@@ -443,12 +444,16 @@
     return best || fallback;
   };
 
+  // Time to put up one building: place it, then it is finished once the materials have been carried there and its build time has run
+  // (the two overlap, so the slower of them counts)
+  const buildSeconds = definition => PLACE_SECONDS + Math.max(definition.buildDuration || 5, DELIVERY_BASE + DELIVERY_PER_UNIT * Object.values(definition.buildCost).reduce((sum, amount) => sum + amount, 0));
+
   // Time to place and build a set of buildings (once per level, shared between the goals that need them)
   const setupSeconds = ids => {
     let seconds = 0;
     for (const id of ids) {
       const definition = CityBuilder.Config.buildings[id];
-      seconds += (definition.buildDuration || 5) + SETUP_SECONDS + (definition.placeOnTerrain || definition.job?.kind === 'gather' && !definition.job.sourceUnit ? TERRAIN_SECONDS : 0);
+      seconds += buildSeconds(definition) + (definition.placeOnTerrain || definition.job?.kind === 'gather' && !definition.job.sourceUnit ? TERRAIN_SECONDS : 0);
     }
     return seconds;
   };
@@ -482,6 +487,11 @@
   // Skalningen avtar mot 1 vid nivå 40, där tiderna ännu inte är mätta mot spelare.
   const parScale = level => Math.min(1, 0.55 + 0.45 * Math.max(0, level - 10) / 30);
 
+  // Kalibrering mot leverans-först (0.8.6): en skriptad spelare (samma byggregler och bärare som datorn) gjorde bana 1, 2, 3 och 7 med och utan att
+  // materialet måste bäras fram. Medel av tre varv: 261 -> 304 s, 272 -> 279 s, 434 -> 461 s och 670 -> 880 s, alltså i snitt +14 %. Det gäller
+  // främst bygg- och uppstartstiden, som väger tyngre tidigt; mot bana 60 och uppåt (krig, lång marsch) tonas tillägget ner till +7 %.
+  const deliveryScale = level => 1.07 + 0.07 * Math.min(1, Math.max(0, (60 - level) / 40));
+
   const parSeconds = (items, level) => {
     const workers = 2 + Math.floor(level / 10);   // producers a player typically runs at once
     let seconds = 240 + 6 * level;
@@ -489,7 +499,7 @@
     let trained = 0;   // soldiers a 'soldiers' goal already provides for the war
     const war = items.some(item => item.type === 'kills' || item.type === 'destroy' || item.type === 'eliminate');
     for (const item of items) {
-      if (item.type === 'build') seconds += item.amount * ((CityBuilder.Config.buildings[item.id].buildDuration || 5) + 40);
+      if (item.type === 'build') seconds += item.amount * buildSeconds(CityBuilder.Config.buildings[item.id]);
       else if (item.type === 'soldiers') {
         const army = armyPlan(level, item.amount, workers);
         trained += item.amount;
@@ -515,7 +525,7 @@
       ids.add('watchtower');
     }
     seconds += setupSeconds(ids);
-    return Math.round(seconds * parScale(level) / 10) * 10;
+    return Math.round(seconds * parScale(level) * deliveryScale(level) / 10) * 10;
   };
 
   // Military goals (types 'soldiers', 'kills', 'destroy', 'eliminate'; see evaluate)

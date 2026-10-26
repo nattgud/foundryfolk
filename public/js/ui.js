@@ -272,6 +272,7 @@
         { title: 'Resources', target: ['#top'], lines: ['The top bar shows what is in your stores. Tap "All resources" for the full list.', 'A number turns orange when the stores are full for that resource. Build a warehouse for more room.', 'Tap a resource in the list to see which buildings use it and which make it, per minute. Buildings that could use it but do not right now are shown too.', 'The list only shows the resources you can use at your current level. More appear as you unlock buildings.'] },
         { title: 'Minimap', target: ['#minimap', '#minimapMode', '#minimapZoomIn', '#minimapZoomOut'], lines: ['The minimap shows the area around you. The white box is what you see on screen.', 'Use + and − to zoom it, and the small button to change what it shows.', 'Your buildings are coloured squares. Enemies you have spotted are red.', 'A red ring with ! means a gatherer finds nothing to gather. An orange or red ring means the building stands still most of the time. Select a building to ring all buildings of the same type.'] },
         { title: 'Locked or too expensive', target: ['#bottom .building-option'], category: 'construction', lines: ['A grey button with a dashed border, a stroke and a padlock is locked. Move the mouse over it to see at which level it unlocks. Only the next few levels are shown.', 'A button with a red border is unlocked, but you cannot afford it yet. Move the mouse over it to see the cost.'] },
+        { title: 'Building materials', lines: ['A new building is only a site at first. Carriers bring the materials from your stores, and the building goes up as they arrive, so a site far from a store takes longer.', 'The goods still on their way are shown on the site and in its panel. Demolishing a site gives back everything that has already arrived.'] },
         { title: 'Hotkeys', target: ['#bottom .build-categories'], category: null, lines: ['Press a number to open a category in the build menu (you can switch category at any time), then a letter on the top row, Q W E R T Y U I O P, to choose a building in it. Esc goes back one step. Hover over a button to see its key.', 'While one of your buildings is selected, the letters control it instead: P pauses, B turns the boost on or off, R changes what it makes, T opens trading, S switches between attack and defence, Z X C V train soldiers, and Delete demolishes (press it twice).'] },
         { title: 'Select, pause and demolish', mock: 'pause', lines: ['Tap one of your buildings on the map to open its panel.', 'Pause stops a building from working. Tap it again to resume.', 'Demolish removes the building and gives back half of its cost.'] },
         { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'Imports are on the left of the arrow and exports on the right. Tools the building needs are shown next to its name. They are delivered once and never used up.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
@@ -283,7 +284,7 @@
         { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25. Coins are made at the Mint from silver and gold, and are only good for trading.'] },
         { title: 'Wild animals', lines: ['Deer, moose, foxes and rabbits roam the land and spread berries, herbs and mushrooms. A Hunters Cottage sends a hunter after the nearest animal in range. Every kind of animal gives the same meat and leather.', 'Animals have young faster the fewer there are nearby. You can hunt an area empty for a while, but never a whole region. Animals only live on land you can see.'] },
         { title: 'Focus and signs', lines: ['Mines and gatherers are one building each. A mine is built on a deposit and starts with that ore, and a gatherer starts with what there is most of nearby. Pick another focus with the buttons in the info panel. Only the focuses you have unlocked are shown.', 'A small sign on the building shows what it is making now: the ore a mine digs, the food a gatherer picks, the meal in a kitchen or the tool a toolsmith makes.'] },
-        { title: 'Weather', target: ['#weatherBadge'], lines: ['The weather and the time of day change on their own. Hold the pointer over the symbol to see the weather and what it does.', 'Rain makes plants grow thicker, storms blow them to a free tile next to them, fog shortens how far your buildings see, and a tornado rips up plants and drops them as a few piles you can have carried home. At night the moon is up.'] },
+        { title: 'Weather', target: ['#weatherBadge'], lines: ['The weather and the time of day change on their own. Hold the pointer over the symbol to see the weather and what it does.', 'Rain makes plants grow thicker, storms blow them to a free tile next to them, fog shortens how far your buildings see, and a tornado wanders slowly around for 15 to 30 seconds, tearing the plants it passes down bit by bit and dropping them as a few piles you can have carried home. At night the moon is up.'] },
         { title: 'Speed and menu', target: ['#speedButton', '#mainMenuButton'], lines: ['Change the game speed here.', 'The menu button opens save, load, settings and this guide. You can also start a custom map with your own settings, and use several save slots.'] },
         { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
         { title: 'Find the enemy', target: ['#build_watchtower'], category: 'war', lines: ['From level 39 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
@@ -1566,7 +1567,7 @@
             tooltip: () => this.tooltipContent(
               this.buildingName(buildingId),
               building.buildCost,
-              [...(lockedLine ? ['🔒 ' + lockedLine] : Economy.canAfford(building.buildCost) ? [] : ['⚠ ' + t('Not enough resources')]), ...this.describeBuilding(building), ...this.hotkeyLines(this.buildingKey(button))]
+              [...(lockedLine ? ['🔒 ' + lockedLine] : CityBuilder.Construction.canAfford(building.buildCost) ? [] : ['⚠ ' + t('Not enough resources')]), ...this.describeBuilding(building), ...this.hotkeyLines(this.buildingKey(button))]
             ),
           });
 
@@ -2584,7 +2585,7 @@
         button.setAttribute('aria-pressed', String(isSelected));
         button.classList.toggle(
           'unaffordable',
-          !button.classList.contains('locked') && !Economy.canAfford(Config.buildings[buildingId].buildCost)
+          !button.classList.contains('locked') && !CityBuilder.Construction.canAfford(Config.buildings[buildingId].buildCost)
         );
       }
 
@@ -2921,7 +2922,7 @@
 
       const key = (building
         ? (building.player === CityBuilder.Players.HUMAN
-          ? `b${building.id}:${I18n().language}:${building.status}:${building.buildProgress < 1 ? this.timeLeft(building) : 'done'}:${this.efficiencyText(building)}:${CityBuilder.Behaviors.yieldFactor(building)}`
+          ? `b${building.id}:${I18n().language}:${building.status}:${building.buildProgress < 1 ? this.timeLeft(building) + Math.round(CityBuilder.Construction.delivered(building) * 100) : 'done'}:${this.efficiencyText(building)}:${CityBuilder.Behaviors.yieldFactor(building)}`
           : `e${building.id}:${I18n().language}:${Math.ceil(building.hp)}:${building.buildProgress < 1 ? this.timeLeft(building) : 'done'}`)
         : `t${tile.x},${tile.y}:${node.tile.remainingAmount}`) +
         `@${Math.round(left)},${Math.round(top)},${Math.round(size)}`;
@@ -2934,7 +2935,7 @@
             this.buildingName(building.definition),
             null,
             [
-              ...(building.buildProgress < 1 ? [t('Constructing {time}', { time: this.timeLeft(building) })] : []),
+              ...(building.buildProgress < 1 ? [t('Constructing {time}', { time: this.timeLeft(building) }), ...(Object.keys(CityBuilder.Construction.missing(building)).length ? [t('Still to deliver: {goods}', { goods: this.resourceIconsHtml(CityBuilder.Construction.missing(building)) })] : [])] : []),
               ...(enemy ? [t('Health: {hp}/{max}', { hp: Math.ceil(building.hp), max: Math.ceil(building.maxHp) })] : [
                 ...(this.efficiencyText(building) ? [this.efficiencyText(building)] : []),
                 ...this.describeBuilding(building.definition, building),
@@ -3054,8 +3055,10 @@
         }
       }
 
+      const lacking = CityBuilder.Construction.missing(building), waiting = Object.keys(lacking).length
+        ? `<br>${t('Still to deliver: {goods}', { goods: this.resourceIconsHtml(lacking) })}` : '';
       const statusText = building.buildProgress < 1
-        ? t('Under construction {time}', { time: this.timeLeft(building) })
+        ? t('Under construction {time}', { time: this.timeLeft(building) }) + waiting
         : this.statusHtml(building.status);
 
       // Fiendens byggnader: bara namn, byggstatus och hälsa. Import, export, effektivitet, lager och soldater är spelarens egna uppgifter.

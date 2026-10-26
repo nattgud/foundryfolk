@@ -102,17 +102,22 @@
       return fallback;
     },
 
-    // Rycker upp växterna inom radien och minns vad de gav
+    // Tar 'takes' ur varje växtruta inom radien och minns vad det gav. Är rutan tom blir den gräs.
     rip(tornado) {
-      const growth = Config.settings.weather.growth, centreX = Math.round(tornado.x), centreY = Math.round(tornado.y), reach = Math.ceil(tornado.radius);
+      const settings = Config.settings.weather.tornado, growth = Config.settings.weather.growth, centreX = Math.round(tornado.x), centreY = Math.round(tornado.y), reach = Math.ceil(tornado.radius);
+      let cleared = false;
       for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
         if (Math.hypot(dx, dy) > tornado.radius) continue;
         const tile = World.getTile(centreX + dx, centreY + dy), resource = tile && growth[tile.terrainType];
         if (!resource || !(tile.remainingAmount > 0)) continue;
-        tornado.collected[resource] = (tornado.collected[resource] || 0) + Math.round(tile.remainingAmount);
+        const taken = Math.min(settings.takes, Math.ceil(tile.remainingAmount));
+        tornado.collected[resource] = (tornado.collected[resource] || 0) + taken;
+        tile.remainingAmount -= taken;
+        if (tile.remainingAmount > 0) continue;
         Utils.assign(tile, Config.terrain.grass, { terrainType: 'grass', remainingAmount: 0 });
+        cleared = true;
       }
-      CityBuilder.Pathfinder.clearCache();
+      if (cleared) CityBuilder.Pathfinder.clearCache();
     },
 
     // Släpper det som fångats som några högar på lediga rutor runt platsen
@@ -138,14 +143,16 @@
       if (this.type === 'tornado' && (this.tornadoIn -= deltaSeconds) <= 0) {
         this.tornadoIn = between(settings.every);
         const spot = this.tornadoSpot();
-        if (spot) this.tornadoes.push({ ...spot, radius: rand(settings.radius), age: 0, ripped: false, collected: {} });
+        if (spot) this.tornadoes.push({ ...spot, radius: rand(settings.radius), age: 0, collected: {}, life: Math.random() < settings.longChance ? settings.longLife : between(settings.life),
+          speed: between(settings.speed), angle: Math.random() * Math.PI * 2, tick: settings.tickSeconds });
       }
       for (const tornado of this.tornadoes) {
         tornado.age += deltaSeconds;
-        const angle = tornado.age * 0.7 + tornado.radius;   // sakta drift
-        tornado.x += Math.cos(angle) * settings.speed * deltaSeconds; tornado.y += Math.sin(angle) * settings.speed * deltaSeconds;
-        if (!tornado.ripped && tornado.age >= settings.ripAt) { tornado.ripped = true; this.rip(tornado); }
-        if (tornado.age >= settings.dropAt) { this.drop(tornado); tornado.done = true; }
+        tornado.angle = (tornado.angle ?? 0) + (Math.random() - 0.5) * 2 * settings.turn * deltaSeconds;   // slingrar sakta
+        const speed = tornado.speed ?? 0.5;
+        tornado.x += Math.cos(tornado.angle) * speed * deltaSeconds; tornado.y += Math.sin(tornado.angle) * speed * deltaSeconds;
+        if ((tornado.tick = (tornado.tick ?? settings.tickSeconds) - deltaSeconds) <= 0) { tornado.tick += settings.tickSeconds; this.rip(tornado); }
+        if (tornado.age >= (tornado.life ?? 7)) { this.drop(tornado); tornado.done = true; }
       }
       if (this.tornadoes.some(tornado => tornado.done)) this.tornadoes = this.tornadoes.filter(tornado => !tornado.done);
     },

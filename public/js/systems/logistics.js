@@ -6,7 +6,7 @@
   const { Config, World, Utils, Jobs, Economy, Behaviors, Players } = CityBuilder;
 
   // Standardvärden: saknas en inställning i cfg() används dessa (planeringen stannar annars helt)
-  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, baseCarriers: 5, carriersPerBuilding: 1, carriersPerStorage: 5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40, unreachableSeconds: 30 }, Config.settings.logistics);
+  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, requestsPerSite: 4, baseCarriers: 5, carriersPerBuilding: 1, carriersPerStorage: 5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40, unreachableSeconds: 30 }, Config.settings.logistics);
 
   const Logistics = {
     tasks: [],              // äldsta först
@@ -15,6 +15,9 @@
     load: {},               // spelare -> antal väntande uppdrag (maxTasks gäller per spelare)
     lost: {},               // spelare -> tider då dödade bärare ersätts (en i taget, carrierRespawnSeconds emellan)
     unreachable: new Map(), // "källa>mål" -> tid då paret får provas igen (efter att en bärare inte hittade någon väg)
+
+    // Tar bäraren emot varor som lager? (En lagerbyggnad som ännu byggs är en byggplats som tar emot byggmaterial.)
+    stores: building => building.definition.isStorage && !building.needsMaterials,
 
     pairKey: (source, destination) => source.id + '>' + destination.id,
     isUnreachable(source, destination) { return (this.unreachable.get(this.pairKey(source, destination)) ?? 0) > (this.time || 0); },
@@ -56,7 +59,7 @@
 
     createTask(source, destination, resourceId) {
       this.reserve(source, resourceId);
-      if (!destination.definition.isStorage) destination.incomingCount[resourceId] = (destination.incomingCount[resourceId] || 0) + 1;
+      if (!this.stores(destination)) destination.incomingCount[resourceId] = (destination.incomingCount[resourceId] || 0) + 1;
       else this.addIncoming(destination, resourceId, 1);
       this.load[source.player] = (this.load[source.player] || 0) + 1;
       this.tasks.push({ source, destination, resource: resourceId, seq: this.seq = (this.seq || 0) + 1, created: this.time || 0 });
@@ -96,7 +99,7 @@
         if (!picked && !task.source.removed) this.reservationsOf(task.source)[task.resource] = (this.reservationsOf(task.source)[task.resource] || 0) + 1;
         const destination = task.destination;
         if (destination.removed) return;
-        if (destination.definition.isStorage) this.addIncoming(destination, task.resource, 1);
+        if (this.stores(destination)) this.addIncoming(destination, task.resource, 1);
         else destination.incomingCount[task.resource] = (destination.incomingCount[task.resource] || 0) + 1;
       };
       for (const task of this.tasks) { count(task, false); this.load[task.source.player] = (this.load[task.source.player] || 0) + 1; }
@@ -118,7 +121,7 @@
     // Släpp "på väg"-räkningen för ett uppdrag (mål = hus eller lager)
     releaseIncoming(task) {
       const destination = task.destination;
-      if (destination.definition.isStorage) this.addIncoming(destination, task.resource, -1);
+      if (this.stores(destination)) this.addIncoming(destination, task.resource, -1);
       else if (!destination.removed) destination.incomingCount[task.resource]--;
     },
 
@@ -162,7 +165,9 @@
       let visited = 0;
       for (; visited < count; visited++) {
         const building = buildings[(start + visited) % count];
-        if (building.buildProgress < 1 || !building.definition.job || this.full(building.player)) continue;
+        if (this.full(building.player)) continue;
+        if (building.buildProgress < 1) { if (building.needsMaterials) this.requestSiteMaterials(building); continue; }
+        if (!building.definition.job) continue;
         for (const [resourceId, capacity] of Object.entries(Behaviors.requiredResources(building))) {
           const missing = capacity - (building.inputStock[resourceId] || 0) - (building.incomingCount[resourceId] || 0);
           for (let requested = 0; requested < Math.min(requestsPerBuilding, missing) && !this.full(building.player); requested++) {
@@ -183,6 +188,19 @@
       }
       this.cursor = (start + visited) % count;
 
+    },
+
+    // Byggplatsen beställer det den saknas av byggkostnaden, från närmaste källa med varan (lager eller producents utbuffert)
+    requestSiteMaterials(site) {
+      const { requestsPerSite } = cfg();
+      for (const [resourceId, amount] of Object.entries(site.definition.buildCost)) {
+        const missing = amount - (site.inputStock[resourceId] || 0) - (site.incomingCount[resourceId] || 0);
+        for (let requested = 0; requested < Math.min(requestsPerSite, missing) && !this.full(site.player); requested++) {
+          const supplier = this.findSupplier(resourceId, site);
+          if (!supplier) break;
+          this.createTask(supplier, site, resourceId);
+        }
+      }
     },
 
     // Överskott i utbuffert -> närmaste lager (om det finns plats). Rutan töms också när bufferten börjar bli full,
@@ -238,7 +256,7 @@
     cancellableOrders() {
       const orders = new Map();
       const add = (task, carrier) => {
-        if (task.destination.definition.isStorage || !task.source.definition.isStorage) return;
+        if (this.stores(task.destination) || !task.source.definition.isStorage) return;
         const key = task.destination.id + ':' + task.resource;
         if (!orders.has(key)) orders.set(key, []);
         orders.get(key).push({ task, carrier });
@@ -296,7 +314,7 @@
         if (now - task.created > maxWait) return 0;
         const { source, destination } = task;
         if (!source.definition.isStorage && Utils.sumValues(source.outputStock) >= bufferLimit) return 0;
-        if (!destination.definition.isStorage && !destination.inputStock[task.resource]) return 0;
+        if (!this.stores(destination) && !destination.inputStock[task.resource]) return 0;
         return 1;
       };
       this.tasks.sort((a, b) => {
@@ -343,12 +361,13 @@
 
     dropOff(carrier) {
       const task = carrier.deliveryTask, destination = task.destination;
-      if (destination.definition.isStorage) this.addIncoming(destination, task.resource, -1);
+      if (this.stores(destination)) this.addIncoming(destination, task.resource, -1);
       if (destination.removed) Economy.addToNearestStorage(task.resource, 1, carrier);
-      else if (destination.definition.isStorage) destination.storedGoods[task.resource] = (destination.storedGoods[task.resource] || 0) + 1;
+      else if (this.stores(destination)) destination.storedGoods[task.resource] = (destination.storedGoods[task.resource] || 0) + 1;
       else {
         destination.inputStock[task.resource] = (destination.inputStock[task.resource] || 0) + 1;
         destination.incomingCount[task.resource]--;
+        if (destination.needsMaterials) Economy.record(destination.player, 'use', task.resource, 'construction');
       }
       carrier.carriedResource = null; carrier.deliveryTask = null; carrier.hasPickedUp = false;
     },
@@ -360,7 +379,7 @@
       const task = carrier.deliveryTask;
       if (!task) return;
       this.unreachable.set(this.pairKey(task.source, task.destination), (this.time || 0) + cfg().unreachableSeconds);
-      const relay = carrier.hasPickedUp && !task.destination.definition.isStorage ? this.findRelay(task) : null;
+      const relay = carrier.hasPickedUp && !this.stores(task.destination) ? this.findRelay(task) : null;
       if (!relay) return this.abortTask(carrier);
 
       this.releaseIncoming(task);

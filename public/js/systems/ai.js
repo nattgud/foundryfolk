@@ -149,7 +149,8 @@
       const prerequisite = first(inputsOf(definition));
       if (prerequisite) return prerequisite;
 
-      const short = Object.keys(definition.buildCost).filter(resourceId => Economy.freeAmount(resourceId, player) < definition.buildCost[resourceId]);
+      const pending = Construction.pendingNeed(player);   // det pågående byggen redan väntar på räknas som upptaget
+      const short = Object.keys(definition.buildCost).filter(resourceId => Economy.freeAmount(resourceId, player) - (pending[resourceId] || 0) < definition.buildCost[resourceId]);
       if (!short.length) return type;
       const producer = first(short) ?? this.expand(player, state, census, short, path);
       if (producer) return producer;
