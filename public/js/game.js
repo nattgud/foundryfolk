@@ -59,10 +59,9 @@
 
     setPlacingType(buildingType) { this.placingType = buildingType; this.casting = null; this.selectedBuilding = null; },
 
-    // Trollformler (systems/spells.js): knappen i förtrollarens panel väljer formeln, nästa tryck på kartan läser den
-    beginSpell(building, spellId) {
-      const spell = CityBuilder.Spells.find(building, spellId);
-      this.casting = this.casting && this.casting.spell === spell ? null : { building, spell };
+    // Trollformler (systems/spells.js): knappen i förtrollarens panel (eller blandningsfönstret) väljer formeln, nästa tryck på kartan läser den
+    beginSpell(building, spell) {
+      this.casting = this.casting && this.casting.spell.id === spell.id && this.casting.building === building ? null : { building, spell };
     },
 
     castSpell(x, y) {
@@ -77,6 +76,7 @@
         room: () => t('No room for it here'),
         unbuilt: () => t('Not finished yet'),
         nothing: () => t('Nothing here to affect'),
+        sky: () => t('The sky does not suit this mix'),
       }[problem]());
     },
 

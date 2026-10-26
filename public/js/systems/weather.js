@@ -46,30 +46,40 @@
     },
 
     // Alla växtrutor i de chunkar som spelaren ser
-    forEachPlant(visit) {
+    // (med zone { x, y, radius }: bara växterna inom den, annars alla)
+    forEachPlant(visit, zone) {
       const size = Config.settings.chunkSize, growth = Config.settings.weather.growth;
-      for (const { cx, cy } of Vision.activeChunks) for (let y = cy * size; y < (cy + 1) * size; y++) for (let x = cx * size; x < (cx + 1) * size; x++) {
+      const check = (x, y) => {
         const tile = World.getTile(x, y);
         if (tile && growth[tile.terrainType] && tile.remainingAmount > 0 && Vision.visible(Players.HUMAN, x, y)) visit(tile, x, y);
+      };
+      if (zone) {
+        const reach = Math.ceil(zone.radius);
+        for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) if (Math.hypot(dx, dy) <= zone.radius) check(zone.x + dx, zone.y + dy);
+        return;
       }
+      for (const { cx, cy } of Vision.activeChunks) for (let y = cy * size; y < (cy + 1) * size; y++) for (let x = cx * size; x < (cx + 1) * size; x++) check(x, y);
     },
+
+    hasPlants(zone) { let found = false; this.forEachPlant(() => { found = true; }, zone); return found; },
 
     isFree(x, y) { const tile = World.getTile(x, y); return !!tile && tile.terrainType === 'grass' && !tile.wear && !World.buildingAt(x, y); },
 
-    affectPlants() {
-      const settings = Config.settings.weather;
-      if (this.type === 'rain') {
+    // Regn eller storm på växterna: hela kartan, eller bara inom en trollformels zon (zone.factor ökar chansen)
+    affectPlants(type = this.type, zone) {
+      const settings = Config.settings.weather, boost = zone?.factor || 1;
+      if (type === 'rain') {
         this.forEachPlant(tile => {
-          if (Math.random() < settings.rain.chance) tile.remainingAmount = Math.min(tile.remainingAmount + 1, Math.ceil(Config.terrain[tile.terrainType].resourceAmount * settings.rain.cap));
-        });
-      } else if (this.type === 'storm') {
+          if (Math.random() < settings.rain.chance * boost) tile.remainingAmount = Math.min(tile.remainingAmount + 1, Math.ceil(Config.terrain[tile.terrainType].resourceAmount * settings.rain.cap));
+        }, zone);
+      } else if (type === 'storm') {
         const moves = [];
-        this.forEachPlant((tile, x, y) => { if (Math.random() < settings.storm.chance) moves.push({ tile, x, y }); });
+        this.forEachPlant((tile, x, y) => { if (Math.random() < settings.storm.chance * boost) moves.push({ tile, x, y }); }, zone);
         for (const { tile, x, y } of moves) {
           const spots = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].filter(([dx, dy]) => this.isFree(x + dx, y + dy));
           if (!spots.length) continue;
-          const [dx, dy] = spots[Math.floor(Math.random() * spots.length)], type = tile.terrainType, amount = tile.remainingAmount;
-          Utils.assign(World.getTile(x + dx, y + dy), Config.terrain[type], { terrainType: type, remainingAmount: amount });
+          const [dx, dy] = spots[Math.floor(Math.random() * spots.length)], plant = tile.terrainType, amount = tile.remainingAmount;
+          Utils.assign(World.getTile(x + dx, y + dy), Config.terrain[plant], { terrainType: plant, remainingAmount: amount });
           Utils.assign(tile, Config.terrain.grass, { terrainType: 'grass', remainingAmount: 0 });
         }
         if (moves.length) CityBuilder.Pathfinder.clearCache();

@@ -987,22 +987,65 @@ CityBuilder.Config.buildings = {
     symbol: 'EN',
     color: '#3f8f6a',
     buildCost: { plank: 12, stone: 10, brick: 6, hammer: 1 },
-    // Engångsformler: kostar varor ur lagret och läses på en plats högst spellRange rutor från förtrollaren; varje förtrollare vilar
-    // spellCooldown sekunder efter en formel. Typerna (kind) och deras fält förklaras i systems/spells.js.
-    // create: förvandlar 'count' lediga gräsrutor inom 'radius' runt målet till nya fyndigheter ('terrains' = vikter, 'amount' = mängd
-    // per ruta, annars terrängens standard). Biprodukterna ben, aska och tjära får här sitt värde.
+    // Trollformler blandas av upp till 'slots' ingredienser (se systems/spells.js för hur blandningen blir en formel). Varje ingredient bär
+    // essenser; essensernas ordning här är också 'hjulet' som en ingrediens vrider nästa ingrediens längs. Himlen (moon/sun) är gratis
+    // ingredienser som bara finns på natten respektive dagen. Formeln läses på en plats högst spellRange rutor från förtrollaren och
+    // varje förtrollare vilar spellCooldown sekunder efteråt. 'book' är trollboken man börjar med.
     spellRange: 30,
     spellCooldown: 20,
-    spells: [
-      { id: 'grove', name: 'Grove', kind: 'create', cost: { ash: 4, seeds: 2 }, radius: 3, count: 8, terrains: { tree: 3, berry_bush: 1, apple_tree: 1, herbs: 1, mushrooms: 1 }, amount: [5, 10] },
-      { id: 'earthsong', name: 'Earthsong', kind: 'create', cost: { tar: 3, bone: 2 }, radius: 3, count: 6, terrains: { rock: 3, clay: 2, sand: 2, limestone: 1, iron_ore: 2, coal: 2, copper_ore: 1, tin_ore: 1 } },
-      { id: 'leyline', name: 'Ley Line', kind: 'create', cost: { cursed_ash: 3, moonstone: 1 }, radius: 2, count: 3, terrains: { silver_ore: 2, gold_ore: 1, gemstone: 1, crystal: 1 } },
-      { id: 'surge', name: 'Wild Surge', kind: 'surge', cost: { seeds: 3, bone: 3 }, radius: 14, seconds: 40, factor: 20 },
-      { id: 'frenzy', name: 'Frenzy', kind: 'pace', cost: { tar: 3, ash: 3 }, radius: 9, seconds: 30, factor: 2 },
-      { id: 'bounty', name: 'Bounty', kind: 'yield', cost: { enchanted_wood: 2, seeds: 2 }, radius: 9, seconds: 40, bonus: 1 },
-      { id: 'gale', name: 'Swift Wind', kind: 'carriers', cost: { ash: 3, bone: 2 }, radius: 18, seconds: 40, factor: 2 },
-      { id: 'withering', name: 'Withering', kind: 'smite', cost: { cursed_ash: 3, bone: 2 }, radius: 8, health: 0.25 },
-    ],
+    mixing: {
+      slots: 5, maxAmount: 6, maxBook: 12,
+      weights: [1.5, 1, 0.8, 0.6, 0.45],   // första ingrediensen väger mest
+      amountExponent: 0.6,                 // dubbel mängd ger inte dubbel kraft
+      shift: 0.3,                          // andel av nästa ingrediens som vrids ett steg på hjulet
+      echoShare: 0.2,                      // andra essensen måste ha så stor andel för att ge en bieffekt
+      reference: 10,                       // essenssumma som motsvarar normal kraft
+      essences: {
+        growth: { name: 'Growth', color: '#6fbf5a' },
+        fire:   { name: 'Fire',   color: '#ee7a2f' },
+        earth:  { name: 'Earth',  color: '#a07c4c' },
+        air:    { name: 'Air',    color: '#a9dcea' },
+        water:  { name: 'Water',  color: '#4a86d8' },
+        spirit: { name: 'Spirit', color: '#b88cf0' },
+        death:  { name: 'Death',  color: '#8a8f99' },
+      },
+      ingredients: {
+        wood: { growth: 2, earth: 1 }, plank: { growth: 1, earth: 1 }, stone: { earth: 3 }, clay: { earth: 2, water: 1 },
+        sand: { earth: 2, air: 1 }, limestone: { earth: 2, spirit: 1 }, tar: { fire: 2, death: 1 }, charcoal: { fire: 3 },
+        ash: { fire: 1, death: 1, air: 1 }, grain: { growth: 3 }, seeds: { growth: 3, spirit: 1 }, flour: { air: 2, growth: 1 },
+        straw: { air: 2, growth: 1 }, apples: { growth: 2, water: 1 }, berries: { growth: 2, water: 1 }, mushrooms: { growth: 1, death: 2 },
+        herbs: { growth: 2, spirit: 1 }, water: { water: 3 }, fish: { water: 2, growth: 1 }, salt: { water: 1, earth: 1, spirit: 1 },
+        bone: { death: 3, earth: 1 }, leather: { death: 1, earth: 1 }, coal: { fire: 3, earth: 1 }, sulfur: { fire: 3, death: 1 },
+        iron_ore: { earth: 2, fire: 1 }, copper_ore: { earth: 2, water: 1 }, tin_ore: { earth: 2, air: 1 }, gold_ore: { earth: 1, spirit: 2 },
+        silver_ore: { earth: 1, spirit: 1, air: 1 }, gemstone: { earth: 1, spirit: 2 }, glass: { air: 1, earth: 1, spirit: 1 },
+        gold: { spirit: 2, fire: 1 }, silver: { spirit: 2, air: 1 }, crystal: { air: 1, spirit: 3 }, moonstone: { spirit: 3, water: 1 },
+        cursed_ash: { death: 3, spirit: 1 }, ancient_relic: { spirit: 2, death: 2 }, fallen_star: { fire: 2, air: 2, spirit: 3 },
+        enchanted_wood: { growth: 2, spirit: 3 }, talisman: { spirit: 4 },
+        moon: { spirit: 3, water: 1, sky: 'night' }, sun: { fire: 1, growth: 2, spirit: 1, sky: 'day' },
+      },
+      // Nya deposits för 'create', efter den andra essensen i blandningen (none = bara jord)
+      terrains: {
+        none: { rock: 3, clay: 2, sand: 2, limestone: 1 },
+        fire: { coal: 3, iron_ore: 2, copper_ore: 1, tin_ore: 1 },
+        growth: { tree: 3, berry_bush: 1, apple_tree: 1, herbs: 1, mushrooms: 1 },
+        water: { clay: 3, sand: 3, limestone: 1 },
+        air: { sand: 3, limestone: 2, rock: 1 },
+        death: { coal: 2, iron_ore: 2, mushrooms: 1, rock: 1 },
+        spirit: { silver_ore: 2, gold_ore: 1, gemstone: 1, crystal: 1 },
+      },
+      // Trollboken man börjar med: [ingrediens, mängd] i ordning
+      book: [
+        [['wood', 2], ['seeds', 1], ['stone', 1]],
+        [['stone', 3], ['clay', 1]],
+        [['stone', 2], ['charcoal', 2]],
+        [['charcoal', 2], ['tar', 1], ['ash', 1]],
+        [['grain', 3], ['seeds', 2]],
+        [['flour', 2], ['straw', 2]],
+        [['moon', 1], ['herbs', 2]],
+        [['cursed_ash', 2], ['bone', 1]],
+        [['water', 3], ['seeds', 1]],
+      ],
+    },
     job: {
       kind: 'craft',
       inputs: { wood: 4, moonstone: 1 },

@@ -794,7 +794,7 @@
 
   // Väntande trollformel: ringen visar vad formeln träffar (grön om målet går att välja, annars röd) och en svag ring förtrollarens räckvidd
   // Pågående trollformler: en ring över området som bleknar när tiden går ut (smiter blixtrar till)
-  const ZONE_COLORS = { pace: '255,210,63', yield: '120,200,255', carriers: '170,255,230', surge: '120,230,120', smite: '200,90,255' };
+  const ZONE_COLORS = { pace: '255,210,63', yield: '120,200,255', carriers: '170,255,230', surge: '120,230,120', smite: '200,90,255', rain: '90,150,255', storm: '170,140,255' };
   Renderer.addLayer('spellZones', (context, renderer) => {
     const size = renderer.tileSize, now = performance.now() / 1000;
     for (const zone of CityBuilder.Spells.zones) {

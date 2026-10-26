@@ -5,6 +5,11 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.8.5': [
+      'The Enchanter no longer has fixed spells: open Mix a spell and put up to five ingredients in the slots, with an amount for each. Every ingredient carries essences (growth, fire, earth, air, water, spirit, death). The strongest essence decides what the spell does, the second one adds a twist or a side effect, and a live preview shows the result and the cost before you cast',
+      'Order and amounts matter: the first slot counts most, and each ingredient bends the next one, so the same ingredients in another order make another spell. Earth and growth shape new deposits (the second essence picks which), fire speeds up work, air speeds up carriers, spirit makes animals breed, death weakens enemy soldiers, and water brings local rain or storm over your plants',
+      'The Moon and the Sun are free ingredients that are only there at night and by day. Good mixes can be saved to a grimoire (kept with the game) and cast again with one tap; it starts with nine recipes that replace the old spells',
+    ],
     '0.8.4': [
       'All mines are now one building, the Mine. Build it on a deposit and it starts with that ore; pick another focus with the buttons in the info panel (only unlocked ones are shown). The four gatherers (berries, herbs, mushrooms, apples) are likewise one building, the Gatherer, which starts with what there is most of nearby',
       'A small sign on a building shows what it makes right now: mines, gatherers, the kitchen, the toolsmith and other buildings with a choice. Until there are sign images (images/signs/<name>.png) the sign shows the resource icon',
