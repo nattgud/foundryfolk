@@ -14,6 +14,7 @@
   applyDefaultImages('terrain', 'terrain');
   applyDefaultImages('buildings', 'buildings');
   applyDefaultImages('units', 'units');
+  for (const definition of Object.values(Config.buildings)) if (definition.group) definition.image = Config.buildings[definition.group].image;   // varianter av en byggnad med inriktning ser likadana ut
 
   for (const boost of Object.values(Config.settings.boosts)) if (!Config.resources[boost.resource]) warn(`okänd boostresurs '${boost.resource}'`);
 
@@ -25,7 +26,8 @@
     }
     if (building.boost && !Config.resources[building.boost.resource]) warn(`${id}: okänd boostresurs '${building.boost.resource}'`);
     for (const resourceId of Object.keys(building.requiredEquipment || {})) if (!Config.resources[resourceId]) warn(`${id}: okänd utrustning '${resourceId}'`);
-    if (building.placeOnTerrain && !Config.terrain[building.placeOnTerrain]) warn(`${id}: okänd placeOnTerrain '${building.placeOnTerrain}'`);
+    for (const terrain of [].concat(building.placeOnTerrain || [])) if (!Config.terrain[terrain]) warn(`${id}: okänd placeOnTerrain '${terrain}'`);
+    for (const variant of Object.values(building.variants || {})) if (!Config.buildings[variant]) warn(`${id}: okänd variant '${variant}'`);
 
     const job = building.job;
     if (!job) continue;

@@ -68,14 +68,14 @@
   // Buildings that are not listed are available from level 1.
   const UNLOCK = {
     woodcutter: 1, quarry: 1, sawmill: 1, warehouse: 1,
-    berry_gatherer: 2, well: 2, watchtower: 3,
+    berry_gatherer: 2, gatherer: 2, well: 2, watchtower: 3,
     hunters_cottage: 3, herb_gatherer: 3,
     charcoal_burner: 4, clay_pit: 4,
     farm: 5, fishing_hut: 5, planter: 6,
     mill: 6, brickworks: 6,
     apple_gatherer: 7, mushroom_gatherer: 7, sand_collector: 7,
     bakery: 8, kitchen: 9,
-    coal_mine: 9, leatherworker: 9,
+    coal_mine: 9, mine: 9, leatherworker: 9,
     large_warehouse: 10, limestone_quarry: 10,
     enchanter: 12, iron_mine: 12, iron_smelter: 13,
     toolsmith: 14, steelworks: 16,
@@ -677,7 +677,8 @@
       keep,
       twists,
       // Buildings that become available on this level
-      get unlocks() { return Object.keys(CityBuilder.Config.buildings).filter(id => unlockLevelOf(id) === level && id !== 'hq' && !CityBuilder.Config.buildings[id].hiddenInMenu); },
+      // (en byggnad med inriktning visas per inriktning, t.ex. "Mine (Coal)", inte som byggnaden själv)
+      get unlocks() { return Object.keys(CityBuilder.Config.buildings).filter(id => { const definition = CityBuilder.Config.buildings[id]; return unlockLevelOf(id) === level && id !== 'hq' && !definition.variants && (!definition.hiddenInMenu || definition.group); }); },
       // Goals are built on first use, when all configs are loaded
       get goal() { return goals || (goals = makeGoals(info)); },
       get needs() { return needsOf(info); },

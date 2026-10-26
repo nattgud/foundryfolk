@@ -51,6 +51,26 @@
       for (const resourceId in goods) pile.outputStock[resourceId] = (pile.outputStock[resourceId] || 0) + goods[resourceId];
     },
 
+    // Byggnad med inriktning (definition.variants): vilken variant som byggs på rutan. Gruvor: den som hör till fyndigheten
+    // (terräng -> variant). Samlare: den upplåsta inriktning vars råvara finns närmast. undefined = ingen variant passar rutan.
+    variantFor(buildingType, x, y) {
+      const variants = Config.buildings[buildingType].variants;
+      if (!variants) return buildingType;
+      if (!Array.isArray(variants)) return variants[World.getTile(x, y)?.terrainType];
+      const Levels = CityBuilder.Levels, open = variants.filter(id => !Levels || Levels.isUnlocked(id));
+      let best = (open.length ? open : variants)[0], bestDistance = Infinity;
+      for (const id of open) {
+        const { sourceTerrain, searchRadius } = Config.buildings[id].job;
+        for (let dy = -searchRadius; dy <= searchRadius; dy++) for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+          const distance = Math.hypot(dx, dy);
+          if (distance >= bestDistance || distance > searchRadius) continue;
+          const tile = World.getTile(x + dx, y + dy);
+          if (tile && tile.terrainType === sourceTerrain && tile.remainingAmount > 0) { bestDistance = distance; best = id; }
+        }
+      }
+      return best;
+    },
+
     build(buildingType, x, y, player = Players.HUMAN) {
       const definition = Config.buildings[buildingType];
       const from = this.nearestOwnBuilding(x, y, player);   // vägen räknas från närmaste egna byggnad, så att utposter långt från basen går att bygga
@@ -58,9 +78,12 @@
       if (this.isHidden(x, y, player)) return 'fog';          // före terrängkollen, så att dimman inte avslöjar vad som ligger där
       if (this.isUniqueTaken(buildingType, player)) return 'unique';
       if (!World.canPlace(buildingType, x, y)) return definition.placeOnTerrain ? 'terrain' : 'occupied';
+      const type = this.variantFor(buildingType, x, y);
+      if (!type) return 'terrain';
+      if (type !== buildingType && player === Players.HUMAN && CityBuilder.Levels && !CityBuilder.Levels.isUnlocked(type)) return 'locked';   // inriktningen är inte upplåst än
       if (Pathfinder.findPathNow(from.x, from.y, x, y) === null) return 'unreachable';
       if (!Economy.spend(definition.buildCost, player)) return 'cost';
-      World.placeBuilding(buildingType, x, y, false, player);
+      World.placeBuilding(type, x, y, false, player);
       return null;
     },
   };

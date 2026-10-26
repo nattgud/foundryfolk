@@ -117,8 +117,23 @@ CityBuilder.Config.buildings = {
   },
 
   // Jordbruk och mat
+  // Samlare med inriktning: ett enda bygge i menyn. Inriktningen (bär, örter, svamp, äpplen) väljs i infopanelen och bestämmer vilken
+  // byggnadstyp (variant) det är. Nya samlare får den inriktning som har mest att samla från närmast. Varianterna har group: 'gatherer'.
+  gatherer: {
+    name: 'Gatherer',
+    category: 'food',
+    symbol: 'GA',
+    color: '#526b40',
+    buildCost: { plank: 4, wood: 4 },
+    variants: ['berry_gatherer', 'herb_gatherer', 'mushroom_gatherer', 'apple_gatherer'],
+    hint: 'Starts with the focus that has the most to gather nearby. Change it in the info panel',
+    buildDuration: 15
+  },
+
   apple_gatherer: {
     name: 'Apple Gatherer',
+    group: 'gatherer',            // inriktning av byggnaden 'gatherer'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'food',
     symbol: 'AG',
     color: '#536c38',
@@ -135,6 +150,8 @@ CityBuilder.Config.buildings = {
 
   berry_gatherer: {
     name: 'Berry Gatherer',
+    group: 'gatherer',            // inriktning av byggnaden 'gatherer'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'food',
     symbol: 'BG',
     color: '#465c35',
@@ -151,6 +168,8 @@ CityBuilder.Config.buildings = {
 
   herb_gatherer: {
     name: 'Herb Gatherer',
+    group: 'gatherer',            // inriktning av byggnaden 'gatherer'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'food',
     symbol: 'HG',
     color: '#526b40',
@@ -168,6 +187,8 @@ CityBuilder.Config.buildings = {
 
   mushroom_gatherer: {
     name: 'Mushroom Gatherer',
+    group: 'gatherer',            // inriktning av byggnaden 'gatherer'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'food',
     symbol: 'MG',
     color: '#7a5c80',
@@ -353,8 +374,24 @@ CityBuilder.Config.buildings = {
     buildDuration: 45
   },
 
+  // Gruva med inriktning: ett enda bygge i menyn, som placeras på en fyndighet och blir gruvan för just den malmen (variant med
+  // group: 'mine'). Inriktningen byts sedan i infopanelen. variants: terräng -> varianttyp.
+  mine: {
+    name: 'Mine',
+    category: 'metalwork',
+    symbol: 'MI',
+    color: '#7b6f6a',
+    buildCost: { plank: 6, stone: 6 },
+    placeOnTerrain: ['iron_ore', 'copper_ore', 'tin_ore', 'coal', 'gold_ore', 'silver_ore', 'gemstone', 'salt_ore', 'sulfur'],
+    hint: 'Built on a deposit, and starts with that ore. Change the focus in the info panel',
+    variants: { iron_ore: 'iron_mine', copper_ore: 'copper_mine', tin_ore: 'tin_mine', coal: 'coal_mine', gold_ore: 'gold_mine', silver_ore: 'silver_mine', gemstone: 'gemstone_mine', salt_ore: 'salt_mine', sulfur: 'sulfur_mine' },
+    buildDuration: 30
+  },
+
   iron_mine: {
     name: 'Iron Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'metalwork',
     symbol: 'IM',
     color: '#7b6f6a',
@@ -374,6 +411,8 @@ CityBuilder.Config.buildings = {
 
   copper_mine: {
     name: 'Copper Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'metalwork',
     symbol: 'CM',
     color: '#c87f35',
@@ -393,6 +432,8 @@ CityBuilder.Config.buildings = {
 
   tin_mine: {
     name: 'Tin Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'metalwork',
     symbol: 'TM',
     color: '#9ba3a5',
@@ -412,6 +453,8 @@ CityBuilder.Config.buildings = {
 
   coal_mine: {
     name: 'Coal Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'metalwork',
     symbol: 'CO',
     color: '#34363d',
@@ -431,6 +474,8 @@ CityBuilder.Config.buildings = {
 
   gold_mine: {
     name: 'Gold Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'valuables',
     symbol: 'GM',
     color: '#827044',
@@ -450,6 +495,8 @@ CityBuilder.Config.buildings = {
 
   silver_mine: {
     name: 'Silver Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'valuables',
     symbol: 'SM',
     color: '#b9c1ca',
@@ -469,6 +516,8 @@ CityBuilder.Config.buildings = {
 
   gemstone_mine: {
     name: 'Gemstone Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'valuables',
     symbol: 'GM',
     color: '#765aa8',
@@ -488,6 +537,8 @@ CityBuilder.Config.buildings = {
 
   salt_mine: {
     name: 'Salt Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'valuables',
     symbol: 'SM',
     color: '#d6d0bd',
@@ -507,6 +558,8 @@ CityBuilder.Config.buildings = {
 
   sulfur_mine: {
     name: 'Sulfur Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
     category: 'valuables',
     symbol: 'SU',
     color: '#d6c83f',
@@ -688,10 +741,10 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'craft',
       choices: [
-        { inputs: { meat: 1, mushrooms: 2 }, outputs: { meal: 3 } },
-        { inputs: { flour: 1, apples: 1, berries: 2 }, outputs: { meal: 3 } },
-        { inputs: { fish: 1, mushrooms: 1, berries: 1 }, outputs: { meal: 2 } },
-        { inputs: { meat: 1, apples: 1 }, outputs: { meal: 2 } }
+        { inputs: { meat: 1, mushrooms: 2 }, outputs: { meal: 3 }, sign: 'meat_mushrooms' },
+        { inputs: { flour: 1, apples: 1, berries: 2 }, outputs: { meal: 3 }, sign: 'flour_apples' },
+        { inputs: { fish: 1, mushrooms: 1, berries: 1 }, outputs: { meal: 2 }, sign: 'fish_mushrooms' },
+        { inputs: { meat: 1, apples: 1 }, outputs: { meal: 2 }, sign: 'meat_apples' }
       ],
       craftSeconds: 12
     },

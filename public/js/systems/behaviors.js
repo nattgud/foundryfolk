@@ -245,6 +245,25 @@
       return best;
     },
 
+    // Inriktningarna (varianterna) som den här byggnaden kan byta mellan och som är upplåsta, i konfigurationens ordning.
+    // Tom lista = byggnaden har ingen inriktning.
+    focusesOf(building) {
+      const group = building.definition.group, Levels = CityBuilder.Levels;
+      if (!group) return [];
+      return Object.entries(Config.buildings).filter(([id, definition]) => definition.group === group && (!Levels || id === building.type || Levels.isUnlocked(id))).map(([id]) => id);
+    },
+
+    // Byter inriktning: byggnaden blir en annan variant, och arbetaren börjar om med den nya råvaran. Verktyg som den nya inriktningen
+    // inte behöver blir liggande i byggnaden (de går till en hög om den rivs).
+    setFocus(building, type) {
+      if (building.type === type || !this.focusesOf(building).includes(type)) return;
+      building.type = type;
+      building.definition = Config.buildings[type];
+      building.status = ''; building.boostLeft = 0; building.meals = null;
+      const worker = building.workerUnit;
+      if (worker && !worker.removed) { worker.stepQueue.length = 0; worker.carriedResource = null; worker.carriedOutputs = null; worker.idleCooldown = 0; }
+    },
+
     // Slår ett val av eller på. Minst ett val måste vara påslaget.
     toggleRecipe(building, index) {
       const choices = building.definition.job.choices;

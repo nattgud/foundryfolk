@@ -96,6 +96,7 @@
       if (problem) {
         return this.refuse({
           terrain: () => t('Must be built on: {terrain}', { terrain: UI.terrainName(definition.placeOnTerrain) }),
+          locked: () => t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(CityBuilder.Construction.variantFor(buildingType, x, y)) }),
           occupied: () => t('This spot is occupied'),
           far: () => t('Too far from your buildings'),
           unreachable: () => t('This spot cannot be reached'),

@@ -281,6 +281,7 @@
         { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
         { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25. Coins are made at the Mint from silver and gold, and are only good for trading.'] },
         { title: 'Wild animals', lines: ['Deer, moose, foxes and rabbits roam the land and spread berries, herbs and mushrooms. A Hunters Cottage sends a hunter after the nearest animal in range. Every kind of animal gives the same meat and leather.', 'Animals have young faster the fewer there are nearby. You can hunt an area empty for a while, but never a whole region. Animals only live on land you can see.'] },
+        { title: 'Focus and signs', lines: ['Mines and gatherers are one building each. A mine is built on a deposit and starts with that ore, and a gatherer starts with what there is most of nearby. Pick another focus with the buttons in the info panel. Only the focuses you have unlocked are shown.', 'A small sign on the building shows what it is making now: the ore a mine digs, the food a gatherer picks, the meal in a kitchen or the tool a toolsmith makes.'] },
         { title: 'Weather', target: ['#weatherBadge'], lines: ['The weather and the time of day change on their own. Hold the pointer over the symbol to see the weather and what it does.', 'Rain makes plants grow thicker, storms blow them to a free tile next to them, fog shortens how far your buildings see, and a tornado rips up plants and drops them as a few piles you can have carried home. At night the moon is up.'] },
         { title: 'Speed and menu', target: ['#speedButton', '#mainMenuButton'], lines: ['Change the game speed here.', 'The menu button opens save, load, settings and this guide. You can also start a custom map with your own settings, and use several save slots.'] },
         { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
@@ -2382,7 +2383,7 @@
       this.updateWeatherBadge();
 
       const builtCounts = {};
-      for (const placed of World.buildings) if (placed.player === CityBuilder.Players.HUMAN) builtCounts[placed.type] = (builtCounts[placed.type] || 0) + 1;
+      for (const placed of World.buildings) if (placed.player === CityBuilder.Players.HUMAN) { const key = placed.definition.group || placed.type; builtCounts[key] = (builtCounts[key] || 0) + 1; }   // en byggnad med inriktning räknas under sin byggnad (Mine)
 
       for (const buildingId in Config.buildings) {
         const button = byId('build_' + buildingId);
@@ -2427,6 +2428,7 @@
     // ---- Beskrivningar och inspektion (byggnader, terrängnoder) ------------------------------
 
     terrainName(terrainType) {
+      if (Array.isArray(terrainType)) return terrainType.map(type => this.terrainName(type)).join(' / ');   // flera tillåtna terränger
       return I18n().nameOf('terrain', terrainType, Config.terrain[terrainType]?.name || TERRAIN_NAMES[terrainType]);
     },
 
@@ -2447,6 +2449,12 @@
     buildingName(idOrDefinition) {
       const id = typeof idOrDefinition === 'string' ? idOrDefinition : this.buildingIdOf(idOrDefinition);
       const definition = typeof idOrDefinition === 'string' ? Config.buildings[idOrDefinition] : idOrDefinition;
+      // En variant av en byggnad med inriktning heter byggnadens namn och inriktning: "Mine (Coal)"
+      const group = definition?.group && Config.buildings[definition.group];
+      if (group) {
+        const focus = this.resourceName(definition.job?.outputResource ?? Object.keys(definition.job?.outputs || {})[0]);
+        return `${I18n().nameOf('building', definition.group, group.name)} (${focus})`;
+      }
       return I18n().nameOf('building', id, definition?.name);
     },
 
@@ -2575,6 +2583,11 @@
       const factor = building ? CityBuilder.Behaviors.yieldFactor(building) : 1;
       const amountsOf = amounts => factor === 1 ? amounts : Object.fromEntries(Object.entries(amounts).map(([id, amount]) => [id, Math.round(amount * factor * 10) / 10]));
 
+      if (definition.variants) {   // byggnad med inriktning: vilka som är upplåsta, och hur den väljs
+        const open = [].concat(Array.isArray(definition.variants) ? definition.variants : Object.values(definition.variants)).filter(id => !CityBuilder.Levels || CityBuilder.Levels.isUnlocked(id));
+        lines.push(t('Focus: {list}', { list: open.map(id => this.resourceChip(Config.buildings[id].job.outputResource)).join('') }));
+        lines.push(t(definition.hint));
+      }
       if (definition.isStorage) lines.push(t('Stores resources'));
       if (definition.isStorage && definition.carriers) lines.push(t('Adds {n} carriers', { n: definition.carriers }));
       if (definition.isMarket) lines.push(t('Buy and sell goods for coins. Click it to trade.'));
@@ -2618,7 +2631,7 @@
         }
       }
 
-      if (definition.placeOnTerrain) {
+      if (definition.placeOnTerrain && !definition.variants) {
         lines.push(t('Placed on: {terrain}', { terrain: this.terrainName(definition.placeOnTerrain) }));
       }
 
@@ -2661,7 +2674,7 @@
       const gatheredBy = [], buildableWith = [];
       for (const [buildingId, building] of Object.entries(Config.buildings)) {
         if (building.job?.kind === 'gather' && building.job.sourceTerrain === tile.terrainType) gatheredBy.push(this.buildingName(buildingId));
-        if (building.placeOnTerrain === tile.terrainType) buildableWith.push(this.buildingName(buildingId));
+        if (!building.group && [].concat(building.placeOnTerrain || []).includes(tile.terrainType)) buildableWith.push(this.buildingName(buildingId));
       }
       if (gatheredBy.length) lines.push(t('Gathered by: {list}', { list: gatheredBy.join(', ') }));
       if (buildableWith.length) lines.push(t('Can be built with: {list}', { list: buildableWith.join(', ') }));
@@ -2783,7 +2796,10 @@
         const choices = own && building.definition.job?.choices;
         // Toolsmith: en av/på-knapp per verktyg. Övriga med val (kök, kvarn ...): en alternativknapp per recept, där bara ett är valt.
         // Gruppen tar emot snabbtangenten R (nästa recept).
-        const choiceButton = !choices ? '' : building.definition.job.auto
+        const focuses = own ? CityBuilder.Behaviors.focusesOf(building) : [];   // byggnad med inriktning (gruva, samlare): en alternativknapp per upplåst inriktning
+        const choiceButton = focuses.length > 1
+          ? `<div id="choiceButton" class="choice-group">${focuses.map(type => `<button class="choice-radio" data-type="${type}"></button>`).join('')}</div>`
+          : !choices ? '' : building.definition.job.auto
           ? building.definition.job.choices.map((choice, index) => `<button class="tool-toggle" data-index="${index}"></button>`).join('')
           : `<div id="choiceButton" class="choice-group">${building.definition.job.choices.map((choice, index) => `<button class="choice-radio" data-index="${index}"></button>`).join('')}</div>`;
         const marketButton = own && building.definition.isMarket && building.buildProgress >= 1 ? `<button id="marketButton">${t('Trade')}</button>` : '';
@@ -2801,7 +2817,7 @@
         const stanceButton = own && CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton"></button>' : '';
 
         panel.innerHTML =
-          `<div><b>${this.buildingName(building.definition)}</b><span id="infoTools"></span><br><span id="infoStatus"></span></div>` +
+          `<div><b id="infoName">${this.buildingName(building.definition)}</b><span id="infoTools"></span><br><span id="infoStatus"></span></div>` +
           `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${marketButton}${trainButtons}${spellButtons}${stanceButton}${choiceButton}${boostButton}${pauseButton}${demolishButton}</div>`;
 
         if (byId('stanceButton')) {
@@ -2824,9 +2840,15 @@
         }
 
         if (byId('choiceButton')) {
-          const choose = index => { building.choice = index; };
-          for (const radio of panel.querySelectorAll('.choice-radio')) radio.onclick = event => { event.stopPropagation(); choose(+radio.dataset.index); };
-          byId('choiceButton').onclick = () => choose(((building.choice || 0) + 1) % building.definition.job.choices.length);   // snabbtangenten R
+          const Behaviors = CityBuilder.Behaviors;
+          if (focuses.length > 1) {
+            for (const radio of panel.querySelectorAll('.choice-radio')) radio.onclick = event => { event.stopPropagation(); Behaviors.setFocus(building, radio.dataset.type); };
+            byId('choiceButton').onclick = () => { const list = Behaviors.focusesOf(building); Behaviors.setFocus(building, list[(list.indexOf(building.type) + 1) % list.length]); };   // snabbtangenten R
+          } else {
+            const choose = index => { building.choice = index; };
+            for (const radio of panel.querySelectorAll('.choice-radio')) radio.onclick = event => { event.stopPropagation(); choose(+radio.dataset.index); };
+            byId('choiceButton').onclick = () => choose(((building.choice || 0) + 1) % building.definition.job.choices.length);   // snabbtangenten R
+          }
         }
 
         if (byId('marketButton')) byId('marketButton').onclick = () => this.openMarket();
@@ -2903,6 +2925,8 @@
         status.dataset.html = html;
         status.innerHTML = html;
       }
+      const name = this.buildingName(building.definition);   // byter med inriktningen
+      if (byId('infoName').textContent !== name) byId('infoName').textContent = name;
       const toolsHtml = own && !building.definition.isStorage ? this.toolsHtml(building) : '';
       const tools = byId('infoTools');
       if (tools.dataset.html !== toolsHtml) {
@@ -2921,7 +2945,15 @@
         if (button.dataset.html !== html) { button.dataset.html = html; button.innerHTML = html; }
         button.classList.toggle('on', Boolean(on));
       };
-      if (byId('choiceButton')) {
+      if (byId('choiceButton') && panel.querySelector('.choice-radio[data-type]')) {
+        panel.querySelectorAll('.choice-radio').forEach(radio => {
+          const definition = Config.buildings[radio.dataset.type], id = definition.job.outputResource ?? Object.keys(definition.job.outputs || {})[0], selected = radio.dataset.type === building.type;
+          const html = `${selected ? '●' : '○'} ${this.resourceChip(id)}${this.resourceName(id)}`;
+          if (radio.dataset.html !== html) { radio.dataset.html = html; radio.innerHTML = html; }
+          radio.classList.toggle('on', selected);
+          radio.title = t('Gathering: {source} → {output}', { source: this.terrainName(definition.job.sourceTerrain), output: this.resourceName(id) });
+        });
+      } else if (byId('choiceButton')) {
         const choices = building.definition.job.choices, chosen = building.choice || 0;
         panel.querySelectorAll('.choice-radio').forEach(radio => {
           const { inputs, outputs } = choices[+radio.dataset.index], selected = +radio.dataset.index === chosen;

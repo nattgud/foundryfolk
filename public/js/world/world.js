@@ -163,8 +163,8 @@
     },
 
     canPlace(buildingType, x, y) {
-      const requiredTerrain = Config.buildings[buildingType].placeOnTerrain || 'grass';
-      return !this.buildingAt(x, y) && this.getTile(x, y).terrainType === requiredTerrain;
+      const required = [].concat(Config.buildings[buildingType].placeOnTerrain || 'grass');   // en eller flera tillåtna terrängtyper
+      return !this.buildingAt(x, y) && required.includes(this.getTile(x, y).terrainType);
     },
 
     // player = vem byggnaden tillhör (se core/players.js)

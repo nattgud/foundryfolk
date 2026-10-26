@@ -340,8 +340,9 @@
       const id = CityBuilder.Game && CityBuilder.Game.placingType;
       if (id !== this.filterId) {
         this.filterId = id;
-        const job = id && Config.buildings[id] && Config.buildings[id].job;
-        const types = job && job.kind === 'gather' && job.sourceTerrain ? [].concat(job.sourceTerrain).filter(type => isNode(Config.terrain[type])) : [];
+        const definition = id && Config.buildings[id];
+        const jobs = !definition ? [] : definition.variants ? [].concat(Array.isArray(definition.variants) ? definition.variants : Object.values(definition.variants)).map(variant => Config.buildings[variant].job) : [definition.job];   // byggnad med inriktning: alla inriktningars råvaror
+        const types = jobs.filter(job => job && job.kind === 'gather' && job.sourceTerrain).flatMap(job => [].concat(job.sourceTerrain)).filter(type => isNode(Config.terrain[type]));
         this.filter = types.length ? new Set(types) : null;
       }
       return this.filter;

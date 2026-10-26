@@ -5,6 +5,10 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.8.4': [
+      'All mines are now one building, the Mine. Build it on a deposit and it starts with that ore; pick another focus with the buttons in the info panel (only unlocked ones are shown). The four gatherers (berries, herbs, mushrooms, apples) are likewise one building, the Gatherer, which starts with what there is most of nearby',
+      'A small sign on a building shows what it makes right now: mines, gatherers, the kitchen, the toolsmith and other buildings with a choice. Until there are sign images (images/signs/<name>.png) the sign shows the resource icon',
+    ],
     '0.8.3': [
       'Everything a tornado picks up now swirls around inside it until it drops it',
       'The night is a little less dark',
