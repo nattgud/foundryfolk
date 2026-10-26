@@ -583,7 +583,7 @@
     const Weather = CityBuilder.Weather, view = renderer.viewBounds(0), width = view.right - view.left, height = view.bottom - view.top, zoom = renderer.zoom;
     const night = Weather.darkness(), now = performance.now() / 1000;
     context.save();
-    if (night > 0) { context.fillStyle = `rgba(8,14,44,${.5 * night})`; context.fillRect(view.left, view.top, width, height); }
+    if (night > 0) { context.fillStyle = `rgba(8,14,44,${Config.settings.weather.nightDarkness * night})`; context.fillRect(view.left, view.top, width, height); }
     const type = Weather.type;
     if (type === 'rain' || type === 'storm') {   // grått dunkel och diagonala streck
       const storm = type === 'storm';

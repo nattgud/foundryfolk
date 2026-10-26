@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.3': [
+      'The night is a little less dark',
       'Day and night: the moon is up at night. A small symbol next to the speed button shows the time of day and the weather',
       'Weather that changes every 30 seconds to 3 minutes: clear, rain (plants grow thicker), storm (plants are blown to a free tile next to them), fog (buildings and units see less far) and tornado (rips up plants within 2-4 tiles and drops them as a few piles)',
     ],
