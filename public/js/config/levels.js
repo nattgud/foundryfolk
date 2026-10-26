@@ -56,6 +56,8 @@
   // Noise and randomness per cell (c = wrapper context)
   const N = (c, scale, channel) => c.fractalNoise(c.x / scale, c.y / scale, channel);
   const R = (c, channel) => c.hash(c.x, c.y, channel + world.seed * 131);
+  const SIDES = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+  const beside = (c, dx, dy) => Object.assign(Object.create(c), { x: c.x + dx, y: c.y + dy });   // samma sammanhang en ruta bort
   // Fast spot in a grid cell: { x, y, roll } or null
   const site = (c, cell, salt, chance) => {
     const cx = Math.floor(c.x / cell), cy = Math.floor(c.y / cell);
@@ -132,7 +134,7 @@
       c => {
         const lake = stretch(N(c, 24, 530), 2.2);
         if (lake > 0.76) return 'water';
-        if (lake > 0.7 && R(c, 531) < 0.7) return 'sand';
+        if (lake > 0.7 && R(c, 531) < 0.7 && SIDES.some(([dx, dy]) => stretch(N(beside(c, dx, dy), 24, 530), 2.2) > 0.76)) return 'sand';   // bara intill vattnet
       },
     ] },
     { id: 'crag', noun: 'Crag', keep: { tree: 0.6 }, extras: [
@@ -224,7 +226,7 @@
         const dx = c.x - Math.cos(p.rot) * distance, dy = c.y - Math.sin(p.rot) * distance;
         const d = Math.hypot(dx, dy) + (N(c, 7, 721) - 0.5) * 5;
         if (d < radius) return 'water';
-        if (d < radius + 2.2 && R(c, 722) < 0.75) return 'sand';
+        if (d < radius + 1.1 && R(c, 722) < 0.9) return 'sand';
       } },
     { id: 'woodring', name: 'Forest ring',      // a dense forest belt around the start
       near(c, p) {
@@ -256,7 +258,7 @@
         if (!s) return undefined;
         const d = Math.hypot(c.x - s.x, c.y - s.y), radius = 2 + 3.2 * s.roll + p.b;
         if (d < radius) return 'water';
-        if (d < radius + 1.6 && R(c, 761) < 0.6) return 'sand';
+        if (d < radius + 1.1 && R(c, 761) < 0.9) return 'sand';
       } },
     { id: 'boulders', name: 'Boulder field',     // a wedge of rocks: stone for everyone, but the way is blocked
       near(c, p) {

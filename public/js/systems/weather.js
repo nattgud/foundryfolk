@@ -63,6 +63,8 @@
 
     hasPlants(zone) { let found = false; this.forEachPlant(() => { found = true; }, zone); return found; },
 
+    touchesWater(x, y) { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (World.getTile(x + dx, y + dy)?.terrainType === 'water') return true; return false; },
+
     isFree(x, y) { const tile = World.getTile(x, y); return !!tile && tile.terrainType === 'grass' && !tile.wear && !World.buildingAt(x, y); },
 
     // Regn eller storm på växterna: hela kartan, eller bara inom en trollformels zon (zone.factor ökar chansen)
@@ -135,7 +137,8 @@
       for (const resource in settings.land) {
         let left = tornado.collected[resource] || 0;
         delete tornado.collected[resource];
-        const near = spots.filter(spot => Math.hypot(spot.x - centreX, spot.y - centreY) <= 2);
+        const shore = settings.shoreOnly.includes(resource);   // sand läggs bara direkt intill vatten, så strandremsan aldrig blir bredare än en ruta
+        const near = spots.filter(spot => shore ? this.touchesWater(spot.x, spot.y) : Math.hypot(spot.x - centreX, spot.y - centreY) <= 2);
         while (left > 0 && near.length) {
           const spot = near.splice(Math.floor(Math.random() * near.length), 1)[0], amount = Math.min(left, settings.land[resource]);
           spots.splice(spots.indexOf(spot), 1);

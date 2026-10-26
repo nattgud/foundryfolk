@@ -123,6 +123,7 @@ CityBuilder.Config.settings = {
         bog: { gives: 'bog', takes: 2 },
       },
       keep: 100,                           // av sand, vatten och träsk sparas högst så mycket per tornado, resten försvinner
+      shoreOnly: ['sand'],                 // sand landar bara på lediga rutor som rör vatten (annars blockeras brunnar och fiskare av breda stränder); finns ingen sådan ruta försvinner sanden
       land: { water: 50, sand: 25, bog: 10 },       // hur mycket varje ny ruta vatten/sand rymmer när tornadon släpper det (vatten först, på lediga rutor inom 2 rutor)
       piles: [1, 4],                       // hur många högar den släpper i slutet
     },

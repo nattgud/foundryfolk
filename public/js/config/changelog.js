@@ -6,6 +6,9 @@
 
   CityBuilder.Changelog = {
     '0.8.7': [
+      'On phones and tablets the screen no longer dims or locks while you play (where the browser supports it)',
+      'Beaches are now only one tile wide, both on generated maps (coasts, riverbanks, the starting pond, lake and pond levels) and when a tornado drops sand, so they no longer block wells and fishermen. Existing saves keep their terrain',
+      'Rain now falls evenly over the whole screen; before, the drops could line up into a single long streak',
       'Tornado weather is now half as common: about 4% of weather changes instead of 8%',
       'Nights are no longer pitch dark where you live: it stays as bright as by day within about 2-3 tiles of your buildings and 1 tile of your people, fading softly into the night beyond. Animals and rival buildings give no light. The Graphics setting scales it: Minimum lights only buildings with plain circles, Low adds people, Medium and High make the edges soft',
       'Tornadoes now also tear up sand, water and bog tiles, the same gradual way as plants but half as fast overall: sand goes four times as fast as crops and water eighty times as fast. When a tornado dies, the water, sand and bog it kept (at most 100 each) land as new water, sand and bog tiles on free grass within 2 tiles of it, and only the rest becomes piles, never on water',

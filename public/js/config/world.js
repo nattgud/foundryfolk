@@ -241,6 +241,10 @@
   // Utspridda malmfynd utanför berg. Ett fynd är en "ankarruta" (slumpad, helst intill sten) som med viss chans
   // har en granne med samma malm: aldrig mer än två rutor (fynden är så glesa att de inte hinner klumpa ihop sig).
   const NEIGHBORS_4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const NEIGHBORS_8 = [...NEIGHBORS_4, [1, 1], [-1, 1], [1, -1], [-1, -1]];
+
+  // Rör rutan naturligt vatten (regel 1, rutorna runt omkring inräknade)? Stränder ska bara vara en ruta breda, annars blockerar de brunnar och fiskare.
+  const touchesWater = context => NEIGHBORS_8.some(([dx, dy]) => rules[0]({ ...context, x: context.x + dx, y: context.y + dy, distanceFromOrigin: Math.hypot(context.x + dx, context.y + dy) }) === 'water');
 
   // Fler fynd nära start (upp till 3x), glesnar ut mot 60 rutor
   const scatteredAnchorGate = (context, x, y) => random(context, x, y, 430) < tuning.scatteredOre * (1 + 2 * (1 - smoothstep(8, 34, Math.hypot(x, y))));
@@ -337,7 +341,7 @@
       }
     };
     const pond = add('water', 12, 3.4, 6); // en damm med sandstrand, så brunnar går att bygga från start
-    list.push({ terrainType: 'sand', x: pond.x, y: pond.y, radius: pond.radius + 2.2 });
+    list.push({ terrainType: 'sand', x: pond.x, y: pond.y, radius: pond.radius + 2.2, shoreOf: pond });   // bara rutorna närmast vattnet blir sand
     add('rock', 9, 3.3, 1);
     addFinds('iron_ore', 13, 2);
     addFinds('coal', 15, 3);
@@ -445,12 +449,12 @@
       const find = starterCache.tiles.get(context.x + ',' + context.y);
       if (find) return find;
       if (context.distanceFromOrigin > 23) return;
+      const covers = (deposit, x, y) => Math.hypot(x - deposit.x, y - deposit.y) + (fbm(context, x, y, 6, 140, 0.9) - 0.5) * 3.2 < deposit.radius;
       for (const deposit of starterDeposits()) {
-        const edgeNoise = (fbm(context, context.x, context.y, 6, 140, 0.9) - 0.5) * 3.2;
-        if (Math.hypot(context.x - deposit.x, context.y - deposit.y) + edgeNoise < deposit.radius &&
-            (deposit.terrainType === 'water' || random(context, context.x, context.y, 341) < 0.88)) {
-          return deposit.terrainType;
-        }
+        if (!covers(deposit, context.x, context.y)) continue;
+        if (deposit.shoreOf) {   // strand: hela ringen, men bara närmast vattnet
+          if (NEIGHBORS_8.some(([dx, dy]) => covers(deposit.shoreOf, context.x + dx, context.y + dy))) return deposit.terrainType;
+        } else if (deposit.terrainType === 'water' || random(context, context.x, context.y, 341) < 0.88) return deposit.terrainType;
       }
     },
 
@@ -459,8 +463,8 @@
       const model = landscapeAt(context);
       const aboveSea = -model.seaDepth;
       const beachWidth = 0.012 + 0.03 * fbm(context, context.x, context.y, 22, 150, 0.4);
-      if (aboveSea < beachWidth && model.mountain < 0.25) return 'sand';
-      if (model.riverDistance < 1.3 && random(context, context.x, context.y, 151) < 0.45) return 'sand';
+      const beach = (aboveSea < beachWidth && model.mountain < 0.25) || (model.riverDistance < 1.3 && random(context, context.x, context.y, 151) < 0.45);
+      if (beach && touchesWater(context)) return 'sand';
     },
 
     // 8. Lera: på leriga flodbankar och sjökanter i klungor.

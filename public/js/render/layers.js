@@ -642,7 +642,7 @@
       const count = storm ? 260 : 130, length = (storm ? 16 : 11) / zoom, fall = (storm ? 900 : 600) / zoom;
       context.beginPath();
       for (let i = 0; i < count; i++) {
-        const x = view.left + frac(i * 0.618034 + now * 0.05) * (width + length), y = view.top + frac(i * 0.381966 + now * fall / height * (.8 + (i % 5) * .1)) * height;
+        const x = view.left + frac(.5 + i * 0.7548777 + now * 0.05) * (width + length), y = view.top + frac(.5 + i * 0.5698403 + now * fall / height * (.8 + (i % 5) * .1)) * height;
         context.moveTo(x, y); context.lineTo(x - length * .3, y + length);
       }
       context.stroke();

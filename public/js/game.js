@@ -55,6 +55,16 @@
       addEventListener('blur', update);
       document.addEventListener('visibilitychange', update);
       update();
+      this.keepScreenOn();
+    },
+
+    // Håller skärmen tänd medan spelet visas (Screen Wake Lock; stödjs inte överallt och släpps av webbläsaren när fliken göms, därför begärs den igen när den visas)
+    keepScreenOn() {
+      if (this.screenOnInstalled || !navigator.wakeLock) return;
+      this.screenOnInstalled = true;
+      const request = () => { if (!document.hidden) navigator.wakeLock.request('screen').catch(() => {}); };
+      document.addEventListener('visibilitychange', request);
+      request();
     },
 
     setPlacingType(buildingType) { this.placingType = buildingType; this.casting = null; this.selectedBuilding = null; },
