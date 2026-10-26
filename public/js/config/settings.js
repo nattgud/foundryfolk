@@ -104,7 +104,7 @@ CityBuilder.Config.settings = {
     nightLight: { building: 2.5, unit: 1, fade: 1 },   // ljust som på dagen på så många rutor runt spelarens byggnader och människor (djur lyser inte), sedan mjuk övergång på 'fade' rutor
     dayLength: 480, startFraction: 0.12,   // ett dygn i speltid, och var i dygnet ett nytt spel börjar (0 = gryning)
     minSeconds: 30, maxSeconds: 180,
-    chances: { clear: 50, rain: 18, storm: 10, fog: 14, tornado: 8 },
+    chances: { clear: 54, rain: 18, storm: 10, fog: 14, tornado: 4 },
     growth: { tree: 'wood', apple_tree: 'apples', berry_bush: 'berries', herbs: 'herbs', mushrooms: 'mushrooms' },
     scanSeconds: 2,
     rain: { chance: 0.08, cap: 2 },        // chans per skanning att en växt får +1 mängd, högst cap gånger terrängens normala mängd

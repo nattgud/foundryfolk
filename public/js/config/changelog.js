@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.7': [
+      'Tornado weather is now half as common: about 4% of weather changes instead of 8%',
       'Nights are no longer pitch dark where you live: it stays as bright as by day within about 2-3 tiles of your buildings and 1 tile of your people, fading softly into the night beyond. Animals and rival buildings give no light. The Graphics setting scales it: Minimum lights only buildings with plain circles, Low adds people, Medium and High make the edges soft',
       'Tornadoes now also tear up sand, water and bog tiles, the same gradual way as plants but half as fast overall: sand goes four times as fast as crops and water eighty times as fast. When a tornado dies, the water, sand and bog it kept (at most 100 each) land as new water, sand and bog tiles on free grass within 2 tiles of it, and only the rest becomes piles, never on water',
       'Saved games now keep every carrier where it was, with what it carries and the delivery it was on, so nothing is lost or reset when you load. Older saves still load as before',
