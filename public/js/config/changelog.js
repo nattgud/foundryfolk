@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.7': [
+      'The minimap now gives each kind of deposit its own bright colour when you are about to place a mine or gatherer, and a small colour key under the minimap names what is lit up (also in the Resources and Favorites views)',
       'Fixed: the building you had picked to place no longer gets unselected by itself, for instance when a tornado drops resources as piles. It is now only unselected after you have placed it',
       'The small signs on buildings with a focus or a recipe now always show the picture of the resource in a little frame (a kitchen shows the first two ingredients of its recipe)',
     ],

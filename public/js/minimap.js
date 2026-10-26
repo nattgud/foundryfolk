@@ -28,6 +28,9 @@
     { id: 'resources', name: 'Resources', icon: '💎' },
     { id: 'favorites', name: 'Favorites', icon: '★' },
   ];
+  // Färger för olika slags fyndigheter när en byggnad ska placeras (olika för varje typ, så att de går att skilja åt: resursfärgerna är för lika)
+  const FILTER_COLORS = ['#ffd400', '#00e5ff', '#ff4081', '#76ff03', '#ff9100', '#b388ff', '#ff5252', '#40c4ff'];
+  const LEGEND_MAX = 10;         // högst så många rader i teckenförklaringen
   const CHUNK = 16;              // rutor per bricka
   const BUILD_BUDGET_MS = 4;     // högst så här lång tid per bildruta åt att bygga brickor
   const REFRESH_MS = 3000;       // så ofta uppdateras en redan byggd bricka
@@ -118,8 +121,14 @@
       this.zoomInButton = makeZoomButton('minimapZoomIn', '+', t('Zoom in the minimap'), 1);
       this.zoomOutButton = makeZoomButton('minimapZoomOut', '−', t('Zoom out the minimap'), -1);
 
+      this.legend = [];
+      this.legendBox = document.createElement('div');
+      this.legendBox.id = 'minimapLegend';
+      this.legendBox.hidden = true;
+
       this.injectStyles();
       document.body.appendChild(this.canvas);
+      document.body.appendChild(this.legendBox);
       document.body.appendChild(this.modeButton);
       document.body.appendChild(this.zoomInButton);
       document.body.appendChild(this.zoomOutButton);
@@ -226,11 +235,40 @@
           font-weight: 700;
         }
 
+        #minimapLegend {
+          position: fixed;
+          z-index: 20;
+          box-sizing: border-box;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 2px 10px;
+          padding: 4px 7px;
+          border: 1px solid #2d3943;
+          border-radius: 6px;
+          background: rgb(13 17 21 / 85%);
+          font-size: 11px;
+          line-height: 1.25;
+          color: #d8dde2;
+          pointer-events: none;
+        }
+        #minimapLegend[hidden] { display: none; }
+        #minimapLegend span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+        #minimapLegend i { width: 9px; height: 9px; border-radius: 2px; border: 1px solid rgb(255 255 255 / 70%); box-sizing: border-box; }
+
         .minimap-zoom:disabled {
           opacity: .4;
         }
       `;
       document.head.appendChild(style);
+    },
+
+    // Teckenförklaringen under kartan: färg och namn för det som lyser upp (tom och dold när inget gör det)
+    updateLegend() {
+      const html = this.legend.map(({ color, label }) => `<span><i style="background:${color}"></i>${label}</span>`).join('');
+      if (this.legendHtml === html) return;
+      this.legendHtml = html;
+      this.legendBox.innerHTML = html;
+      this.legendBox.hidden = !html;
     },
 
     // Storlek och plats (under övre fältet, i det valda hörnet)
@@ -271,6 +309,10 @@
         element.style.left = left ? beside : 'auto';
         element.style.right = left ? 'auto' : beside;
       }
+      this.legendBox.style.top = (topEdge + outer + 6) + 'px';
+      this.legendBox.style.left = left ? '8px' : 'auto';
+      this.legendBox.style.right = left ? 'auto' : '8px';
+      this.legendBox.style.width = outer + 'px';
       this.lastDraw = 0;
       CityBuilder.UI?.layoutGoals?.();   // målrutan viker för kartan och knapparna
     },
@@ -330,7 +372,10 @@
       }
       const resource = resourceId && Config.resources[resourceId];
       const terrain = Config.terrain[type];
-      const color = (resource && resource.color) || (terrain && terrain.color) || '#fff';
+      const UI = CityBuilder.UI;
+      let color = (resource && resource.color) || (terrain && terrain.color) || '#fff', label = resourceId && UI ? UI.resourceName(resourceId) : UI ? UI.terrainName(type) : type;
+      if (mode === 'filter') { color = FILTER_COLORS[[...this.filter].indexOf(type) % FILTER_COLORS.length]; label = UI ? UI.terrainName(type) : type; }
+      this.labels.set(type, label);
       cache.set(type, color);
       return color;
     },
@@ -362,6 +407,7 @@
     draw(now) {
       const size = this.size, scale = this.scale, radius = size / 2, context = this.context;
       this.filter = this.placingFilter();
+      this.legend = [];
       const mode = this.filter ? 'filter' : this.mode.id; // vald gather-byggnad går före vanligt läge
       const range = Renderer.visibleTileRange();
       const centerX = Math.round((range.minX + range.maxX + 1) / 2);
@@ -417,7 +463,8 @@
       // Lägena Resurser och Favoriter: mörka terrängen och lys upp noderna
       const drawNodes = () => {
         const favorites = (CityBuilder.UI && CityBuilder.UI.resourceFavorites) || new Set();
-        const cache = new Map();
+        const cache = new Map(), counts = new Map();
+        this.labels = new Map();
         // Varje nod fyller exakt sin egen ruta (samma kantlinjer som terrängen under)
         const limit = (radius + 2 * scale + 2) * (radius + 2 * scale + 2);
         let shown = 0;
@@ -438,10 +485,15 @@
               if (dx * dx + dy * dy > limit) continue;
               if (pass && color !== lastColor) { context.fillStyle = color; lastColor = color; }
               context.fillRect(left - spread, top - spread, right - left + spread * 2, bottom - top + spread * 2);
-              if (pass) shown++;
+              if (pass) { shown++; counts.set(node.type, (counts.get(node.type) || 0) + 1); }
             }
           }
         }
+
+        // Teckenförklaring: färg och namn för det som lyser upp, vanligast först
+        const entries = new Map();   // typer med samma namn (två slags sand) blir en rad
+        for (const [type] of [...counts].sort((a, b) => b[1] - a[1])) if (!entries.has(this.labels.get(type))) entries.set(this.labels.get(type), cache.get(type));
+        this.legend = [...entries].slice(0, LEGEND_MAX).map(([label, color]) => ({ color, label }));
 
         if (mode === 'favorites' && favorites.size === 0) {
           context.fillStyle = '#e8e8e8';
@@ -571,6 +623,8 @@
       // Pilen: i kanten, pekar mot huvudlagret när det inte syns på skärmen
       const hqOnScreen = hq.x >= range.minX && hq.x <= range.maxX && hq.y >= range.minY && hq.y <= range.maxY;
       if (!hqOnScreen) this.drawArrow(context, Math.atan2(hq.y + 0.5 - centerY, hq.x + 0.5 - centerX), radius);
+
+      this.updateLegend();
 
       // Röd pil mot platsen där fienden senast attackerade (10 sekunder, se Combat.raiseAlarm), på samma sätt
       const attack = CityBuilder.Combat.alarmArrow();
