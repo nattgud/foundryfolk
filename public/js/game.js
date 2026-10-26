@@ -106,6 +106,7 @@
         }[problem]());
       }
       CityBuilder.Sound?.play('build', { x, y });
+      if (!definition.repeatPlacement) this.setPlacingType(null);   // vald byggnad avmarkeras när den placerats (inte när något annat, som en hög efter en tornado, dyker upp)
     },
 
     // Avvisad handling: felljud och meddelande

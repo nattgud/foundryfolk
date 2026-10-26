@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.7': [
+      'Fixed: the building you had picked to place no longer gets unselected by itself, for instance when a tornado drops resources as piles. It is now only unselected after you have placed it',
       'The small signs on buildings with a focus or a recipe now always show the picture of the resource in a little frame (a kitchen shows the first two ingredients of its recipe)',
     ],
     '0.8.6': [

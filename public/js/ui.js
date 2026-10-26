@@ -39,7 +39,6 @@
     toastTimer: null,
     openCategoryId: null,
     tooltipElement: null,
-    lastBuildingCount: 0,
     tooltipOwner: null,      // 'map' (hover över kartan) eller 'button'
     mapTooltipKey: null,
     touchTooltipTimer: null,
@@ -65,7 +64,6 @@
       this.createCopyrightLabel();
       this.createGoalPanel();
       if (CityBuilder.Levels) CityBuilder.Levels.onComplete(result => this.showLevelComplete(result));
-      this.lastBuildingCount = World.buildings.filter(placed => placed.player === CityBuilder.Players.HUMAN).length;
 
       // Infopanelen ligger precis ovanför byggmenyn.
       this.positionInfoPanel = () => {
@@ -2588,15 +2586,6 @@
           !button.classList.contains('locked') && !CityBuilder.Construction.canAfford(Config.buildings[buildingId].buildCost)
         );
       }
-
-      // Avmarkera vald byggnad när en ny byggnad skapats.
-      const buildingCount = Utils.sumValues(builtCounts); // bara spelarens egna byggnader
-
-      if (buildingCount > this.lastBuildingCount && game.placingType && !Config.buildings[game.placingType].repeatPlacement) {
-        game.setPlacingType(null);
-      }
-
-      this.lastBuildingCount = buildingCount;
 
       this.refreshGoals();
       this.refreshInfoPanel(game);
