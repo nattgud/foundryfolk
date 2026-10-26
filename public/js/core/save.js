@@ -173,11 +173,19 @@
         return { player: hq.player, fields };
       });
 
+      // Spelarens bärare: var de är, vad de bär och vilket uppdrag de är på (byggnaderna anges med sin ruta, de får nya id vid inläsning)
       const haulers = World.units.filter(unit => unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN);
       const carried = {};
       for (const unit of haulers) {
         if (typeof unit.carriedResource === 'string') carried[unit.carriedResource] = (carried[unit.carriedResource] || 0) + 1;
       }
+      const haulerStates = haulers.map(unit => {
+        const task = unit.deliveryTask, valid = task && !task.source.removed && !task.destination.removed;
+        return {
+          x: unit.x - 0.5, y: unit.y - 0.5, carried: typeof unit.carriedResource === 'string' ? unit.carriedResource : null,
+          task: valid ? { source: [task.source.x, task.source.y], destination: [task.destination.x, task.destination.y], resource: task.resource, picked: !!unit.hasPickedUp } : null,
+        };
+      });
 
       const levels = CityBuilder.Levels;
       return {
@@ -197,6 +205,7 @@
         soldiers,
         carriers: haulers.length,
         carried,
+        haulers: haulerStates,
         tiles: this.collectTileChanges(),
         animalChunks: (
           CityBuilder.Animals.syncActive(),
@@ -273,6 +282,30 @@
       });
 
       part('carriers', () => {
+        // Nytt format: varje bärare står kvar där den var, bär det den bar och fortsätter sitt uppdrag
+        if (Array.isArray(data.haulers)) {
+          const { Jobs, Logistics } = CityBuilder, human = CityBuilder.Players.HUMAN;
+          World.units = World.units.filter(unit => !(unit.definition.isHauler && unit.player === human));
+          for (const saved of data.haulers) {
+            if (!Number.isFinite(saved.x) || !Number.isFinite(saved.y)) continue;
+            const unit = World.spawnUnit('carrier', saved.x, saved.y, null, human);
+            const task = saved.task, source = task && World.buildingAt(...task.source), destination = task && World.buildingAt(...task.destination);
+            const carried = Config.resources[saved.carried] ? saved.carried : null;
+            if (source && destination && Config.resources[task.resource]) {
+              unit.deliveryTask = { source, destination, resource: task.resource, seq: Logistics.seq = (Logistics.seq || 0) + 1, created: Logistics.time || 0 };
+              unit.hasPickedUp = !!task.picked && !!carried;
+              unit.carriedResource = unit.hasPickedUp ? carried : null;
+              unit.stepQueue = [
+                ...(unit.hasPickedUp ? [] : [Jobs.walkTo(source.x, source.y), Jobs.run(carrier => Logistics.pickUp(carrier))]),
+                Jobs.walkTo(destination.x, destination.y),
+                Jobs.run(carrier => Logistics.dropOff(carrier)),
+              ];
+            } else if (carried) Economy.addToNearestStorage(carried, 1, headquarters);   // uppdraget finns inte längre: varan går tillbaka till lagret
+          }
+          return;
+        }
+
+        // Äldre sparningar: bara antalet bärare
         const haulers = World.units.filter(unit => unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN).length;
         for (let i = haulers; i < (data.carriers || 0); i++) World.spawnUnit('carrier', 0, 0);
 
