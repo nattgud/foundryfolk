@@ -623,23 +623,11 @@
         glow.addColorStop(0, 'rgba(0,0,0,1)'); glow.addColorStop(radius / reach, 'rgba(0,0,0,1)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
         mask.fillStyle = glow; mask.fillRect(x - reach, y - reach, reach * 2, reach * 2);
       } else { mask.fillStyle = '#000'; mask.beginPath(); mask.arc(x, y, radius + fade / 2, 0, Math.PI * 2); mask.fill(); }   // enkel jämn cirkel
-      lit.push(x, y, radius);
     };
-    const lit = [];
     for (const building of World.buildings) if (building.player === Players.HUMAN && !building.definition.pile) light(building.x + .5, building.y + .5, buildingLight);
-    const buildingLights = lit.length;   // glöden ritas bara kring byggnader (människor ligger ofta tätt och skulle lägga glöd på glöd)
     if (gfx.nightUnits) for (const unit of World.units) if (unit.player === Players.HUMAN) light(unit.x, unit.y, unitLight);
     context.imageSmoothingEnabled = true;
     context.drawImage(dusk, left * size, top * size, cols * size, rows * size);
-    if (gfx.nightGlow) {   // varm glöd i ljuset, starkast mitt i natten
-      context.save();
-      for (let i = 0; i < buildingLights; i += 3) {
-        const x = lit[i] * size, y = lit[i + 1] * size, reach = (lit[i + 2] + fade) * size, glow = context.createRadialGradient(x, y, 0, x, y, reach);
-        glow.addColorStop(0, `rgba(255,170,80,${alpha * .3})`); glow.addColorStop(1, 'rgba(255,170,80,0)');
-        context.fillStyle = glow; context.fillRect(x - reach, y - reach, reach * 2, reach * 2);
-      }
-      context.restore();
-    }
   }
   Renderer.addLayer('weather', (context, renderer) => {
     const Weather = CityBuilder.Weather, view = renderer.viewBounds(0), width = view.right - view.left, height = view.bottom - view.top, zoom = renderer.zoom;
