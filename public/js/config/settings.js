@@ -116,13 +116,13 @@ CityBuilder.Config.settings = {
       speed: [0.35, 0.65],                 // rutor per sekund (en per ca 2 s), slumpad för varje tornado
       turn: 0.8,                           // hur mycket färdriktningen slingrar (radianer per sekund, slumpmässigt)
       tickSeconds: 1, takes: 1,            // var sekund minskar varje växtruta inom radien med 'takes'; är den tom blir rutan gräs
-      also: {                              // mer än växter: sand, vatten och träsk tas också (gives: null = ger ingen vara), med egen fart per tick
-        sand: { gives: 'sand', takes: 2 },
-        water: { gives: 'water', takes: 10 },
-        bog: { gives: null, takes: 2 },
+      also: {                              // mer än växter: sand, vatten och träsk tas också (gives = det som virvlar med och sedan landar igen), med egen fart per tick
+        sand: { gives: 'sand', takes: 4 },
+        water: { gives: 'water', takes: 80 },
+        bog: { gives: 'bog', takes: 2 },
       },
-      keep: 100,                           // av sand och vatten sparas högst så mycket per tornado, resten försvinner
-      land: { water: 50, sand: 25 },       // hur mycket varje ny ruta vatten/sand rymmer när tornadon släpper det (vatten först, på lediga rutor inom 2 rutor)
+      keep: 100,                           // av sand, vatten och träsk sparas högst så mycket per tornado, resten försvinner
+      land: { water: 50, sand: 25, bog: 10 },       // hur mycket varje ny ruta vatten/sand rymmer när tornadon släpper det (vatten först, på lediga rutor inom 2 rutor)
       piles: [1, 4],                       // hur många högar den släpper i slutet
     },
   },

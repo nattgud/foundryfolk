@@ -641,7 +641,7 @@
         const icon = size * .38;
         icons.forEach((id, i) => {
           const a = now * (1.8 + .6 * (i % 3)) + i * 2.4, r = reach * (.3 + .7 * frac(i * .37)) * grow, lift = frac(i * .61 + now * .3);
-          const x = cx + Math.cos(a) * r, y = cy - lift * reach * 1.6 * grow + Math.sin(a) * r * .3, resource = Config.resources[id], image = Assets.get(resource.image);
+          const x = cx + Math.cos(a) * r, y = cy - lift * reach * 1.6 * grow + Math.sin(a) * r * .3, resource = Config.resources[id] || Config.terrain[id], image = resource.image && Assets.get(resource.image);
           if (image) context.drawImage(image, x - icon / 2, y - icon / 2, icon, icon);
           else { context.fillStyle = resource.color; context.fillRect(x - icon / 3, y - icon / 3, icon * .66, icon * .66); }
         });
