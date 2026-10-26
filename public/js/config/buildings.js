@@ -109,7 +109,7 @@ CityBuilder.Config.buildings = {
       inputs: { seeds: 1, water: 1 },
       terrain: 'tree',
       amount: [5, 10],
-      minRadius: 5,
+      minRadius: 0,
       maxRadius: 10,
       workSeconds: 6
     },

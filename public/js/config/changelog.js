@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.2': [
+      'The Planter now plants anywhere within 10 tiles of the building, with no minimum distance',
       'The game can now be installed as an app (PWA) on phones and computers, and it starts without a network connection after the first visit. Add it to the home screen from the browser menu',
       'Fixed: store goals now count what you start with, so tool goals (level 14) are no longer done from the start. The goal is that many more than you begin with',
       'The output shown when you hover a building now includes boost, monument and spell bonuses, so you see the effect straight away',

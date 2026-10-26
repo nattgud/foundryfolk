@@ -499,7 +499,7 @@
     CityBuilder.Sound?.play(id, { x: building.x, y: building.y });
   };
 
-  // Planterare: arbetaren går till en slumpad ledig gräsruta på avstånd minRadius-maxRadius och planterar ett träd (amount: [min, max] trä).
+  // Planterare: arbetaren går till en slumpad ledig gräsruta på avstånd minRadius-maxRadius (jämnt fördelat över ytan) och planterar ett träd (amount: [min, max] trä).
   // Insatserna (frön, vatten) förbrukas när arbetaren går ut, och lämnas tillbaka om rutan hunnit bli upptagen.
   const { gather, craft } = Behaviors.registry;
   Behaviors.register('plant', {
@@ -514,7 +514,7 @@
     findSpot(building, job) {
       for (let attempt = 0; attempt < 24; attempt++) {
         const angle = Math.random() * Math.PI * 2;
-        const distance = job.minRadius + Math.random() * (job.maxRadius - job.minRadius);
+        const distance = Math.sqrt(job.minRadius ** 2 + Math.random() * (job.maxRadius ** 2 - job.minRadius ** 2));   // sqrt: lika stor chans för varje ruta, inte tätast vid huset
         const x = Math.round(building.x + Math.cos(angle) * distance), y = Math.round(building.y + Math.sin(angle) * distance);
         if (this.isFree(x, y) && CityBuilder.Pathfinder.findPathNow(building.x, building.y, x, y) !== null) return { x, y };
       }
