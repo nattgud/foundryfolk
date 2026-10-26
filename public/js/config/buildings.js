@@ -994,7 +994,7 @@ CityBuilder.Config.buildings = {
     spellRange: 30,
     spellCooldown: 20,
     mixing: {
-      slots: 5, maxAmount: 6, maxBook: 12,
+      slots: 5, maxAmount: 6, maxBook: 20,
       weights: [1.5, 1, 0.8, 0.6, 0.45],   // första ingrediensen väger mest
       amountExponent: 0.6,                 // dubbel mängd ger inte dubbel kraft
       shift: 0.3,                          // andel av nästa ingrediens som vrids ett steg på hjulet

@@ -17,14 +17,21 @@
   'use strict';
   const { Config, World, Economy, Construction, Players, Utils } = CityBuilder;
 
+  const BOOK_KEY = 'citybuilder.grimoire';
+
   const Spells = {
     zones: [],   // { kind, x, y, radius, player, left, total, factor?, bonus? }: pågående effekter
-    book: [],    // trollboken: [{ mix: [{ id, amount }] }], sparas med spelet
+    book: null,  // trollboken: [{ mix: [{ id, amount }] }]. Hör till spelaren, inte till ett spel: den ligger i webbläsarens lagring och följer med mellan banor
 
     reset() {
       this.zones = [];
-      this.book = Config.buildings.enchanter.mixing.book.map(recipe => ({ mix: recipe.map(([id, amount]) => ({ id, amount })) }));
+      if (this.book) return;
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(BOOK_KEY)); } catch (error) { /* ingen sparad bok */ }
+      this.book = Array.isArray(saved) ? saved : Config.buildings.enchanter.mixing.book.map(recipe => ({ mix: recipe.map(([id, amount]) => ({ id, amount })) }));
     },
+
+    persist() { try { localStorage.setItem(BOOK_KEY, JSON.stringify(this.book)); } catch (error) { /* lagring saknas: boken gäller till sidan laddas om */ } },
 
     // ---- Blandningen ----------------------------------------------------------------------------------------------------------
 

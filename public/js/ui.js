@@ -1133,6 +1133,7 @@
         const spell = Spells.evaluate(state.mix);
         if (!spell) return;
         Spells.book.push({ mix: state.mix.filter(slot => config.ingredients[slot.id]).map(({ id, amount }) => ({ id, amount })) });
+        Spells.persist();
         byId('info').dataset.buildingId = '';   // förtrollarens panel ritas om med den nya formeln
         refresh();
       });
@@ -1208,7 +1209,7 @@
         load.onclick = () => { state.mix = Array.from({ length: config.slots }, (_, i) => ({ ...(recipe.mix[i] || { id: '', amount: 1 }) })); this.updateWorkshop(); };
         drop.textContent = '×';
         drop.title = t('Remove');
-        drop.onclick = () => { Spells.book.splice(index, 1); byId('info').dataset.buildingId = ''; this.updateWorkshop(); };
+        drop.onclick = () => { Spells.book.splice(index, 1); Spells.persist(); byId('info').dataset.buildingId = ''; this.updateWorkshop(); };
         item.append(load, drop);
         return item;
       }));
