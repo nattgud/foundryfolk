@@ -12,6 +12,8 @@
      smite    fiendens soldater i området får högst 'health' (0-1) av sitt liv kvar
      rain     växter i området ökar i mängd (factor = hur ofta mot vanligt regn) i 'seconds' sekunder
      storm    växter i området blåser till lediga grannrutor (factor = hur ofta mot vanlig storm) i 'seconds' sekunder
+     clear    vädret över hela kartan blir klart i 'seconds' sekunder: ingen dimma, storm eller tornado (pågående tornados släpper sitt byte)
+     tornado  en tornado med radien 'radius' och livslängden 'seconds' uppstår på platsen
    Tidsbegränsade effekter är zoner (Spells.zones, sparas) som övriga system frågar efter med Spells.factor och Spells.bonus. */
 (function (CityBuilder) {
   'use strict';
@@ -92,11 +94,13 @@
       };
       const kinds = { growth: 'yield', fire: 'pace', air: 'carriers', spirit: 'surge' };
       if (first === 'death') Object.assign(spell, { kind: 'smite', radius: Math.round(5 + 2 * power), health: Math.min(0.5, Math.max(0.05, Math.round((0.55 - 0.2 * strength) * 100) / 100)), noun: 'Blight' });
+      else if (first === 'water' && second === 'spirit') Object.assign(spell, { kind: 'clear', radius: 0, seconds: Math.round(40 + 30 * strength), noun: 'Clearing' });
+      else if (first === 'water' && second === 'death') Object.assign(spell, { kind: 'tornado', radius: strength > 1.6 ? 3 : 2, seconds: Math.min(30, Math.round(12 + 8 * strength)), noun: 'Cyclone' });
       else if (first === 'water') Object.assign(spell, timed(second === 'air' || second === 'fire' ? 'storm' : 'rain', strength, second), { noun: second === 'air' || second === 'fire' ? 'Tempest' : 'Rain' });
       else Object.assign(spell, timed(kinds[first], strength, second), { noun: { yield: 'Bloom', pace: 'Blaze', carriers: 'Gust', surge: 'Surge' }[kinds[first]] });
       spell.adjective = second;
       // Den näst starkaste essensen ger en svagare bieffekt när den har ett eget timat slag
-      if (second && kinds[second]) {
+      if (second && kinds[second] && spell.kind !== 'clear' && spell.kind !== 'tornado') {
         const echo = timed(kinds[second], power * (0.5 + secondShare) * 0.6, null);
         spell.echo = echo;
       }
@@ -140,6 +144,8 @@
         case 'surge': return World.units.some(unit => unit.definition.isAnimal && inside(unit));
         case 'carriers': return World.units.some(unit => unit.definition.isHauler && unit.player === player && inside(unit));
         case 'rain': case 'storm': return CityBuilder.Weather.hasPlants({ x, y, radius: spell.radius });
+        case 'clear': return CityBuilder.Weather.type !== 'clear' || CityBuilder.Weather.tornadoes.length > 0;
+        case 'tornado': return true;
         default: return World.buildings.some(other => other.player === player && other.buildProgress >= 1 && other.definition.job && inside(other));
       }
     },
@@ -206,6 +212,8 @@
         this.addZone({ kind: effect.kind, x, y, radius: effect.radius, player: building.player, left: seconds, total: seconds, factor: effect.factor, bonus: effect.bonus });
       };
       if (spell.kind === 'create') this.create(spell, x, y);
+      else if (spell.kind === 'clear') CityBuilder.Weather.clearSky(spell.seconds);
+      else if (spell.kind === 'tornado') CityBuilder.Weather.spawnTornado(x, y, spell.radius, spell.seconds);
       else { if (spell.kind === 'smite') this.smite(spell, x, y, building.player); zone(spell); }
       if (spell.echo) zone(spell.echo);
       building.spellCooldown = building.definition.spellCooldown;

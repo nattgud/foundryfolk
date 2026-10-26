@@ -138,13 +138,26 @@
       }
     },
 
+    // En ny tornado på platsen (radie i rutor, livslängd i sekunder), med slumpad fart
+    spawnTornado(x, y, radius, life) {
+      const settings = Config.settings.weather.tornado;
+      this.tornadoes.push({ x, y, radius, age: 0, collected: {}, life, speed: between(settings.speed), angle: Math.random() * Math.PI * 2, tick: settings.tickSeconds });
+    },
+
+    // Klart väder i 'seconds' sekunder (längre om det redan skulle vara klart längre). Pågående tornados släpper det de tagit.
+    clearSky(seconds) {
+      for (const tornado of this.tornadoes) this.drop(tornado);
+      this.tornadoes = [];
+      this.type = 'clear';
+      this.left = Math.max(this.left, seconds);
+    },
+
     updateTornadoes(deltaSeconds) {
       const settings = Config.settings.weather.tornado;
       if (this.type === 'tornado' && (this.tornadoIn -= deltaSeconds) <= 0) {
         this.tornadoIn = between(settings.every);
         const spot = this.tornadoSpot();
-        if (spot) this.tornadoes.push({ ...spot, radius: rand(settings.radius), age: 0, collected: {}, life: Math.random() < settings.longChance ? settings.longLife : between(settings.life),
-          speed: between(settings.speed), angle: Math.random() * Math.PI * 2, tick: settings.tickSeconds });
+        if (spot) this.spawnTornado(spot.x, spot.y, rand(settings.radius), Math.random() < settings.longChance ? settings.longLife : between(settings.life));
       }
       for (const tornado of this.tornadoes) {
         tornado.age += deltaSeconds;
