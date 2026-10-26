@@ -608,6 +608,18 @@
         context.fillStyle = `rgba(${95 + ring * 12},${100 + ring * 12},${108 + ring * 12},.6)`;
         context.beginPath(); context.ellipse(cx + sway, y, rx, rx * .32, 0, 0, Math.PI * 2); context.fill();
       }
+      // Det som tornadon dragit upp virvlar runt i tratten: en bild per vara (högst 28, fördelade efter mängd, minst en av varje)
+      if (tornado.ripped) {
+        const goods = Object.entries(tornado.collected), total = goods.reduce((sum, [, amount]) => sum + amount, 0), icons = [];
+        for (const [id, amount] of goods) for (let n = Math.max(1, Math.round(amount / total * 28)); n > 0 && icons.length < 28; n--) icons.push(id);
+        const icon = size * .38;
+        icons.forEach((id, i) => {
+          const a = now * (1.8 + .6 * (i % 3)) + i * 2.4, r = reach * (.3 + .7 * frac(i * .37)) * grow, lift = frac(i * .61 + now * .3);
+          const x = cx + Math.cos(a) * r, y = cy - lift * reach * 1.6 * grow + Math.sin(a) * r * .3, resource = Config.resources[id], image = Assets.get(resource.image);
+          if (image) context.drawImage(image, x - icon / 2, y - icon / 2, icon, icon);
+          else { context.fillStyle = resource.color; context.fillRect(x - icon / 3, y - icon / 3, icon * .66, icon * .66); }
+        });
+      }
       context.fillStyle = 'rgba(60,45,30,.8)';
       for (let i = 0; i < 12; i++) {
         const a = now * 4 + i * .52, r = reach * (.4 + .6 * frac(i * .37)), lift = frac(i * .61 + now * .5);
