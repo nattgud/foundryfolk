@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.7': [
+      'Tornadoes now also tear up sand, water and bog tiles, the same gradual way as plants. Bog gives nothing; of sand and water a tornado keeps at most 40 each',
       'Saved games now keep every carrier where it was, with what it carries and the delivery it was on, so nothing is lost or reset when you load. Older saves still load as before',
       'Weather spells: water mixed with spirit clears the whole sky of fog, storm and tornadoes for a while (Clearing), and water mixed with death raises a tornado on the spot (Cyclone). Water with fire or air still makes a local storm, and water on its own local rain',
       'The minimap now gives each kind of deposit its own bright colour when you are about to place a mine or gatherer, and a small colour key under the minimap names what is lit up (also in the Resources and Favorites views)',

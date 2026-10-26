@@ -115,6 +115,7 @@ CityBuilder.Config.settings = {
       life: [15, 20], longChance: 0.2, longLife: 30,   // hur länge den virvlar runt (ibland längre)
       speed: [0.35, 0.65],                 // rutor per sekund (en per ca 2 s), slumpad för varje tornado
       turn: 0.8,                           // hur mycket färdriktningen slingrar (radianer per sekund, slumpmässigt)
+      also: { sand: 'sand', water: 'water', bog: null }, alsoCap: 40,   // mer än växter: sand, vatten och träsk (null = ger ingen vara) tas också. Av sand och vatten sparas högst alsoCap per tornado, resten försvinner.
       tickSeconds: 0.5, takes: 1,          // var 0,5 s minskar varje växtruta inom radien med 'takes'; är den tom blir rutan gräs
       piles: [1, 4],                       // hur många högar den släpper i slutet
     },

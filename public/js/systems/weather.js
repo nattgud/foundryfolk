@@ -104,14 +104,17 @@
 
     // Tar 'takes' ur varje växtruta inom radien och minns vad det gav. Är rutan tom blir den gräs.
     rip(tornado) {
-      const settings = Config.settings.weather.tornado, growth = Config.settings.weather.growth, centreX = Math.round(tornado.x), centreY = Math.round(tornado.y), reach = Math.ceil(tornado.radius);
+      const settings = Config.settings.weather.tornado, takable = { ...Config.settings.weather.growth, ...settings.also }, centreX = Math.round(tornado.x), centreY = Math.round(tornado.y), reach = Math.ceil(tornado.radius);
       let cleared = false;
       for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
         if (Math.hypot(dx, dy) > tornado.radius) continue;
-        const tile = World.getTile(centreX + dx, centreY + dy), resource = tile && growth[tile.terrainType];
-        if (!resource || !(tile.remainingAmount > 0)) continue;
-        const taken = Math.min(settings.takes, Math.ceil(tile.remainingAmount));
-        tornado.collected[resource] = (tornado.collected[resource] || 0) + taken;
+        const tile = World.getTile(centreX + dx, centreY + dy), type = tile?.terrainType;
+        if (!tile || !(type in takable) || !(tile.remainingAmount > 0)) continue;
+        const taken = Math.min(settings.takes, Math.ceil(tile.remainingAmount)), resource = takable[type];
+        if (resource) {
+          const room = type in settings.also ? settings.alsoCap - (tornado.collected[resource] || 0) : taken;
+          if (room > 0) tornado.collected[resource] = (tornado.collected[resource] || 0) + Math.min(taken, room);
+        }
         tile.remainingAmount -= taken;
         if (tile.remainingAmount > 0) continue;
         Utils.assign(tile, Config.terrain.grass, { terrainType: 'grass', remainingAmount: 0 });
