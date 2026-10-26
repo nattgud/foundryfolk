@@ -6,7 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.7': [
-      'Nights are no longer pitch dark where you live: it stays as bright as by day within about 2-3 tiles of your buildings and 1 tile of your people, fading softly into the night beyond. Animals and rival buildings give no light',
+      'Nights are no longer pitch dark where you live: it stays as bright as by day within about 2-3 tiles of your buildings and 1 tile of your people, fading softly into the night beyond. Animals and rival buildings give no light. The Graphics setting scales it: Minimum lights only buildings with plain circles, Low adds people, Medium makes the edges soft and High adds a warm glow',
       'Tornadoes now also tear up sand, water and bog tiles, the same gradual way as plants but half as fast overall: sand goes four times as fast as crops and water eighty times as fast. When a tornado dies, the water, sand and bog it kept (at most 100 each) land as new water, sand and bog tiles on free grass within 2 tiles of it, and only the rest becomes piles, never on water',
       'Saved games now keep every carrier where it was, with what it carries and the delivery it was on, so nothing is lost or reset when you load. Older saves still load as before',
       'Weather spells: water mixed with spirit clears the whole sky of fog, storm and tornadoes for a while (Clearing), and water mixed with death raises a tornado on the spot (Cyclone). Water with fire or air still makes a local storm, and water on its own local rain',

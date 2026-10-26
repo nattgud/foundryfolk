@@ -5,7 +5,7 @@
    - Frame rate: obegränsad eller 30 FPS (Game.frame hoppar över bildrutor som kommer för tidigt).
    - Autosave: 30 s, 1, 2, 5 eller 15 min (Save.setAutosaveInterval).
    - Graphics: 0 Minimum, 1 Low, 2 Medium, 3 High (standard, som spelet var förut). Bara det visuella: allt i spelet fungerar lika. Nivåerna slår av
-     (se Options.gfx): stigarnas toning och mjuka kant, pulserande ikoner, mjuk dimkant, bildutjämning, enheternas rörelseanimation, högupplöst canvas, snabb minikarta
+     (se Options.gfx): stigarnas toning och mjuka kant, nattens ljus (människor, mjuk kant, varm glöd), pulserande ikoner, mjuk dimkant, bildutjämning, enheternas rörelseanimation, högupplöst canvas, snabb minikarta
      och CSS-animationer. 'Shapes only' är en egen inställning och ingår inte.
    - Shapes only: ritar kartan (canvas) utan bilder, med reservformerna och färgerna. Menyer påverkas inte.
    - Statistics: byggnader, arbetare, bärare, djur m.m.
@@ -65,6 +65,10 @@
         skipCovered: level <= 1,       // ritar inte det som ligger under resurs- och byggfältet
         smoothing: level >= 2,         // bildutjämning av kartans bilder (av: skarpare och billigare)
         pathFade: level >= 3,          // stigar tonas in när de slits
+        nightScale: [2, 2, 3, 4][level],   // nattens ljusmask: pixlar per ruta
+        nightUnits: level >= 1,        // människor lyser på natten (annars bara byggnader)
+        nightSoft: level >= 2,         // mjuk ljuskant (annars jämna cirklar)
+        nightGlow: level >= 3,         // varm glöd i ljuset
         minimapMs: [100, 60, 30, 30][level],   // minikartans ritintervall
       };
     },
