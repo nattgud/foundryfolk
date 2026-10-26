@@ -104,15 +104,16 @@
 
     // Tar 'takes' ur varje växtruta inom radien och minns vad det gav. Är rutan tom blir den gräs.
     rip(tornado) {
-      const settings = Config.settings.weather.tornado, takable = { ...Config.settings.weather.growth, ...settings.also }, centreX = Math.round(tornado.x), centreY = Math.round(tornado.y), reach = Math.ceil(tornado.radius);
+      const settings = Config.settings.weather.tornado, centreX = Math.round(tornado.x), centreY = Math.round(tornado.y), reach = Math.ceil(tornado.radius);
       let cleared = false;
       for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
         if (Math.hypot(dx, dy) > tornado.radius) continue;
-        const tile = World.getTile(centreX + dx, centreY + dy), type = tile?.terrainType;
-        if (!tile || !(type in takable) || !(tile.remainingAmount > 0)) continue;
-        const taken = Math.min(settings.takes, Math.ceil(tile.remainingAmount)), resource = takable[type];
+        const tile = World.getTile(centreX + dx, centreY + dy), type = tile?.terrainType, extra = settings.also[type];
+        const resource = extra ? extra.gives : Config.settings.weather.growth[type];
+        if (!tile || !(extra || resource) || !(tile.remainingAmount > 0)) continue;
+        const taken = Math.min(extra?.takes ?? settings.takes, Math.ceil(tile.remainingAmount));
         if (resource) {
-          const room = type in settings.also ? settings.alsoCap - (tornado.collected[resource] || 0) : taken;
+          const room = extra ? settings.keep - (tornado.collected[resource] || 0) : taken;
           if (room > 0) tornado.collected[resource] = (tornado.collected[resource] || 0) + Math.min(taken, room);
         }
         tile.remainingAmount -= taken;
@@ -129,6 +130,20 @@
       for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
         if (Math.hypot(dx, dy) <= tornado.radius + 1 && this.isFree(centreX + dx, centreY + dy)) spots.push({ x: centreX + dx, y: centreY + dy });
       }
+      // Vatten och sand blir först nya rutor nära mitten (högst 2 rutor bort), aldrig högar
+      let landed = false;
+      for (const resource in settings.land) {
+        let left = tornado.collected[resource] || 0;
+        delete tornado.collected[resource];
+        const near = spots.filter(spot => Math.hypot(spot.x - centreX, spot.y - centreY) <= 2);
+        while (left > 0 && near.length) {
+          const spot = near.splice(Math.floor(Math.random() * near.length), 1)[0], amount = Math.min(left, settings.land[resource]);
+          spots.splice(spots.indexOf(spot), 1);
+          Utils.assign(World.getTile(spot.x, spot.y), Config.terrain[resource], { terrainType: resource, remainingAmount: amount });
+          left -= amount; landed = true;
+        }
+      }
+      if (landed) CityBuilder.Pathfinder.clearCache();
       const count = Math.min(spots.length, rand(settings.piles)), piles = Array.from({ length: count }, () => ({}));
       if (!count) return;
       for (const resource in tornado.collected) for (let n = 0; n < tornado.collected[resource]; n++) {
