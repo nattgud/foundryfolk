@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.7': [
+      'New maps never get tiny unreachable islands of 1-5 tiles any more (often just sand): they become water. Fords and sandbars still count as land, so islands joined by them stay. Saved games keep their terrain',
       'Cleaner buildings: everything shown on a building now has its own place and the middle is always free. Output goods top left and input goods bottom left, the sign top right, a single warning icon bottom right (a status warning before an efficiency warning), progress along the bottom edge and the health bar along the top. The numbers have a dark outline, and the goods are hidden when zoomed far out',
       'New Priority button on all your buildings: carriers handle deliveries to and from prioritized buildings before everything else, and those buildings place their orders first. A thin gold frame marks them on the map',
       'Your headquarters is smaller on the minimap and now a gold diamond with a white edge, a shape and colour no other marker has',

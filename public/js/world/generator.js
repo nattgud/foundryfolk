@@ -7,13 +7,49 @@
   const NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const BAR_CELL = 16;   // sandrevskandidater slumpas fram per ruta på så här många rutor
   const BAR_TRIES = 3;   // kandidater per ruta
+  const CACHE_LIMIT = 200000;   // så många rutor kommer plainTypeAt ihåg åt gången
 
   const Generator = {
     // Glömmer det som cachats per värld (sandrev, gångar). Anropas när landskapsreglagen eller seedet byts utan omladdning (förhandsvisningen).
-    reset() { this.barKey = this.tableKey = null; },
+    reset() { this.barKey = this.tableKey = null; this.plain = null; },
 
-    // Slutlig terräng: utjämning av enstaka rutor, vadställen över smala vattendrag och holmar utan fyndigheter.
-    terrainTypeAt(x, y) {
+    // Slutlig terräng: plainTypeAt, men utan små otillgängliga öar (se islet).
+    terrainTypeAt(x, y) { return this.islet(x, y, this.plainTypeAt(x, y)); },
+
+    // Gångbar mark som hänger ihop med färre än Config.world.islandMin rutor och är omgiven av vatten eller berg går inte att nå och blir vatten (eller berg).
+    // Bara rutor med en icke gångbar granne kontrolleras, så landet inåt kostar ingenting. Vadställen och sandrev räknas som mark, så att de binder ihop holmar.
+    islet(x, y, terrainType) {
+      const { islandMin } = CityBuilder.Config.world, terrain = CityBuilder.Config.terrain;
+      const walkable = type => Number.isFinite(terrain[type].walkCost);
+      if (!islandMin || !walkable(terrainType)) return terrainType;
+      const around = NEIGHBOURS.map(([dx, dy]) => this.plainTypeAt(x + dx, y + dy));
+      if (around.every(walkable)) return terrainType;
+      const seen = new Set([Utils.tileKey(x, y)]), stack = [[x, y]];
+      while (stack.length) {
+        const [fromX, fromY] = stack.pop();
+        for (const [dx, dy] of NEIGHBOURS) {
+          const nextX = fromX + dx, nextY = fromY + dy, key = Utils.tileKey(nextX, nextY);
+          if (seen.has(key) || !walkable(this.plainTypeAt(nextX, nextY))) continue;
+          seen.add(key);
+          if (seen.size >= islandMin) return terrainType;   // hänger ihop med fastlandet
+          stack.push([nextX, nextY]);
+        }
+      }
+      return around.includes('water') ? 'water' : around.find(type => !walkable(type));
+    },
+
+    // plainTypeAt sparas per ruta (högst CACHE_LIMIT stycken åt gången), eftersom ögranskningen läser grannrutorna om och om igen
+    plainTypeAt(x, y) {
+      const seed = CityBuilder.Config.world.seed;
+      if (!this.plain || this.plainSeed !== seed || this.plain.size > CACHE_LIMIT) { this.plain = new Map(); this.plainSeed = seed; }
+      const key = Utils.tileKey(x, y);
+      let type = this.plain.get(key);
+      if (type === undefined) this.plain.set(key, type = this.computeType(x, y));
+      return type;
+    },
+
+    // Terräng efter utjämning av enstaka rutor, vadställen över smala vattendrag och holmar utan fyndigheter.
+    computeType(x, y) {
       const base = this.baseTypeAt(x, y);
       if (base !== 'mountain' && base !== 'water') return this.settle(x, y, base);
       const around = [];   // grannarnas terräng i NEIGHBOURS-ordning, hämtas först när den behövs

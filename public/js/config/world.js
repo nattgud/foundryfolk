@@ -608,6 +608,7 @@
     clearings: [],             // fler gräsplaner { x, y, radius } (datorspelarnas baser läggs in av World.rivalSite)
     deposits: ['iron_ore', 'copper_ore', 'tin_ore', 'silver_ore', 'gold_ore', 'coal', 'salt_ore', 'sulfur', 'gemstone', 'crystal', 'moonstone'], // fyndigheter som inte får ligga på små holmar (Generator.settle)
     landBridges: { density: .7, maxGap: 12 }, // sandrev över vatten som binder ihop öar: chans per slumpad linje och längsta vattensträcka (rutor)
+    islandMin: 6,              // gångbar mark som hänger ihop med färre rutor än så här, omgiven av vatten eller berg, blir vatten (inga otillgängliga småöar)
     isletSize: 30,             // gångbar mark som hänger ihop med färre rutor än så här räknas som holme
     meadows: [{ x: 0, y: 0 }], // baserna: runt var och en glesas skog och träsk ut till gräs (World.rivalSite lägger till datorspelarnas)
     meadowRadius: 28,          // hur långt ut den öppna marken når (rutor). Mest gräs nära basen, ingenting vid kanten
