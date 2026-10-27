@@ -192,7 +192,7 @@
         tiles: this.collectTileChanges(),
         animalChunks: (
           CityBuilder.Animals.syncActive(),
-          Array.from(World.animalsByChunk.entries())
+          CityBuilder.Animals.pack(Array.from(World.animalsByChunk.entries()))
         ),
       };
     },

@@ -5,6 +5,7 @@
   const { Config, World, Utils } = CityBuilder;
 
   const STATE_FIELDS = ['animalLastEaten', 'animalMealTile', 'animalMustMoveAfterMeal', 'animalSpreadPending'];
+  const DEFAULTS = { dead: false, animalLastEaten: null, animalMealTile: null, animalMustMoveAfterMeal: false, animalSpreadPending: false };   // utelämnas i sparningen (migrate fyller i dem)
 
   const Animals = {
     randomForChunk(chunkX, chunkY) {
@@ -111,10 +112,21 @@
       return this.activate(record, key);
     },
 
-    // Äldre sparfiler: hjortar hette deer*, och posterna saknade art
+    // Posterna i sparningen utan det som har sitt standardvärde (ett dött djur behöver bara id och dead: sparningen blev annars mest standardvärden)
+    pack(entries) {
+      return entries.map(([key, records]) => [key, records.map(record => {
+        if (record.dead) return { id: record.id, dead: true };
+        const packed = {};
+        for (const field in record) if (!(field in DEFAULTS) || record[field] !== DEFAULTS[field]) packed[field] = record[field];
+        return packed;
+      })]);
+    },
+
+    // Äldre sparfiler: hjortar hette deer*, och posterna saknade art. Utelämnade fält får sina standardvärden.
     migrate(entries) {
       for (const [, records] of entries) for (const record of records) {
         record.kind ??= 'deer';
+        for (const field in DEFAULTS) record[field] ??= DEFAULTS[field];
         for (const field of STATE_FIELDS) {
           const old = 'deer' + field.slice(6);
           if (old in record) { record[field] = record[old]; delete record[old]; }
