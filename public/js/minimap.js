@@ -618,11 +618,15 @@
       // Huvudlagret: större, guld med vit ring
       const hq = World.headquarters;
       const hqX = toX(hq.x + 0.5), hqY = toY(hq.y + 0.5);
-      const hqSize = marker + 4;
-      context.fillStyle = '#fff';
-      context.fillRect(Math.round(hqX - hqSize / 2) - 1, Math.round(hqY - hqSize / 2) - 1, hqSize + 2, hqSize + 2);
-      context.fillStyle = (hq.definition && hq.definition.color) || '#ffd23f';
-      context.fillRect(Math.round(hqX - hqSize / 2), Math.round(hqY - hqSize / 2), hqSize, hqSize);
+      // Huvudlagret är en liten guldfärgad romb med vit kant: formen och färgen finns inte hos någon annan markering
+      const diamond = (half, color) => {
+        const cx = Math.round(hqX), cy = Math.round(hqY);
+        context.fillStyle = color;
+        context.beginPath(); context.moveTo(cx, cy - half); context.lineTo(cx + half, cy); context.lineTo(cx, cy + half); context.lineTo(cx - half, cy); context.closePath(); context.fill();
+      };
+      const hqHalf = Math.ceil(marker / 2) + 2;
+      diamond(hqHalf + 1, '#fff');
+      diamond(hqHalf, '#ffc400');
 
       // Det som syns på skärmen
       context.strokeStyle = 'rgb(255 255 255 / 85%)';
