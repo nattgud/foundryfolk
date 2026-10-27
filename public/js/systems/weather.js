@@ -320,6 +320,7 @@
 
     // Tänder lava på planens första 'count' rutor och river det som står på dem
     ignite(volcano, count) {
+      count = Math.min(count, volcano.plan.length);
       if (volcano.lit >= count) return;
       while (volcano.lit < count) {
         const [x, y] = volcano.plan[volcano.lit++], tile = World.getTile(x, y), building = World.buildingAt(x, y);
