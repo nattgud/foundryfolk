@@ -52,6 +52,8 @@
       'Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.': 'ينقل الحمّالون البضائع بين المباني والمخازن. «الحمّالون 20/20» تعني المتاح/الإجمالي.',
       'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.': 'يسلّم المنتجون البضائع مباشرة إلى المباني التي تحتاجها. والباقي يذهب إلى مخزن، فابنِ مستودعات حيث تتباعد الأشياء.',
       'Speed and menu': 'السرعة والقائمة',
+      'Priority': 'أولوية',
+      'Carriers deliver to and from prioritized buildings first': 'يخدم الحمّالون المباني ذات الأولوية أولاً',
       'Clearing': 'صفاء السماء',
       'Cyclone': 'إعصار دوّار',
       'Clears the sky of fog, storm and tornadoes for {s} s': 'يصفّي السماء من الضباب والعاصفة والأعاصير لمدة {s} ثانية',

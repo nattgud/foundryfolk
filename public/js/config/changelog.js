@@ -6,6 +6,8 @@
 
   CityBuilder.Changelog = {
     '0.8.7': [
+      'Cleaner buildings: everything shown on a building now has its own place and the middle is always free. Output goods top left and input goods bottom left, the sign top right, a single warning icon bottom right (a status warning before an efficiency warning), progress along the bottom edge and the health bar along the top. The numbers have a dark outline, and the goods are hidden when zoomed far out',
+      'New Priority button on all your buildings: carriers handle deliveries to and from prioritized buildings before everything else, and those buildings place their orders first. A thin gold frame marks them on the map',
       'Your headquarters is smaller on the minimap and now a gold diamond with a white edge, a shape and colour no other marker has',
       'On the minimap the lit-up deposits no longer have a thick white border, and the rings around buildings (problems, selection) are never thicker than one pixel',
       'The minimap colours for deposits (when placing a mine or gatherer) are now far easier to tell apart, and chosen for colour-blind players too: a colour-blind-safe palette that also differs in brightness, and with more than seven kinds the rest get a dark dot in the middle, in the map and in the colour key',

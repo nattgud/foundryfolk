@@ -2962,6 +2962,7 @@
 
         // Andra spelares byggnader går bara att titta på
         const own = building.player === CityBuilder.Players.HUMAN;
+        const priorityButton = own && !building.definition.pile ? '<button id="priorityButton"></button>' : '';
         const pauseButton = own && building.definition.job
           ? '<button id="pauseButton"></button>'
           : '';
@@ -2994,7 +2995,7 @@
 
         panel.innerHTML =
           `<div><b id="infoName">${this.buildingName(building.definition)}</b><span id="infoTools"></span><br><span id="infoStatus"></span></div>` +
-          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${marketButton}${trainButtons}${spellButtons}${stanceButton}${choiceButton}${boostButton}${pauseButton}${demolishButton}</div>`;
+          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${marketButton}${trainButtons}${spellButtons}${stanceButton}${choiceButton}${boostButton}${priorityButton}${pauseButton}${demolishButton}</div>`;
 
         if (byId('stanceButton')) {
           byId('stanceButton').onclick = () => {
@@ -3033,6 +3034,8 @@
         if (byId('boostButton')) {
           byId('boostButton').onclick = () => { building.boostOn = !building.boostOn; };
         }
+
+        if (byId('priorityButton')) byId('priorityButton').onclick = () => { building.prioritized = !building.prioritized; };
 
         if (byId('pauseButton')) {
           byId('pauseButton').onclick = () => {
@@ -3115,6 +3118,12 @@
 
       if (byId('pauseButton')) {
         byId('pauseButton').textContent = t(building.paused ? 'Unpause' : 'Pause');
+      }
+      if (byId('priorityButton')) {
+        const button = byId('priorityButton');
+        button.textContent = (building.prioritized ? '★ ' : '☆ ') + t('Priority');
+        button.title = t('Carriers deliver to and from prioritized buildings first');
+        button.classList.toggle('on', !!building.prioritized);
       }
 
       // Knapparnas innehåll sätts bara när det ändras, så att ikonerna inte laddas om varje bildruta

@@ -376,7 +376,7 @@
   const drawSign = (context, building, x, y, size) => {
     const resources = signOf(building);
     if (!resources) return;
-    const s = size * .4, width = s * resources.length - (resources.length - 1), left = x + size - width - 1, top = y + size - s - 1;
+    const s = size * .36, width = s * resources.length - (resources.length - 1), left = x + size - width - 1, top = y + 1;   // uppe till höger
     context.fillStyle = 'rgba(20,16,12,.75)'; context.strokeStyle = 'rgba(232,220,200,.8)'; context.lineWidth = 1;
     context.fillRect(left, top, width, s); context.strokeRect(left + .5, top + .5, width - 1, s - 1);
     resources.forEach((id, i) => {
@@ -408,21 +408,28 @@
       context.globalAlpha = 1;
       drawSign(context, building, x, y, tileSize);
 
+      // Platserna på en byggnad (mitten är alltid fri): uppe till vänster det som kommer ut (eller det som saknas på en byggplats), nere till vänster det som går in,
+      // uppe till höger skylten, nere till höger varningsikonen, en tunn guldram runt hela om byggnaden är prioriterad, och längst ner förloppsstapeln. Livsmätaren ligger i överkanten.
+      const shift = building.hp < building.maxHp ? 4 : 0, showStock = renderer.zoom >= .6;   // utzoomat är sifforna ändå oläsliga
       if (!isFinished) { // byggframsteg
-        context.fillStyle = '#000'; context.fillRect(x + 3, y + tileSize - 8, tileSize - 6, 5);
-        context.fillStyle = '#5fb55f'; context.fillRect(x + 3, y + tileSize - 8, (tileSize - 6) * building.buildProgress, 5);
-        renderer.drawResourceIcons(context, CityBuilder.Construction.missing(building), x, y + 1);   // det som ännu ska bäras hit
-      } else if (!building.definition.isStorage) {
-        renderer.drawResourceIcons(context, building.inputStock, x, y + tileSize - 10);
-        renderer.drawResourceIcons(context, building.outputStock, x, y + (building.definition.pile ? tileSize * .42 : 1));
+        context.fillStyle = '#000'; context.fillRect(x + 2, y + tileSize - 5, tileSize - 4, 3);
+        context.fillStyle = '#5fb55f'; context.fillRect(x + 2, y + tileSize - 5, (tileSize - 4) * building.buildProgress, 3);
+        if (showStock) renderer.drawResourceIcons(context, CityBuilder.Construction.missing(building), x, y + 1 + shift);   // det som ännu ska bäras hit
+      } else if (!building.definition.isStorage && showStock) {
+        renderer.drawResourceIcons(context, building.inputStock, x, y + tileSize - 17);
+        renderer.drawResourceIcons(context, building.outputStock, x, building.definition.pile ? y + tileSize * .42 : y + 1 + shift);
       }
       if (building.player !== CityBuilder.Players.HUMAN) { // andra spelares byggnader: ram i spelarens färg
         context.strokeStyle = CityBuilder.Config.settings.playerColors[building.player] || '#fff'; context.lineWidth = 2;
         context.strokeRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
       }
       if (building.hp < building.maxHp) { // skadad byggnad: livsmätare
-        context.fillStyle = '#000'; context.fillRect(x + 3, y + 1, tileSize - 6, 4);
-        context.fillStyle = '#d65a4a'; context.fillRect(x + 3, y + 2, (tileSize - 6) * Math.max(0, building.hp) / building.maxHp, 2);
+        context.fillStyle = '#000'; context.fillRect(x + 2, y, tileSize - 4, 3);
+        context.fillStyle = '#d65a4a'; context.fillRect(x + 3, y + 1, (tileSize - 6) * Math.max(0, building.hp) / building.maxHp, 1);
+      }
+      if (building.prioritized) {   // prioriterad: tunn guldram (tar ingen plats från ikonerna)
+        context.strokeStyle = '#ffd23f'; context.lineWidth = 1;
+        context.strokeRect(x + 1.5, y + 1.5, tileSize - 3, tileSize - 3);
       }
       if (building === CityBuilder.Game.selectedBuilding) {
         context.strokeStyle = '#fff'; context.lineWidth = 2;
@@ -737,40 +744,28 @@
     for (const building of World.buildings) {
       if (outside(view, building.x * tileSize, building.y * tileSize) || hidden(building)) continue;
       if (building.player !== Players.HUMAN) continue;   // fiendens byggnader visar inga status- eller effektivitetsikoner (och ingen arbetsframgång)
-      // Ineffektiv en längre tid: liten ikon uppe till höger (Config.settings.efficiency: minSeconds, warnBelow, badBelow)
-      const inefficiency = CityBuilder.Behaviors.inefficiency(building);
-      if (inefficiency) {
-        const bad = inefficiency === 'bad';
-        const efficiencyIcon = Assets.get(ICON_DIR + (bad ? 'efficiency_bad' : 'efficiency_warn') + '.png') || Assets.get(ICON_DIR + (bad ? 'warning_red' : 'warning_grey') + '.png');
-        if (efficiencyIcon) {
-          // Pulserar som statusikonerna (röd = snabbare och kraftigare, som "error"). Mittpunkten ligger fast i hörnet.
-          const wave = pulse ? (Math.sin(time * (bad ? 6 : 3.5)) + 1) / 2 : .5, iconSize = tileSize * .36 * (1 + wave * (bad ? .3 : .15));
-          const centerX = (building.x + 1) * tileSize - tileSize * .18 - 1, centerY = building.y * tileSize + tileSize * .18 + 1;
-          context.globalAlpha = .7 + .3 * wave;
-          context.drawImage(efficiencyIcon, centerX - iconSize / 2, centerY - iconSize / 2, iconSize, iconSize);
-          context.globalAlpha = 1;
-        }
-      }
+      // Varningsplatsen längst ner till höger: ETT enda ikon i taget, status går före ineffektivitet (Config.settings.efficiency: minSeconds, warnBelow, badBelow).
+      // Mitten av byggnaden lämnas fri så att man ser den. Ikonen pulserar kring en fast mittpunkt (röd = snabbare och kraftigare, som "error").
+      const slot = tileSize * .34, centerX = (building.x + 1) * tileSize - slot / 2 - 2, centerY = (building.y + 1) * tileSize - slot / 2 - 4;
       const name = statusIcon(building.workerUnit?.status) || statusIcon(building.status);
-      const icon = name && Assets.get(ICON_DIR + name + '.png');
-      if (!icon && name === 'tools_missing') {   // saknas bilden (images/ui/icons/tools_missing.png) ritas en orange bricka med korsade verktyg
-        const wave = pulse ? (Math.sin(time * 3.5) + 1) / 2 : .5, radius = tileSize * .25 * (1 + wave * .15), cx = (building.x + .5) * tileSize, cy = (building.y + .5) * tileSize;
+      const inefficiency = !name && CityBuilder.Behaviors.inefficiency(building), bad = inefficiency === 'bad';
+      const statusImage = name && Assets.get(ICON_DIR + name + '.png');
+      const alertImage = statusImage || (inefficiency && (Assets.get(ICON_DIR + (bad ? 'efficiency_bad' : 'efficiency_warn') + '.png') || Assets.get(ICON_DIR + (bad ? 'warning_red' : 'warning_grey') + '.png')));
+      const strong = bad || name === 'error', still = name === 'paused';
+      const wave = still ? 0 : pulse ? (Math.sin(time * (strong ? 6 : 3.5)) + 1) / 2 : .5;
+      if (!alertImage && name === 'tools_missing') {   // saknas bilden (images/ui/icons/tools_missing.png) ritas en orange bricka med korsade verktyg
+        const radius = slot * .5 * (1 + wave * .15);
         context.globalAlpha = .75 + .25 * wave;
-        context.fillStyle = '#e08a1e'; context.strokeStyle = '#fff'; context.lineWidth = Math.max(1.5, tileSize * .05);
-        context.beginPath(); context.arc(cx, cy, radius, 0, Math.PI * 2); context.fill(); context.stroke();
-        const k = radius * .55;
-        context.beginPath(); context.moveTo(cx - k, cy + k); context.lineTo(cx + k, cy - k); context.moveTo(cx - k, cy - k); context.lineTo(cx + k, cy + k); context.stroke();
+        context.fillStyle = '#e08a1e'; context.strokeStyle = '#fff'; context.lineWidth = 1;
+        context.beginPath(); context.arc(centerX, centerY, radius, 0, Math.PI * 2); context.fill(); context.stroke();
+        const k = radius * .5;
+        context.beginPath(); context.moveTo(centerX - k, centerY + k); context.lineTo(centerX + k, centerY - k); context.moveTo(centerX - k, centerY - k); context.lineTo(centerX + k, centerY + k); context.stroke();
         context.globalAlpha = 1;
-        continue;
-      }
-      if (icon) {
-        const urgent = name === 'error', still = name === 'paused';
-        const wave = still ? 0 : pulse ? (Math.sin(time * (urgent ? 6 : 3.5)) + 1) / 2 : .5;
-        const size = tileSize / 2 * (1 + wave * (urgent ? .3 : .15));
+      } else if (alertImage) {
+        const iconSize = slot * (1 + wave * (strong ? .3 : .15));
         context.globalAlpha = still ? 1 : .7 + .3 * wave;
-        context.drawImage(icon, (building.x + .5) * tileSize - size / 2, (building.y + .5) * tileSize - size / 2, size, size);
+        context.drawImage(alertImage, centerX - iconSize / 2, centerY - iconSize / 2, iconSize, iconSize);
         context.globalAlpha = 1;
-        continue;
       }
       if(building.isCrafting) {
         if(building.craftTotalTime > 0) {

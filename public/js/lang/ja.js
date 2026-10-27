@@ -51,6 +51,8 @@
       'Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.': '運搬人は建物と倉庫の間で品物を運びます。「運搬人 20/20」は空き/合計を意味します。',
       'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.': '生産者は品物を必要とする建物へ直接届けます。残りは倉庫へ行くので、離れた場所には倉庫を建てましょう。',
       'Speed and menu': '速度とメニュー',
+      'Priority': '優先',
+      'Carriers deliver to and from prioritized buildings first': '優先した建物の運搬を最初に行います',
       'Clearing': '晴れ間',
       'Cyclone': 'サイクロン',
       'Clears the sky of fog, storm and tornadoes for {s} s': '{s} 秒間、霧・嵐・竜巻を空から払います',

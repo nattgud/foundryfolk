@@ -86,10 +86,12 @@
         }
 
         if (count > 1) {
-          context.fillStyle = "#fff";
           context.font = "8px sans-serif";
           context.textAlign = "left";
           context.textBaseline = "middle";
+          context.strokeStyle = "rgba(0,0,0,.8)"; context.lineWidth = 2; context.lineJoin = "round";
+          context.strokeText(String(count), iconX, y + 10);   // mörk kontur så att siffrorna syns mot byggnadsbilden
+          context.fillStyle = "#fff";
           context.fillText(String(count), iconX, y + 10);
         }
 

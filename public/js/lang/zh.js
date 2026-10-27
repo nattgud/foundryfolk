@@ -51,6 +51,8 @@
       'Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.': '搬运工在建筑和仓库之间运送货物。“搬运工 20/20”表示空闲/总数。',
       'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.': '生产者会把货物直接送给需要的建筑，其余送进仓库，所以在相距较远的地方要多建仓库。',
       'Speed and menu': '速度与菜单',
+      'Priority': '优先',
+      'Carriers deliver to and from prioritized buildings first': '搬运工优先为优先建筑运送货物',
       'Clearing': '放晴',
       'Cyclone': '气旋',
       'Clears the sky of fog, storm and tornadoes for {s} s': '在 {s} 秒内清除天空中的雾、风暴和龙卷风',

@@ -52,6 +52,8 @@
       'Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.': 'Os carregadores levam mercadorias entre construções e armazéns. "Carregadores 20/20" significa livres/total.',
       'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.': 'Os produtores entregam direto às construções que precisam das mercadorias. O resto vai para um armazém, então construa armazéns onde as coisas ficam longe umas das outras.',
       'Speed and menu': 'Velocidade e menu',
+      'Priority': 'Prioridade',
+      'Carriers deliver to and from prioritized buildings first': 'Os carregadores atendem primeiro os edifícios prioritários',
       'Clearing': 'Céu limpo',
       'Cyclone': 'Ciclone',
       'Clears the sky of fog, storm and tornadoes for {s} s': 'Limpa o céu de nevoeiro, tempestade e tornados durante {s} s',

@@ -52,6 +52,8 @@
       'Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.': 'Носильщики переносят товары между зданиями и складами. «Носильщики 20/20» означает свободные/всего.',
       'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.': 'Производители доставляют товары прямо в здания, которым они нужны. Остальное идёт на склад, поэтому стройте склады там, где всё далеко друг от друга.',
       'Speed and menu': 'Скорость и меню',
+      'Priority': 'Приоритет',
+      'Carriers deliver to and from prioritized buildings first': 'Носильщики сначала обслуживают здания с приоритетом',
       'Clearing': 'Прояснение',
       'Cyclone': 'Циклон',
       'Clears the sky of fog, storm and tornadoes for {s} s': 'Очищает небо от тумана, бури и торнадо на {s} с',

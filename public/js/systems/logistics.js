@@ -181,14 +181,20 @@
       }
     },
 
+    // Byggnaderna i tur och ordning från 'start' (så att ingen alltid kommer sist), men prioriterade byggnader först
+    visitOrder(start) {
+      const buildings = World.buildings, count = buildings.length, rotated = Array.from({ length: count }, (_, i) => buildings[(start + i) % count]);
+      return [...rotated.filter(building => building.prioritized), ...rotated];
+    },
+
     requestMissingInputs() { // hus som behöver indata beställer från närmaste källa
       const { requestsPerBuilding } = cfg();
-      const buildings = World.buildings, count = buildings.length;
+      const count = World.buildings.length;
       if (!count) return;
-      const start = this.cursor % count;
+      const start = this.cursor % count, order = this.visitOrder(start), first = order.length - count;
       let visited = 0;
-      for (; visited < count; visited++) {
-        const building = buildings[(start + visited) % count];
+      for (; visited < order.length; visited++) {
+        const building = order[visited];
         if (this.full(building.player)) continue;
         if (building.buildProgress < 1) { if (building.needsMaterials) this.requestSiteMaterials(building); continue; }
         if (!building.definition.job) continue;
@@ -210,7 +216,7 @@
           }
         }
       }
-      this.cursor = (start + visited) % count;
+      this.cursor = (start + Math.max(0, visited - first)) % count;
 
     },
 
@@ -231,9 +237,8 @@
     // även om ingen enskild vara nått tröskeln (annars fastnar hus med flera utdata på "Fullt lager").
     flushSurplusToStorage() {
       const bufferLimit = Config.settings.outputBufferCapacity || 10, threshold = Config.settings.flushThreshold ?? 0;
-      const buildings = World.buildings, count = buildings.length;
-      for (let i = 0; i < count; i++) {
-        const building = buildings[(this.cursor + i) % count];
+      const count = World.buildings.length;
+      for (const building of this.visitOrder(this.cursor % Math.max(1, count))) {
         if (building.definition.isStorage || building.buildProgress < 1) continue;
         const job = building.definition.job, produced = job && job.outputs ? Utils.sumValues(job.outputs) : 1, sum = Utils.sumValues(building.outputStock);
         const pressure = sum >= bufferLimit * 0.5 || sum + produced > bufferLimit; // halvfull, eller kan inte producera mer = töm allt
@@ -342,9 +347,10 @@
         return 1;
       };
       const pile = task => task.source.definition.pile ? 1 : 0;   // högar sist: allt annat arbete går före
+      const priority = task => (task.destination.prioritized || task.source.prioritized ? 0 : 1);   // prioriterade byggnaders leveranser går först av allt
       this.tasks.sort((a, b) => {
         const ua = urgent(a), ub = urgent(b);
-        return pile(a) - pile(b) || ua - ub || (ua ? stock(a) - stock(b) : 0) || a.seq - b.seq;
+        return priority(a) - priority(b) || pile(a) - pile(b) || ua - ub || (ua ? stock(a) - stock(b) : 0) || a.seq - b.seq;
       });
       // Högar får högst pileShare av en spelares bärare så länge annat arbete väntar eller nyss väntade, så att en tornado inte tömmer produktionen på bärare
       const { pileShare, pileRecent } = cfg(), pileBusy = {}, totals = {};
