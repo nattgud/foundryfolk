@@ -139,6 +139,9 @@
         if (window.CityBuilder && window.CityBuilder.Game && typeof window.CityBuilder.Game.init === 'function') {
           window.CityBuilder.Game.init();
           console.log('CityBuilder.Game.init() started.');
+          // Spelets objekt tas bort från den globala namnrymden: modulerna har redan sina egna referenser, men från konsolen går det inte längre att
+          // nå ekonomi, värld och inställningar. Med ?debug i adressen finns det kvar (för utveckling och tester).
+          if (!/[?&]debug\b/.test(location.search)) delete window.CityBuilder;
         } else {
           console.warn('Initialization failed: CityBuilder.Game.init() is not defined.');
           GameLoading.fail(new Error('Game.init is not defined'));
