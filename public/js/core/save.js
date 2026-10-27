@@ -71,8 +71,6 @@
   };
 
   const Save = {
-    tileBaselines: new Map(),   // ruta -> { x, y, base } (kopia av rutans värden när den först hämtades)
-    trackerInstalled: false,
     startData: null,            // sparning som ska återställas vid start
     ready: false,               // true när spelet är uppstartat (autosparning före det vore farlig)
     suspended: false,           // true när sidan håller på att laddas om (då får inget skrivas)
@@ -83,34 +81,19 @@
     // Kvar så att äldre anrop inte kraschar. Rutor spåras nu automatiskt.
     noteTile() {},
 
-    // Lägger spåraren runt World.getTile. Måste ske före World.init().
-    installTileTracker() {
-      const World = CityBuilder.World;
-      if (this.trackerInstalled || !World || typeof World.getTile !== 'function') return;
-      const original = World.getTile;
-      const baselines = this.tileBaselines;
-      World.getTile = function (x, y, ...rest) {
-        const tile = original.call(this, x, y, ...rest);
-        if (tile && !baselines.has(tile)) {
-          const base = {};
-          for (const key of Object.keys(tile)) if (isPrimitive(tile[key])) base[key] = tile[key];
-          baselines.set(tile, { x, y, base });
-        }
-        return tile;
-      };
-      this.trackerInstalled = true;
-    },
-
-    // Alla rutor som skiljer sig från hur de såg ut när de först hämtades: [[x, y, { fält: värde }], ...]
+    // Alla rutor som skiljer sig från hur de såg ut när chunken skapades (World.getTile sparar utgångsläget): [[x, y, { fält: värde }], ...]
     collectTileChanges() {
-      const changes = [];
-      for (const [tile, { x, y, base }] of this.tileBaselines) {
-        let changed = null;
-        for (const key of Object.keys(tile)) {
-          const value = tile[key];
-          if (isPrimitive(value) && value !== base[key]) (changed = changed || {})[key] = value;
+      const changes = [], size = CityBuilder.Config.settings.chunkSize;
+      for (const chunk of CityBuilder.World.chunks.values()) {
+        for (let index = 0; index < chunk.length; index++) {
+          const tile = chunk[index], base = { terrainType: chunk.types[index], remainingAmount: chunk.amounts[index], wear: 0 };
+          let changed = null;
+          for (const key in tile) {
+            const value = tile[key];
+            if (isPrimitive(value) && value !== base[key]) (changed = changed || {})[key] = value;
+          }
+          if (changed) changes.push([chunk.cx * size + index % size, chunk.cy * size + Math.floor(index / size), changed]);
         }
-        if (changed) changes.push([x, y, changed]);
       }
       return changes;
     },
@@ -385,7 +368,6 @@
 
     // Anropas först i Game.init: bestämmer vad som ska återställas och ställer in banan före världsgenereringen
     prepareStart() {
-      this.installTileTracker();
       const pending = read(PENDING_KEY);
       remove(PENDING_KEY);
       this.startSlot = pending || this.slot();

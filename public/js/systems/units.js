@@ -103,7 +103,12 @@
         return;
       }
 
-      const nextTile = step.path[step.pathIndex], tileCost = Pathfinder.tileCost(nextTile.x, nextTile.y);
+      // Rutans kostnad räknas om först när enheten når nästa ruta på vägen eller världen ändrats (byggnader och terräng ökar Pathfinder.epoch)
+      const nextTile = step.path[step.pathIndex];
+      if (step.costTile !== nextTile || step.costEpoch !== Pathfinder.epoch) {
+        step.cost = Pathfinder.tileCost(nextTile.x, nextTile.y); step.costTile = nextTile; step.costEpoch = Pathfinder.epoch;
+      }
+      const tileCost = step.cost;
       const isTarget = nextTile.x === step.targetX && nextTile.y === step.targetY;
       if (tileCost === Infinity && !isTarget) { Pathfinder.drop(step.path); step.path = null; return; } // vägen blockerades -> räkna om
 

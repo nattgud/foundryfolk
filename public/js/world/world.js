@@ -31,6 +31,10 @@
           const terrainType = CityBuilder.Generator.terrainTypeAt(chunkX * chunkSize + column, chunkY * chunkSize + row);
           chunk.push({ terrainType, remainingAmount: Config.terrain[terrainType].resourceAmount || 0, wear: 0 });
         }
+        // Utgångsläget sparas på chunken, så att sparningen kan se vilka rutor som ändrats (Save.collectTileChanges)
+        chunk.cx = chunkX; chunk.cy = chunkY;
+        chunk.types = chunk.map(tile => tile.terrainType);
+        chunk.amounts = chunk.map(tile => tile.remainingAmount);
         this.chunks.set(chunkKey, chunk);
       }
       return chunk[(y - chunkY * chunkSize) * chunkSize + (x - chunkX * chunkSize)];
