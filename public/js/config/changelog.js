@@ -6,6 +6,8 @@
 
   CityBuilder.Changelog = {
     '0.8.7': [
+      'Trees hold about a quarter more wood (8 to 10, apple trees 10 to 12) and ore deposits about a quarter more ore. New maps only: tiles in saved games keep what they have',
+      'The stars of a level are easier to read: the goal panel shows ★★★ and ★★ with the time each one needs, and a star time turns grey once it is out of reach. The result screen shows the same, and a finished level shows all three stars, filled or empty',
       'New maps never get tiny unreachable islands of 1-5 tiles any more (often just sand): they become water. Fords and sandbars still count as land, so islands joined by them stay. Saved games keep their terrain',
       'Cleaner buildings: everything shown on a building now has its own place and the middle is always free. Output goods top left and input goods bottom left, the sign top right, a single warning icon bottom right (a status warning before an efficiency warning), progress along the bottom edge and the health bar along the top. The numbers have a dark outline, and the goods are hidden when zoomed far out',
       'New Priority button on all your buildings: carriers handle deliveries to and from prioritized buildings before everything else, and those buildings place their orders first. A thin gold frame marks them on the map',

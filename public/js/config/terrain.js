@@ -15,8 +15,8 @@ CityBuilder.Config.terrain = {
   limestone:        { name: "Limestone",  color: '#b8b4a5', walkCost: 5, resourceAmount: 25 },
 
   // Skog och växter
-  tree:             { name: "Tree",           color: '#2f5a35', walkCost: 2, fallbackShape: 'tree', resourceAmount: 8 },
-  apple_tree:       { name: "Apple tree",     color: '#536c38', walkCost: 3, fallbackShape: 'tree', resourceAmount: 10 },
+  tree:             { name: "Tree",           color: '#2f5a35', walkCost: 2, fallbackShape: 'tree', resourceAmount: 10 },
+  apple_tree:       { name: "Apple tree",     color: '#536c38', walkCost: 3, fallbackShape: 'tree', resourceAmount: 12 },
   berry_bush:       { name: "Berry bush",     color: '#465c35', walkCost: 2, resourceAmount: 10 },
   herbs:            { name: "Herbs",          color: '#526b40', walkCost: 1, resourceAmount: 5 },
   mushrooms:        { name: "Mushrooms",      color: '#49354e', walkCost: 1, resourceAmount: 5 }, 
@@ -25,15 +25,15 @@ CityBuilder.Config.terrain = {
 
   // Sten och malm
   rock:             { name: "Rock",        color: '#666', walkCost: 20, gatherersStopBefore: true, fallbackShape: 'rock', resourceAmount: 15 },
-  iron_ore:         { name: "Iron deposit",     color: '#65463f', walkCost: 5, fallbackShape: 'rock', resourceAmount: 30 },
-  copper_ore:       { name: "Copper deposit",   color: '#ad704b', walkCost: 5, fallbackShape: 'rock', resourceAmount: 25 }, 
-  tin_ore:          { name: "Tin deposit",        color: '#9ba3a5', walkCost: 5, fallbackShape: 'rock', resourceAmount: 25 },
-  silver_ore:       { name: "Silver deposit",     color: '#b9c1ca', walkCost: 5, fallbackShape: 'rock', resourceAmount: 25 },
-  coal:             { name: "Coal deposit",           color: '#292a30', walkCost: 5, fallbackShape: 'rock', resourceAmount: 30 },
-  gold_ore:         { name: "Gold deposit",       color: '#827044', walkCost: 5, fallbackShape: 'rock', resourceAmount: 15 },
-  salt_ore:         { name: "Salt deposit",       color: '#d6d0bd', walkCost: 4, fallbackShape: 'rock', resourceAmount: 25 }, 
-  sulfur:           { name: "Sulfur deposit",         color: '#d6c83f', walkCost: 4, fallbackShape: 'rock', resourceAmount: 25 }, 
-  gemstone:         { name: "Gemstone deposit",       color: '#765aa8', walkCost: 5, fallbackShape: 'rock', resourceAmount: 8 }, 
+  iron_ore:         { name: "Iron deposit",     color: '#65463f', walkCost: 5, fallbackShape: 'rock', resourceAmount: 38 },
+  copper_ore:       { name: "Copper deposit",   color: '#ad704b', walkCost: 5, fallbackShape: 'rock', resourceAmount: 32 }, 
+  tin_ore:          { name: "Tin deposit",        color: '#9ba3a5', walkCost: 5, fallbackShape: 'rock', resourceAmount: 32 },
+  silver_ore:       { name: "Silver deposit",     color: '#b9c1ca', walkCost: 5, fallbackShape: 'rock', resourceAmount: 32 },
+  coal:             { name: "Coal deposit",           color: '#292a30', walkCost: 5, fallbackShape: 'rock', resourceAmount: 38 },
+  gold_ore:         { name: "Gold deposit",       color: '#827044', walkCost: 5, fallbackShape: 'rock', resourceAmount: 18 },
+  salt_ore:         { name: "Salt deposit",       color: '#d6d0bd', walkCost: 4, fallbackShape: 'rock', resourceAmount: 32 }, 
+  sulfur:           { name: "Sulfur deposit",         color: '#d6c83f', walkCost: 4, fallbackShape: 'rock', resourceAmount: 32 }, 
+  gemstone:         { name: "Gemstone deposit",       color: '#765aa8', walkCost: 5, fallbackShape: 'rock', resourceAmount: 10 }, 
 
   // Vatten- och markfyndigheter
   tar_pit:          { name: "Tar Pit",        color: '#302a2b', walkCost: Infinity, resourceAmount: 15 },

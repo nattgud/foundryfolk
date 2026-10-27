@@ -164,6 +164,12 @@
     // ---- Mål och banor -----------------------------------------------------------------------
 
     // 1:05 under en timme, annars 1:02:05
+    // Stjärnorna på en bana: ★ för att klara den, ★★ inom måltiden och ★★★ inom 60 % av den. De som inte längre går att nå tonas ner.
+    starTimesHtml(par, seconds) {
+      const three = Math.floor(par * .6);
+      return [['★★★', three], ['★★', par]].map(([stars, limit]) => `<span class="star-time${seconds > limit ? ' missed' : ''}">${stars} ${this.formatTime(limit)}</span>`).join(' ');
+    },
+
     formatTime(seconds) {
       const total = Math.max(0, Math.round(seconds)), hours = Math.floor(total / 3600);
       const two = value => String(value).padStart(2, '0');
@@ -218,8 +224,8 @@
       const header = level.custom
         ? (Levels.completed ? `<b>${t('Victory!')}</b>` : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })}`)
         : Levels.completed
-          ? `<b>${t('Level complete!')}</b> ${'★'.repeat(Levels.stars)} <button type="button" data-next class="goal-next">${t('Next level')}</button>`
-          : `<b>${t('Goals')}</b> · ${t('Time: {time} (target {target})', { time: this.formatTime(Levels.seconds), target: this.formatTime(level.goal.par) })}`;
+          ? `<b>${t('Level complete!')}</b> ${'★'.repeat(Levels.stars)}${'☆'.repeat(3 - Levels.stars)} <button type="button" data-next class="goal-next">${t('Next level')}</button>`
+          : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })}<div class="goal-stars">${this.starTimesHtml(level.goal.par, Levels.seconds)}</div>`;
       const title = level.name ? `<div class="goal-title">${String(level.name).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])}</div>` : '';
       const html = `${title}<div class="goal-header">${header}</div>${lines.join('')}` + (unlocks ? `<div class="goal-new">${t('New: {list}', { list: unlocks })}</div>` : '');
 
@@ -561,7 +567,8 @@
 
       body.append(
         ...(custom ? [] : [line('level-stars', '★'.repeat(result.stars) + '☆'.repeat(3 - result.stars))]),
-        line('main-menu-level', t('Time: {time}', { time: this.formatTime(result.seconds) }) + (custom ? '' : ' · ' + t('Target time: {time}', { time: this.formatTime(result.par) }))),
+        line('main-menu-level', t('Time: {time}', { time: this.formatTime(result.seconds) })),
+        ...(custom ? [] : [Object.assign(document.createElement('div'), { className: 'main-menu-level', innerHTML: this.starTimesHtml(result.par, result.seconds) })]),
         ...(fresh ? [line('main-menu-note', t('Next level unlocks: {list}', { list: fresh }))] : []),
         ...(custom
           ? [button(t('Keep playing'), () => overlay.remove()), button(t('Play this map again'), () => Levels.restart()), button(t('New custom map'), () => { overlay.remove(); this.toggleMainMenu(true); this.renderMainMenu('custom'); })]
@@ -2136,6 +2143,10 @@
           z-index: 2;
         }
         #bottom .building-option.locked .build-count { display: none; }
+
+        .star-time { color: #e5bc58; white-space: nowrap; }
+        .star-time.missed { color: var(--dim); opacity: .6; }
+        #goalPanel .goal-stars { margin-top: 1px; font-size: 11px; }
 
         .level-stars {
           font-size: 34px;
