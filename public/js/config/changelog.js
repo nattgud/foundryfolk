@@ -6,7 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.7': [
-      'Carriers now adapt to the workload: when deliveries have been waiting for several seconds, extra carriers appear (up to half again as many as normal) and leave one by one when the work is done. Piles, such as the goods a tornado drops, come last and use at most half of your carriers while other work is waiting, so production does not run dry',
+      'Carriers now adapt to the workload: when deliveries have been waiting for several seconds, extra carriers appear (up to half again as many as normal) and leave one by one when the work is done. The carrier counter shows idle/normal followed by +n for the extra ones. Piles, such as the goods a tornado drops, come last and use at most half of your carriers while other work is waiting, so production does not run dry',
       'On phones and tablets the screen no longer dims or locks while you play (where the browser supports it)',
       'Beaches are now only one tile wide, both on generated maps (coasts, riverbanks, the starting pond, lake and pond levels) and when a tornado drops sand, so they no longer block wells and fishermen. Existing saves keep their terrain',
       'Rain now falls evenly over the whole screen; before, the drops could line up into a single long streak',

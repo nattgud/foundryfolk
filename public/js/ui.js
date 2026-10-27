@@ -2555,8 +2555,9 @@
         unit => !unit.deliveryTask && !unit.carriedResource
       ).length;
 
+      const extraCarriers = Math.max(0, carriers.length - (CityBuilder.Logistics.ordinary[CityBuilder.Players.HUMAN] ?? carriers.length));   // tillfälliga extrabärare visas som +n
       byId('carrierCount').textContent =
-        t('Carriers {idle}/{total}', { idle: idleCarriers, total: carriers.length });
+        t('Carriers {idle}/{total}', { idle: idleCarriers, total: carriers.length - extraCarriers }) + (extraCarriers ? ' +' + extraCarriers : '');
       this.updateWeatherBadge();
 
       const builtCounts = {};

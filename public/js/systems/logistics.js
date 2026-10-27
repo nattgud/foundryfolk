@@ -15,6 +15,7 @@
     pileLoad: {},           // spelare -> antal uppdrag från högar (räknas separat från load)
     load: {},               // spelare -> antal väntande uppdrag (maxTasks gäller per spelare)
     lost: {},               // spelare -> tider då dödade bärare ersätts (en i taget, carrierRespawnSeconds emellan)
+    ordinary: {},           // spelare -> ordinarie antal bärare (utan extrabärare), för visningen
     elastic: {},            // spelare -> { extra: antal tillfälliga extrabärare, next: tidigast nästa ändring } (se elastic i inställningarna)
     busyAt: {},             // spelare -> senaste tid då annat arbete än högar väntade
                // spelare -> tider då dödade bärare ersätts (en i taget, carrierRespawnSeconds emellan)
@@ -166,7 +167,7 @@
           wanted += building.definition.carriers ?? (building.definition.isStorage ? carriersPerStorage : carriersPerBuilding);
         }
         const waiting = (this.lost[player] = (this.lost[player] || []).filter(time => time > (this.time || 0))).length; // dödade, ännu inte ersatta
-        const ordinary = Math.max(0, baseCarriers + wanted - waiting);
+        const ordinary = this.ordinary[player] = Math.max(0, baseCarriers + wanted - waiting);
         const target = ordinary + this.elasticExtra(player, ordinary);
 
         const carriers = World.units.filter(unit => unit.definition.isHauler && unit.player === player);
