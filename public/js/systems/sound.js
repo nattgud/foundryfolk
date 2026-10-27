@@ -6,6 +6,12 @@
      Syntetljudet används tills filen har laddats (och om den saknas).
    - Musik: Config.settings.audio = { music: ['music/a.mp3', 'music/b.mp3'] } (spelas i slumpad ordning, strömmas).
    - Nya ljud:  CityBuilder.Sound.define('mitt_ljud', { file: '...' | synth: rate => Float32Array, volume, maxVoices, cooldown, pitch })
+   - Väderljud och ljudlandskap (Config.settings.audio.weather, alla filer valfria: saknas en fil är det tyst, utan fel):
+       weather: { fade: 3,                                   // sekunder in- och utljusning för alla loopar
+                  start: { rain: 'sounds/weather/rain_start.mp3', tornado: ..., volcano: ..., thunder: ... },   // en gång när vädret börjar (thunder: vid blixt)
+                  loops: { rain: ..., storm: ..., fog: ..., tornado: ..., volcano: ... },   // loopas så länge vädret varar; tornado och volcano bara där de finns
+                  day: 'sounds/ambient/day.mp3', night: 'sounds/ambient/night.mp3' }        // loopas dag respektive natt och tonas över i skymning och gryning
+     Ett värde är en filsökväg eller { file, volume }. Alla loopar tonas mjukt in och ut.
    - Webbläsare kräver en användaråtgärd innan ljud får spelas. Ljudet startar vid första tryck/tangent.
    - Ljudet stängs av när fönstret förlorar fokus (precis som spelet pausas).
    Inställningarna sparas i localStorage ('citybuilder.audio') och visas i Inställningar via settingRows(). */
@@ -67,6 +73,8 @@
     drop: { synth: render(0.04, (time, p) => Math.sin(TAU * 900 * time) * Math.pow(1 - p, 3) * 0.3), volume: 0.5, cooldown: 0.05, maxVoices: 4 },
   };
 
+  const AMBIENT_MS = 100;         // hur ofta loopar anpassas efter väder, tid på dygnet och kamera
+  const spec = value => typeof value === 'string' ? { file: value } : value;
   const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
   const perceived = volume => volume * volume; // gain som känns jämn mot reglaget
 
@@ -90,6 +98,9 @@
       const custom = Config.settings.audio || {};
       for (const [id, value] of Object.entries(custom.sounds || {})) this.define(id, typeof value === 'string' ? { file: value } : value);
       this.tracks = custom.music || [];
+      this.weather = custom.weather || {};
+      for (const [id, value] of Object.entries(this.weather.start || {})) this.define('weather.' + id, { ...spec(value), quiet: true, pitch: 0, maxVoices: 1, cooldown: 0 });
+      setInterval(() => this.updateAmbient(), AMBIENT_MS);
       this.injectStyles();
 
       // Ljud får starta först efter en användaråtgärd
@@ -159,7 +170,7 @@
           .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.arrayBuffer(); })
           .then(data => context.decodeAudioData(data))
           .then(buffer => { definition.fileBuffer = buffer; definition.buffer = buffer; })
-          .catch(error => console.warn(`Could not load the sound file ${definition.file} (${error.message ?? error}): using the built-in sound`));
+          .catch(error => { if (!definition.quiet) console.warn(`Could not load the sound file ${definition.file} (${error.message ?? error}): using the built-in sound`); });
       }
       if (definition.synth && !definition.synthBuffer) {
         const samples = definition.synth(context.sampleRate);
@@ -170,12 +181,17 @@
     },
 
     // Var på skärmen en ruta ligger. null = utanför bild.
-    screenPosition(x, y) {
+    // Rutans plats i skärmpunkter (null utan kamera)
+    screenPoint(x, y) {
       const renderer = CityBuilder.Renderer;
-      if (!renderer || !renderer.camera) return { pan: 0 };
-      const screenX = ((x + 0.5) * renderer.tileSize - renderer.camera.x) * renderer.zoom;
-      const screenY = ((y + 0.5) * renderer.tileSize - renderer.camera.y) * renderer.zoom;
-      const margin = 60;
+      if (!renderer || !renderer.camera) return null;
+      return { x: ((x + 0.5) * renderer.tileSize - renderer.camera.x) * renderer.zoom, y: ((y + 0.5) * renderer.tileSize - renderer.camera.y) * renderer.zoom };
+    },
+
+    screenPosition(x, y) {
+      const point = this.screenPoint(x, y);
+      if (!point) return { pan: 0 };
+      const { x: screenX, y: screenY } = point, margin = 60;
       if (screenX < -margin || screenY < -margin || screenX > innerWidth + margin || screenY > innerHeight + margin) return null;
       return { pan: clamp((screenX / innerWidth - 0.5) * 1.2, -0.7, 0.7) };
     },
@@ -215,6 +231,76 @@
       definition.last = now; definition.voices++; this.voices++;
       source.onended = () => { definition.voices--; this.voices--; };
       source.start();
+    },
+
+
+    /* ---------- Väder och ljudlandskap: loopar med mjuk in- och utljusning ---------- */
+
+    // Vilka loopar som ska höras nu: Map nyckel -> { file, volume, level 0-1, pan }. Nyckeln är en text, eller ett tornado- eller vulkanobjekt (en loop per sådan).
+    ambientTargets() {
+      const Weather = CityBuilder.Weather, config = this.weather, targets = new Map();
+      if (!Weather || !config || !this.settings.sfxOn || this.settings.sfxVolume <= 0 || !CityBuilder.World?.headquarters) return targets;
+      const add = (key, value, level, pan = 0) => { const file = value && spec(value); if (file && level > 0.01) targets.set(key, { ...file, volume: file.volume ?? 1, level, pan }); };
+      const loops = config.loops || {}, dark = Weather.darkness();
+      add('day', config.day, 1 - dark);
+      add('night', config.night, dark);
+      add('weather:' + Weather.type, loops[Weather.type] && !['tornado', 'volcano'].includes(Weather.type) ? loops[Weather.type] : null, 1);
+      // Tornados och vulkaner hörs där de finns: full styrka på skärmen, bleknar utanför den. De närmaste tre.
+      const near = [];
+      for (const [list, id] of [[Weather.tornadoes, 'tornado'], [Weather.volcanoes, 'volcano']]) {
+        if (!loops[id]) continue;
+        for (const source of list) {
+          const point = this.screenPoint(source.x, source.y);
+          if (!point) continue;
+          const outside = Math.hypot(Math.max(0, -point.x, point.x - innerWidth), Math.max(0, -point.y, point.y - innerHeight));
+          near.push({ source, id, level: clamp(1 - outside / (Math.min(innerWidth, innerHeight) * 0.7), 0, 1), pan: clamp((point.x / innerWidth - 0.5) * 1.2, -0.7, 0.7) });
+        }
+      }
+      for (const { source, id, level, pan } of near.sort((a, b) => b.level - a.level).slice(0, 3)) add(source, loops[id], level, pan);
+      return targets;
+    },
+
+    loopBuffer(file) {
+      this.loopFiles ||= new Map();
+      let entry = this.loopFiles.get(file);
+      if (!entry) {
+        entry = { buffer: null };
+        this.loopFiles.set(file, entry);
+        fetch(file).then(response => { if (!response.ok) throw new Error(); return response.arrayBuffer(); }).then(data => this.context.decodeAudioData(data)).then(buffer => { entry.buffer = buffer; }).catch(() => {});   // saknas filen är det tyst
+      }
+      return entry.buffer;
+    },
+
+    updateAmbient() {
+      const context = this.context;
+      if (!context || context.state !== 'running') return;
+      this.loops ||= new Map();
+      const fade = this.weather.fade ?? 3, tau = fade / 3, now = context.currentTime, targets = this.ambientTargets();
+      for (const [key, target] of targets) {
+        const buffer = this.loopBuffer(target.file);
+        let loop = this.loops.get(key);
+        if (!loop && buffer) {
+          const source = context.createBufferSource(), gain = context.createGain(), panner = context.createStereoPanner ? context.createStereoPanner() : null;
+          source.buffer = buffer; source.loop = true;
+          gain.gain.value = 0;   // börjar tyst och tonas in
+          source.connect(gain);
+          (panner ? gain.connect(panner) && panner : gain).connect(this.sfxGain);
+          source.start(0, Math.random() * buffer.duration);
+          loop = { source, gain, panner, silentSince: null };
+          this.loops.set(key, loop);
+        }
+        if (!loop) continue;
+        loop.silentSince = null;
+        loop.gain.gain.setTargetAtTime(target.level * target.volume, now, tau);
+        if (loop.panner) loop.panner.pan.setTargetAtTime(target.pan, now, 0.2);
+      }
+      // Det som inte längre ska höras tonas ut och stoppas när det blivit tyst
+      for (const [key, loop] of this.loops) {
+        if (targets.has(key)) continue;
+        loop.gain.gain.setTargetAtTime(0, now, tau);
+        loop.silentSince ??= now;
+        if (now - loop.silentSince > fade * 1.5) { loop.source.stop(); loop.gain.disconnect(); this.loops.delete(key); }
+      }
     },
 
     /* ---------- Musik ---------- */

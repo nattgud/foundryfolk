@@ -642,6 +642,15 @@
 
       this.updateLegend();
 
+      // Vulkaner: en pulserande orange ring (en pil i kanten när den ligger utanför kartan), så de syns även långt bort
+      for (const volcano of CityBuilder.Weather.volcanoes) {
+        const x = toX(volcano.x + 0.5), y = toY(volcano.y + 0.5);
+        if (Math.hypot(x - radius, y - radius) <= radius) {
+          context.strokeStyle = '#ff6a00'; context.lineWidth = 2;
+          context.beginPath(); context.arc(x, y, marker + 2 + Math.abs(Math.sin(performance.now() / 300)) * 2, 0, Math.PI * 2); context.stroke();
+        } else this.drawArrow(context, Math.atan2(volcano.y + 0.5 - centerY, volcano.x + 0.5 - centerX), radius, '#ff6a00');
+      }
+
       // Röd pil mot platsen där fienden senast attackerade (10 sekunder, se Combat.raiseAlarm), på samma sätt
       const attack = CityBuilder.Combat.alarmArrow();
       if (attack && !(attack.x >= range.minX && attack.x <= range.maxX && attack.y >= range.minY && attack.y <= range.maxY)) {

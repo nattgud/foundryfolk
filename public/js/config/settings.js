@@ -77,6 +77,28 @@ CityBuilder.Config.settings = {
       // smelt: 'sounds/smelt.mp3',          // smältverk, gjuteri, kolbrännare
     },
     music: ["music/theme.mp3"],
+    // Väderljud och ljudlandskap (systems/sound.js). Alla filer är valfria: saknas en fil är det tyst. Ta bort // för att slå på en rad.
+    weather: {
+      fade: 3,                                          // sekunder in- och utljusning för alla loopar
+      start: {                                          // spelas en gång när vädret börjar
+        // clear: 'sounds/weather/clear_start.mp3',
+        // rain: 'sounds/weather/rain_start.mp3',
+        // storm: 'sounds/weather/storm_start.mp3',
+        // fog: 'sounds/weather/fog_start.mp3',
+        // tornado: 'sounds/weather/tornado_start.mp3',
+        // volcano: 'sounds/weather/volcano_start.mp3',   // vid utbrottet
+        // thunder: 'sounds/weather/thunder.mp3',         // vid varje blixt
+      },
+      loops: {                                          // loopas så länge vädret varar (tornado och volcano bara där de finns, och hörs på skärmen)
+        // rain: 'sounds/weather/rain_loop.mp3',
+        // storm: 'sounds/weather/storm_loop.mp3',
+        // fog: 'sounds/weather/fog_loop.mp3',
+        // tornado: { file: 'sounds/weather/tornado_loop.mp3', volume: 0.9 },
+        // volcano: 'sounds/weather/volcano_loop.mp3',
+      },
+      // day: 'sounds/ambient/day.mp3',                 // loopas dagtid
+      // night: 'sounds/ambient/night.mp3',             // loopas nattetid
+    },
   },
   playerColors: { 1: '#4aa3ff', 2: '#e5534b', 3: '#e0a030', 4: '#a56bd6' }, // lagfärg per spelare (ring runt soldater, ram runt byggnader), se core/players.js
   military: {
@@ -109,7 +131,7 @@ CityBuilder.Config.settings = {
     nightLight: { building: 2.5, unit: 1, fade: 1 },   // ljust som på dagen på så många rutor runt spelarens byggnader och människor (djur lyser inte), sedan mjuk övergång på 'fade' rutor
     dayLength: 480, startFraction: 0.12,   // ett dygn i speltid, och var i dygnet ett nytt spel börjar (0 = gryning)
     minSeconds: 30, maxSeconds: 180,
-    chances: { clear: 54, rain: 18, storm: 10, fog: 14, tornado: 4 },
+    chances: { clear: 52, rain: 18, storm: 10, fog: 14, tornado: 4, volcano: 2 },   // volcano: ingen väderruta utan en händelse; vädret blir klart medan lavan rinner
     growth: { tree: 'wood', apple_tree: 'apples', berry_bush: 'berries', herbs: 'herbs', mushrooms: 'mushrooms' },
     scanSeconds: 2,
     rain: { chance: 0.08, cap: 2 },        // chans per skanning att en växt får +1 mängd, högst cap gånger terrängens normala mängd
@@ -131,6 +153,21 @@ CityBuilder.Config.settings = {
       shoreOnly: ['sand'],                 // sand landar bara på lediga rutor som rör vatten (annars blockeras brunnar och fiskare av breda stränder); finns ingen sådan ruta försvinner sanden
       land: { water: 50, sand: 25, bog: 10 },       // hur mycket varje ny ruta vatten/sand rymmer när tornadon släpper det (vatten först, på lediga rutor inom 2 rutor)
       piles: [1, 4],                       // hur många högar den släpper i slutet
+    },
+    // Vulkaner (en sällsynt händelse, se chances). 'link' bygger en 1-3 rutor bred lavaled över vatten mellan två landmassor som stelnar till gräs
+    // (en ny bro); 'peak' sprider lava över land vid berg som stelnar till malm. Lavan bryter ner byggnader på sina rutor och skadar grannbyggnader.
+    volcano: {
+      kinds: { link: 1, peak: 1 },         // relativ chans för varje sort
+      minHq: 28,                           // ingen lavaruta kan någonsin ligga närmare än så (i rutor) någon spelares huvudlager
+      near: [18, 55],                      // avstånd från en av spelarens byggnader där den bryter ut
+      paceSeconds: [2, 4],                 // sekunder per ny lavaruta (slumpad för varje vulkan)
+      lifeSeconds: [60, 90],               // hur länge lavan ligger het efter att den spridit sig klart, sedan stelnar den
+      width: [1, 3],                       // lavaledens bredd (link)
+      crossing: 10,                        // längsta sträcka över vatten (rutor) som kan bli en led (link)
+      diameter: [3, 5],                    // lavaklumpens bredd i rutor, mätt över (peak)
+      heat: 15,                            // skada per sekund på byggnader intill het lava
+      ores: { coal: 1, iron_ore: 1, limestone: 1, copper_ore: 2, tin_ore: 2, salt_ore: 2, silver_ore: 4, sulfur: 4, crystal: 5, gold_ore: 6, gemstone: 6 },   // malmsorter lavan kan ge och deras vikt: ovanligare väger tyngre (bara sorter du låst upp)
+      oreAmount: 1,                        // andel av malmrutans normala mängd
     },
   },
   systemOrder: ['ai', 'construction', 'production', 'spells', 'logistics', 'combat', 'units', 'weather', 'vision'],

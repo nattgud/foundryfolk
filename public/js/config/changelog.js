@@ -5,6 +5,11 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.8.8': [
+      'Volcanoes: a rare event (about 2% of weather changes) with a new Lava tile. It starts far from every headquarters, never nearer than 28 tiles, and is announced with a message, an alarm and an orange ring (or arrow) on the minimap. Lava destroys buildings and units on its tiles and scorches the buildings next to it while it is hot',
+      'Two kinds of volcano, equally common. Between two islands lava spreads over the water into a 1-3 tile wide link of at most 10 tiles and cools into grass, a new bridge. By the mountains a small uneven patch of lava, 3-5 tiles across, appears next to the mountain and cools into new ore, picked among the kinds you have unlocked with the rarer ones favoured, so it is worth hunting them. The lava spreads one tile every 2-4 seconds and stays hot for another minute or so',
+      'Weather sounds: every weather can have a sound that plays when it begins and a sound that loops while it lasts. Tornado and volcano loops are heard where they are, panned and fading with distance, and only while they exist; rain, storm and fog loop everywhere. Separate loops for day and night fade into each other at dusk and dawn. All loops fade in and out softly. Add your own files under audio.weather in settings.js: nothing plays, and nothing fails, for files that are missing',
+    ],
     '0.8.7': [
       'Trees hold about a quarter more wood (8 to 10, apple trees 10 to 12) and ore deposits about a quarter more ore. New maps only: tiles in saved games keep what they have',
       'The stars of a level are easier to read: the goal panel shows ★★★ and ★★ with the time each one needs, and a star time turns grey once it is out of reach. The result screen shows the same, and a finished level shows all three stars, filled or empty',
