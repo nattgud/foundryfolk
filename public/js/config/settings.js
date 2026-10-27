@@ -76,7 +76,7 @@ CityBuilder.Config.settings = {
       // craft: 'sounds/craft.mp3',          // förädlare
       // smelt: 'sounds/smelt.mp3',          // smältverk, gjuteri, kolbrännare
     },
-    music: ["music/theme.mp3"],
+    music: ["music/song1.mp3", "music/song2.mp3", "music/song3.mp3"],
     // Väderljud och ljudlandskap (systems/sound.js). Alla filer är valfria: saknas en fil är det tyst. Ta bort // för att slå på en rad.
     weather: {
       fade: 3,                                          // sekunder in- och utljusning för alla loopar
