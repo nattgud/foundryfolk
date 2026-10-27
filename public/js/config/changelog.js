@@ -6,6 +6,9 @@
 
   CityBuilder.Changelog = {
     '0.8.7': [
+      'On the minimap the lit-up deposits no longer have a thick white border, and the rings around buildings (problems, selection) are never thicker than one pixel',
+      'The minimap colours for deposits (when placing a mine or gatherer) are now far easier to tell apart, and chosen for colour-blind players too: a colour-blind-safe palette that also differs in brightness, and with more than seven kinds the rest get a dark dot in the middle, in the map and in the colour key',
+      'The starting stock now grows with the level: from level 2 you also start with more wood, planks and stone, later bricks and limestone too, enough for a good handful of the buildings that are unlocked, so you do not wait long after the first woodcutter, sawmill and quarry. Level 1 and custom maps are unchanged. Rivals start with the same',
       'Carriers now adapt to the workload: when deliveries have been waiting for several seconds, extra carriers appear (up to half again as many as normal) and leave one by one when the work is done. The carrier counter shows idle/normal followed by +n for the extra ones. Piles, such as the goods a tornado drops, come last and use at most half of your carriers while other work is waiting, so production does not run dry',
       'On phones and tablets the screen no longer dims or locks while you play (where the browser supports it)',
       'Beaches are now only one tile wide, both on generated maps (coasts, riverbanks, the starting pond, lake and pond levels) and when a tornado drops sand, so they no longer block wells and fishermen. Existing saves keep their terrain',

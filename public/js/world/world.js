@@ -84,7 +84,7 @@
     addPlayer(player, x, y) {
       if (!Players.active.includes(player)) Players.active.push(player);
       const hq = this.placeBuilding('hq', x, y, true, player);
-      Object.assign(hq.storedGoods, Config.settings.startingResources);
+      Object.assign(hq.storedGoods, CityBuilder.Levels ? CityBuilder.Levels.startingResources() : Config.settings.startingResources);
       return hq;
     },
 

@@ -90,6 +90,24 @@
     wall: 33, bowyer: 34, guard_tower: 34, stables: 35, swordsmith: 38, garrison: 39, armorsmith: 41,
   };
   const unlockLevelOf = id => UNLOCK[id] ?? 1;
+
+  /* ---------- Starting stock ---------- */
+  // What you start with grows with the level, so a later level does not begin with a long wait after the first woodcutter, sawmill and quarry.
+  // Build materials (STARTING.materials: the ones in the build costs of the unlocked buildings) are topped up to 'kits' times the average cost
+  // of one building; tools are not used up and stay as they are. Level 1 gets exactly the base stock. Rivals get the same as you.
+  const STARTING = { kitsFrom: 2, kitsPerLevel: 0.25, maxKits: 14, materials: ['wood', 'plank', 'stone', 'brick', 'limestone', 'hammer'] };   // metals and the like are not given: they come from the chains you build
+  const startingResourcesAt = level => {
+    const base = CityBuilder.Config.settings.startingResources, start = { ...base };
+    const kits = Math.min(STARTING.maxKits, 3 + Math.floor((level - 1) * STARTING.kitsPerLevel));
+    if (level < STARTING.kitsFrom) return start;
+    const cost = {};   // resource -> [sum, count] over the unlocked buildings that need it
+    for (const [id, definition] of Object.entries(CityBuilder.Config.buildings)) {
+      if (!definition.buildCost || unlockLevelOf(id) > level) continue;
+      for (const [resourceId, amount] of Object.entries(definition.buildCost)) if (STARTING.materials.includes(resourceId)) { const entry = cost[resourceId] ||= [0, 0]; entry[0] += amount; entry[1]++; }
+    }
+    for (const resourceId in cost) start[resourceId] = Math.max(start[resourceId] || 0, Math.round(cost[resourceId][0] / cost[resourceId][1] * kits));
+    return start;
+  };
   const PREVIEW_LEVELS = 3;   // så många nivåer framåt visas låsta byggnader i byggmenyn
 
   /* ---------- Rarity ---------- */
@@ -586,7 +604,7 @@
     const addStock = resource => {
       const factor = storageFactor(resource);
       // Det man får vid start räknas inte: målet är så många till (annars är t.ex. verktygsmålen klara redan från början)
-      const start = CityBuilder.Config.settings.startingResources[resource] || 0;
+      const start = startingResourcesAt(level)[resource] || 0;
       const amount = start + Math.max(3, Math.min(Math.round((12 + level * 1.6) * factor * scale), Math.floor(300 * factor)));
       add({ key: 's:' + resource, type: 'stock', resource, amount });
     };
@@ -931,6 +949,9 @@
     MAX_LEVELS,
     get current() { return state.info; },
     info: levelInfo,
+    // Starting stock for the current level (custom maps and no level: the base stock)
+    startingResources: () => (state.info && !state.info.custom && state.info.level ? startingResourcesAt(state.info.level) : { ...CityBuilder.Config.settings.startingResources }),
+    startingResourcesAt,
     list: (count = MAX_LEVELS) => Array.from({ length: count }, (_, i) => levelInfo(i + 1)),
     // Silent start: reads saved level (level 1 if nothing is saved), sets seed and offset. Called before World.init().
     start: () => {

@@ -28,8 +28,13 @@
     { id: 'resources', name: 'Resources', icon: '💎' },
     { id: 'favorites', name: 'Favorites', icon: '★' },
   ];
-  // Färger för olika slags fyndigheter när en byggnad ska placeras (olika för varje typ, så att de går att skilja åt: resursfärgerna är för lika)
-  const FILTER_COLORS = ['#ffd400', '#00e5ff', '#ff4081', '#76ff03', '#ff9100', '#b388ff', '#ff5252', '#40c4ff'];
+  // Färger för olika slags fyndigheter när en byggnad ska placeras (olika för varje typ, så att de går att skilja åt: resursfärgerna är för lika).
+  // Färgerna följer Okabe-Itos palett, som är vald för att gå att skilja åt även vid röd-grön- och blå-gul-färgblindhet, och skiljer sig också i ljushet.
+  // Är det fler än sju typer får resten en mörk prick i mitten (ring), så att färgerna aldrig behöver upprepas utan att formen skiljer dem åt.
+  const FILTER_STYLES = [
+    { color: '#E69F00' }, { color: '#56B4E9' }, { color: '#F0E442' }, { color: '#CC79A7' }, { color: '#00C48C' }, { color: '#D55E00' }, { color: '#FFFFFF' },
+    { color: '#4C8DFF', ring: true }, { color: '#E69F00', ring: true }, { color: '#F0E442', ring: true }, { color: '#CC79A7', ring: true }, { color: '#00C48C', ring: true }, { color: '#FFFFFF', ring: true },
+  ];
   const LEGEND_MAX = 10;         // högst så många rader i teckenförklaringen
   const CHUNK = 16;              // rutor per bricka
   const BUILD_BUDGET_MS = 4;     // högst så här lång tid per bildruta åt att bygga brickor
@@ -264,7 +269,7 @@
 
     // Teckenförklaringen under kartan: färg och namn för det som lyser upp (tom och dold när inget gör det)
     updateLegend() {
-      const html = this.legend.map(({ color, label }) => `<span><i style="background:${color}"></i>${label}</span>`).join('');
+      const html = this.legend.map(({ color, ring, label }) => `<span><i style="background:${ring ? `radial-gradient(circle, rgb(0 0 0 / 80%) 0 22%, ${color} 26%)` : color}"></i>${label}</span>`).join('');
       if (this.legendHtml === html) return;
       this.legendHtml = html;
       this.legendBox.innerHTML = html;
@@ -374,7 +379,11 @@
       const terrain = Config.terrain[type];
       const UI = CityBuilder.UI;
       let color = (resource && resource.color) || (terrain && terrain.color) || '#fff', label = resourceId && UI ? UI.resourceName(resourceId) : UI ? UI.terrainName(type) : type;
-      if (mode === 'filter') { color = FILTER_COLORS[[...this.filter].indexOf(type) % FILTER_COLORS.length]; label = UI ? UI.terrainName(type) : type; }
+      if (mode === 'filter') {
+        const style = FILTER_STYLES[[...this.filter].indexOf(type) % FILTER_STYLES.length];
+        color = style.color; label = UI ? UI.terrainName(type) : type;
+        if (style.ring) this.rings.add(type);
+      }
       this.labels.set(type, label);
       cache.set(type, color);
       return color;
@@ -464,13 +473,12 @@
       const drawNodes = () => {
         const favorites = (CityBuilder.UI && CityBuilder.UI.resourceFavorites) || new Set();
         const cache = new Map(), counts = new Map();
-        this.labels = new Map();
+        this.labels = new Map(); this.rings = new Set();
         // Varje nod fyller exakt sin egen ruta (samma kantlinjer som terrängen under)
         const limit = (radius + 2 * scale + 2) * (radius + 2 * scale + 2);
         let shown = 0;
         const grow = mode === 'favorites' || mode === 'filter' ? 1 : 0;
-        // Filterläget lägger först en ljus gloria under noderna, så att även mörka resurser syns tydligt
-        const halo = mode === 'filter' ? 2 : 0;
+        const halo = 0;   // ingen kant runt de upplysta resurserna: den gjorde dem svårare att se
         for (let pass = halo ? 0 : 1, lastColor = null; pass < 2; pass++) {
           const spread = grow + (pass === 0 ? halo : 0);
           if (pass === 0) { context.globalAlpha = .55; context.fillStyle = '#fff'; }
@@ -485,6 +493,10 @@
               if (dx * dx + dy * dy > limit) continue;
               if (pass && color !== lastColor) { context.fillStyle = color; lastColor = color; }
               context.fillRect(left - spread, top - spread, right - left + spread * 2, bottom - top + spread * 2);
+              if (pass && this.rings.has(node.type)) {   // mörk prick i mitten
+                const dot = Math.max(1, Math.round((right - left + spread * 2) / 3));
+                context.fillStyle = 'rgba(0,0,0,.8)'; context.fillRect(Math.round((left + right - dot) / 2), Math.round((top + bottom - dot) / 2), dot, dot); lastColor = null;
+              }
               if (pass) { shown++; counts.set(node.type, (counts.get(node.type) || 0) + 1); }
             }
           }
@@ -492,8 +504,8 @@
 
         // Teckenförklaring: färg och namn för det som lyser upp, vanligast först
         const entries = new Map();   // typer med samma namn (två slags sand) blir en rad
-        for (const [type] of [...counts].sort((a, b) => b[1] - a[1])) if (!entries.has(this.labels.get(type))) entries.set(this.labels.get(type), cache.get(type));
-        this.legend = [...entries].slice(0, LEGEND_MAX).map(([label, color]) => ({ color, label }));
+        for (const [type] of [...counts].sort((a, b) => b[1] - a[1])) if (!entries.has(this.labels.get(type))) entries.set(this.labels.get(type), { color: cache.get(type), ring: this.rings.has(type) });
+        this.legend = [...entries].slice(0, LEGEND_MAX).map(([label, { color, ring }]) => ({ color, ring, label }));
 
         if (mode === 'favorites' && favorites.size === 0) {
           context.fillStyle = '#e8e8e8';
@@ -562,7 +574,7 @@
         const problem = own ? Behaviors.problemOf(building) : null;
         if (same) {
           context.strokeStyle = building === selected ? '#ffd23f' : '#fff';
-          context.lineWidth = 2;
+          context.lineWidth = 1;
           context.globalAlpha = .75 + .25 * pulse;
           context.beginPath();
           context.arc(x, y, marker * .95 + 2, 0, Math.PI * 2);
@@ -571,7 +583,7 @@
         if (problem) {
           const noResources = problem === 'noResources';
           context.strokeStyle = noResources || problem === 'bad' ? '#ff3b30' : '#ffb020';
-          context.lineWidth = noResources ? 2.5 : 2;
+          context.lineWidth = 1;   // ringarna är aldrig tjockare än en pixel
           context.globalAlpha = noResources ? .6 + .4 * pulse : 1;
           context.beginPath();
           context.arc(x, y, marker * .95 + (same ? 5 : 2), 0, Math.PI * 2);
