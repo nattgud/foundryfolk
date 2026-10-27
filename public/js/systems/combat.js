@@ -28,6 +28,7 @@
   const POST_TOLERANCE = 3;           // så nära posten räknas en fri soldat som på plats
   const SETTLE_SPEED = 1;             // hur fort en stillastående soldat glider till sin plats i rutan (rutor per sekund)
   const MELEE_RANGE = 2;              // attackRange upp till detta är närstrid, över det en projektil
+  const GRID_CELL = 8, GRID_KEY = 100003, GRID_SECONDS = 0.25, GRID_MARGIN = 3;   // rutnätet för sökningen efter fiender (se targets)
   const BUILDING_REACH = 0.6;         // en byggnad är en hel ruta: räckhållet räknas från kanten, inte mitten
 
   // Mål är enheter (x, y = mitten) eller byggnader (x, y = rutan). Mittpunkt och prioritet (lägre = angrips först):
@@ -55,27 +56,46 @@
     effects: [],                      // korta slag för renderingen: { x1, y1, x2, y2, life }
     projectiles: [],                  // pilar i luften: { x, y, fromX, fromY, toX, toY, target, attacker, damage, time, duration }
     time: 0,                          // simuleringstid i sekunder
-    targetCache: null,                // kandidater för den här simuleringsrutan (se targets)
+    targetCache: null,                // kandidater med rutnät (se targets)
+    gridTime: -Infinity,
     alertTimers: new WeakMap(),       // byggnad -> sekunder till nästa sökning
 
     // ---- Sökning -------------------------------------------------------------------------------
 
-    // Enheter och byggnader som kan bli mål: levande och tillhör någon riktig spelare. En lista per simuleringsruta.
+    // Enheter och byggnader som kan bli mål: levande och tillhör någon riktig spelare. Sorterade i ett rutnät (GRID_CELL rutor stora) som
+    // byggs om högst var GRID_SECONDS sekund: sökningen behöver då bara titta i rutorna runt platsen i stället för i hela världen.
+    // Positioner läses live, och rutnätet har marginal (GRID_MARGIN) för att enheter hinner röra sig mellan ombyggnaderna.
     targets() {
-      return this.targetCache || (this.targetCache = [...World.units, ...World.buildings].filter(target =>
-        target.hp != null && target.player !== Players.NEUTRAL));
+      if (this.targetCache && this.time - this.gridTime < GRID_SECONDS) return this.targetCache;
+      const list = this.targetCache = [...World.units, ...World.buildings].filter(target => target.hp != null && target.player !== Players.NEUTRAL);
+      const grid = this.grid = new Map();
+      list.forEach((target, index) => {
+        const key = Math.floor(centreX(target) / GRID_CELL) * GRID_KEY + Math.floor(centreY(target) / GRID_CELL), cell = grid.get(key);
+        if (cell) cell.push(index); else grid.set(key, [index]);
+      });
+      this.gridTime = this.time;
+      return list;
     },
 
-    // Bästa fiende till 'player' inom radius från (x, y): lägst prioritet först, sedan närmast.
+    // Bästa fiende till 'player' inom radius från (x, y): lägst prioritet först, sedan närmast (vid lika: den som kom först i listan).
     findEnemy(player, x, y, radius, ignore) {
-      let best = null, bestPriority = Infinity, bestDistance = Infinity;
-      for (const target of this.targets()) {
-        if (target.removed || target === ignore || !Players.isHostile(player, target.player)) continue;
-        const distance = Math.hypot(centreX(target) - x, centreY(target) - y);
-        if (distance > radius || !Vision.knows(player, target)) continue;   // fog of war: bara det spelaren ser, eller (dator) känner till
-        const rank = priority(target);
-        if (rank > bestPriority || (rank === bestPriority && distance >= bestDistance)) continue;
-        best = target; bestPriority = rank; bestDistance = distance;
+      const list = this.targets(), grid = this.grid, reach = radius + GRID_MARGIN, radiusSquared = radius * radius;
+      const fromX = Math.floor((x - reach) / GRID_CELL), toX = Math.floor((x + reach) / GRID_CELL), fromY = Math.floor((y - reach) / GRID_CELL), toY = Math.floor((y + reach) / GRID_CELL);
+      let best = null, bestPriority = Infinity, bestDistance = Infinity, bestIndex = Infinity;
+      for (let cellX = fromX; cellX <= toX; cellX++) for (let cellY = fromY; cellY <= toY; cellY++) {
+        const cell = grid.get(cellX * GRID_KEY + cellY);
+        if (!cell) continue;
+        for (const index of cell) {
+          const target = list[index];
+          if (target.removed || target === ignore || !Players.isHostile(player, target.player)) continue;
+          const dx = centreX(target) - x, dy = centreY(target) - y, squared = dx * dx + dy * dy;
+          if (squared > radiusSquared) continue;
+          const distance = Math.sqrt(squared);
+          if (!Vision.knows(player, target)) continue;   // fog of war: bara det spelaren ser, eller (dator) känner till
+          const rank = priority(target);
+          if (rank > bestPriority || (rank === bestPriority && (distance > bestDistance || (distance === bestDistance && index > bestIndex)))) continue;
+          best = target; bestPriority = rank; bestDistance = distance; bestIndex = index;
+        }
       }
       return best;
     },
@@ -206,7 +226,6 @@
 
     update(deltaSeconds) {
       this.time += deltaSeconds;
-      this.targetCache = null;
       this.alertGarrisons(deltaSeconds);
 
       for (const unit of [...World.units]) { // kopia: enheter kan dö eller försvinna under varvet
