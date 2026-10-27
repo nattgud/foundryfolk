@@ -17,6 +17,19 @@ Build a growing production network, gather resources, process materials, and exp
 - **Complete objectives:** Each level has its own goals. Complete them to progress and earn stars based on your completion time.
 - **Explore new maps:** Levels feature procedurally generated landscapes, different terrain layouts, and varying resource availability.
 
+## Features
+
+- **Rivals:** From the later levels computer-controlled rivals build their own settlements and attack yours.
+- **Fog of war:** Land you have not seen is hidden. Buildings and units reveal what is near them.
+- **Minimap:** A round overview with your headquarters, deposits and enemy movements.
+- **Weather and time of day:** Rain, storms, fog, tornadoes and a day and night cycle. Rarely a volcano erupts: lava destroys buildings, then cools into new land or ore.
+- **Wild animals:** Deer, moose, foxes and rabbits roam the land, breed and spread plants.
+- **Spells:** The Enchanter mixes ingredients into spells that change the weather, speed up work and more.
+- **Sound:** Sound effects, music and optional weather sounds, with separate volume controls. Add your own files in `public/js/config/settings.js`.
+- **Languages:** English, Swedish, German, Spanish, Chinese, Japanese, Russian, Portuguese and Arabic.
+- **Installable:** Works as a web app (PWA) that can be installed and played offline.
+- **Custom maps and graphics settings** for tuning the game to your device.
+
 ## How to play
 
 1. Select a building from the build menu.
@@ -40,7 +53,7 @@ The game supports both mouse and touchscreen input.
 
 ## Saving
 
-Foundryfolk automatically saves progress every 30 seconds and when the browser tab is closed or hidden.
+Foundryfolk automatically saves progress, by default every 30 seconds (adjustable in the settings) and when the browser tab is closed or hidden.
 
 The game also supports five manual save slots. Saves are stored locally in the browser, so they are not automatically shared between devices or browsers.
 
@@ -49,8 +62,8 @@ The game also supports five manual save slots. Saves are stored locally in the b
 Requirements: Node.js and npm.
 
 ```bash
-git clone https://github.com/nattgud/microgame.git
-cd microgame
+git clone https://github.com/nattgud/foundryfolk.git
+cd foundryfolk
 npm install
 npm start
 ```
