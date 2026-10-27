@@ -35,6 +35,11 @@ CityBuilder.Config.settings = {
     maxTasks: 8,
     requestsPerBuilding: 4,
     baseCarriers: 20,
+    // Extra bärare när uppdrag blir stående: uppdrag som väntat mer än 'after' s (högar räknas inte) ger tillfälliga bärare, upp till 'share' av ordinarie antal,
+    // som tas bort igen en i taget ('shrink' s emellan) när ingenting väntar längre
+    elastic: { share: 0.5, after: 4, grow: 1, shrink: 8 },
+    // Högar (t.ex. efter en tornado) töms med högst så stor andel av bärarna så länge annat arbete väntar eller nyss väntade ('recent' s)
+    pileShare: 0.5, pileRecent: 10,
     lowStock: 20
   },
   efficiency: { windowSeconds: 60, minSeconds: 5, minAge: 45, warnBelow: .6, badBelow: .3 },

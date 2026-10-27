@@ -6,14 +6,18 @@
   const { Config, World, Utils, Jobs, Economy, Behaviors, Players } = CityBuilder;
 
   // Standardvärden: saknas en inställning i cfg() används dessa (planeringen stannar annars helt)
-  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, requestsPerSite: 4, baseCarriers: 5, carriersPerBuilding: 1, carriersPerStorage: 5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40, unreachableSeconds: 30 }, Config.settings.logistics);
+  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, requestsPerSite: 4, baseCarriers: 5, elastic: { share: 0.5, after: 4, grow: 1, shrink: 8 }, pileShare: 0.5, pileRecent: 10, carriersPerBuilding: 1, carriersPerStorage: 5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40, unreachableSeconds: 30 }, Config.settings.logistics);
 
   const Logistics = {
     tasks: [],              // äldsta först
     planningTimer: 0,
     cursor: 0,              // var nästa planering börjar i byggnadslistan (så att inga byggnader alltid kommer sist)
+    pileLoad: {},           // spelare -> antal uppdrag från högar (räknas separat från load)
     load: {},               // spelare -> antal väntande uppdrag (maxTasks gäller per spelare)
     lost: {},               // spelare -> tider då dödade bärare ersätts (en i taget, carrierRespawnSeconds emellan)
+    elastic: {},            // spelare -> { extra: antal tillfälliga extrabärare, next: tidigast nästa ändring } (se elastic i inställningarna)
+    busyAt: {},             // spelare -> senaste tid då annat arbete än högar väntade
+               // spelare -> tider då dödade bärare ersätts (en i taget, carrierRespawnSeconds emellan)
     unreachable: new Map(), // "källa>mål" -> tid då paret får provas igen (efter att en bärare inte hittade någon väg)
 
     // Tar bäraren emot varor som lager? (En lagerbyggnad som ännu byggs är en byggplats som tar emot byggmaterial.)
@@ -61,11 +65,17 @@
       this.reserve(source, resourceId);
       if (!this.stores(destination)) destination.incomingCount[resourceId] = (destination.incomingCount[resourceId] || 0) + 1;
       else this.addIncoming(destination, resourceId, 1);
-      this.load[source.player] = (this.load[source.player] || 0) + 1;
+      this.countTask(source);
       this.tasks.push({ source, destination, resource: resourceId, seq: this.seq = (this.seq || 0) + 1, created: this.time || 0 });
     },
 
+    // Uppdrag från högar räknas för sig, så att en tornados högar inte fyller kön och hindrar produktionens egna beställningar
+    countTask(source, amount = 1) {
+      const counter = source.definition.pile ? this.pileLoad : this.load;
+      counter[source.player] = (counter[source.player] || 0) + amount;
+    },
     full(player) { return (this.load[player] || 0) >= cfg().maxTasks; },
+    pileFull(player) { return (this.pileLoad[player] || 0) >= cfg().maxTasks; },
 
     // "På väg"-räkningen för lagren (per spelare)
     addIncoming(storage, resourceId, amount) {
@@ -93,7 +103,7 @@
     rebuildCounters() {
       const zero = obj => { if (obj) for (const key in obj) obj[key] = 0; };
       for (const player in Economy.playerStats) Economy.playerStats[player].incoming = {};
-      this.load = {};
+      this.load = {}; this.pileLoad = {};
       for (const building of World.buildings) { zero(building.outputReserved); zero(building.storedReserved); zero(building.incomingCount); }
       const count = (task, picked) => {
         if (!picked && !task.source.removed) this.reservationsOf(task.source)[task.resource] = (this.reservationsOf(task.source)[task.resource] || 0) + 1;
@@ -102,7 +112,7 @@
         if (this.stores(destination)) this.addIncoming(destination, task.resource, 1);
         else destination.incomingCount[task.resource] = (destination.incomingCount[task.resource] || 0) + 1;
       };
-      for (const task of this.tasks) { count(task, false); this.load[task.source.player] = (this.load[task.source.player] || 0) + 1; }
+      for (const task of this.tasks) { count(task, false); this.countTask(task.source); }
       for (const unit of World.units) if (unit.deliveryTask) count(unit.deliveryTask, unit.hasPickedUp);
     },
 
@@ -131,6 +141,18 @@
       queue.push(Math.max(this.time || 0, queue[queue.length - 1] ?? 0) + Config.settings.military.carrierRespawnSeconds);
     },
 
+    // Extrabärare för en spelare: växer när uppdrag blir stående (utom högar) och krymper långsamt när allt är hämtat
+    elasticExtra(player, ordinary) {
+      const { share, after, grow, shrink } = cfg().elastic, now = this.time || 0;
+      const state = this.elastic[player] = this.elastic[player] || { extra: 0, next: 0 };
+      const stalled = this.tasks.filter(task => task.source.player === player && !task.source.definition.pile && now - task.created > after).length;
+      const cap = Math.ceil(ordinary * share);
+      if (stalled > 0) {
+        if (now >= state.next && state.extra < cap) { state.extra = Math.min(cap, state.extra + Math.ceil(stalled / 4)); state.next = now + grow; }
+      } else if (state.extra > 0 && now >= state.next) { state.extra--; state.next = now + shrink; }
+      return Math.min(state.extra, cap);
+    },
+
     // Antalet bärare följer byggnaderna: bas + 1 per färdig byggnad + 5, 10 respektive 25 per färdigt lager, lagerhus och depå (definition.carriers, per spelare). Rivs eller förstörs något
     // minskar antalet igen: överskott tas bort när bärarna är lediga.
     balanceCarriers() {
@@ -144,7 +166,8 @@
           wanted += building.definition.carriers ?? (building.definition.isStorage ? carriersPerStorage : carriersPerBuilding);
         }
         const waiting = (this.lost[player] = (this.lost[player] || []).filter(time => time > (this.time || 0))).length; // dödade, ännu inte ersatta
-        const target = Math.max(0, baseCarriers + wanted - waiting);
+        const ordinary = Math.max(0, baseCarriers + wanted - waiting);
+        const target = ordinary + this.elasticExtra(player, ordinary);
 
         const carriers = World.units.filter(unit => unit.definition.isHauler && unit.player === player);
         for (let count = carriers.length; count < target; count++) World.spawnUnit('carrier', hq.x, hq.y, null, player);
@@ -216,7 +239,7 @@
         for (const resourceId in building.outputStock) {
           const surplus = building.outputStock[resourceId] - (building.outputReserved[resourceId] || 0) - (pressure ? 0 : threshold);
           for (let n = 0; n < surplus; n++) {
-            if (this.full(building.player)) break;
+            if (building.definition.pile ? this.pileFull(building.player) : this.full(building.player)) break;
             if (this.deliverDirect(building, resourceId)) continue;
             if (Economy.isFull(resourceId, building.player) && !building.definition.pile) break;   // högar töms även över lagertaket, så inget blir kvar
             const storage = Economy.nearestStorage(building);
@@ -317,15 +340,25 @@
         if (!this.stores(destination) && !destination.inputStock[task.resource]) return 0;
         return 1;
       };
+      const pile = task => task.source.definition.pile ? 1 : 0;   // högar sist: allt annat arbete går före
       this.tasks.sort((a, b) => {
         const ua = urgent(a), ub = urgent(b);
-        return ua - ub || (ua ? stock(a) - stock(b) : 0) || a.seq - b.seq;
+        return pile(a) - pile(b) || ua - ub || (ua ? stock(a) - stock(b) : 0) || a.seq - b.seq;
       });
+      // Högar får högst pileShare av en spelares bärare så länge annat arbete väntar eller nyss väntade, så att en tornado inte tömmer produktionen på bärare
+      const { pileShare, pileRecent } = cfg(), pileBusy = {}, totals = {};
+      for (const unit of World.units) if (unit.definition.isHauler) {
+        totals[unit.player] = (totals[unit.player] || 0) + 1;
+        if (unit.deliveryTask?.source.definition.pile) pileBusy[unit.player] = (pileBusy[unit.player] || 0) + 1;
+      }
+      for (const task of this.tasks) if (!pile(task)) this.busyAt[task.source.player] = now;
       const assigned = new Set();
       let spare = idle.length;
       for (const task of this.tasks) {
         if (!spare || assigned.size >= (cfg().maxAssignmentsPerFrame ?? 30)) break;
-        const carriers = idle.filter(unit => unit.player === task.source.player); // bara spelarens egna bärare
+        const player = task.source.player;
+        if (pile(task) && now - (this.busyAt[player] ?? -1e9) < pileRecent && (pileBusy[player] || 0) >= Math.max(1, Math.floor((totals[player] || 0) * pileShare))) continue;
+        const carriers = idle.filter(unit => unit.player === player); // bara spelarens egna bärare
         if (!carriers.length) continue;
         let carrier = carriers[0], bestDistance = 1e9;
         for (const candidate of carriers) {
@@ -334,6 +367,7 @@
         }
         idle.splice(idle.indexOf(carrier), 1);
         spare--;
+        if (pile(task)) pileBusy[player] = (pileBusy[player] || 0) + 1;
         carrier.deliveryTask = task;
         carrier.hasPickedUp = false;
         carrier.stepQueue = [
