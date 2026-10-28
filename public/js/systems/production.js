@@ -29,7 +29,7 @@
         const time = deltaSeconds * Spells.paceOf(unit);
         if (unit.definition.isAnimal && !this.seen.has(Utils.tileKey(Math.floor(unit.x / size), Math.floor(unit.y / size)))) {
           unit.lag = (unit.lag || 0) + time;
-          if ((unit.lagSteps = (unit.lagSteps ?? Math.floor(Math.random() * UNSEEN_EVERY)) + 1) < UNSEEN_EVERY) continue;
+          if ((unit.lagSteps = (unit.lagSteps ?? Math.floor(Utils.random() * UNSEEN_EVERY)) + 1) < UNSEEN_EVERY) continue;
           Units.update(unit, unit.lag);
           unit.lag = 0; unit.lagSteps = 0;
         } else {

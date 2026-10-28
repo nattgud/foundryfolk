@@ -194,8 +194,8 @@
       const tiles = this.freeTiles(x, y, spell.radius);
       const kinds = Object.entries(spell.terrains), total = kinds.reduce((sum, [, weight]) => sum + weight, 0);
       for (let n = Math.min(spell.count, tiles.length); n > 0; n--) {
-        const tile = tiles.splice(Math.floor(Math.random() * tiles.length), 1)[0];
-        let roll = Math.random() * total, type = kinds[0][0];
+        const tile = tiles.splice(Math.floor(Utils.random() * tiles.length), 1)[0];
+        let roll = Utils.random() * total, type = kinds[0][0];
         for (const [kind, weight] of kinds) if ((roll -= weight) < 0) { type = kind; break; }
         Utils.assign(tile, Config.terrain[type], { terrainType: type, remainingAmount: Config.terrain[type].resourceAmount });
       }

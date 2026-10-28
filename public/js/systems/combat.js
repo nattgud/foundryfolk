@@ -195,15 +195,15 @@
     spawnSoldier(kind, x, y, player) {
       const unit = World.spawnUnit(kind, x, y, null, player);
       return Object.assign(unit, {
-        laneX: (Math.random() - .5) * .44,   // förskjutning inom rutan under gång (se Units.walk)
-        laneY: (Math.random() - .5) * .44,
+        laneX: (Utils.random() - .5) * .44,   // förskjutning inom rutan under gång (se Units.walk)
+        laneY: (Utils.random() - .5) * .44,
         quarters: null,
         post: null,
         target: null,
         mode: 'idle',
         goal: null,                  // dit en soldat i läget 'return' är på väg (byggnad eller post)
         attackCooldownLeft: 0,
-        scanTimer: Math.random() * settings().scanIntervalSeconds, // sprider ut sökningarna över tid
+        scanTimer: Utils.random() * settings().scanIntervalSeconds, // sprider ut sökningarna över tid
         repathTimer: 0,
         orderCooldown: 0,
         homeSearchTimer: 0,

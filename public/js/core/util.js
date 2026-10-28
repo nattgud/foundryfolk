@@ -9,7 +9,20 @@
     return ((value ^ (value >>> 16)) >>> 0) / 4294967296;
   };
 
+  // Simuleringens slumpgenerator (mulberry32). Allt som påverkar spelets gång drar sina slumptal härifrån, så att samma frö och samma
+  // sekvens av steg alltid ger samma spel. Det som bara är utseende (ljud, animationsfas) använder Math.random.
+  let randomState = 1;
+
   const Utils = {
+    random() {
+      randomState = (randomState + 0x6D2B79F5) | 0;
+      let value = Math.imul(randomState ^ (randomState >>> 15), 1 | randomState);
+      value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+    },
+    seedRandom(seed) { randomState = seed | 0; },
+    get randomState() { return randomState; },
+
     // Deterministisk pseudoslump i [0, 1) för en ruta. salt ger olika "kanaler" för olika ändamål.
     hash(x, y, salt = 0) {
       let value = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(salt, 1442695041)) | 0;

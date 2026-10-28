@@ -11,8 +11,8 @@
   'use strict';
   const { Config, World, Players, Utils, Vision } = CityBuilder;
 
-  const between = ([low, high]) => low + Math.random() * (high - low);
-  const rand = ([low, high]) => low + Math.floor(Math.random() * (high - low + 1));
+  const between = ([low, high]) => low + Utils.random() * (high - low);
+  const rand = ([low, high]) => low + Math.floor(Utils.random() * (high - low + 1));
   const smooth = x => x * x * (3 - 2 * x);
   const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const AROUND = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
@@ -43,7 +43,7 @@
 
     next() {
       const settings = Config.settings.weather, options = Object.entries(settings.chances).filter(([type]) => type !== this.type);
-      let roll = Math.random() * options.reduce((sum, [, weight]) => sum + weight, 0);
+      let roll = Utils.random() * options.reduce((sum, [, weight]) => sum + weight, 0);
       this.type = options.find(([, weight]) => (roll -= weight) < 0)?.[0] || 'clear';
       if (this.type === 'volcano') { this.type = 'clear'; this.erupt(); }   // en händelse, inget väder: himlen är klar medan lavan rinner
       else CityBuilder.Sound?.play('weather.' + this.type);
@@ -78,15 +78,15 @@
       const settings = Config.settings.weather, boost = zone?.factor || 1;
       if (type === 'rain') {
         this.forEachPlant(tile => {
-          if (Math.random() < settings.rain.chance * boost) tile.remainingAmount = Math.min(tile.remainingAmount + 1, Math.ceil(Config.terrain[tile.terrainType].resourceAmount * settings.rain.cap));
+          if (Utils.random() < settings.rain.chance * boost) tile.remainingAmount = Math.min(tile.remainingAmount + 1, Math.ceil(Config.terrain[tile.terrainType].resourceAmount * settings.rain.cap));
         }, zone);
       } else if (type === 'storm') {
         const moves = [];
-        this.forEachPlant((tile, x, y) => { if (Math.random() < settings.storm.chance * boost) moves.push({ tile, x, y }); }, zone);
+        this.forEachPlant((tile, x, y) => { if (Utils.random() < settings.storm.chance * boost) moves.push({ tile, x, y }); }, zone);
         for (const { tile, x, y } of moves) {
           const spots = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].filter(([dx, dy]) => this.isFree(x + dx, y + dy));
           if (!spots.length) continue;
-          const [dx, dy] = spots[Math.floor(Math.random() * spots.length)], plant = tile.terrainType, amount = tile.remainingAmount;
+          const [dx, dy] = spots[Math.floor(Utils.random() * spots.length)], plant = tile.terrainType, amount = tile.remainingAmount;
           Utils.assign(World.getTile(x + dx, y + dy), Config.terrain[plant], { terrainType: plant, remainingAmount: amount });
           Utils.assign(tile, Config.terrain.grass, { terrainType: 'grass', remainingAmount: 0 });
         }
@@ -101,7 +101,7 @@
       const growth = Config.settings.weather.growth;
       let fallback = null;
       for (let attempt = 0; attempt < 40; attempt++) {
-        const home = homes[Math.floor(Math.random() * homes.length)], angle = Math.random() * Math.PI * 2, distance = 6 + Math.random() * 22;
+        const home = homes[Math.floor(Utils.random() * homes.length)], angle = Utils.random() * Math.PI * 2, distance = 6 + Utils.random() * 22;
         const x = Math.round(home.x + Math.cos(angle) * distance), y = Math.round(home.y + Math.sin(angle) * distance), tile = World.getTile(x, y);
         if (!tile || !Vision.visible(Players.HUMAN, x, y)) continue;
         if (growth[tile.terrainType]) return { x, y };
@@ -146,7 +146,7 @@
         const shore = settings.shoreOnly.includes(resource);   // sand läggs bara direkt intill vatten, så strandremsan aldrig blir bredare än en ruta
         const near = spots.filter(spot => shore ? this.touchesWater(spot.x, spot.y) : Utils.distance(spot.x - centreX, spot.y - centreY) <= 2);
         while (left > 0 && near.length) {
-          const spot = near.splice(Math.floor(Math.random() * near.length), 1)[0], amount = Math.min(left, settings.land[resource]);
+          const spot = near.splice(Math.floor(Utils.random() * near.length), 1)[0], amount = Math.min(left, settings.land[resource]);
           spots.splice(spots.indexOf(spot), 1);
           Utils.assign(World.getTile(spot.x, spot.y), Config.terrain[resource], { terrainType: resource, remainingAmount: amount });
           left -= amount; landed = true;
@@ -156,11 +156,11 @@
       const count = Math.min(spots.length, rand(settings.piles)), piles = Array.from({ length: count }, () => ({}));
       if (!count) return;
       for (const resource in tornado.collected) for (let n = 0; n < tornado.collected[resource]; n++) {
-        const pile = piles[Math.floor(Math.random() * count)];
+        const pile = piles[Math.floor(Utils.random() * count)];
         pile[resource] = (pile[resource] || 0) + 1;
       }
       for (const pile of piles) {
-        const spot = spots.splice(Math.floor(Math.random() * spots.length), 1)[0];
+        const spot = spots.splice(Math.floor(Utils.random() * spots.length), 1)[0];
         CityBuilder.Construction.dropPile(spot.x, spot.y, Players.HUMAN, pile);
       }
     },
@@ -168,7 +168,7 @@
     // En ny tornado på platsen (radie i rutor, livslängd i sekunder), med slumpad fart
     spawnTornado(x, y, radius, life) {
       const settings = Config.settings.weather.tornado;
-      this.tornadoes.push({ x, y, radius, age: 0, collected: {}, life, speed: between(settings.speed), angle: Math.random() * Math.PI * 2, tick: settings.tickSeconds });
+      this.tornadoes.push({ x, y, radius, age: 0, collected: {}, life, speed: between(settings.speed), angle: Utils.random() * Math.PI * 2, tick: settings.tickSeconds });
     },
 
     // Klart väder i 'seconds' sekunder (längre om det redan skulle vara klart längre). Pågående tornados släpper det de tagit.
@@ -184,11 +184,11 @@
       if (this.type === 'tornado' && (this.tornadoIn -= deltaSeconds) <= 0) {
         this.tornadoIn = between(settings.every);
         const spot = this.tornadoSpot();
-        if (spot) this.spawnTornado(spot.x, spot.y, rand(settings.radius), Math.random() < settings.longChance ? settings.longLife : between(settings.life));
+        if (spot) this.spawnTornado(spot.x, spot.y, rand(settings.radius), Utils.random() < settings.longChance ? settings.longLife : between(settings.life));
       }
       for (const tornado of this.tornadoes) {
         tornado.age += deltaSeconds;
-        tornado.angle = (tornado.angle ?? 0) + (Math.random() - 0.5) * 2 * settings.turn * deltaSeconds;   // slingrar sakta
+        tornado.angle = (tornado.angle ?? 0) + (Utils.random() - 0.5) * 2 * settings.turn * deltaSeconds;   // slingrar sakta
         const speed = tornado.speed ?? 0.5;
         tornado.x += Math.cos(tornado.angle) * speed * deltaSeconds; tornado.y += Math.sin(tornado.angle) * speed * deltaSeconds;
         if ((tornado.tick = (tornado.tick ?? settings.tickSeconds) - deltaSeconds) <= 0) { tornado.tick += settings.tickSeconds; this.rip(tornado); }
@@ -208,14 +208,14 @@
     volcanoPoint() {
       const homes = World.buildings.filter(building => building.player === Players.HUMAN && !building.definition.pile);
       if (!homes.length) return null;
-      const home = homes[Math.floor(Math.random() * homes.length)], angle = Math.random() * Math.PI * 2, distance = between(Config.settings.weather.volcano.near);
+      const home = homes[Math.floor(Utils.random() * homes.length)], angle = Utils.random() * Math.PI * 2, distance = between(Config.settings.weather.volcano.near);
       return { x: Math.round(home.x + Math.cos(angle) * distance), y: Math.round(home.y + Math.sin(angle) * distance) };
     },
 
     // Närmaste ruta (inom 'reach') som uppfyller 'test', undersökt i slumpad ordning på samma avstånd
     findNear(point, reach, test) {
       const spots = [];
-      for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) spots.push({ x: point.x + dx, y: point.y + dy, d: Utils.distance(dx, dy) + Math.random() * 0.5 });
+      for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) spots.push({ x: point.x + dx, y: point.y + dy, d: Utils.distance(dx, dy) + Utils.random() * 0.5 });
       return spots.sort((a, b) => a.d - b.d).find(spot => spot.d <= reach && test(spot.x, spot.y)) || null;
     },
 
@@ -263,7 +263,7 @@
       if (!path) return null;
       const settings = Config.settings.weather.volcano, width = rand(settings.width), tiles = new Map(path.map(([x, y]) => [Utils.tileKey(x, y), [x, y]]));
       if (width > 1) for (const [x, y] of path) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        if ((width === 3 || Math.random() < 0.5) && World.getTile(x + dx, y + dy)?.terrainType === 'water') tiles.set(Utils.tileKey(x + dx, y + dy), [x + dx, y + dy]);
+        if ((width === 3 || Utils.random() < 0.5) && World.getTile(x + dx, y + dy)?.terrainType === 'water') tiles.set(Utils.tileKey(x + dx, y + dy), [x + dx, y + dy]);
       }
       return { start: path[path.length >> 1], tiles: [...tiles.values()] };
     },
@@ -279,7 +279,7 @@
       for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
         const distance = Utils.distance(dx, dy), type = World.getTile(start.x + dx, start.y + dy)?.terrainType;
         if (distance > radius || !type || type === 'water' || type === 'lava' || type === 'mountain') continue;
-        if (distance > radius - 0.6 && Math.random() < 0.25) continue;   // kanten blir ojämn
+        if (distance > radius - 0.6 && Utils.random() < 0.25) continue;   // kanten blir ojämn
         tiles.push([start.x + dx, start.y + dy]);
       }
       return { start: [start.x, start.y], tiles: [...tiles.values()] };
@@ -288,12 +288,12 @@
     // Ett utbrott (kind = 'link' eller 'peak', annars slumpat). Brister planen (ingen plats, för nära ett huvudlager) provas nästa försök, sedan den andra sorten.
     erupt(kind) {
       const settings = Config.settings.weather.volcano, kinds = Object.keys(settings.kinds);
-      let roll = Math.random() * kinds.reduce((sum, name) => sum + settings.kinds[name], 0);
+      let roll = Utils.random() * kinds.reduce((sum, name) => sum + settings.kinds[name], 0);
       const first = kind || kinds.find(name => (roll -= settings.kinds[name]) < 0) || kinds[0];
       for (const name of [first, ...kinds.filter(other => other !== first)]) for (let attempt = 0; attempt < 60; attempt++) {
         const plan = this[name + 'Plan']();
         if (!plan || !plan.tiles.length || !plan.tiles.every(([x, y]) => this.farFromHq(x, y))) continue;
-        const [sx, sy] = plan.start, from = ([x, y]) => Utils.distance(x - sx, y - sy) + Math.random();
+        const [sx, sy] = plan.start, from = ([x, y]) => Utils.distance(x - sx, y - sy) + Utils.random();
         const volcano = { kind: name, x: sx, y: sy, age: 0, pace: between(settings.paceSeconds), life: 0, plan: plan.tiles.map(tile => ({ tile, d: from(tile) })).sort((a, b) => a.d - b.d).map(({ tile }) => tile), lit: 0, tick: 1, ores: name === 'peak' ? this.pickOres() : null };
         volcano.life = volcano.plan.length * volcano.pace + between(settings.lifeSeconds);   // spridningen tar plan.length * pace, sedan ligger lavan het
         this.volcanoes.push(volcano);
@@ -313,7 +313,7 @@
       let options = Object.keys(weights).filter(open);
       if (!options.length) options = Object.keys(weights);
       return Array.from({ length: 2 }, () => {
-        let roll = Math.random() * options.reduce((sum, ore) => sum + weights[ore], 0);
+        let roll = Utils.random() * options.reduce((sum, ore) => sum + weights[ore], 0);
         return options.find(ore => (roll -= weights[ore]) < 0) || options[0];
       });
     },
@@ -358,7 +358,7 @@
       for (const [x, y] of volcano.plan) {
         const tile = World.getTile(x, y);
         if (tile?.terrainType !== 'lava') continue;
-        const ore = volcano.ores && Math.random() < 0.85 ? volcano.ores[Math.floor(Math.random() * volcano.ores.length)] : null;
+        const ore = volcano.ores && Utils.random() < 0.85 ? volcano.ores[Math.floor(Utils.random() * volcano.ores.length)] : null;
         if (ore) Utils.assign(tile, Config.terrain[ore], { terrainType: ore, remainingAmount: Math.ceil((Config.terrain[ore].resourceAmount || 1) * settings.oreAmount) });
         else Utils.assign(tile, Config.terrain.grass, { terrainType: 'grass', remainingAmount: 0 });
       }

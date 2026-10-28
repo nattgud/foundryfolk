@@ -532,8 +532,8 @@
     // Slumpad ruta som går att nå och är helt tom. Provar några gånger och ger null om inget fanns.
     findSpot(building, job) {
       for (let attempt = 0; attempt < 24; attempt++) {
-        const angle = Math.random() * Math.PI * 2;
-        const distance = Math.sqrt(job.minRadius ** 2 + Math.random() * (job.maxRadius ** 2 - job.minRadius ** 2));   // sqrt: lika stor chans för varje ruta, inte tätast vid huset
+        const angle = Utils.random() * Math.PI * 2;
+        const distance = Math.sqrt(job.minRadius ** 2 + Utils.random() * (job.maxRadius ** 2 - job.minRadius ** 2));   // sqrt: lika stor chans för varje ruta, inte tätast vid huset
         const x = Math.round(building.x + Math.cos(angle) * distance), y = Math.round(building.y + Math.sin(angle) * distance);
         if (this.isFree(x, y) && CityBuilder.Pathfinder.findPathNow(building.x, building.y, x, y) !== null) return { x, y };
       }
@@ -562,7 +562,7 @@
             return false;
           }
           const [low, high] = job.amount;
-          Utils.assign(tile, Config.terrain[job.terrain], { terrainType: job.terrain, remainingAmount: low + Math.floor(Math.random() * (high - low + 1)) });
+          Utils.assign(tile, Config.terrain[job.terrain], { terrainType: job.terrain, remainingAmount: low + Math.floor(Utils.random() * (high - low + 1)) });
           CityBuilder.Pathfinder.clearCache();
         }),
         Jobs.walkTo(building.x, building.y),

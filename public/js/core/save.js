@@ -181,6 +181,7 @@
         speedIndex: Game ? Game.speedIndex : 0,
         spellZones: CityBuilder.Spells.zones,
         weather: CityBuilder.Weather.snapshot(),
+        random: CityBuilder.Utils.randomState,   // slumpgeneratorns läge, så en laddad sparning fortsätter likadant
         headquarters: captureFields(headquarters, BUILDING_SKIP),
         rivals,
         eliminated: CityBuilder.Players.aiPlayers().filter(player => !CityBuilder.Players.active.includes(player)),
@@ -215,6 +216,7 @@
       });
       part('spells', () => { CityBuilder.Spells.zones = data.spellZones || []; });
       part('weather', () => CityBuilder.Weather.restore(data.weather));
+      if (Number.isFinite(data.random)) CityBuilder.Utils.seedRandom(data.random);   // äldre sparningar saknar läget och behåller världens seed
       part('animals', () => { World.animalsByChunk = new Map(CityBuilder.Animals.migrate(data.animalChunks || data.deerChunks || [])); });
 
       for (const saved of data.buildings || []) {

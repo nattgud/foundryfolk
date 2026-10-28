@@ -64,7 +64,7 @@
       if (unit.definition.isAnimal) {
         const surge = CityBuilder.Spells.factor('surge', unit.x, unit.y);   // Wild Surge: många fler ungar en kort stund
         if (unit.animalBreedCooldown > 0) unit.animalBreedCooldown -= deltaSeconds * surge;
-        else if (Math.random() < ANIMAL.breedChancePerSecond * (1 + Config.settings.animalBreeding.boost) * surge * deltaSeconds) this.tryAnimalBreed(unit, surge);
+        else if (Utils.random() < ANIMAL.breedChancePerSecond * (1 + Config.settings.animalBreeding.boost) * surge * deltaSeconds) this.tryAnimalBreed(unit, surge);
       }
 
       const step = unit.stepQueue[0];
@@ -241,7 +241,7 @@
 
               const eatenAmount = Math.min(
                 tile.remainingAmount,
-                1 + Math.floor(Math.random() * ANIMAL.maxFoodPerTile)
+                1 + Math.floor(Utils.random() * ANIMAL.maxFoodPerTile)
               );
 
               tile.remainingAmount -= eatenAmount;
@@ -377,7 +377,7 @@
       }
 
       const target = candidates[
-        Math.floor(Math.random() * candidates.length)
+        Math.floor(Utils.random() * candidates.length)
       ];
 
       unit.stepQueue = [
@@ -436,10 +436,10 @@
       }
 
       // 2. Träd får spridas separat, även när ingen växtåterföring väntar.
-      if (Math.random() < Config.settings.animalTreeSpreadChance) {
+      if (Utils.random() < Config.settings.animalTreeSpreadChance) {
         Utils.assign(tile, Config.terrain.tree, {
           terrainType: 'tree',
-          remainingAmount: Math.ceil(Math.random() * 2)
+          remainingAmount: Math.ceil(Utils.random() * 2)
         });
 
         Pathfinder.clearCache();
@@ -459,7 +459,7 @@
         population++;
         if (other !== unit && Utils.distance(other.x - unit.x, other.y - unit.y) <= radius) nearby++;
       }
-      if (population >= ANIMAL.maxPopulation || Math.random() < nearby / (capacity * surge)) return;   // under en Wild Surge får flocken vara tätare
+      if (population >= ANIMAL.maxPopulation || Utils.random() < nearby / (capacity * surge)) return;   // under en Wild Surge får flocken vara tätare
 
       // Ungen föds på en ledig gräs- eller trädruta i närheten (annars på samma ruta)
       const cx = Math.floor(unit.x), cy = Math.floor(unit.y);
@@ -471,7 +471,7 @@
           if (terrainType === 'grass' || terrainType === 'tree') spots.push({ x: cx + dx, y: cy + dy });
         }
       }
-      const spot = spots.length ? spots[Math.floor(Math.random() * spots.length)] : { x: cx, y: cy };
+      const spot = spots.length ? spots[Math.floor(Utils.random() * spots.length)] : { x: cx, y: cy };
       const young = CityBuilder.Animals.spawnYoung(unit.kind, spot.x, spot.y);
       unit.animalBreedCooldown = young.animalBreedCooldown = ANIMAL.breedCooldown;
     },

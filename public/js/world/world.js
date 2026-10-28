@@ -53,6 +53,7 @@
     // report(fraction 0-1, text) rapporterar framsteg och ger webbläsaren tid att rita (laddningsstapeln i Game.init). Den anropas
     // högst var 40:e ms, så rapporteringen kostar nästan ingenting. Utan report går allt i ett svep.
     async init(report = () => {}) {
+      Utils.seedRandom(Config.world.seed * 7919 + 17);   // spelets slump följer världens seed
       CityBuilder.Vision.reset();
       CityBuilder.Spells.reset();
       CityBuilder.Weather.reset();
