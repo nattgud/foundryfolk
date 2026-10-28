@@ -21,6 +21,16 @@
                // spelare -> tider då dödade bärare ersätts (en i taget, carrierRespawnSeconds emellan)
     unreachable: new Map(), // "källa>mål" -> tid då paret får provas igen (efter att en bärare inte hittade någon väg)
 
+    // En spelares byggnader (i samma ordning som World.buildings). Under en planeringsomgång gäller listorna från omgångens start, annars filtreras de fram.
+    buildingsOf(player) {
+      if (!this.round) return World.buildings.filter(building => building.player === player);
+      return this.round.get(player) || [];
+    },
+    startRound() {
+      this.round = new Map();
+      for (const building of World.buildings) { const list = this.round.get(building.player); if (list) list.push(building); else this.round.set(building.player, [building]); }
+    },
+
     // Tar bäraren emot varor som lager? (En lagerbyggnad som ännu byggs är en byggplats som tar emot byggmaterial.)
     stores: building => building.definition.isStorage && !building.needsMaterials,
 
@@ -30,8 +40,8 @@
     // Närmaste källa (hus eller lager) med ledigt innehåll av resursen
     findSupplier(resourceId, nearBuilding) {
       let best = null, bestDistance = 1e9;
-      for (const candidate of World.buildings) {
-        if (candidate === nearBuilding || candidate.buildProgress < 1 || candidate.player !== nearBuilding.player || this.isUnreachable(candidate, nearBuilding)) continue;
+      for (const candidate of this.buildingsOf(nearBuilding.player)) {
+        if (candidate === nearBuilding || candidate.buildProgress < 1 || this.isUnreachable(candidate, nearBuilding)) continue;
         const available = candidate.definition.isStorage
           ? (candidate.storedGoods[resourceId] || 0) - (candidate.storedReserved[resourceId] || 0)
           : (candidate.outputStock[resourceId] || 0) - (candidate.outputReserved[resourceId] || 0);
@@ -89,7 +99,9 @@
         this.planningTimer = cfg().planningIntervalSeconds;
         Economy.updateStats();
         this.clearPiles();
+        this.startRound();
         this.balanceCarriers(); this.purgeInvalidTasks(); this.rebuildCounters(); this.requestMissingInputs(); this.orders = null; this.flushSurplusToStorage(); this.orders = null;
+        this.round = null;
       }
       this.time = (this.time || 0) + deltaSeconds;
       this.assignTasksToCarriers();
@@ -157,20 +169,21 @@
     // Antalet bärare följer byggnaderna: bas + 1 per färdig byggnad + 5, 10 respektive 25 per färdigt lager, lagerhus och depå (definition.carriers, per spelare). Rivs eller förstörs något
     // minskar antalet igen: överskott tas bort när bärarna är lediga.
     balanceCarriers() {
-      const { baseCarriers, carriersPerBuilding, carriersPerStorage } = cfg();
+      const { baseCarriers, carriersPerBuilding, carriersPerStorage } = cfg(), haulers = new Map();
+      for (const unit of World.units) if (unit.definition.isHauler) { const list = haulers.get(unit.player); if (list) list.push(unit); else haulers.set(unit.player, [unit]); }
       for (const player of Players.active) {
         const hq = World.hqOf(player);
         if (!hq) continue;
         let wanted = 0;
-        for (const building of World.buildings) {
-          if (building.player !== player || building.buildProgress < 1 || building === hq) continue;
+        for (const building of this.buildingsOf(player)) {
+          if (building.buildProgress < 1 || building === hq) continue;
           wanted += building.definition.carriers ?? (building.definition.isStorage ? carriersPerStorage : carriersPerBuilding);
         }
         const waiting = (this.lost[player] = (this.lost[player] || []).filter(time => time > (this.time || 0))).length; // dödade, ännu inte ersatta
         const ordinary = this.ordinary[player] = Math.max(0, baseCarriers + wanted - waiting);
         const target = ordinary + this.elasticExtra(player, ordinary);
 
-        const carriers = World.units.filter(unit => unit.definition.isHauler && unit.player === player);
+        const carriers = haulers.get(player) || [];
         for (let count = carriers.length; count < target; count++) World.spawnUnit('carrier', hq.x, hq.y, null, player);
         for (let i = carriers.length - 1, surplus = carriers.length - target; i >= 0 && surplus > 0; i--) {
           const unit = carriers[i];
@@ -261,9 +274,9 @@
     waitForProducer(building, resourceId, supplier, have) {
       if (!have || !supplier.definition.isStorage) return false;
       const reach = Utils.manhattanDistance(supplier, building);
-      return World.buildings.some(producer => {
+      return this.buildingsOf(building.player).some(producer => {
         const job = producer.definition.job;
-        return producer !== building && producer.player === building.player && producer.buildProgress >= 1 && job
+        return producer !== building && producer.buildProgress >= 1 && job
           && (job.outputs ? resourceId in job.outputs : job.outputResource === resourceId)
           && Utils.manhattanDistance(producer, building) < reach && !this.isUnreachable(producer, building);
       });
@@ -300,9 +313,9 @@
     deliverDirect(producer, resourceId) {
       this.orders = this.orders || this.cancellableOrders();
       let best = null, bestDistance = 1e9, bestOrder = null;
-      for (const consumer of World.buildings) {
+      for (const consumer of this.buildingsOf(producer.player)) {
         if (consumer === producer || consumer.buildProgress < 1 || !consumer.definition.job || consumer.definition.isStorage
-          || consumer.player !== producer.player || this.isUnreachable(producer, consumer)) continue;
+          || this.isUnreachable(producer, consumer)) continue;
         const distance = Utils.manhattanDistance(producer, consumer);
         if (distance >= bestDistance) continue;
         let order = null;
@@ -330,11 +343,21 @@
     // Äldsta uppdraget först, och det får närmaste lediga bärare. Långväga uppdrag blir därför aldrig bortglömda.
     assignTasksToCarriers() {
       if (!this.tasks.length) return;
-      const idle = World.units.filter(unit => unit.definition.isHauler && !unit.stepQueue.length && !unit.carriedResource && !unit.deliveryTask);
+      const now = this.time || 0;
+      for (const task of this.tasks) if (!task.source.definition.pile) this.busyAt[task.source.player] = now;   // annat arbete än högar väntar (styr hur högar får använda bärare)
+      // Lediga bärare per spelare. Finns inga behöver uppdragen varken sorteras eller fördelas.
+      const idleBy = new Map();
+      let spare = 0;
+      for (const unit of World.units) {
+        if (!unit.definition.isHauler || unit.stepQueue.length || unit.carriedResource || unit.deliveryTask) continue;
+        const list = idleBy.get(unit.player); if (list) list.push(unit); else idleBy.set(unit.player, [unit]);
+        spare++;
+      }
+      if (!spare) return;
       const bufferLimit = Config.settings.outputBufferCapacity || 10;
       // 1) stoppade byggnader (full källa, indata saknas) och uppdrag som väntat länge, äldst först
       // 2) övriga: minst i lager först, sedan äldst
-      const maxWait = cfg().maxWaitSeconds ?? 40, now = this.time || 0;
+      const maxWait = cfg().maxWaitSeconds ?? 40;
       const stock = task => {
         const { stored, incoming } = Economy.stats(task.source.player);
         return (stored[task.resource] || 0) + (incoming[task.resource] || 0);
@@ -348,31 +371,29 @@
       };
       const pile = task => task.source.definition.pile ? 1 : 0;   // högar sist: allt annat arbete går före
       const priority = task => (task.destination.prioritized || task.source.prioritized ? 0 : 1);   // prioriterade byggnaders leveranser går först av allt
-      this.tasks.sort((a, b) => {
-        const ua = urgent(a), ub = urgent(b);
-        return priority(a) - priority(b) || pile(a) - pile(b) || ua - ub || (ua ? stock(a) - stock(b) : 0) || a.seq - b.seq;
-      });
+      // Nycklarna räknas en gång per uppdrag (inte i varje jämförelse)
+      const keyed = this.tasks.map(task => { const u = urgent(task); return { task, priority: priority(task), pile: pile(task), urgent: u, stock: u ? stock(task) : 0 }; });
+      keyed.sort((a, b) => a.priority - b.priority || a.pile - b.pile || a.urgent - b.urgent || (a.urgent ? a.stock - b.stock : 0) || a.task.seq - b.task.seq);
+      this.tasks = keyed.map(entry => entry.task);
       // Högar får högst pileShare av en spelares bärare så länge annat arbete väntar eller nyss väntade, så att en tornado inte tömmer produktionen på bärare
       const { pileShare, pileRecent } = cfg(), pileBusy = {}, totals = {};
       for (const unit of World.units) if (unit.definition.isHauler) {
         totals[unit.player] = (totals[unit.player] || 0) + 1;
         if (unit.deliveryTask?.source.definition.pile) pileBusy[unit.player] = (pileBusy[unit.player] || 0) + 1;
       }
-      for (const task of this.tasks) if (!pile(task)) this.busyAt[task.source.player] = now;
       const assigned = new Set();
-      let spare = idle.length;
       for (const task of this.tasks) {
         if (!spare || assigned.size >= (cfg().maxAssignmentsPerFrame ?? 30)) break;
         const player = task.source.player;
         if (pile(task) && now - (this.busyAt[player] ?? -1e9) < pileRecent && (pileBusy[player] || 0) >= Math.max(1, Math.floor((totals[player] || 0) * pileShare))) continue;
-        const carriers = idle.filter(unit => unit.player === player); // bara spelarens egna bärare
-        if (!carriers.length) continue;
+        const carriers = idleBy.get(player); // bara spelarens egna bärare
+        if (!carriers || !carriers.length) continue;
         let carrier = carriers[0], bestDistance = 1e9;
         for (const candidate of carriers) {
           const distance = Utils.manhattanDistance(candidate, task.source);
           if (distance < bestDistance) { bestDistance = distance; carrier = candidate; }
         }
-        idle.splice(idle.indexOf(carrier), 1);
+        carriers.splice(carriers.indexOf(carrier), 1);
         spare--;
         if (pile(task)) pileBusy[player] = (pileBusy[player] || 0) + 1;
         carrier.deliveryTask = task;
