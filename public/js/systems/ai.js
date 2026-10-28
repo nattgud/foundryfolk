@@ -17,7 +17,7 @@
   const MAX_SEARCH = 64;
   const OFFSETS = [];
   for (let dy = -MAX_SEARCH; dy <= MAX_SEARCH; dy++) for (let dx = -MAX_SEARCH; dx <= MAX_SEARCH; dx++) {
-    const distance = Math.hypot(dx, dy);
+    const distance = Utils.distance(dx, dy);
     if (distance <= MAX_SEARCH) OFFSETS.push({ dx, dy, distance });
   }
   OFFSETS.sort((a, b) => a.distance - b.distance);
@@ -204,7 +204,7 @@
       for (const thing of [...World.buildings, ...World.units]) {
         if (!Players.isHostile(player, thing.player) || !Vision.knows(player, thing)) continue;
         const half = thing.buildProgress !== undefined ? .5 : 0;
-        const distance = Math.hypot(thing.x + half - hq.x, thing.y + half - hq.y);
+        const distance = Utils.distance(thing.x + half - hq.x, thing.y + half - hq.y);
         if (distance < nearest) { nearest = distance; state.lead = { x: Math.round(thing.x), y: Math.round(thing.y) }; }
       }
     },
@@ -214,7 +214,7 @@
       const hq = World.hqOf(player);
       let best, bestDistance = Infinity;
       for (const building of Vision.memory.get(player) || []) {
-        const distance = Math.hypot(building.x - hq.x, building.y - hq.y);
+        const distance = Utils.distance(building.x - hq.x, building.y - hq.y);
         if (distance < bestDistance) { best = building; bestDistance = distance; }
       }
       return best ?? state.lead;
@@ -230,7 +230,7 @@
       let from, fromDistance = Infinity, garrisonDistance = Infinity;   // närmaste egna byggnad är utgångspunkt, och soldaterna bor i garnisoner
       for (const building of World.buildings) {
         if (building.player !== player || building.buildProgress < 1) continue;
-        const distance = Math.hypot(building.x - target.x, building.y - target.y);
+        const distance = Utils.distance(building.x - target.x, building.y - target.y);
         if (distance < fromDistance) { from = building; fromDistance = distance; }
         if (distance < garrisonDistance && Garrison.isGarrison(building)) garrisonDistance = distance;
       }
@@ -264,7 +264,7 @@
       const goal = { x: hq.x + Math.cos(scouting.angle) * ring, y: hq.y + Math.sin(scouting.angle) * ring };
       let from, fromDistance = Infinity;
       for (const building of World.buildings) {
-        const distance = Math.hypot(building.x - goal.x, building.y - goal.y);
+        const distance = Utils.distance(building.x - goal.x, building.y - goal.y);
         if (building.player === player && building.buildProgress >= 1 && distance < fromDistance) { from = building; fromDistance = distance; }
       }
       const reached = fromDistance <= step;                                      // inom räckhåll: bygg på ringen, annars ett steg dit

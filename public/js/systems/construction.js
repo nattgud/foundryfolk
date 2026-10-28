@@ -4,7 +4,7 @@
    inputStock och bygget kan aldrig vara längre kommet än andelen av byggkostnaden som kommit fram. När det är klart förbrukas de. */
 (function (CityBuilder) {
   'use strict';
-  const { World, Behaviors, Economy, Pathfinder, Players, Config } = CityBuilder;
+  const { World, Behaviors, Economy, Pathfinder, Players, Config, Utils } = CityBuilder;
 
   // Försöker bygga. Returnerar null om det gick, annars orsaken: 'fog' | 'occupied' | 'terrain' | 'far' | 'unreachable' | 'cost' | 'unique'.
   const Construction = {
@@ -13,7 +13,7 @@
       const limit = Config.settings.maxBuildDistance;
       let best, bestDistance = limit;
       for (const building of World.buildings) {
-        const distance = Math.hypot(building.x - x, building.y - y);
+        const distance = Utils.distance(building.x - x, building.y - y);
         if (building.player === player && building.buildProgress >= 1 && !building.definition.pile && distance <= bestDistance) { best = building; bestDistance = distance; }
       }
       return best;
@@ -64,7 +64,7 @@
       for (const id of open) {
         const { sourceTerrain, searchRadius } = Config.buildings[id].job;
         for (let dy = -searchRadius; dy <= searchRadius; dy++) for (let dx = -searchRadius; dx <= searchRadius; dx++) {
-          const distance = Math.hypot(dx, dy);
+          const distance = Utils.distance(dx, dy);
           if (distance >= bestDistance || distance > searchRadius) continue;
           const tile = World.getTile(x + dx, y + dy);
           if (tile && tile.terrainType === sourceTerrain && tile.remainingAmount > 0) { bestDistance = distance; best = id; }

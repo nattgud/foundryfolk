@@ -61,7 +61,7 @@
       };
       if (zone) {
         const reach = Math.ceil(zone.radius);
-        for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) if (Math.hypot(dx, dy) <= zone.radius) check(zone.x + dx, zone.y + dy);
+        for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) if (Utils.distance(dx, dy) <= zone.radius) check(zone.x + dx, zone.y + dy);
         return;
       }
       for (const { cx, cy } of Vision.activeChunks) for (let y = cy * size; y < (cy + 1) * size; y++) for (let x = cx * size; x < (cx + 1) * size; x++) check(x, y);
@@ -115,7 +115,7 @@
       const settings = Config.settings.weather.tornado, centreX = Math.round(tornado.x), centreY = Math.round(tornado.y), reach = Math.ceil(tornado.radius);
       let cleared = false;
       for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
-        if (Math.hypot(dx, dy) > tornado.radius) continue;
+        if (Utils.distance(dx, dy) > tornado.radius) continue;
         const tile = World.getTile(centreX + dx, centreY + dy), type = tile?.terrainType, extra = settings.also[type];
         const resource = extra ? extra.gives : Config.settings.weather.growth[type];
         if (!tile || !(extra || resource) || !(tile.remainingAmount > 0)) continue;
@@ -136,7 +136,7 @@
     drop(tornado) {
       const settings = Config.settings.weather.tornado, centreX = Math.round(tornado.x), centreY = Math.round(tornado.y), reach = Math.ceil(tornado.radius) + 1, spots = [];
       for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
-        if (Math.hypot(dx, dy) <= tornado.radius + 1 && this.isFree(centreX + dx, centreY + dy)) spots.push({ x: centreX + dx, y: centreY + dy });
+        if (Utils.distance(dx, dy) <= tornado.radius + 1 && this.isFree(centreX + dx, centreY + dy)) spots.push({ x: centreX + dx, y: centreY + dy });
       }
       // Vatten och sand blir först nya rutor nära mitten (högst 2 rutor bort), aldrig högar
       let landed = false;
@@ -144,7 +144,7 @@
         let left = tornado.collected[resource] || 0;
         delete tornado.collected[resource];
         const shore = settings.shoreOnly.includes(resource);   // sand läggs bara direkt intill vatten, så strandremsan aldrig blir bredare än en ruta
-        const near = spots.filter(spot => shore ? this.touchesWater(spot.x, spot.y) : Math.hypot(spot.x - centreX, spot.y - centreY) <= 2);
+        const near = spots.filter(spot => shore ? this.touchesWater(spot.x, spot.y) : Utils.distance(spot.x - centreX, spot.y - centreY) <= 2);
         while (left > 0 && near.length) {
           const spot = near.splice(Math.floor(Math.random() * near.length), 1)[0], amount = Math.min(left, settings.land[resource]);
           spots.splice(spots.indexOf(spot), 1);
@@ -200,7 +200,7 @@
     /* ---------- Vulkaner ---------- */
 
     // Ingen lavaruta får ligga i närheten av någon spelares huvudlager
-    farFromHq(x, y) { return Object.values(World.hqs).every(hq => Math.hypot(hq.x - x, hq.y - y) >= Config.settings.weather.volcano.minHq); },
+    farFromHq(x, y) { return Object.values(World.hqs).every(hq => Utils.distance(hq.x - x, hq.y - y) >= Config.settings.weather.volcano.minHq); },
 
     isLand(x, y) { const type = World.getTile(x, y)?.terrainType; return !!type && type !== 'water' && type !== 'lava'; },
 
@@ -215,7 +215,7 @@
     // Närmaste ruta (inom 'reach') som uppfyller 'test', undersökt i slumpad ordning på samma avstånd
     findNear(point, reach, test) {
       const spots = [];
-      for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) spots.push({ x: point.x + dx, y: point.y + dy, d: Math.hypot(dx, dy) + Math.random() * 0.5 });
+      for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) spots.push({ x: point.x + dx, y: point.y + dy, d: Utils.distance(dx, dy) + Math.random() * 0.5 });
       return spots.sort((a, b) => a.d - b.d).find(spot => spot.d <= reach && test(spot.x, spot.y)) || null;
     },
 
@@ -277,7 +277,7 @@
       if (!start) return null;
       const radius = rand(settings.diameter) / 2, reach = Math.ceil(radius), tiles = [];
       for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
-        const distance = Math.hypot(dx, dy), type = World.getTile(start.x + dx, start.y + dy)?.terrainType;
+        const distance = Utils.distance(dx, dy), type = World.getTile(start.x + dx, start.y + dy)?.terrainType;
         if (distance > radius || !type || type === 'water' || type === 'lava' || type === 'mountain') continue;
         if (distance > radius - 0.6 && Math.random() < 0.25) continue;   // kanten blir ojämn
         tiles.push([start.x + dx, start.y + dy]);
@@ -293,7 +293,7 @@
       for (const name of [first, ...kinds.filter(other => other !== first)]) for (let attempt = 0; attempt < 60; attempt++) {
         const plan = this[name + 'Plan']();
         if (!plan || !plan.tiles.length || !plan.tiles.every(([x, y]) => this.farFromHq(x, y))) continue;
-        const [sx, sy] = plan.start, from = ([x, y]) => Math.hypot(x - sx, y - sy) + Math.random();
+        const [sx, sy] = plan.start, from = ([x, y]) => Utils.distance(x - sx, y - sy) + Math.random();
         const volcano = { kind: name, x: sx, y: sy, age: 0, pace: between(settings.paceSeconds), life: 0, plan: plan.tiles.map(tile => ({ tile, d: from(tile) })).sort((a, b) => a.d - b.d).map(({ tile }) => tile), lit: 0, tick: 1, ores: name === 'peak' ? this.pickOres() : null };
         volcano.life = volcano.plan.length * volcano.pace + between(settings.lifeSeconds);   // spridningen tar plan.length * pace, sedan ligger lavan het
         this.volcanoes.push(volcano);

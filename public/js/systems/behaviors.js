@@ -38,7 +38,7 @@
           const innerHalf = Math.abs(dy) <= from ? Math.ceil(Math.sqrt(from * from - dy * dy)) : -1;
           for (let dx = -rowHalf; dx <= rowHalf; dx++) {
             if (innerHalf >= 0 && dx > -innerHalf && dx < innerHalf) { dx = innerHalf - 1; continue; }
-            const distance = Math.hypot(dx, dy);
+            const distance = Utils.distance(dx, dy);
             if (distance <= from && from > 0 || distance > to) continue;
             checked++;
             const x = building.x + dx, y = building.y + dy, tile = World.getTile(x, y);
@@ -77,7 +77,7 @@
       let best = null, bestDistance = job.searchRadius;
       for (const unit of World.units) {
         if (unit === worker || !this.unitMatches(unit, job)) continue;
-        const distance = Math.hypot(unit.x - (building.x + .5), unit.y - (building.y + .5));
+        const distance = Utils.distance(unit.x - (building.x + .5), unit.y - (building.y + .5));
         if (distance <= bestDistance) { bestDistance = distance; best = unit; }
       }
       return best;
@@ -298,7 +298,7 @@
       for (const other of World.buildings) {
         const aura = other.definition.aura;
         if (!aura || !(aura[key] > best) || other.player !== building.player || other.buildProgress < 1) continue;
-        if (Math.hypot(other.x - building.x, other.y - building.y) <= aura.radius) best = aura[key];
+        if (Utils.distance(other.x - building.x, other.y - building.y) <= aura.radius) best = aura[key];
       }
       return best;
     },
@@ -366,7 +366,7 @@
         // Framme: bytet stannar där det står (frysts av Units.update via heldBy) tills jägaren är klar
         Jobs.run(() => {
           const reachable = !prey.removed && Behaviors.unitMatches(prey, job) && !prey.heldBy &&
-            Math.hypot(prey.x - worker.x, prey.y - worker.y) <= (job.reach || 3);
+            Utils.distance(prey.x - worker.x, prey.y - worker.y) <= (job.reach || 3);
           if (!reachable) return false; // bytet försvann, är upptaget eller hann iväg: planera om
           prey.stepQueue = [];
           prey.heldBy = worker;

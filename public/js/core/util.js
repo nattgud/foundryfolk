@@ -44,6 +44,8 @@
 
     sumValues: object => Object.values(object).reduce((total, value) => total + value, 0),
     clamp: (value, min, max) => Math.max(min, Math.min(max, value)),
+    // Straight-line length of (dx, dy); several times faster than Math.hypot
+    distance: (dx, dy) => Math.sqrt(dx * dx + dy * dy),
     manhattanDistance: (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y),
 
     // { wood: 2, stone: 1 } -> "2 trä, 1 sten"

@@ -113,7 +113,7 @@
       if (tileCost === Infinity && !isTarget) { Pathfinder.drop(step.path); step.path = null; return; } // vägen blockerades -> räkna om
 
       const laneX = unit.laneX || 0, laneY = unit.laneY || 0; // soldaters egen linje i rutan, så att en marscherande grupp inte blir en enda hög
-      const dx = nextTile.x + .5 + laneX - unit.x, dy = nextTile.y + .5 + laneY - unit.y, distance = Math.hypot(dx, dy);
+      const dx = nextTile.x + .5 + laneX - unit.x, dy = nextTile.y + .5 + laneY - unit.y, distance = Utils.distance(dx, dy);
       const stepLength = Config.settings.walkSpeed * (unit.definition.speedMultiplier || 1) * deltaSeconds / (tileCost === Infinity ? 1 : tileCost);
       unit.status = 'Walking';
 
@@ -302,7 +302,7 @@
 
       for (let dy = -radius; dy <= radius; dy++) {
         for (let dx = -radius; dx <= radius; dx++) {
-          const distance = Math.hypot(dx, dy);
+          const distance = Utils.distance(dx, dy);
 
           if (distance > radius) continue;
 
@@ -457,7 +457,7 @@
       for (const other of World.units) {
         if (!other.definition.isAnimal) continue;
         population++;
-        if (other !== unit && Math.hypot(other.x - unit.x, other.y - unit.y) <= radius) nearby++;
+        if (other !== unit && Utils.distance(other.x - unit.x, other.y - unit.y) <= radius) nearby++;
       }
       if (population >= ANIMAL.maxPopulation || Math.random() < nearby / (capacity * surge)) return;   // under en Wild Surge får flocken vara tätare
 

@@ -117,7 +117,7 @@
     freeTiles(x, y, radius) {
       const tiles = [];
       for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
-        if (Math.hypot(dx, dy) > radius) continue;
+        if (Utils.distance(dx, dy) > radius) continue;
         const tile = World.getTile(x + dx, y + dy);
         if (tile && tile.terrainType === 'grass' && !tile.wear && !World.buildingAt(x + dx, y + dy) && !Construction.isHidden(x + dx, y + dy, Players.HUMAN)) tiles.push(tile);
       }
@@ -128,7 +128,7 @@
     problem(building, spell, x, y) {
       if (building.buildProgress < 1) return 'unbuilt';
       if ((building.spellCooldown || 0) > 0) return 'cooldown';
-      if (Math.hypot(building.x - x, building.y - y) > building.definition.spellRange) return 'range';
+      if (Utils.distance(building.x - x, building.y - y) > building.definition.spellRange) return 'range';
       if (Construction.isHidden(x, y, building.player)) return 'fog';
       if (spell.sky && (spell.sky === 'night') !== CityBuilder.Weather.isNight()) return 'sky';
       if (!Economy.canAfford(spell.cost, building.player)) return 'cost';
@@ -138,7 +138,7 @@
 
     // Finns det något i området som formeln kan verka på? (Så att ingen formel bränns på tom mark.)
     hasTargets(spell, x, y, player) {
-      const inside = thing => Math.hypot(thing.x - x, thing.y - y) <= spell.radius;
+      const inside = thing => Utils.distance(thing.x - x, thing.y - y) <= spell.radius;
       switch (spell.kind) {
         case 'smite': return World.units.some(unit => unit.definition.isSoldier && Players.isHostile(player, unit.player) && inside(unit));
         case 'surge': return World.units.some(unit => unit.definition.isAnimal && inside(unit));
@@ -160,7 +160,7 @@
     factor(kind, x, y, player) {
       let best = 1;
       for (const zone of this.zones) {
-        if (zone.kind === kind && zone.factor > best && (player === undefined || zone.player === player) && Math.hypot(zone.x - x, zone.y - y) <= zone.radius) best = zone.factor;
+        if (zone.kind === kind && zone.factor > best && (player === undefined || zone.player === player) && Utils.distance(zone.x - x, zone.y - y) <= zone.radius) best = zone.factor;
       }
       return best;
     },
@@ -169,7 +169,7 @@
     bonus(building, kind) {
       let best = 0;
       for (const zone of this.zones) {
-        if (zone.kind === kind && zone.bonus > best && zone.player === building.player && Math.hypot(zone.x - building.x, zone.y - building.y) <= zone.radius) best = zone.bonus;
+        if (zone.kind === kind && zone.bonus > best && zone.player === building.player && Utils.distance(zone.x - building.x, zone.y - building.y) <= zone.radius) best = zone.bonus;
       }
       return best;
     },
@@ -184,7 +184,7 @@
     // Smiter: fiendens soldater i området får högst 'health' av sitt liv kvar (ingen dör av det, de blir bara lätta att ta)
     smite(spell, x, y, player) {
       for (const unit of World.units) {
-        if (!unit.definition.isSoldier || !Players.isHostile(player, unit.player) || Math.hypot(unit.x - x, unit.y - y) > spell.radius) continue;
+        if (!unit.definition.isSoldier || !Players.isHostile(player, unit.player) || Utils.distance(unit.x - x, unit.y - y) > spell.radius) continue;
         unit.hp = Math.min(unit.hp, Math.max(1, Math.ceil(unit.definition.maxHp * spell.health)));
       }
     },

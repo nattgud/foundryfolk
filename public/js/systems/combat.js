@@ -20,7 +20,7 @@
    Soldater styrs via stegkön (Jobs) som övriga enheter, så Units.update gör själva förflyttningen. */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Jobs, Behaviors, Players, Garrison, Vision } = CityBuilder;
+  const { Config, World, Jobs, Behaviors, Players, Garrison, Vision, Utils } = CityBuilder;
 
   const settings = () => Config.settings.military;
   const TIMERS = ['attackCooldownLeft', 'scanTimer', 'repathTimer', 'orderCooldown', 'homeSearchTimer'];
@@ -113,7 +113,7 @@
       }
       CityBuilder.Sound?.play('arrow', { x: attacker.x, y: attacker.y });
       const { projectileSpeed, projectileMinSeconds, projectileMaxSeconds } = settings();
-      const distance = Math.hypot(centreX(target) - attacker.x, centreY(target) - attacker.y);
+      const distance = Utils.distance(centreX(target) - attacker.x, centreY(target) - attacker.y);
       this.projectiles.push({
         x: attacker.x, y: attacker.y, fromX: attacker.x, fromY: attacker.y, toX: centreX(target), toY: centreY(target),
         target, attacker, damage: amount, time: 0,
@@ -266,7 +266,7 @@
         group.sort((a, b) => uidOf(a) - uidOf(b)); // fast ordning, så platserna inte byter ägare
         group.forEach((unit, index) => {
           const [slotX, slotY] = slotIn(index, group.length), tileX = Math.floor(unit.x), tileY = Math.floor(unit.y);
-          const dx = tileX + slotX - unit.x, dy = tileY + slotY - unit.y, distance = Math.hypot(dx, dy);
+          const dx = tileX + slotX - unit.x, dy = tileY + slotY - unit.y, distance = Utils.distance(dx, dy);
           if (distance <= reach) { unit.x = tileX + slotX; unit.y = tileY + slotY; }
           else { unit.x += dx / distance * reach; unit.y += dy / distance * reach; }
         });
@@ -308,14 +308,14 @@
     isValidTarget(unit, anchor) {
       const target = unit.target;
       return !target.removed && Players.isHostile(unit.player, target.player) &&
-        Math.hypot(centreX(target) - anchor.x, centreY(target) - anchor.y) <= anchor.radius * settings().leashFactor;
+        Utils.distance(centreX(target) - anchor.x, centreY(target) - anchor.y) <= anchor.radius * settings().leashFactor;
     },
 
     // Närstrid mot en enhet kräver att den står i samma ruta, annars räknas avståndet (mot en byggnad från dess kant)
     inReach(unit, target) {
       const range = unit.definition.attackRange;
       if (range <= MELEE_RANGE && !isBuilding(target)) return Math.floor(target.x) === Math.floor(unit.x) && Math.floor(target.y) === Math.floor(unit.y);
-      return Math.hypot(centreX(target) - unit.x, centreY(target) - unit.y) <= range + (isBuilding(target) ? BUILDING_REACH : 0);
+      return Utils.distance(centreX(target) - unit.x, centreY(target) - unit.y) <= range + (isBuilding(target) ? BUILDING_REACH : 0);
     },
 
     // Slå om målet är inom räckhåll, annars gå mot det
@@ -361,7 +361,7 @@
       }
 
       const post = unit.post;
-      if (post && Math.hypot(unit.x - post.x, unit.y - post.y) > POST_TOLERANCE) {
+      if (post && Utils.distance(unit.x - post.x, unit.y - post.y) > POST_TOLERANCE) {
         this.goTo(unit, post, () => [Jobs.walkTo(Math.floor(post.x), Math.floor(post.y))]);
       } else if (unit.mode === 'return') {
         unit.mode = 'idle';
