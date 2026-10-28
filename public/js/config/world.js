@@ -603,6 +603,7 @@
 
   CityBuilder.Config.world = {
     tuning, defaults: TUNING,
+    inMountain: context => landscapeAt(context).inMountain,   // för banorna: teman och strukturer lämnar bergen ifred
     seed: Math.floor(Math.random() * 1000000), // ny värld vid varje start. Skriv ett fast tal här för en bestämd värld
     clearRadius: 4,
     roads: [],                 // landvägar { x1, y1, x2, y2, width, wobble, wavelength, phase } som ersätter vatten och berg med gräs (World.rivalSite lägger till en till varje bas)

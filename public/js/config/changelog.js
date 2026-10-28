@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.8': [
+      'Level themes and structures (stone desert, ruins, cursed ground, fungi, boulder fields, cliffs and so on) no longer spill into the middle of mountains. Inside a mountain there is now only rock, a little ore and the odd rare find',
       'Mountains no longer hold lots of ore. Ore now sits only in a thin band near the edge of a mountain, always shut in behind a few tiles of rock, and otherwise lies scattered over the map as before',
       'The Rock crusher now digs towards a purpose: from the ground you can walk on, it tunnels the shortest way through the mountain to the nearest deposit the mountain has shut in, so you reach ore that is stuck inside mountains quickly. With no shut-in deposit nearby it digs the nearest mountain tile as before. It also crushes a tile in 15 seconds (was 20)',
       'Carriers: the temporary extra carriers are gone, so the number of carriers is steady (a base number plus a fixed amount per building). To make up for it, buildings now hold more input (four rounds instead of three) and order new input when their stock is down to half, then fill up in one go. That means fewer, calmer orders and a buffer that survives a short delay in the deliveries',

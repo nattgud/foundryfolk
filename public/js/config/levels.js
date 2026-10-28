@@ -802,11 +802,17 @@
     return w;
   };
 
+  const solid = c => world.inMountain(c);
+
+  // Inside a mountain only the mountain itself, ore and a few rare finds may appear: no rock, ruins, fungi, cursed ground and the like
+  const MOUNTAIN_KEEPS = new Set(['water', 'sand', 'grass', 'mountain', 'meteor_crater', 'fallen_star', ...world.deposits]);
+
   const wrapRule = (rule, index) => context => {
     const c = seeded(context);
     const terrain = rule(c);
     // rule 0 (water) and 5 (starting riches) are never depleted
     if (terrain === undefined || index === 0 || index === 5) return terrain;
+    if (!MOUNTAIN_KEEPS.has(terrain) && solid(c)) return undefined;
     const k = state.info.keep[terrain];
     if (k === undefined || k >= 1) return terrain;
     return c.hash(c.x, c.y, 9100 + world.seed * 131) < k ? terrain : undefined;
@@ -822,6 +828,7 @@
   const themeRule = context => {
     if (homeDistance(context) < 42) return undefined; // never at a base
     const c = seeded(context);
+    if (solid(c)) return undefined;
     for (const extra of state.info.themeObject.extras) {
       const terrain = extra(c);
       if (terrain) return terrain;
