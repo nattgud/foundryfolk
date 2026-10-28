@@ -59,6 +59,67 @@
       return null;
     },
 
+    // Bergsgrävning (job.digFor): den närmaste fyndigheten som berget stänger inne, och den bergsruta som ska grävas bort härnäst för
+    // att nå den. Marken som går att nå från huset flödas ut först; sedan växer en bredden-först-sökning inåt genom berget från
+    // rutorna som gränsar till den marken, så den kortaste tunneln vinner. Finns ingen instängd fyndighet grävs närmaste bergsruta.
+    // Returnerar { x, y, tile } eller null.
+    tunnelTarget(building, job) {
+      const radius = job.searchRadius, size = 2 * radius + 1, total = size * size;
+      const ORTHOGONAL = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      const deposits = new Set(job.digFor === 'deposits' ? Config.world.deposits : [].concat(job.digFor));
+      const open = new Uint8Array(total), seen = new Uint8Array(total), root = new Int32Array(total).fill(-1);
+      const indexOf = (dx, dy) => (dy + radius) * size + dx + radius;
+      const inside = (dx, dy) => dx * dx + dy * dy <= radius * radius;
+      const tileAt = (dx, dy) => World.getTile(building.x + dx, building.y + dy);
+
+      // 1. Allt som går att gå till från huset
+      const walk = [0, 0];
+      open[indexOf(0, 0)] = 1;
+      for (let head = 0; head < walk.length; head += 2) {
+        for (const [ox, oy] of ORTHOGONAL) {
+          const dx = walk[head] + ox, dy = walk[head + 1] + oy;
+          if (!inside(dx, dy) || open[indexOf(dx, dy)] || CityBuilder.Pathfinder.tileCost(building.x + dx, building.y + dy) === Infinity) continue;
+          open[indexOf(dx, dy)] = 1;
+          walk.push(dx, dy);
+        }
+      }
+
+      // 2. Bergsrutorna längs kanten är startpunkter. Närmast huset först, så att utan fyndighet grävs närmaste ruta.
+      const front = [];
+      for (let head = 0; head < walk.length; head += 2) {
+        for (const [ox, oy] of ORTHOGONAL) {
+          const dx = walk[head] + ox, dy = walk[head + 1] + oy, index = indexOf(dx, dy);
+          if (!inside(dx, dy) || open[index] || seen[index]) continue;
+          const tile = tileAt(dx, dy);
+          if (tile.terrainType !== 'mountain' || !(tile.remainingAmount > 0)) continue;
+          seen[index] = 1; root[index] = index;
+          front.push(dx, dy);
+        }
+      }
+      if (!front.length) return null;
+      const nearest = { index: -1, distance: Infinity };
+      for (let i = 0; i < front.length; i += 2) {
+        const distance = Utils.distance(front[i], front[i + 1]);
+        if (distance < nearest.distance) { nearest.distance = distance; nearest.index = indexOf(front[i], front[i + 1]); }
+      }
+
+      // 3. Inåt genom berget tills en instängd fyndighet ligger intill
+      for (let head = 0; head < front.length; head += 2) {
+        const x = front[head], y = front[head + 1], from = indexOf(x, y);
+        for (const [ox, oy] of ORTHOGONAL) {
+          const dx = x + ox, dy = y + oy, index = indexOf(dx, dy);
+          if (!inside(dx, dy) || open[index] || seen[index]) continue;
+          const tile = tileAt(dx, dy);
+          if (deposits.has(tile.terrainType)) { nearest.index = root[from]; head = front.length; break; }
+          if (tile.terrainType !== 'mountain' || !(tile.remainingAmount > 0)) continue;
+          seen[index] = 1; root[index] = root[from];
+          front.push(dx, dy);
+        }
+      }
+      const dx = nearest.index % size - radius, dy = Math.floor(nearest.index / size) - radius;
+      return { x: building.x + dx, y: building.y + dy, tile: tileAt(dx, dy) };
+    },
+
     // ---- Enheter som källa (jakt m.m.) --------------------------------------------------------
     // Ett gather-jobb hämtar antingen från terräng (job.sourceTerrain) eller från enheter (job.sourceUnit):
     //   sourceUnit: 'deer'                    en enhetstyp (unit.kind)
@@ -412,11 +473,11 @@
       // Sökningen sker i omgångar (ringar utåt från huset) så att stora räckvidder inte hänger spelet.
       // Närmaste noden vinner alltid: en ring genomsöks färdigt, och hittas inget går sökningen vidare utåt
       // (över flera anrop/bilder) tills searchRadius är nådd.
-      const target = Behaviors.searchNearest(worker, building, job);
+      const target = job.digFor ? Behaviors.tunnelTarget(building, job) : Behaviors.searchNearest(worker, building, job);
       if (target === undefined) { worker.status = 'Söker...'; return; } // fortsätter vid nästa anrop
       if (target === null) { worker.status = 'Inga resurser'; worker.idleCooldown = 60; return; }
 
-      const stopBeside = Config.terrain[target.tile.terrainType].gatherersStopBefore;
+      const stopBeside = job.digFor || Config.terrain[target.tile.terrainType].gatherersStopBefore;
 
       Behaviors.eat(building);
       const boosted = Behaviors.useBoost(building);

@@ -366,10 +366,10 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'gather',
       eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 4 },
-      sourceTerrain: 'mountain',
+      digFor: 'deposits',     // gräver den kortaste tunneln genom berget till närmaste fyndighet som berget stänger inne
       searchRadius: 25,
       outputResource: 'sand',
-      workSeconds: 20
+      workSeconds: 15
     },
     buildDuration: 45
   },

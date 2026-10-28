@@ -35,7 +35,7 @@
     if (job.kind === 'gather') {
       // Jakt (sourceUnit) hämtar från enheter och har outputs i stället för outputResource
       const outputs = job.sourceUnit ? Object.keys(job.outputs || {}) : [job.outputResource];
-      if (!job.sourceUnit && !Config.terrain[job.sourceTerrain]) warn(`${id}: okänd terräng '${job.sourceTerrain}'`);
+      if (!job.sourceUnit && !job.digFor && !Config.terrain[job.sourceTerrain]) warn(`${id}: okänd terräng '${job.sourceTerrain}'`);
       for (const resourceId of outputs) if (!Config.resources[resourceId]) warn(`${id}: okänd resurs '${resourceId}'`);
     } else if (job.kind === 'craft') {
       for (const recipe of job.choices || [job]) {
