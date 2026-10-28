@@ -318,11 +318,18 @@
       if (!this.musicElement.src) this.nextTrack(); else this.musicElement.play().catch(() => {});
     },
 
+    // Blandad kö: alla låtar spelas i slumpad ordning innan någon upprepas, och en ny omgång börjar aldrig med låten som just spelades
     nextTrack() {
       if (!this.musicElement || !this.tracks.length) return;
-      let index = Math.floor(Math.random() * this.tracks.length);
-      if (this.tracks.length > 1 && this.tracks[index] === this.currentTrack) index = (index + 1) % this.tracks.length;
-      this.currentTrack = this.tracks[index];
+      if (!this.queue?.length) {
+        const queue = this.queue = [...this.tracks];
+        for (let i = queue.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [queue[i], queue[j]] = [queue[j], queue[i]];
+        }
+        if (queue.length > 1 && queue[queue.length - 1] === this.currentTrack) [queue[0], queue[queue.length - 1]] = [queue[queue.length - 1], queue[0]];   // spelas från slutet
+      }
+      this.currentTrack = this.queue.pop();
       this.musicElement.src = this.currentTrack;
       this.musicElement.play().catch(() => {});
     },
