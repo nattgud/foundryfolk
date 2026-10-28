@@ -6,10 +6,11 @@
 
   CityBuilder.Changelog = {
     '0.8.9': [
+      'No more giant fields and rings of rock: the Stone desert and Crag levels now only have small outcrops of a few stones, and the Cliff ring, Canyon and Boulder field structures are gone',
       'Spells now have to recharge, so you cannot cast all the time: after a cast the Enchanter rests from 30 seconds (weak spells) up to 3 minutes (strong ones), and that kind of spell (shaping, boosts, weather or combat) is locked for all your Enchanters for as long. The Enchanter shows a timer bar on the map and in its panel, and the Spellbook shows which kinds are recharging',
       'Mountains are rich again: about 40-50% of the inside of every mountain is ore (iron, coal, copper, tin, silver, gold, crystal and a few gemstones), with a plain rim of rock around it. Dig for it with a Rock crusher or build a mine on the deposits you can reach',
       'The Rock crusher now digs with a purpose: it tunnels the shortest way through the mountain to the nearest ore deposit, so you reach the ore inside quickly. It crushes a tile in 15 seconds (was 20)',
-      'Level themes and structures (stone desert, ruins, cursed ground, fungi, boulder fields, cliffs and so on) no longer spill into the middle of mountains: inside a mountain there is only rock and ore',
+      'Level themes and structures (ruins, cursed ground, fungi and so on) no longer spill into the middle of mountains: inside a mountain there is only rock and ore',
       'The Enchanter now has a Spellbook: one open book with all your saved spells listed on the left and the chosen one explained on the right. Pick a kind with the tabs (shaping, boosts, weather, combat), tick Can cast now to see only what you have the ingredients for, and press Cast (or double-click a spell, or Enter). Every spell says in plain words what it does, how far it reaches, how long it lasts and what it costs. The Enchanter\'s panel is no longer filled with one button per spell',
     ],
     '0.8.8': [

@@ -3,7 +3,7 @@
 
    - Each level has its own seed (derived from a "run-seed" + level number), so the same level = the same world.
    - UNIQUE LEVELS: every level gets a distinct combination of a theme (12 material palettes) and a SIGNATURE (12 landscape
-     structures: ring lake, cliff ring, canyon, spiral ...). The combinations are dealt out from a shuffled deck, so no two
+     structures: ring lake, spiral ...). The combinations are dealt out from a shuffled deck, so no two
      levels in a run share one (12 x 12 = 144 combinations for 120 levels). The structure's size, direction and shape
      come from the level seed, so even the same signature looks different from run to run.
    - Rarity: medium, rare, and epic resources become scarcer the higher the level (sawtooth over chapters of 10 levels).
@@ -137,7 +137,7 @@
       c => (stretch(N(c, 38, 501), 2.2) > 0.62 && R(c, 502) < 0.8 ? 'tree' : undefined),
     ] },
     { id: 'barren', noun: 'Stone desert', keep: { tree: 0.25 }, extras: [
-      c => (N(c, 14, 510) > 0.58 && R(c, 511) < 0.5 ? 'rock' : undefined),
+      c => (N(c, 5, 510) > 0.64 && R(c, 511) < 0.6 ? 'rock' : undefined),   // small outcrops, never big fields
       c => (stretch(N(c, 30, 512), 2.2) > 0.7 && R(c, 513) < 0.8 ? 'sand' : undefined),
     ] },
     { id: 'swamp', noun: 'Swamp', keep: {}, extras: [
@@ -156,7 +156,7 @@
       },
     ] },
     { id: 'crag', noun: 'Crag', keep: { tree: 0.6 }, extras: [
-      c => (N(c, 20, 540) > 0.56 && R(c, 541) < 0.6 ? 'rock' : undefined),
+      c => (N(c, 5, 540) > 0.62 && R(c, 541) < 0.6 ? 'rock' : undefined),   // small outcrops, never big fields
       c => (N(c, 70, 542) > 0.6 && N(c, 9, 543) > 0.7 && R(c, 544) < 0.7 ? 'iron_ore' : undefined),
     ] },
     { id: 'cursed', noun: 'Cursed land', keep: {}, extras: [
@@ -223,13 +223,6 @@
         if (Math.abs(d - radius) > width / 2 + (N(c, 7, 701) - 0.5) * 1.5) return undefined;
         return inGap(c, p, 2 + (p.c > 0.5 ? 1 : 0), 4.5) ? 'sand' : 'water';
       } },
-    { id: 'cliffs', name: 'Cliff ring',          // a wall of boulders with a few passes
-      early(c, p) {
-        const radius = 46 + 16 * p.a, width = 4 + 3 * p.b, d = c.distanceFromOrigin;
-        if (Math.abs(d - radius) > width / 2 + (N(c, 6, 711) - 0.5) * 1.6) return undefined;
-        if (inGap(c, p, 2 + (p.c > 0.6 ? 1 : 0), 5)) return undefined;
-        return R(c, 712) < 0.93 ? 'rock' : undefined;
-      } },
     { id: 'river', name: 'River crossing',      // a river with fords, crossing the start area
       near(c, p) {
         const { along, across } = alongAcross(c, p);
@@ -253,14 +246,6 @@
         const density = stretch(N(c, 8, 731), 2.2);
         return density > 0.3 + 0.2 * p.c && R(c, 732) < 0.9 ? 'tree' : undefined;
       } },
-    { id: 'canyon', name: 'Canyon',              // two cliff walls: the start lies in a corridor
-      near(c, p) {
-        const { along, across } = alongAcross(c, p);
-        const half = 14 + 6 * p.a;
-        if (Math.abs(Math.abs(across) - half) > 2.2 + 1.5 * p.b || Math.abs(along) > 95) return undefined;
-        if (((along % 44) + 44) % 44 < 7) return undefined; // passes through the walls
-        return R(c, 741) < 0.94 ? 'rock' : undefined;
-      } },
     { id: 'spiral', name: 'Tree spiral',         // trees grow in a spiral arm
       near(c, p) {
         const d = c.distanceFromOrigin;
@@ -277,14 +262,6 @@
         const d = Math.hypot(c.x - s.x, c.y - s.y), radius = 2 + 3.2 * s.roll + p.b;
         if (d < radius) return 'water';
         if (d < radius + 1.1 && R(c, 761) < 0.9) return 'sand';
-      } },
-    { id: 'boulders', name: 'Boulder field',     // a wedge of rocks: stone for everyone, but the way is blocked
-      near(c, p) {
-        const d = c.distanceFromOrigin;
-        if (d < 26 || d > 85) return undefined;
-        const width = (0.38 + 0.2 * p.a) * Math.PI;
-        if (angleDiff(angleOf(c), p.rot) > width) return undefined;
-        return N(c, 11, 771) > 0.34 && R(c, 772) < 0.8 ? 'rock' : undefined;
       } },
     { id: 'orebelt', name: 'Ore belt',            // a belt of ore clusters in an arc
       early(c, p) {
