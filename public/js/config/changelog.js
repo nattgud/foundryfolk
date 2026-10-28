@@ -5,17 +5,17 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.8.9': [
+      'Mountains are rich again: about 40-50% of the inside of every mountain is ore (iron, coal, copper, tin, silver, gold, crystal and a few gemstones), with a plain rim of rock around it. Dig for it with a Rock crusher or build a mine on the deposits you can reach',
+      'The Rock crusher now digs with a purpose: it tunnels the shortest way through the mountain to the nearest ore deposit, so you reach the ore inside quickly. It crushes a tile in 15 seconds (was 20)',
+      'Level themes and structures (stone desert, ruins, cursed ground, fungi, boulder fields, cliffs and so on) no longer spill into the middle of mountains: inside a mountain there is only rock and ore',
+      'The Enchanter now has a Spellbook you can leaf through: one page per saved spell with its effect, range, duration, essences and ingredients in mixing order (red when you lack them), and Cast, Load into the mixer and Remove right on the page. Turn pages with the arrows, the arrow keys, a swipe or the dots below. The Enchanter\'s panel is no longer filled with one button per spell',
+    ],
     '0.8.8': [
-      'The Enchanter now has a Spellbook you can leaf through: one page per saved spell with its effect, range, duration, essences and ingredients in mixing order (red when you lack them), and Cast, Load into the mixer and Remove right on the page. Turn pages with the arrows, the arrow keys, a swipe or the dots below. The Enchanter\'s panel is no longer filled with one button per spell, and the mixer no longer carries its own list',
-      'Level themes and structures (stone desert, ruins, cursed ground, fungi, boulder fields, cliffs and so on) no longer spill into the middle of mountains. Inside a mountain there is now only rock, a little ore and the odd rare find',
-      'Mountains no longer hold lots of ore. Ore now sits only in a thin band near the edge of a mountain, always shut in behind a few tiles of rock, and otherwise lies scattered over the map as before',
-      'The Rock crusher now digs towards a purpose: from the ground you can walk on, it tunnels the shortest way through the mountain to the nearest deposit the mountain has shut in, so you reach ore that is stuck inside mountains quickly. With no shut-in deposit nearby it digs the nearest mountain tile as before. It also crushes a tile in 15 seconds (was 20)',
       'Carriers: the temporary extra carriers are gone, so the number of carriers is steady (a base number plus a fixed amount per building). To make up for it, buildings now hold more input (four rounds instead of three) and order new input when their stock is down to half, then fill up in one go. That means fewer, calmer orders and a buffer that survives a short delay in the deliveries',
       'Killed carriers are replaced every 5 seconds (was 20), so a base under attack is not left without carriers, while soldiers still have time to attack buildings',
-      'Smoother game: the fog of war is recalculated in five small parts instead of one big one every second, the rain and storm growth is spread over a second, and computer players start thinking at different moments. Together this removes most of the small jolts, especially in games with many players',
       'Computer players now have fog of war exactly like you: they only know and build on what they can see. When they cannot see a resource they need, they build a watchtower towards a new direction, and their scouting towers and outposts are placed within what the previous building can see',
       'Weather now treats every player the same, human or computer: rain and storms grow plants wherever any player sees them, tornadoes and volcanoes pick a random player first and then one of their buildings (so a big base is not hit more often), the goods a tornado drops belong to the player whose land it came from, and the Enchanter\'s Shaping spell checks the fog for the player who casts it. Every player now also has their own resource flows',
-      'The game now simulates in fixed steps of 1/20 second, and the movement is drawn smoothly in between. That costs far less than before at normal speed, gives the same result on fast and slow computers, and is the base for multiplayer and replays. Higher speeds run more steps per second',
       'The background music now plays in a shuffled order: every song is played once, in random order, before any song repeats (before, a song could follow the same song far too often, so the songs seemed to play in a fixed order)',
       'Volcanoes: a rare event (about 2% of weather changes) with a new Lava tile. It starts far from every headquarters, never nearer than 28 tiles, and is announced with a message, an alarm and an orange ring (or arrow) on the minimap. Lava destroys buildings and units on its tiles and scorches the buildings next to it while it is hot',
       'Two kinds of volcano, equally common. Between two islands lava spreads over the water into a 1-3 tile wide link of at most 10 tiles and cools into grass, a new bridge. By the mountains a small uneven patch of lava, 3-5 tiles across, appears next to the mountain and cools into new ore, picked among the kinds you have unlocked with the rarer ones favoured, so it is worth hunting them. The lava spreads one tile every 2-4 seconds and stays hot for another minute or so',
@@ -125,7 +125,6 @@
     '0.7.6': [
       'Soldiers now move between tiles like every other unit and can no longer get stuck in each other. Soldiers standing still on the same tile spread out inside it, and fighting soldiers share a tile',
       'Removed the shading on grass, mountains and water',
-      'Safer game loop: an unexpected error (for example from an old saved game) no longer stops the game',
     ],
     '0.7.5': [
       'Fixed deer coming back after a hunter had killed them: a hunted animal now stays gone',
@@ -185,7 +184,6 @@
       'Rivals now fight each other until level 60; from level 60 they are allied against you',
       'Rival bases are placed at an even distance from you and from each other',
       '"Par time" is now called "target time"',
-      'Faster start: the land around every base is prepared during loading, so the game hitches less when the enemies start building',
     ],
     '0.5.1': [
       'More enemies on later levels: two rivals from level 35 and three from level 70. They are allied against you and their bases are spread apart',
@@ -218,9 +216,8 @@
       'Fog of war: you only see what is near your buildings and units, and explored ground fades back into fog after a while. You cannot build in the fog',
       'New building: Watchtower, which sees far. Deer are only simulated where someone can see them',
       'Smoother loading bar that follows world creation, and scripts now load in parallel',
-      'Islands are now reachable over natural sandbars, and the terrain is drawn from cached tiles for a faster frame rate',
+      'Islands are now reachable over natural sandbars',
       'No more ore stranded on tiny islands or in water, and one-tile-wide streams now have shallow crossings',
-      'Faster simulation: path wear only visits worn tiles, deer activation and terrain noise are cheaper',
       'Buildings and units outside the screen are no longer drawn',
       'World generation: less water and more open grass around both bases, and rival bases are placed on buildable land',
       'Each level now makes sure both bases have the raw materials its new buildings and goals need within reach',
@@ -267,7 +264,6 @@
       'Level progression: levels with goals, par time, stars and new buildings that unlock as you advance',
       'Storage limits per resource, with new Large Warehouse and Great Depot buildings',
       'Resource counters turn orange when storage is full',
-      'Faster pathfinding for large numbers of units',
       'Fixes for buildings stuck with full stock',
       'New Sawmill and Planter buildings',
       'Smoother, rounded worn paths',
@@ -276,7 +272,6 @@
       'Autosave and five manual save slots',
       'Status icons above buildings that need attention',
       'The game pauses when the window loses focus',
-      'Optimizations and balance changes',
     ],
     '0.4.1': [
       'Fishing hut: catch fish from the water',

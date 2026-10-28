@@ -83,7 +83,7 @@
   //   oreShare:      andel av bergets kärna som blir malm
   //   scatteredOre:  chans per ruta att vara ett utspritt malmfynd (före stenvillkoret). Lägre = färre fynd
   //   forest:        faktor på trädens täthet
-  const TUNING = { sea: 0.2, mountain: 0.76, oreShare: 0.40, scatteredOre: 0.01, forest: 1.1 };
+  const TUNING = { sea: 0.2, mountain: 0.76, oreShare: 0.50, scatteredOre: 0.01, forest: 1.1 };
   const tuning = { ...TUNING };
   // Malm utanför berg: enstaka fynd på en eller två rutor, väldigt utspridda och helst intill vanlig sten.
   const SCATTERED_ORE_FAR_CHANCE = 0.2;    // andel av fynden som får ligga utan sten i närheten (1 = överallt, 0 = bara intill sten)
@@ -153,11 +153,10 @@
 
   const isOpenWater = model => model.seaDepth > 0 || model.riverDistance < 0;
 
-  // Malm i bergen: sparsamt och bara i ett band nära kanten, alltid instängd bakom några rutor berg. Inne i bergens mitt finns
-  // ingen malm (den ligger utspridd över kartan, se scatteredOre). Bandets malmandel är tuning.oreShare. Klungbildningen
-  // flyttar den lokalt men inte i snitt (exklusive svavel och månsten).
+  // Malm inne i bergen: ungefär så här stor andel av bergsrutorna blir malm (tuning.oreShare, exklusive svavel och månsten).
+  // Mängden är en slumpandel per ruta, så den ligger nära målet oavsett hur bruset ser ut. Klungbildningen
+  // flyttar den lokalt men inte i snitt.
   const MOUNTAIN_ORE_MARGIN = 0.03; // hur mycket högre än bergets kant en ruta måste ligga för att få malm (större = bredare malmfri kant)
-  const MOUNTAIN_ORE_BAND = 0.08;  // bandets tjocklek ovanför marginalen (större = djupare in i berget kan malmen ligga)
   // Bas-vikter (summan 1) för vilken malm en malmruta i berg blir. Provinser (brus) förskjuter dem regionalt.
   const MOUNTAIN_ORE_MIX = [
     // [terräng, vikt, provinskanal (samma kanal = samma provins, så brons-malmerna hamnar nära varandra)]
@@ -178,7 +177,7 @@
 
   const mountainOre = (context, model) => {
     const { x, y } = context;
-    if (!model.coreMountain || model.mountainDepth > MOUNTAIN_ORE_MARGIN + MOUNTAIN_ORE_BAND) return; // yttersta kanten och bergets mitt är bara berg
+    if (!model.coreMountain) return; // bergets kant är bara berg
     const cluster = fbm(context, x, y, 9, 400, 1.0);
     const chance = clamp01(tuning.oreShare + (cluster - 0.5) * 0.9);
     if (random(context, x, y, 401) >= chance) return;

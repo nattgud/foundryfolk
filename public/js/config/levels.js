@@ -770,7 +770,7 @@
       rivals: settings.enemies.length, teams, aiLevels,
       seed: settings.seed,
       keep, twists: [],
-      tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.85, 0.4 * richness), scatteredOre: 0.01 * richness * richness, forest: FOREST[settings.forest] },
+      tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.85, 0.50 * richness), scatteredOre: 0.01 * richness * richness, forest: FOREST[settings.forest] },
       unlocks: [],
       goal: { items: [{ key: 'm:eliminate', type: 'eliminate', amount: settings.enemies.filter(enemy => enemy.team !== 'you').length }], par: 0 },
       needs: ['iron_ore', 'tree', 'rock', 'clay', 'coal'],
