@@ -6,7 +6,7 @@
   const { Config, World, Utils, Jobs, Economy, Behaviors, Players } = CityBuilder;
 
   // Standardvärden: saknas en inställning i cfg() används dessa (planeringen stannar annars helt)
-  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, requestsPerSite: 4, baseCarriers: 5, elastic: { share: 0.5, after: 4, grow: 1, shrink: 8 }, pileShare: 0.5, pileRecent: 10, carriersPerBuilding: 1, carriersPerStorage: 5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40, unreachableSeconds: 30 }, Config.settings.logistics);
+  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, requestsPerSite: 4, baseCarriers: 5, pileShare: 0.5, pileRecent: 10, carriersPerBuilding: 1, carriersPerStorage: 5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40, unreachableSeconds: 30 }, Config.settings.logistics);
 
   const Logistics = {
     tasks: [],              // äldsta först
@@ -15,8 +15,6 @@
     pileLoad: {},           // spelare -> antal uppdrag från högar (räknas separat från load)
     load: {},               // spelare -> antal väntande uppdrag (maxTasks gäller per spelare)
     lost: {},               // spelare -> tider då dödade bärare ersätts (en i taget, carrierRespawnSeconds emellan)
-    ordinary: {},           // spelare -> ordinarie antal bärare (utan extrabärare), för visningen
-    elastic: {},            // spelare -> { extra: antal tillfälliga extrabärare, next: tidigast nästa ändring } (se elastic i inställningarna)
     busyAt: {},             // spelare -> senaste tid då annat arbete än högar väntade
                // spelare -> tider då dödade bärare ersätts (en i taget, carrierRespawnSeconds emellan)
     unreachable: new Map(), // "källa>mål" -> tid då paret får provas igen (efter att en bärare inte hittade någon väg)
@@ -154,18 +152,6 @@
       queue.push(Math.max(this.time || 0, queue[queue.length - 1] ?? 0) + Config.settings.military.carrierRespawnSeconds);
     },
 
-    // Extrabärare för en spelare: växer när uppdrag blir stående (utom högar) och krymper långsamt när allt är hämtat
-    elasticExtra(player, ordinary) {
-      const { share, after, grow, shrink } = cfg().elastic, now = this.time || 0;
-      const state = this.elastic[player] = this.elastic[player] || { extra: 0, next: 0 };
-      const stalled = this.tasks.filter(task => task.source.player === player && !task.source.definition.pile && now - task.created > after).length;
-      const cap = Math.ceil(ordinary * share);
-      if (stalled > 0) {
-        if (now >= state.next && state.extra < cap) { state.extra = Math.min(cap, state.extra + Math.ceil(stalled / 4)); state.next = now + grow; }
-      } else if (state.extra > 0 && now >= state.next) { state.extra--; state.next = now + shrink; }
-      return Math.min(state.extra, cap);
-    },
-
     // Antalet bärare följer byggnaderna: bas + 1 per färdig byggnad + 5, 10 respektive 25 per färdigt lager, lagerhus och depå (definition.carriers, per spelare). Rivs eller förstörs något
     // minskar antalet igen: överskott tas bort när bärarna är lediga.
     balanceCarriers() {
@@ -180,8 +166,7 @@
           wanted += building.definition.carriers ?? (building.definition.isStorage ? carriersPerStorage : carriersPerBuilding);
         }
         const waiting = (this.lost[player] = (this.lost[player] || []).filter(time => time > (this.time || 0))).length; // dödade, ännu inte ersatta
-        const ordinary = this.ordinary[player] = Math.max(0, baseCarriers + wanted - waiting);
-        const target = ordinary + this.elasticExtra(player, ordinary);
+        const target = Math.max(0, baseCarriers + wanted - waiting);
 
         const carriers = haulers.get(player) || [];
         for (let count = carriers.length; count < target; count++) World.spawnUnit('carrier', hq.x, hq.y, null, player);
@@ -200,6 +185,14 @@
       return [...rotated.filter(building => building.prioritized), ...rotated];
     },
 
+    // Ett hus fyller på först när lagret (med det som är på väg) sjunkit till refillBelow av kapaciteten, och sedan till full kapacitet: färre och jämnare beställningar
+    needsRefill(building, key, have, capacity) {
+      const state = building.refilling ||= {};
+      if (have >= capacity) state[key] = false;
+      else if (have <= capacity * cfg().refillBelow) state[key] = true;
+      return !!state[key];
+    },
+
     requestMissingInputs() { // hus som behöver indata beställer från närmaste källa
       const { requestsPerBuilding } = cfg();
       const count = World.buildings.length;
@@ -212,7 +205,8 @@
         if (building.buildProgress < 1) { if (building.needsMaterials) this.requestSiteMaterials(building); continue; }
         if (!building.definition.job) continue;
         for (const [resourceId, capacity] of Object.entries(Behaviors.requiredResources(building))) {
-          const missing = capacity - (building.inputStock[resourceId] || 0) - (building.incomingCount[resourceId] || 0);
+          const have = (building.inputStock[resourceId] || 0) + (building.incomingCount[resourceId] || 0), missing = capacity - have;
+          if (!this.needsRefill(building, resourceId, have, capacity)) continue;
           for (let requested = 0; requested < Math.min(requestsPerBuilding, missing) && !this.full(building.player); requested++) {
             const supplier = this.findSupplier(resourceId, building);
             if (!supplier || this.waitForProducer(building, resourceId, supplier, (building.inputStock[resourceId] || 0) + (building.incomingCount[resourceId] || 0))) break;
@@ -221,7 +215,8 @@
         }
         for (const group of Behaviors.eatGroups(building)) {
           const incoming = group.any.reduce((sum, id) => sum + (building.incomingCount[id] || 0), 0);
-          const missing = (group.capacity || 2) - Behaviors.eatStock(building, group) - incoming;
+          const capacity = group.capacity || 2, have = Behaviors.eatStock(building, group) + incoming, missing = capacity - have;
+          if (!this.needsRefill(building, group.any.join('/'), have, capacity)) continue;
           for (let requested = 0; requested < Math.min(requestsPerBuilding, missing) && !this.full(building.player); requested++) {
             const pick = this.findAlternativeSupplier(group.any, building);
             if (!pick || this.waitForProducer(building, pick.resource, pick.source, Behaviors.eatStock(building, group) + incoming)) break;

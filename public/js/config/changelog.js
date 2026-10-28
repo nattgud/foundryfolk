@@ -6,6 +6,9 @@
 
   CityBuilder.Changelog = {
     '0.8.8': [
+      'Carriers: the temporary extra carriers are gone, so the number of carriers is steady (a base number plus a fixed amount per building). To make up for it, buildings now hold more input (four rounds instead of three) and order new input when their stock is down to half, then fill up in one go. That means fewer, calmer orders and a buffer that survives a short delay in the deliveries',
+      'Killed carriers are replaced every 5 seconds (was 20), so a base under attack is not left without carriers, while soldiers still have time to attack buildings',
+      'Smoother game: the fog of war is recalculated in five small parts instead of one big one every second, the rain and storm growth is spread over a second, and computer players start thinking at different moments. Together this removes most of the small jolts, especially in games with many players',
       'Computer players now have fog of war exactly like you: they only know and build on what they can see. When they cannot see a resource they need, they build a watchtower towards a new direction, and their scouting towers and outposts are placed within what the previous building can see',
       'Weather now treats every player the same, human or computer: rain and storms grow plants wherever any player sees them, tornadoes and volcanoes pick a random player first and then one of their buildings (so a big base is not hit more often), the goods a tornado drops belong to the player whose land it came from, and the Enchanter\'s Shaping spell checks the fog for the player who casts it. Every player now also has their own resource flows',
       'The game now simulates in fixed steps of 1/20 second, and the movement is drawn smoothly in between. That costs far less than before at normal speed, gives the same result on fast and slow computers, and is the base for multiplayer and replays. Higher speeds run more steps per second',

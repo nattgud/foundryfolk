@@ -26,7 +26,7 @@
 
     reset() {
       const settings = Config.settings.weather;
-      Object.assign(this, { time: settings.dayLength * settings.startFraction, type: 'clear', left: between([settings.minSeconds, settings.maxSeconds]), scanIn: 0, tornadoIn: 0, flash: 0, flashIn: 8, tornadoes: [], volcanoes: [] });
+      Object.assign(this, { time: settings.dayLength * settings.startFraction, type: 'clear', left: between([settings.minSeconds, settings.maxSeconds]), scanIn: 0, scan: null, tornadoIn: 0, flash: 0, flashIn: 8, tornadoes: [], volcanoes: [] });
     },
 
     snapshot() { return { time: this.time, type: this.type, left: this.left, tornadoes: this.tornadoes, volcanoes: this.volcanoes }; },
@@ -55,7 +55,7 @@
 
     // Alla växtrutor i de chunkar som spelaren ser
     // (med zone { x, y, radius }: bara växterna inom den, annars alla)
-    forEachPlant(visit, zone) {
+    forEachPlant(visit, zone, chunks = Vision.activeChunks) {
       const size = Config.settings.chunkSize, growth = Config.settings.weather.growth;
       const check = (x, y) => {
         const tile = World.getTile(x, y);
@@ -66,7 +66,7 @@
         for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) if (Utils.distance(dx, dy) <= zone.radius) check(zone.x + dx, zone.y + dy);
         return;
       }
-      for (const { cx, cy } of Vision.activeChunks) {
+      for (const { cx, cy } of chunks) {
         const left = cx * size, top = cy * size, key = Utils.tileKey(cx, cy);
         const tiles = World.chunks.get(key) || (World.getTile(left, top), World.chunks.get(key));   // rutorna ligger rad för rad i chunken
         for (let row = 0, i = 0; row < size; row++) for (let column = 0; column < size; column++, i++) {
@@ -83,15 +83,15 @@
     isFree(x, y) { const tile = World.getTile(x, y); return !!tile && tile.terrainType === 'grass' && !tile.wear && !World.buildingAt(x, y); },
 
     // Regn eller storm på växterna: hela kartan, eller bara inom en trollformels zon (zone.factor ökar chansen)
-    affectPlants(type = this.type, zone) {
+    affectPlants(type = this.type, zone, chunks) {
       const settings = Config.settings.weather, boost = zone?.factor || 1;
       if (type === 'rain') {
         this.forEachPlant(tile => {
           if (Utils.random() < settings.rain.chance * boost) tile.remainingAmount = Math.min(tile.remainingAmount + 1, Math.ceil(Config.terrain[tile.terrainType].resourceAmount * settings.rain.cap));
-        }, zone);
+        }, zone, chunks);
       } else if (type === 'storm') {
         const moves = [];
-        this.forEachPlant((tile, x, y) => { if (Utils.random() < settings.storm.chance * boost) moves.push({ tile, x, y }); }, zone);
+        this.forEachPlant((tile, x, y) => { if (Utils.random() < settings.storm.chance * boost) moves.push({ tile, x, y }); }, zone, chunks);
         for (const { tile, x, y } of moves) {
           const spots = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].filter(([dx, dy]) => this.isFree(x + dx, y + dy));
           if (!spots.length) continue;
@@ -405,7 +405,15 @@
     update(deltaSeconds) {
       Weather.time += deltaSeconds;
       if ((Weather.left -= deltaSeconds) <= 0) Weather.next();
-      if ((Weather.scanIn -= deltaSeconds) <= 0) { Weather.scanIn = Config.settings.weather.scanSeconds; Weather.affectPlants(); }
+      if ((Weather.scanIn -= deltaSeconds) <= 0) {   // en ny skanning: chunkarna delas på flera steg (spridda över scanSpreadSeconds), så att kostnaden blir jämn
+        Weather.scanIn = Config.settings.weather.scanSeconds;
+        if ((Weather.type === 'rain' || Weather.type === 'storm') && !Weather.scan) Weather.scan = { type: Weather.type, chunks: [...Vision.activeChunks], next: 0 };
+      }
+      if (Weather.scan) {
+        const scan = Weather.scan, perStep = Math.max(1, Math.ceil(scan.chunks.length * deltaSeconds / Config.settings.weather.scanSpreadSeconds));
+        Weather.affectPlants(scan.type, undefined, scan.chunks.slice(scan.next, scan.next += perStep));
+        if (scan.next >= scan.chunks.length) Weather.scan = null;
+      }
       Weather.updateTornadoes(deltaSeconds);
       Weather.updateVolcanoes(deltaSeconds);
       if (Weather.type === 'storm' && (Weather.flashIn -= deltaSeconds) <= 0) { Weather.flash = 1; Weather.flashIn = 6 + Math.random() * 9; CityBuilder.Sound?.play('weather.thunder'); }   // blixt

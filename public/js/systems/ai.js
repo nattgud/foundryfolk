@@ -77,8 +77,11 @@
       this.time += deltaSeconds;
       for (const player of Players.active) {
         if (!Players.isAI(player) || !World.hqOf(player)) continue;
-        const state = this.players.get(player) || { timer: 0, blocked: {}, short: {} };
-        this.players.set(player, state);
+        let state = this.players.get(player);
+        if (!state) {   // slumpad starttid (seedad), så att alla datorspelare inte tänker i samma steg
+          this.current = player;
+          this.players.set(player, state = { timer: Utils.random() * this.interval(), blocked: {}, short: {} });
+        }
         if ((state.timer -= deltaSeconds) > 0) continue;
         this.current = player;
         state.timer = this.interval();

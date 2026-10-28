@@ -4,7 +4,7 @@ CityBuilder.Config.settings = {
   tileSize: 36,                  // pixlar per ruta vid zoom 1
   walkSpeed: 1,                  // rutor per sekund på gräs
   buildDurationSeconds: 1,
-  inputBufferFactor: 3,           // ett hus håller så många omgångar indata (insats per omgång * detta)
+  inputBufferFactor: 4,           // ett hus håller så många omgångar indata (insats per omgång * detta)
   outputBufferCapacity: 20,       // max i utbuffert innan producenten pausar
   flushThreshold: 0,             // överskott över detta skickas till lagret
   carriersPerBuilding: 3,
@@ -40,9 +40,9 @@ CityBuilder.Config.settings = {
     maxTasks: 8,
     requestsPerBuilding: 4,
     baseCarriers: 20,
-    // Extra bärare när uppdrag blir stående: uppdrag som väntat mer än 'after' s (högar räknas inte) ger tillfälliga bärare, upp till 'share' av ordinarie antal,
-    // som tas bort igen en i taget ('shrink' s emellan) när ingenting väntar längre
-    elastic: { share: 0.5, after: 4, grow: 1, shrink: 8 },
+    // Ett hus beställer nya insatser först när lagret (med det som är på väg) sjunkit till 'refillBelow' av kapaciteten, och fyller sedan på till full
+    // kapacitet. Det ger färre och jämnare beställningar, och en buffert som tål att leveranserna dröjer en stund (så att inga extrabärare behövs).
+    refillBelow: 0.5,
     // Högar (t.ex. efter en tornado) töms med högst så stor andel av bärarna så länge annat arbete väntar eller nyss väntade ('recent' s)
     pileShare: 0.5, pileRecent: 10,
     lowStock: 20
@@ -118,7 +118,7 @@ CityBuilder.Config.settings = {
     projectileMinSeconds: 0.2,
     projectileMaxSeconds: 0.5,
     workerRespawnSeconds: 60,  // tid innan en dödad arbetare ersätts
-    carrierRespawnSeconds: 20, // tid mellan att dödade bärare ersätts (en i taget per spelare)
+    carrierRespawnSeconds: 5,  // tid mellan att dödade bärare ersätts (en i taget per spelare). Kort nog att basen inte står utan bärare, men så lång att soldaterna inte fastnar i att jaga dem
   },
   // Fog of war (systems/vision.js). Radier i rutor, tider i sekunder speltid.
   vision: {
@@ -139,6 +139,7 @@ CityBuilder.Config.settings = {
     chances: { clear: 52, rain: 18, storm: 10, fog: 14, tornado: 4, volcano: 2 },   // volcano: ingen väderruta utan en händelse; vädret blir klart medan lavan rinner
     growth: { tree: 'wood', apple_tree: 'apples', berry_bush: 'berries', herbs: 'herbs', mushrooms: 'mushrooms' },
     scanSeconds: 2,
+    scanSpreadSeconds: 1,                  // en skanning delas på så lång speltid (några chunkar per steg), så att kostnaden blir jämn
     rain: { chance: 0.08, cap: 2 },        // chans per skanning att en växt får +1 mängd, högst cap gånger terrängens normala mängd
     storm: { chance: 0.006 },              // chans per skanning att en växt blåser till en ledig grannruta
     fog: { vision: 0.55 },                 // andel av synfältet som finns kvar

@@ -18,6 +18,7 @@
   const CHUNK_CELLS = 8;                                  // celler per chunk och led (2^SHIFT)
   const SHIFT = 3;
   const MASK = CHUNK_CELLS - 1;
+  const PHASES = 5;                                       // omräkningen av synfältet delas på så många steg (se refreshPart)
   const cellSize = () => Config.settings.chunkSize / CHUNK_CELLS;  // rutor per cell
 
   const Vision = {
@@ -25,6 +26,7 @@
     grids: new Map(),              // spelare -> Map(chunknyckel -> { cx, cy, cells: Float64Array })
     activeChunks: [],              // { cx, cy } för chunkar som någon spelare ser
     nextRefresh: 0,
+    phase: -1,                     // pågående del av omräkningen (-1 = ingen)
     version: 0,                    // ökar när synfältet räknats om (renderingen cachar dimman så länge den är oförändrad)
     discs: new Map(),              // räckvidd -> cellförskjutningar inom cirkeln
     maskData: new WeakMap(),       // canvas -> ImageData
@@ -32,7 +34,7 @@
 
     // Nollställer allt (ny värld)
     reset() {
-      this.time = 0; this.nextRefresh = 0;
+      this.time = 0; this.nextRefresh = 0; this.phase = -1;
       this.grids.clear(); this.activeChunks = []; this.memory.clear();
     },
 
@@ -124,32 +126,47 @@
       }
     },
 
-    // Stämplar om alla observatörer och bygger om listan över chunkar som någon ser
+    // Stämplar om alla observatörer och bygger om listan över chunkar som någon ser, allt på en gång (vid start och laddning).
+    // Under spelet delas omräkningen på PHASES simuleringssteg (se Systems.vision), så att kostnaden blir jämn i stället för en spik varje sekund.
     refresh() {
-      const settings = Config.settings.vision, expiry = this.time + settings.ttl, sight = CityBuilder.Weather.visionFactor();   // dimma kortar alla synfält
-      const reach = radius => Math.max(2, Math.round(radius * sight));
-      this.nextRefresh = this.time + settings.interval;
-      this.version++;
-      for (const building of World.buildings) {
-        if (building.buildProgress < 1 || building.definition.pile) continue;
-        this.stamp(building.player, building.x + .5, building.y + .5, reach(building.definition.vision ?? settings.building), expiry);
-      }
-      for (const unit of World.units) {
-        if (unit.player === Players.NEUTRAL) continue;
-        this.stamp(unit.player, unit.x, unit.y, reach(unit.definition.vision ?? (unit.definition.isSoldier ? settings.soldier : settings.unit)), expiry);
-      }
+      for (let phase = 0; phase < PHASES; phase++) this.refreshPart(phase);
+      this.phase = -1;
+    },
 
-      for (const set of this.memory.values()) for (const building of set) if (building.removed) set.delete(building);
-
-      const active = new Map();
-      for (const grid of this.grids.values()) {
-        for (const [key, chunk] of grid) {
-          if (active.has(key)) continue;
-          if (chunk.cells.some(until => until > this.time)) active.set(key, chunk);
-          else if (chunk.cells.every(until => until < this.time - 60)) grid.delete(key); // glömda chunkar släpps
+    // Del 0: byggnaderna (och tid och räckvidd för hela omräkningen), del 1-3: en tredjedel av enheterna var, del 4: minnet, glömda chunkar och aktiva chunkar
+    refreshPart(phase) {
+      const settings = Config.settings.vision;
+      if (phase === 0) {
+        this.pass = { expiry: this.time + settings.ttl, sight: CityBuilder.Weather.visionFactor() };   // dimma kortar alla synfält
+        this.nextRefresh = this.time + settings.interval;
+      }
+      const { expiry, sight } = this.pass, reach = radius => Math.max(2, Math.round(radius * sight));
+      if (phase === 0) {
+        for (const building of World.buildings) {
+          if (building.buildProgress < 1 || building.definition.pile) continue;
+          this.stamp(building.player, building.x + .5, building.y + .5, reach(building.definition.vision ?? settings.building), expiry);
         }
+      } else if (phase < PHASES - 1) {
+        const units = World.units, parts = PHASES - 2;
+        for (let i = Math.floor(units.length * (phase - 1) / parts), end = Math.floor(units.length * phase / parts); i < end; i++) {
+          const unit = units[i];
+          if (unit.player === Players.NEUTRAL) continue;
+          this.stamp(unit.player, unit.x, unit.y, reach(unit.definition.vision ?? (unit.definition.isSoldier ? settings.soldier : settings.unit)), expiry);
+        }
+      } else {
+        this.version++;
+        for (const set of this.memory.values()) for (const building of set) if (building.removed) set.delete(building);
+
+        const active = new Map();
+        for (const grid of this.grids.values()) {
+          for (const [key, chunk] of grid) {
+            if (active.has(key)) continue;
+            if (chunk.cells.some(until => until > this.time)) active.set(key, chunk);
+            else if (chunk.cells.every(until => until < this.time - 60)) grid.delete(key); // glömda chunkar släpps
+          }
+        }
+        this.activeChunks = [...active.values()];
       }
-      this.activeChunks = [...active.values()];
     },
 
     // Fyller canvasen (en pixel per cell, cols x rows från cell minCellX, minCellY) med dimmans täckning som alfa:
@@ -180,9 +197,13 @@
   CityBuilder.Systems.vision = {
     update(deltaSeconds) {
       Vision.time += deltaSeconds;
-      if (Vision.time < Vision.nextRefresh) return;
-      Vision.refresh();
-      CityBuilder.Animals.updateActivation();
+      if (Vision.phase < 0) {
+        if (Vision.time < Vision.nextRefresh) return;
+        Vision.phase = 0;
+      }
+      Vision.refreshPart(Vision.phase);
+      Vision.phase = Vision.phase + 1 < PHASES ? Vision.phase + 1 : -1;
+      if (Vision.phase < 0) CityBuilder.Animals.updateActivation();
     },
   };
 })(window.CityBuilder);
