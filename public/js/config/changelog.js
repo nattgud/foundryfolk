@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.8': [
+      'The Enchanter now has a Spellbook you can leaf through: one page per saved spell with its effect, range, duration, essences and ingredients in mixing order (red when you lack them), and Cast, Load into the mixer and Remove right on the page. Turn pages with the arrows, the arrow keys, a swipe or the dots below. The Enchanter\'s panel is no longer filled with one button per spell, and the mixer no longer carries its own list',
       'Level themes and structures (stone desert, ruins, cursed ground, fungi, boulder fields, cliffs and so on) no longer spill into the middle of mountains. Inside a mountain there is now only rock, a little ore and the odd rare find',
       'Mountains no longer hold lots of ore. Ore now sits only in a thin band near the edge of a mountain, always shut in behind a few tiles of rock, and otherwise lies scattered over the map as before',
       'The Rock crusher now digs towards a purpose: from the ground you can walk on, it tunnels the shortest way through the mountain to the nearest deposit the mountain has shut in, so you reach ore that is stuck inside mountains quickly. With no shut-in deposit nearby it digs the nearest mountain tile as before. It also crushes a tile in 15 seconds (was 20)',

@@ -282,7 +282,7 @@
         { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'Imports are on the left of the arrow and exports on the right. Tools the building needs are shown next to its name. They are delivered once and never used up.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
         { title: 'Tools', lines: ['Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.', 'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and the Toolsmith makes more once it unlocks. It makes the tool you have least of, and you can switch tools on or off in its panel.', 'Hammers are different: they are used up when you build larger buildings. Fine buildings also use limestone, bronze and steel.'] },
         { title: 'Food and meals', lines: ['Miners get hungry. Meat, fish or bread keeps a basic mine going, but the deep mines (gold, silver, gemstones, salt and sulfur) want proper meals from a Kitchen.', 'A Kitchen cooks meals from meat, fish, flour, apples, berries and mushrooms. Tap it to change the recipe.'] },
-        { title: 'Mixing spells', lines: ['Select the Enchanter and tap Mix a spell. Put up to five ingredients in the slots, with the amount of each. Every ingredient carries essences (growth, fire, earth, air, water, spirit, death), and the strongest essence decides what the spell does while the second adds a twist or a side effect. The first slot counts most and each ingredient bends the next, so the same ingredients in another order make another spell. The Moon and the Sun are free ingredients that are only there at night and by day.', 'The mixer shows the essences, the effect and the cost as you go. Save a mix to the grimoire to cast it again with one tap, then tap the map within reach of the Enchanter. Rain and storm spells only affect plants, so they need some in the area.', 'Water on its own makes local rain, with fire or air a storm, with spirit it clears the whole sky of fog, storm and tornadoes for a while, and with death it raises a tornado on the spot.'] },
+        { title: 'Mixing spells', lines: ['Select the Enchanter and tap Mix a spell. Put up to five ingredients in the slots, with the amount of each. Every ingredient carries essences (growth, fire, earth, air, water, spirit, death), and the strongest essence decides what the spell does while the second adds a twist or a side effect. The first slot counts most and each ingredient bends the next, so the same ingredients in another order make another spell. The Moon and the Sun are free ingredients that are only there at night and by day.', 'The mixer shows the essences, the effect and the cost as you go. Save a mix to the grimoire, then open the Spellbook, turn to its page and tap Cast, and tap the map within reach of the Enchanter. Rain and storm spells only affect plants, so they need some in the area.', 'Water on its own makes local rain, with fire or air a storm, with spirit it clears the whole sky of fog, storm and tornadoes for a while, and with death it raises a tornado on the spot.'] },
         { title: 'Leftovers and spells', lines: ['Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones. They are only kept when there is room, so they never hold up the main product.', 'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach. Some spells create new trees, berries, rocks or ore on free grass around the spot. Others speed up workers, carriers or workshops for a while, double the output of buildings, make animals breed wildly, or leave enemy soldiers with a quarter of their health. A spell costs goods from your store, and each enchanter rests a short while after casting.'] },
         { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
         { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25. Coins are made at the Mint from silver and gold, and are only good for trading.'] },
@@ -647,7 +647,7 @@
         if (event.key === 'Escape' && this.resourceWindowOpen) {
           this.toggleResourceWindow(false);
         }
-        if (event.key === 'Escape') { this.closeMarket(); this.closeWorkshop(); }
+        if (event.key === 'Escape') { this.closeMarket(); this.closeWorkshop(); this.closeSpellbook(); }
       };
 
       document.addEventListener('keydown', this.resourceEscapeHandler);
@@ -1131,8 +1131,7 @@
       }
       state.hint = make('div', 'workshop-note', t('The first ingredient counts most, and each ingredient bends the next one: the order changes the spell.'));
       state.preview = make('div', 'workshop-preview');
-      state.book = make('div', 'workshop-book');
-      body.append(slots, state.hint, state.preview, state.book);
+      body.append(slots, state.hint, state.preview);
 
       const footer = make('footer', 'workshop-footer');
       state.save = button(t('Save to grimoire'), () => {
@@ -1150,7 +1149,7 @@
         this.closeWorkshop();
       });
       state.cast.classList.add('workshop-cast');
-      footer.append(state.save, state.cast);
+      footer.append(button(t('Spellbook'), () => { const building = state.building; this.closeWorkshop(); this.openSpellbook(building); }), state.save, state.cast);
 
       dialog.append(header, body, footer);
       overlay.appendChild(dialog);
@@ -1183,15 +1182,8 @@
         row.clear.disabled = !slot.id;
       });
 
-      const spell = Spells.evaluate(mix), found = Spells.essences(mix);
-      const lines = [];
-      if (found) {
-        const names = Object.keys(config.essences);
-        lines.push('<div class="workshop-bars">' + names.map((name, i) => {
-          const essence = config.essences[name], percent = Math.round(found.totals[i] / found.sum * 100);
-          return `<div class="workshop-bar" title="${t(essence.name)} ${percent}%"><span>${t(essence.name)}</span><i><b style="width:${percent}%;background:${essence.color}"></b></i></div>`;
-        }).join('') + '</div>');
-      }
+      const spell = Spells.evaluate(mix);
+      const lines = [this.essenceBarsHtml(mix)];
       if (spell) {
         lines.push(`<div class="workshop-name">${this.spellName(spell)}</div>`, `<div>${this.spellEffect(spell)}</div>`,
           `<div>${this.resourceIconsHtml(spell.cost, true)}${spell.sky ? ` <span class="info-dim">${spell.sky === 'night' ? '🌙 ' + t('Night only') : '☀️ ' + t('Day only')}</span>` : ''}</div>`);
@@ -1205,20 +1197,141 @@
       state.cast.title = rest ? t('The enchanter is resting') : '';
       state.save.disabled = !spell || duplicate || Spells.book.length >= config.maxBook;
       state.save.title = duplicate ? t('Already in the grimoire') : Spells.book.length >= config.maxBook ? t('The grimoire is full') : '';
+    },
 
-      state.book.replaceChildren(...Spells.book.map((recipe, index) => {
-        const item = document.createElement('div'), load = document.createElement('button'), drop = document.createElement('button'), made = Spells.evaluate(recipe.mix);
-        item.className = 'workshop-recipe';
-        load.type = drop.type = 'button';
-        load.innerHTML = `${made ? this.spellName(made) : '?'} ${this.resourceIconsHtml(made?.cost || {})}`;
-        load.title = t('Load into the mixer');
-        load.onclick = () => { state.mix = Array.from({ length: config.slots }, (_, i) => ({ ...(recipe.mix[i] || { id: '', amount: 1 }) })); this.updateWorkshop(); };
-        drop.textContent = '×';
-        drop.title = t('Remove');
-        drop.onclick = () => { Spells.book.splice(index, 1); Spells.persist(); byId('info').dataset.buildingId = ''; this.updateWorkshop(); };
-        item.append(load, drop);
-        return item;
+    // ---- Trollboken: bläddra bland de sparade formlerna, en sida per formel. Kasta, ändra i blandaren eller ta bort ------------------
+
+    openSpellbook(building) {
+      this.hideTooltip();
+      if (!this.spellbook) this.createSpellbook();
+      const state = this.spellbook;
+      state.building = building;
+      state.wasPaused = CityBuilder.Game.paused;
+      CityBuilder.Game.paused = true;
+      state.overlay.hidden = false;
+      this.updateSpellbook();
+    },
+
+    closeSpellbook() {
+      const state = this.spellbook;
+      if (!state || state.overlay.hidden) return;
+      state.overlay.hidden = true;
+      CityBuilder.Game.paused = state.wasPaused;
+    },
+
+    createSpellbook() {
+      const make = (tag, className, text) => Object.assign(document.createElement(tag), { className, ...(text !== undefined ? { textContent: text } : {}) });
+      const button = (text, onclick, title) => { const element = make('button', '', text); element.type = 'button'; element.onclick = onclick; if (title) element.title = title; return element; };
+      const Spells = CityBuilder.Spells;
+      const state = this.spellbook = { page: 0 };
+      const overlay = state.overlay = make('div', 'resource-window-overlay');
+      overlay.hidden = true;
+      const dialog = make('section', 'resource-window spellbook-window');
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+      const close = button('×', () => this.closeSpellbook());
+      close.className = 'resource-window-close';
+      const header = make('header', 'resource-window-header');
+      state.counter = make('span', 'info-dim');
+      header.append(make('strong', '', t('Spellbook')), state.counter, close);
+
+      const turn = delta => () => { state.page += delta; this.updateSpellbook(); };
+      state.previous = button('‹', turn(-1), t('Previous page'));
+      state.next = button('›', turn(1), t('Next page'));
+      state.previous.className = state.next.className = 'spellbook-turn';
+      state.content = make('div', 'spellbook-page');
+      const spread = make('div', 'spellbook-spread');
+      spread.append(state.previous, state.content, state.next);
+      state.dots = make('div', 'spellbook-dots');
+
+      const footer = make('footer', 'workshop-footer');
+      state.remove = button(t('Remove'), () => {
+        Spells.book.splice(state.page, 1);
+        Spells.persist();
+        byId('info').dataset.buildingId = '';   // förtrollarens panel ritas om med nya antalet
+        this.updateSpellbook();
+      });
+      state.remove.className = 'spellbook-remove';
+      state.edit = button(t('Load into the mixer'), () => {
+        const recipe = Spells.book[state.page], building = state.building;
+        if (!this.workshop) this.createWorkshop();
+        this.workshop.mix = Array.from({ length: Config.buildings.enchanter.mixing.slots }, (_, i) => ({ ...(recipe.mix[i] || { id: '', amount: 1 }) }));
+        this.closeSpellbook();
+        this.openWorkshop(building);
+      });
+      state.cast = button(t('Cast'), () => {
+        const spell = Spells.evaluate(Spells.book[state.page].mix), building = state.building;
+        this.closeSpellbook();
+        CityBuilder.Game.beginSpell(building, spell);
+      });
+      state.cast.classList.add('workshop-cast');
+      footer.append(state.remove, state.edit, state.cast);
+
+      // Bläddra med piltangenterna eller genom att dra åt sidan
+      document.addEventListener('keydown', event => {
+        if (overlay.hidden || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
+        (event.key === 'ArrowLeft' ? state.previous : state.next).click();
+      });
+      let startX = null;
+      state.content.addEventListener('pointerdown', event => { startX = event.clientX; });
+      state.content.addEventListener('pointerup', event => {
+        if (startX !== null && Math.abs(event.clientX - startX) > 50) (event.clientX < startX ? state.next : state.previous).click();
+        startX = null;
+      });
+
+      dialog.append(header, spread, state.dots, footer);
+      overlay.appendChild(dialog);
+      overlay.addEventListener('pointerdown', event => { if (event.target === overlay) this.closeSpellbook(); });
+      document.body.appendChild(overlay);
+    },
+
+    updateSpellbook() {
+      const state = this.spellbook, config = Config.buildings.enchanter.mixing, Spells = CityBuilder.Spells;
+      const pages = Spells.book.length;
+      state.page = Math.max(0, Math.min(state.page, pages - 1));
+      const recipe = Spells.book[state.page], spell = recipe && Spells.evaluate(recipe.mix);
+      const rest = state.building?.spellCooldown > 0;
+      state.counter.textContent = pages ? t('Page {n} of {total}', { n: state.page + 1, total: pages }) : '';
+      state.previous.disabled = state.page <= 0;
+      state.next.disabled = state.page >= pages - 1;
+      state.remove.disabled = state.edit.disabled = !spell;
+      state.cast.disabled = !spell || rest;
+      state.cast.title = rest ? t('The enchanter is resting') : '';
+
+      if (!spell) {
+        state.content.innerHTML = `<div class="info-dim">${t('The spellbook is empty. Mix a spell and save it to see it here')}</div>`;
+        state.dots.replaceChildren();
+        return;
+      }
+      const details = [spell.radius ? t('Radius: {n} tiles', { n: spell.radius }) : '', spell.seconds ? t('Lasts {n} s', { n: spell.seconds }) : ''].filter(Boolean).join(' · ');
+      const sky = spell.sky ? `<span class="info-dim">${spell.sky === 'night' ? '🌙 ' + t('Night only') : '☀️ ' + t('Day only')}</span>` : '';
+      // Ingredienserna i blandningens ordning: ordningen ändrar formeln
+      const ingredients = recipe.mix.filter(slot => config.ingredients[slot.id]).map(slot => config.ingredients[slot.id].sky
+        ? `<span class="info-dim">${slot.id === 'moon' ? '🌙' : '☀️'} ${this.ingredientName(slot.id)}</span>`
+        : this.resourceIconsHtml({ [slot.id]: slot.amount }, true)).join('');
+      state.content.innerHTML = `<div class="workshop-name spellbook-name">${this.spellName(spell)}</div>` +
+        `<div>${this.spellEffect(spell)}</div>` +
+        (details ? `<div class="info-dim">${details}</div>` : '') + sky +
+        this.essenceBarsHtml(recipe.mix) +
+        `<div class="spellbook-ingredients">${ingredients}</div>`;
+      state.dots.replaceChildren(...Spells.book.map((other, index) => {
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'spellbook-dot' + (index === state.page ? ' on' : '');
+        dot.title = this.spellName(Spells.evaluate(other.mix) || { noun: '?' });
+        dot.onclick = () => { state.page = index; this.updateSpellbook(); };
+        return dot;
       }));
+    },
+
+    // Essensernas fördelning i en blandning som staplar
+    essenceBarsHtml(mix) {
+      const config = Config.buildings.enchanter.mixing, found = CityBuilder.Spells.essences(mix);
+      if (!found) return '';
+      return '<div class="workshop-bars">' + Object.keys(config.essences).map((name, i) => {
+        const essence = config.essences[name], percent = Math.round(found.totals[i] / found.sum * 100);
+        return `<div class="workshop-bar" title="${t(essence.name)} ${percent}%"><span>${t(essence.name)}</span><i><b style="width:${percent}%;background:${essence.color}"></b></i></div>`;
+      }).join('') + '</div>';
     },
 
     // Vad formeln heter: bieffektens essens som tillägg före slaget
@@ -2350,9 +2463,16 @@
         .workshop-bar { display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: center; gap: 6px; font-size: 11px; color: var(--dim); }
         .workshop-bar i { display: block; height: 6px; border-radius: 3px; background: rgb(255 255 255 / 8%); overflow: hidden; }
         .workshop-bar b { display: block; height: 100%; }
-        .workshop-book { display: flex; flex-wrap: wrap; gap: 4px; }
-        .workshop-recipe { display: flex; gap: 2px; }
-        .workshop-recipe button { padding: 3px 7px; font-size: 12px; }
+        .spellbook-spread { display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px; align-items: stretch; gap: 8px; padding: 14px; min-height: 0; }
+        .spellbook-turn { font-size: 22px; padding: 0; }
+        .spellbook-turn:disabled { opacity: .25; }
+        .spellbook-page { display: flex; flex-direction: column; gap: 8px; min-height: 230px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; background: rgb(255 255 255 / 3%); touch-action: pan-y; user-select: none; }
+        .spellbook-name { font-size: 18px; }
+        .spellbook-ingredients { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+        .spellbook-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 0 14px 12px; }
+        .spellbook-dot { width: 10px; height: 10px; padding: 0; border-radius: 50%; border: 1px solid var(--dim); background: none; }
+        .spellbook-dot.on { background: var(--dim); }
+        .spellbook-remove { margin-right: auto; }
         .workshop-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
         .workshop-cast { font-weight: 600; }
 
@@ -2977,7 +3097,7 @@
           : '';
 
         const spellButtons = own && building.definition.mixing
-          ? `<button id="mixButton">${t('Mix a spell')}</button>` + CityBuilder.Spells.book.map((recipe, index) => `<button class="spell-button" data-spell="${index}"></button>`).join('')
+          ? `<button id="bookButton">${t('Spellbook')} (${CityBuilder.Spells.book.length})</button><button id="mixButton">${t('Mix a spell')}</button>`
           : '';
         const choices = own && building.definition.job?.choices;
         // Toolsmith: en av/på-knapp per verktyg. Övriga med val (kök, kvarn ...): en alternativknapp per recept, där bara ett är valt.
@@ -3017,9 +3137,7 @@
           button.onclick = () => CityBuilder.Commands.issue('train', { building: building.id, kind: button.dataset.kind });
         }
 
-        for (const button of panel.querySelectorAll('.spell-button')) {
-          button.onclick = () => CityBuilder.Game.beginSpell(building, CityBuilder.Spells.evaluate(CityBuilder.Spells.book[+button.dataset.spell].mix));
-        }
+        if (byId('bookButton')) byId('bookButton').onclick = () => this.openSpellbook(building);
         if (byId('mixButton')) byId('mixButton').onclick = () => this.openWorkshop(building);
 
         for (const button of panel.querySelectorAll('.tool-toggle')) {
@@ -3178,15 +3296,6 @@
             : enabled <= 1 ? t('At least one tool must stay on')
             : t('{item}: {n} in stock. Click to switch off', { item, n: stock });
         });
-      }
-      for (const button of panel.querySelectorAll('.spell-button')) {
-        const spell = CityBuilder.Spells.evaluate(CityBuilder.Spells.book[+button.dataset.spell]?.mix || []);
-        if (!spell) { button.hidden = true; continue; }
-        const html = `${spell.sky ? (spell.sky === 'night' ? '🌙 ' : '☀️ ') : ''}${this.spellName(spell)} ${this.resourceIconsHtml(spell.cost, true)}`;
-        if (button.dataset.html !== html) { button.dataset.html = html; button.innerHTML = html; }
-        button.disabled = building.buildProgress < 1 || building.spellCooldown > 0;
-        button.classList.toggle('on', CityBuilder.Game.casting?.spell.id === spell.id && CityBuilder.Game.casting.building === building);
-        button.title = t('Cast, then tap a spot on the map: {effect}', { effect: this.spellEffect(spell) });
       }
       this.applyHotkeyTitles(panel);
       if (byId('boostButton')) {
