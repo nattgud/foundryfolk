@@ -12,6 +12,8 @@
   const { Config, World, Players, Utils, Vision } = CityBuilder;
 
   const between = ([low, high]) => low + Utils.random() * (high - low);
+  // Syns rutan för någon spelare? Väder och växter gäller alla spelare lika, oavsett om de är människor eller datorer.
+  const seenByAny = (x, y) => Players.active.some(player => Vision.visible(player, x, y));
   const rand = ([low, high]) => low + Math.floor(Utils.random() * (high - low + 1));
   const smooth = x => x * x * (3 - 2 * x);
   const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -57,7 +59,7 @@
       const size = Config.settings.chunkSize, growth = Config.settings.weather.growth;
       const check = (x, y) => {
         const tile = World.getTile(x, y);
-        if (tile && growth[tile.terrainType] && tile.remainingAmount > 0 && Vision.visible(Players.HUMAN, x, y)) visit(tile, x, y);
+        if (tile && growth[tile.terrainType] && tile.remainingAmount > 0 && seenByAny(x, y)) visit(tile, x, y);
       };
       if (zone) {
         const reach = Math.ceil(zone.radius);
@@ -69,7 +71,7 @@
         const tiles = World.chunks.get(key) || (World.getTile(left, top), World.chunks.get(key));   // rutorna ligger rad för rad i chunken
         for (let row = 0, i = 0; row < size; row++) for (let column = 0; column < size; column++, i++) {
           const tile = tiles[i];
-          if (growth[tile.terrainType] && tile.remainingAmount > 0 && Vision.visible(Players.HUMAN, left + column, top + row)) visit(tile, left + column, top + row);
+          if (growth[tile.terrainType] && tile.remainingAmount > 0 && seenByAny(left + column, top + row)) visit(tile, left + column, top + row);
         }
       }
     },
@@ -101,18 +103,36 @@
       }
     },
 
-    // En plats nära spelarens byggnader som spelaren ser, helst med växter. null om det inte finns någon.
+    // Byggnaderna per spelare (alla spelare, människor som datorer), utan högar. ready = bara färdigbyggda.
+    homesByPlayer(ready) {
+      const homes = new Map();
+      for (const building of World.buildings) {
+        if (building.definition.pile || (ready && building.buildProgress < 1) || !Players.active.includes(building.player)) continue;
+        const list = homes.get(building.player);
+        if (list) list.push(building); else homes.set(building.player, [building]);
+      }
+      return homes;
+    },
+
+    // En slumpad byggnad: först en slumpad spelare, sedan en av dens byggnader, så att alla drabbas lika ofta oavsett hur mycket de byggt
+    pickHome(homes) {
+      const players = [...homes.keys()];
+      const list = homes.get(players[Math.floor(Utils.random() * players.length)]);
+      return list[Math.floor(Utils.random() * list.length)];
+    },
+
+    // En plats nära någon spelares byggnader som den spelaren ser, helst med växter (player = vems mark). null om det inte finns någon.
     tornadoSpot() {
-      const homes = World.buildings.filter(building => building.player === Players.HUMAN && building.buildProgress >= 1 && !building.definition.pile);
-      if (!homes.length) return null;
+      const homes = this.homesByPlayer(true);
+      if (!homes.size) return null;
       const growth = Config.settings.weather.growth;
       let fallback = null;
       for (let attempt = 0; attempt < 40; attempt++) {
-        const home = homes[Math.floor(Utils.random() * homes.length)], angle = Utils.random() * Math.PI * 2, distance = 6 + Utils.random() * 22;
+        const home = this.pickHome(homes), angle = Utils.random() * Math.PI * 2, distance = 6 + Utils.random() * 22;
         const x = Math.round(home.x + Math.cos(angle) * distance), y = Math.round(home.y + Math.sin(angle) * distance), tile = World.getTile(x, y);
-        if (!tile || !Vision.visible(Players.HUMAN, x, y)) continue;
-        if (growth[tile.terrainType]) return { x, y };
-        if (!fallback && tile.terrainType === 'grass') fallback = { x, y };
+        if (!tile || !Vision.visible(home.player, x, y)) continue;
+        if (growth[tile.terrainType]) return { x, y, player: home.player };
+        if (!fallback && tile.terrainType === 'grass') fallback = { x, y, player: home.player };
       }
       return fallback;
     },
@@ -168,14 +188,14 @@
       }
       for (const pile of piles) {
         const spot = spots.splice(Math.floor(Utils.random() * spots.length), 1)[0];
-        CityBuilder.Construction.dropPile(spot.x, spot.y, Players.HUMAN, pile);
+        CityBuilder.Construction.dropPile(spot.x, spot.y, tornado.player ?? Players.HUMAN, pile);   // högarna tillhör den vars mark tornadon kom från
       }
     },
 
     // En ny tornado på platsen (radie i rutor, livslängd i sekunder), med slumpad fart
-    spawnTornado(x, y, radius, life) {
+    spawnTornado(x, y, radius, life, player) {
       const settings = Config.settings.weather.tornado;
-      this.tornadoes.push({ x, y, radius, age: 0, collected: {}, life, speed: between(settings.speed), angle: Utils.random() * Math.PI * 2, tick: settings.tickSeconds });
+      this.tornadoes.push({ x, y, player, radius, age: 0, collected: {}, life, speed: between(settings.speed), angle: Utils.random() * Math.PI * 2, tick: settings.tickSeconds });
     },
 
     // Klart väder i 'seconds' sekunder (längre om det redan skulle vara klart längre). Pågående tornados släpper det de tagit.
@@ -191,7 +211,7 @@
       if (this.type === 'tornado' && (this.tornadoIn -= deltaSeconds) <= 0) {
         this.tornadoIn = between(settings.every);
         const spot = this.tornadoSpot();
-        if (spot) this.spawnTornado(spot.x, spot.y, rand(settings.radius), Utils.random() < settings.longChance ? settings.longLife : between(settings.life));
+        if (spot) this.spawnTornado(spot.x, spot.y, rand(settings.radius), Utils.random() < settings.longChance ? settings.longLife : between(settings.life), spot.player);
       }
       for (const tornado of this.tornadoes) {
         tornado.age += deltaSeconds;
@@ -211,11 +231,11 @@
 
     isLand(x, y) { const type = World.getTile(x, y)?.terrainType; return !!type && type !== 'water' && type !== 'lava'; },
 
-    // En slumpad plats på 'near' avstånd från en av spelarens byggnader
+    // En slumpad plats på 'near' avstånd från en byggnad hos en slumpad spelare
     volcanoPoint() {
-      const homes = World.buildings.filter(building => building.player === Players.HUMAN && !building.definition.pile);
-      if (!homes.length) return null;
-      const home = homes[Math.floor(Utils.random() * homes.length)], angle = Utils.random() * Math.PI * 2, distance = between(Config.settings.weather.volcano.near);
+      const homes = this.homesByPlayer(false);
+      if (!homes.size) return null;
+      const home = this.pickHome(homes), angle = Utils.random() * Math.PI * 2, distance = between(Config.settings.weather.volcano.near);
       return { x: Math.round(home.x + Math.cos(angle) * distance), y: Math.round(home.y + Math.sin(angle) * distance) };
     },
 

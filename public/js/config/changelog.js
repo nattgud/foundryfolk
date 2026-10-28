@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.8': [
+      'Weather now treats every player the same, human or computer: rain and storms grow plants wherever any player sees them, tornadoes and volcanoes pick a random player first and then one of their buildings (so a big base is not hit more often), the goods a tornado drops belong to the player whose land it came from, and the Enchanter\'s Shaping spell checks the fog for the player who casts it. Every player now also has their own resource flows',
       'The game now simulates in fixed steps of 1/20 second, and the movement is drawn smoothly in between. That costs far less than before at normal speed, gives the same result on fast and slow computers, and is the base for multiplayer and replays. Higher speeds run more steps per second',
       'The background music now plays in a shuffled order: every song is played once, in random order, before any song repeats (before, a song could follow the same song far too often, so the songs seemed to play in a fixed order)',
       'Volcanoes: a rare event (about 2% of weather changes) with a new Lava tile. It starts far from every headquarters, never nearer than 28 tiles, and is announced with a message, an alarm and an orange ring (or arrow) on the minimap. Lava destroys buildings and units on its tiles and scorches the buildings next to it while it is hot',

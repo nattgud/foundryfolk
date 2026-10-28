@@ -119,12 +119,12 @@
     costs() { return this.recipes().map(spell => spell.cost); },
 
     // Gräsrutor inom radien som är helt tomma: ingen byggnad, ingen upptrampad stig och inte dold av dimman
-    freeTiles(x, y, radius) {
+    freeTiles(x, y, radius, player) {
       const tiles = [];
       for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
         if (Utils.distance(dx, dy) > radius) continue;
         const tile = World.getTile(x + dx, y + dy);
-        if (tile && tile.terrainType === 'grass' && !tile.wear && !World.buildingAt(x + dx, y + dy) && !Construction.isHidden(x + dx, y + dy, Players.HUMAN)) tiles.push(tile);
+        if (tile && tile.terrainType === 'grass' && !tile.wear && !World.buildingAt(x + dx, y + dy) && !Construction.isHidden(x + dx, y + dy, player)) tiles.push(tile);
       }
       return tiles;
     },
@@ -137,7 +137,7 @@
       if (Construction.isHidden(x, y, building.player)) return 'fog';
       if (spell.sky && (spell.sky === 'night') !== CityBuilder.Weather.isNight()) return 'sky';
       if (!Economy.canAfford(spell.cost, building.player)) return 'cost';
-      if (spell.kind === 'create' ? !this.freeTiles(x, y, spell.radius).length : !this.hasTargets(spell, x, y, building.player)) return spell.kind === 'create' ? 'room' : 'nothing';
+      if (spell.kind === 'create' ? !this.freeTiles(x, y, spell.radius, building.player).length : !this.hasTargets(spell, x, y, building.player)) return spell.kind === 'create' ? 'room' : 'nothing';
       return null;
     },
 
@@ -195,8 +195,8 @@
     },
 
     // Förvandlar lediga gräsrutor runt målet till nya fyndigheter
-    create(spell, x, y) {
-      const tiles = this.freeTiles(x, y, spell.radius);
+    create(spell, x, y, player) {
+      const tiles = this.freeTiles(x, y, spell.radius, player);
       const kinds = Object.entries(spell.terrains), total = kinds.reduce((sum, [, weight]) => sum + weight, 0);
       for (let n = Math.min(spell.count, tiles.length); n > 0; n--) {
         const tile = tiles.splice(Math.floor(Utils.random() * tiles.length), 1)[0];
@@ -216,9 +216,9 @@
         const seconds = effect.seconds || 1.5;   // smiter har ingen varaktighet, bara en blixt
         this.addZone({ kind: effect.kind, x, y, radius: effect.radius, player: building.player, left: seconds, total: seconds, factor: effect.factor, bonus: effect.bonus });
       };
-      if (spell.kind === 'create') this.create(spell, x, y);
+      if (spell.kind === 'create') this.create(spell, x, y, building.player);
       else if (spell.kind === 'clear') CityBuilder.Weather.clearSky(spell.seconds);
-      else if (spell.kind === 'tornado') CityBuilder.Weather.spawnTornado(x, y, spell.radius, spell.seconds);
+      else if (spell.kind === 'tornado') CityBuilder.Weather.spawnTornado(x, y, spell.radius, spell.seconds, building.player);
       else { if (spell.kind === 'smite') this.smite(spell, x, y, building.player); zone(spell); }
       if (spell.echo) zone(spell.echo);
       building.spellCooldown = building.definition.spellCooldown;

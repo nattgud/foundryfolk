@@ -89,23 +89,24 @@ setFactor(0.1, 'talisman');
       return best;
     },
     // ---- Flöden: vart resurserna går och varifrån de kommer (visas i resursfönstret) -------------------------------
-    // record(spelare, 'use' | 'make', resurs, etikett, antal): etikett = byggnadstyp (eller 'construction'). Bara spelarens egna räknas.
+    // record(spelare, 'use' | 'make', resurs, etikett, antal): etikett = byggnadstyp (eller 'construction'). Varje spelare har sina egna flöden.
     // Sparas i hinkar om FLOW_BUCKET sekunder och bara de senaste FLOW_WINDOW sekunderna.
-    flows: { use: {}, make: {} },
+    flows: {},   // spelare -> { use: {}, make: {} }
     now: () => CityBuilder.Logistics?.time || 0,
     record(player, kind, resourceId, label, amount = 1) {
-      if (player !== Players.HUMAN || !(amount > 0)) return;
-      const labels = (this.flows[kind][resourceId] = this.flows[kind][resourceId] || {});
+      if (!(amount > 0)) return;
+      const own = this.flows[player] ||= { use: {}, make: {} };
+      const labels = (own[kind][resourceId] = own[kind][resourceId] || {});
       const buckets = (labels[label] = labels[label] || []);
       const bucket = Math.floor(this.now() / FLOW_BUCKET);
       if (buckets.length && buckets[buckets.length - 1][0] === bucket) buckets[buckets.length - 1][1] += amount; else buckets.push([bucket, amount]);
       while (buckets.length && buckets[0][0] < bucket - FLOW_WINDOW / FLOW_BUCKET) buckets.shift();
     },
     // [{ label, perMinute, total }] för resursen, störst först. Räknat på de senaste FLOW_WINDOW sekunderna (kortare i början av spelet, men aldrig kortare än 30 s).
-    flow(kind, resourceId) {
+    flow(kind, resourceId, player = Players.HUMAN) {
       const now = this.now(), from = Math.floor(now / FLOW_BUCKET) - FLOW_WINDOW / FLOW_BUCKET + 1, seconds = Math.max(30, Math.min(FLOW_WINDOW, now));
       const rows = [];
-      for (const [label, buckets] of Object.entries(this.flows[kind][resourceId] || {})) {
+      for (const [label, buckets] of Object.entries(this.flows[player]?.[kind][resourceId] || {})) {
         const total = buckets.reduce((sum, [bucket, amount]) => (bucket >= from ? sum + amount : sum), 0);
         if (total > 0) rows.push({ label, total, perMinute: total * 60 / seconds });
       }
