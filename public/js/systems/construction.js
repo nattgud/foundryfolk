@@ -24,7 +24,7 @@
     isUniqueTaken: (buildingType, player) => Boolean(Config.buildings[buildingType].unique) && World.buildings.some(building => building.type === buildingType && building.player === player),
 
     // Spelaren kan inte bygga i dimman. Datorspelarna ser kartan som förut: de är bara blinda för motståndaren.
-    isHidden(x, y, player) { return !Players.isAI(player) && !CityBuilder.Vision.visible(player, x, y); },
+    isHidden(x, y, player) { return !CityBuilder.Vision.visible(player, x, y); },   // dimman gäller alla spelare lika, datorer också
 
     // Tar bort en byggnad. Soldater som bor där blir fria (de söker sig till en annan garnison eller vaktar platsen).
     // salvage = riven av ägaren: halva byggkostnaden och allt byggnaden höll (lager, in- och utbuffert, verktyg, det arbetaren bär)

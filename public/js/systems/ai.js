@@ -1,5 +1,6 @@
 /* Datorspelare. Varje spelare utom den mänskliga (Players.isAI) planerar och bygger med exakt samma regler som människan:
-   Construction.build, samma kostnader, samma lager och bärare. Datorn har bara ett beslutsfattande i stället för en meny.
+   Construction.build, samma kostnader, samma lager och bärare, samma dimma. Datorn har bara ett beslutsfattande i stället för en meny.
+   Den känner bara till platser den ser; hittar den ingen råvara bygger den utkikstorn (lookout) mot nya håll.
 
    Beslut: Config.ai.build är en ordnad lista med mål. Första målet som inte är uppnått löses med need(), som går bakåt
    genom kedjan: saknas en insats eller en byggresurs byggs först en byggnad som tillverkar den. Den valda byggnaden
@@ -8,6 +9,7 @@
   'use strict';
   const { Config, World, Players, Economy, Construction, Garrison, Utils, Vision } = CityBuilder;
 
+  const UNSEEN = 'unseen';                    // place() hittade ingen plats att välja bland: råvaran syns inte (se lookout)
   const WAIT = 'wait', BLOCKED = 'blocked';   // need() kan inte ge någon byggnad just nu: vänta på resurser / ingen plats
   const MAX_CHAIN = 6;                        // längsta kedjan av förkunskaper
   const BASE_RADIUS = 24;                     // hur långt från basen vanliga byggnader placeras
@@ -117,7 +119,9 @@
         if ((census.count[type] || 0) >= target) continue;
         const next = decide(type);
         if (next === WAIT) return;           // spara resurserna åt det viktigaste målet
-        if (next !== BLOCKED) return this.place(player, state, next);
+        if (next === BLOCKED) continue;
+        if (this.place(player, state, next) === UNSEEN) this.lookout(player, state, census);
+        return;
       }
     },
 
@@ -241,7 +245,7 @@
       if (next === WAIT) return true;                          // spara resurserna åt utposten
       if (next === BLOCKED) return false;
       if (next !== 'guard_tower') { this.place(player, state, next); return true; }
-      const step = Math.min(Config.settings.maxBuildDistance - 5, fromDistance - reach * .5);
+      const step = Math.min(Config.settings.maxBuildDistance - 5, this.sightOf(from) - 2, fromDistance - reach * .5);
       const point = { x: Math.round(from.x + (target.x - from.x) / fromDistance * step), y: Math.round(from.y + (target.y - from.y) / fromDistance * step) };
       this.place(player, state, next, this.free(point, Config.buildings.guard_tower, 8));
       return true;
@@ -267,12 +271,16 @@
         const distance = Utils.distance(building.x - goal.x, building.y - goal.y);
         if (building.player === player && building.buildProgress >= 1 && distance < fromDistance) { from = building; fromDistance = distance; }
       }
-      const reached = fromDistance <= step;                                      // inom räckhåll: bygg på ringen, annars ett steg dit
-      const point = reached ? goal : { x: from.x + (goal.x - from.x) / fromDistance * step, y: from.y + (goal.y - from.y) / fromDistance * step };
+      const stride = Math.min(step, this.sightOf(from) - 2);                      // längre än tornet ser går det inte att bygga
+      const reached = fromDistance <= stride;                                    // inom räckhåll: bygg på ringen, annars ett steg dit
+      const point = reached ? goal : { x: from.x + (goal.x - from.x) / fromDistance * stride, y: from.y + (goal.y - from.y) / fromDistance * stride };
       this.place(player, state, next, this.free({ x: Math.round(point.x), y: Math.round(point.y) }, Config.buildings.watchtower, 8));
       if (reached) scouting.angle += step / ring;
       return true;
     },
+
+    // Så långt (rutor) en egen byggnad ser: nya byggen måste ligga inom synhåll
+    sightOf: building => building.definition.vision ?? Config.settings.vision.building,
 
     // Placerar byggnaden på första platsen som fungerar (sites = kandidater, annars de vanliga)
     place(player, state, type, sites = this.sites(player, type)) {
@@ -280,10 +288,34 @@
       for (const [x, y] of sites) {
         if (++attempts > SITE_ATTEMPTS) break;
         const problem = Construction.build(type, x, y, player);
-        if (!problem) return;
+        if (!problem) return true;
         if (problem === 'cost') return;        // någon annan hann före: försök igen nästa varv
       }
+      if (!attempts && this.needsSight(type)) { state.blocked[type] = this.time + Config.ai.sightRetrySeconds; return UNSEEN; }
       state.blocked[type] = this.time + Config.ai.blockedSeconds;
+    },
+
+    // Byggnader som behöver en råvara på marken (gruvor, samlare): platsen måste synas för att den ska finnas för datorn
+    needsSight(type) {
+      const definition = Config.buildings[type];
+      return !!(definition.placeOnTerrain || definition.job?.sourceTerrain);
+    },
+
+    // Datorn ser bara det den har synfält över. Syns ingen råvara bygger den ett utkikstorn på det synliga marken så långt mot ett nytt håll som
+    // möjligt (varje torn ser 30 rutor), och byter håll för varje torn, så att basens omgivning avsöks varv efter varv.
+    lookout(player, state, census) {
+      if ((state.lookouts || 0) >= Config.ai.lookouts || (census.count.watchtower || 0) >= Config.ai.explore.maxScouts) return;
+      if (World.buildings.some(building => building.player === player && building.type === 'watchtower' && building.buildProgress < 1)) return;   // vänta på tornet
+      const next = this.need(player, state, census, 'watchtower', []);
+      if (next === WAIT || next === BLOCKED) return;
+      if (next !== 'watchtower') return this.place(player, state, next);
+      const look = state.look ??= { angle: Utils.hash(player, 22, Config.world.seed) * 2 * Math.PI };
+      const hq = World.hqOf(player), cos = Math.cos(look.angle), sin = Math.sin(look.angle), sites = [];
+      for (const [x, y] of this.free(hq, Config.buildings.watchtower, Config.settings.maxBuildDistance - 5)) sites.push({ x, y, score: (x - hq.x) * cos + (y - hq.y) * sin });
+      sites.sort((a, b) => b.score - a.score);
+      if (this.place(player, state, next, sites.map(({ x, y }) => [x, y])) !== true) return;
+      look.angle += Math.PI / 3;
+      state.lookouts = (state.lookouts || 0) + 1;
     },
 
     // Kandidatplatser för en byggnad, bästa först
@@ -308,7 +340,7 @@
       for (const { dx, dy, distance } of OFFSETS) {
         if (distance > limit) return;
         const x = centre.x + dx, y = centre.y + dy;
-        if (World.getTile(x, y).terrainType !== terrain || World.buildingAt(x, y)) continue;
+        if (World.getTile(x, y).terrainType !== terrain || World.buildingAt(x, y) || !Vision.visible(AI.current, x, y)) continue;   // bara platser datorn ser
         let crowded = false;
         for (let ny = -1; ny <= 1 && !crowded; ny++) for (let nx = -1; nx <= 1; nx++) if (World.buildingAt(x + nx, y + ny)) { crowded = true; break; }
         if (!crowded) yield [x, y];
@@ -320,7 +352,7 @@
       for (const { dx, dy, distance } of OFFSETS) {
         if (distance > Config.ai.resourceRadius) return null;
         const tile = World.getTile(from.x + dx, from.y + dy);
-        if (tile.terrainType === terrain && tile.remainingAmount > 0) return { x: from.x + dx, y: from.y + dy };
+        if (tile.terrainType === terrain && tile.remainingAmount > 0 && Vision.visible(AI.current, from.x + dx, from.y + dy)) return { x: from.x + dx, y: from.y + dy };   // bara råvaror datorn ser
       }
       return null;
     },
