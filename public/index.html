@@ -34,8 +34,10 @@
   <div id="toast"></div>
 
   <script>
-    var version = "0.8.92";
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    var version = "0.8.93";
+    // Service workern får versionen i adressen: en ny version ger en ny cache som förladdas, och den gamla rensas
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=' + version).catch(() => {});
+    document.write('<script src="js/files.js?v=' + version + '"><\/script>');   // skriptlistan (GAME_SCRIPTS), ihop med service workern
 
     // Laddningsstapel. set(0-1, text), paint() ger webbläsaren tid att rita, done() döljer rutan.
     window.GameLoading = {
@@ -65,68 +67,8 @@
     };
 
     function loadAllGameComponents() {
-      // Definiera den strikta ordningen av alla filer
-      const scriptOrder = [
-        // 1. Kärna
-        'js/core/namespace.js',
-        'js/core/errors.js',
-        'js/core/util.js',
-        'js/core/players.js',
-        'js/core/commands.js',
-        'js/core/heap.js',
-        'js/core/assets.js',
-        'js/core/save.js',
-        // 2. Konfiguration
-        'js/config/settings.js',
-        'js/config/resources.js',
-        'js/config/terrain.js',
-        'js/config/units.js',
-        'js/config/buildings.js',
-        'js/config/world.js',
-        'js/config/ai.js',
-        'js/config/levels.js',
-        'js/config/changelog.js',
-        'js/config/finalize.js',
-        // 3. Language and options
-        'js/lang/zh.js',
-        'js/lang/ja.js',
-        'js/lang/ru.js',
-        'js/lang/pt.js',
-        'js/lang/ar.js',
-        'js/lang/lang.js',
-        'js/options.js',
-        'js/custommap.js',
-        // 4. Värld
-        'js/world/generator.js',
-        'js/world/world.js',
-        // 5. Spelsystem
-        'js/systems/pathfinding.js',
-        'js/systems/economy.js',
-        'js/systems/jobs.js',
-        'js/systems/behaviors.js',
-        'js/systems/garrison.js',
-        'js/systems/logistics.js',
-        'js/systems/units.js',
-        'js/systems/construction.js',
-        'js/systems/production.js',
-        'js/systems/spells.js',
-        'js/systems/pathdecay.js',
-        'js/systems/vision.js',
-        'js/systems/animals.js',
-        'js/systems/weather.js',
-        'js/systems/combat.js',
-        'js/systems/ai.js',
-        // 6. Rendering, indata, UI
-        'js/render/shapes.js',
-        'js/render/renderer.js',
-        'js/render/layers.js',
-        'js/input.js',
-        'js/systems/sound.js',
-        'js/ui.js',
-        'js/minimap.js',
-        // 7. Spelloop (Sista steg innan init)
-        'js/game.js'
-      ];
+      // Den strikta ordningen av alla skript (js/files.js)
+      const scriptOrder = GAME_SCRIPTS;
 
       // Alla skript hämtas samtidigt men körs i ordning (async = false), så laddningen går snabbare än ett skript i taget.
       // Stapeln följer antalet körda skript.
