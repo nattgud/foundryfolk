@@ -1191,10 +1191,10 @@
       const html = lines.join('');
       if (state.preview.dataset.html !== html) { state.preview.dataset.html = html; state.preview.innerHTML = html; }
 
-      const building = state.building, rest = building?.spellCooldown > 0;
+      const building = state.building, rest = building?.spellCooldown > 0, locked = spell && Spells.lockLeft(building.player, Spells.group(spell)) > 0;
       const duplicate = spell && Spells.book.some(recipe => Spells.evaluate(recipe.mix)?.id === spell.id);
-      state.cast.disabled = !spell || rest;
-      state.cast.title = rest ? t('The enchanter is resting') : '';
+      state.cast.disabled = !spell || rest || locked;
+      state.cast.title = rest ? t('The enchanter is resting') : locked ? t('Spells of this kind are still recharging') : '';
       state.save.disabled = !spell || duplicate || Spells.book.length >= config.maxBook;
       state.save.title = duplicate ? t('Already in the grimoire') : Spells.book.length >= config.maxBook ? t('The grimoire is full') : '';
     },
@@ -1202,9 +1202,7 @@
     // ---- Trollboken: ett uppslag. Vänster sida listar formlerna (flikar för slag, filter för de som går att kasta nu), höger sida visar den valda -----
 
     // Slaget en formel hör till: flikarna i boken
-    spellGroup(spell) {
-      return { create: 'shaping', smite: 'combat', rain: 'weather', storm: 'weather', clear: 'weather', tornado: 'weather' }[spell.kind] || 'boost';
-    },
+    spellGroup(spell) { return CityBuilder.Spells.group(spell); },
 
     // Har bygden ingredienserna till formeln?
     canAfford(spell) {
@@ -1316,9 +1314,10 @@
 
     updateSpellbook() {
       const state = this.spellbook, config = Config.buildings.enchanter.mixing, Spells = CityBuilder.Spells;
-      const all = Spells.book.map(recipe => Spells.evaluate(recipe.mix)).filter(Boolean);
+      const all = Spells.book.map(recipe => Spells.evaluate(recipe.mix)).filter(Boolean), player = state.building?.player;
       for (const [group, tab] of Object.entries(state.tabs)) {
-        tab.textContent = `${this.spellGroupIcon(group)} ${t(this.spellGroupNames[group])} ${group === 'all' ? all.length : all.filter(spell => this.spellGroup(spell) === group).length}`;
+        const left = group === 'all' ? 0 : Math.ceil(Spells.lockLeft(player, group));
+        tab.textContent = `${this.spellGroupIcon(group)} ${t(this.spellGroupNames[group])} ${group === 'all' ? all.length : all.filter(spell => this.spellGroup(spell) === group).length}${left ? ` ⏳${left} s` : ''}`;
         tab.classList.toggle('on', group === state.group);
       }
       const shown = this.spellbookEntries();
@@ -1328,8 +1327,9 @@
       state.list.replaceChildren(...shown.map(({ index, spell }) => {
         const row = document.createElement('button');
         row.type = 'button';
-        row.className = 'spellbook-row' + (index === state.selected ? ' on' : '') + (this.canAfford(spell) ? '' : ' short');
-        row.innerHTML = `<span class="spellbook-icon">${this.spellGroupIcon(this.spellGroup(spell))}</span><span class="spellbook-title">${spell.sky ? (spell.sky === 'night' ? '🌙 ' : '☀️ ') : ''}${this.spellName(spell)}</span><span class="spellbook-cost">${this.resourceIconsHtml(spell.cost, true)}</span>`;
+        const wait = Math.ceil(Spells.lockLeft(player, this.spellGroup(spell)));
+        row.className = 'spellbook-row' + (index === state.selected ? ' on' : '') + (this.canAfford(spell) && !wait ? '' : ' short');
+        row.innerHTML = `<span class="spellbook-icon">${this.spellGroupIcon(this.spellGroup(spell))}</span><span class="spellbook-title">${spell.sky ? (spell.sky === 'night' ? '🌙 ' : '☀️ ') : ''}${this.spellName(spell)}</span><span class="spellbook-cost">${wait ? `⏳ ${wait} s ` : ''}${this.resourceIconsHtml(spell.cost, true)}</span>`;
         row.title = this.spellEffect(spell);
         row.onclick = () => { state.selected = index; this.updateSpellbook(); };
         row.ondblclick = () => { state.selected = index; if (!state.cast.disabled) this.castFromBook(); };
@@ -1340,13 +1340,13 @@
 
       const selected = shown.find(entry => entry.index === state.selected), spell = selected?.spell;
       state.remove.disabled = state.edit.disabled = !spell;
-      const lacking = spell && !this.canAfford(spell);
-      state.cast.disabled = !spell || rest || lacking;
-      state.cast.title = rest ? t('The enchanter is resting') : lacking ? t('Not enough ingredients') : '';
+      const lacking = spell && !this.canAfford(spell), locked = spell && Spells.lockLeft(player, this.spellGroup(spell)) > 0;
+      state.cast.disabled = !spell || rest || locked || lacking;
+      state.cast.title = rest ? t('The enchanter is resting') : locked ? t('Spells of this kind are still recharging') : lacking ? t('Not enough ingredients') : '';
       if (!spell) { state.page.replaceChildren(); return; }
 
       const recipe = Spells.book[state.selected];
-      const details = [t(this.spellGroupNames[this.spellGroup(spell)]), spell.radius ? t('Radius: {n} tiles', { n: spell.radius }) : '', spell.seconds ? t('Lasts {n} s', { n: spell.seconds }) : ''].filter(Boolean).join(' · ');
+      const details = [t(this.spellGroupNames[this.spellGroup(spell)]), spell.radius ? t('Radius: {n} tiles', { n: spell.radius }) : '', spell.seconds ? t('Lasts {n} s', { n: spell.seconds }) : '', t('Recharge: {n} s', { n: Spells.recharge(spell) })].filter(Boolean).join(' · ');
       const sky = spell.sky ? `<span class="info-dim">${spell.sky === 'night' ? '🌙 ' + t('Night only') : '☀️ ' + t('Day only')}</span>` : '';
       // Ingredienserna i blandningens ordning: ordningen ändrar formeln
       const ingredients = recipe.mix.filter(slot => config.ingredients[slot.id]).map(slot => config.ingredients[slot.id].sky
@@ -2521,6 +2521,8 @@
         .spellbook-ingredients { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
         .spellbook-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
         .spellbook-remove { margin-right: auto; }
+        .rest-bar { height: 6px; margin: 3px 0; border-radius: 3px; background: rgb(255 255 255 / 10%); overflow: hidden; }
+        .rest-bar i { display: block; height: 100%; background: #b88cf0; }
         @media (max-width: 620px) { .spellbook-spread { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; overflow-y: auto; } .spellbook-left { border-radius: 10px 10px 0 0; border-right: 1px solid var(--line); border-bottom: 0; max-height: 45vh; } .spellbook-right { border-radius: 0 0 10px 10px; box-shadow: none; } }
         .workshop-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
         .workshop-cast { font-weight: 600; }
@@ -2980,7 +2982,7 @@
 
       if (job?.byproducts) lines.push(t('Also leaves: {list}', { list: this.resourceIconsHtml(job.byproducts) }));
       if (definition.mixing) {
-        lines.push(t('Mixes spells from up to {slots} ingredients; their order and amounts shape the result. New deposits on free grass, faster work, weather, more wildlife and weaker enemies, up to {n} tiles away. One cast per {s} s for each enchanter.', { slots: definition.mixing.slots, n: definition.spellRange, s: definition.spellCooldown }));
+        lines.push(t('Mixes spells from up to {slots} ingredients; their order and amounts shape the result. New deposits on free grass, faster work, weather, more wildlife and weaker enemies, up to {n} tiles away. After a cast the enchanter rests longer the stronger the spell is ({min}-{max} s), and that kind of spell then recharges for all your enchanters.', { slots: definition.mixing.slots, n: definition.spellRange, min: definition.spellRecharge.min, max: definition.spellRecharge.max }));
       }
 
       if (definition.placeOnTerrain && !definition.variants) {
@@ -3255,7 +3257,11 @@
       let spellHtml = '';
       if (own && building.buildProgress >= 1 && building.definition.mixing) {
         const casting = CityBuilder.Game.casting?.building === building;
-        spellHtml = (building.spellCooldown > 0 ? `<br>${t('Resting: {n} s', { n: Math.ceil(building.spellCooldown) })}` : '') +
+        const Spells = CityBuilder.Spells;
+        const waits = ['shaping', 'boost', 'weather', 'combat'].map(group => [group, Math.ceil(Spells.lockLeft(building.player, group))]).filter(([, left]) => left > 0)
+          .map(([group, left]) => `${this.spellGroupIcon(group)} ${left} s`).join(' · ');
+        const rest = building.spellCooldown > 0 ? `<br><b>${t('Resting: {n} s', { n: Math.ceil(building.spellCooldown) })}</b><div class="rest-bar"><i style="width:${Math.round(100 * (1 - building.spellCooldown / (building.spellTotal || building.spellCooldown)))}%"></i></div>` : '';
+        spellHtml = rest + (waits ? `<br>${t('Recharging: {list}', { list: waits })}` : '') +
           (casting ? `<br>${t('Tap a spot on the map, up to {n} tiles from here', { n: building.definition.spellRange })}` : '');
       }
 

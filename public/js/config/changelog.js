@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.9': [
+      'Spells now have to recharge, so you cannot cast all the time: after a cast the Enchanter rests from 30 seconds (weak spells) up to 3 minutes (strong ones), and that kind of spell (shaping, boosts, weather or combat) is locked for all your Enchanters for as long. The Enchanter shows a timer bar on the map and in its panel, and the Spellbook shows which kinds are recharging',
       'Mountains are rich again: about 40-50% of the inside of every mountain is ore (iron, coal, copper, tin, silver, gold, crystal and a few gemstones), with a plain rim of rock around it. Dig for it with a Rock crusher or build a mine on the deposits you can reach',
       'The Rock crusher now digs with a purpose: it tunnels the shortest way through the mountain to the nearest ore deposit, so you reach the ore inside quickly. It crushes a tile in 15 seconds (was 20)',
       'Level themes and structures (stone desert, ruins, cursed ground, fungi, boulder fields, cliffs and so on) no longer spill into the middle of mountains: inside a mountain there is only rock and ore',

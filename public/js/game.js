@@ -83,6 +83,7 @@
       if (!problem) { this.casting = null; return; }
       this.refuse({
         cooldown: () => t('The enchanter is resting'),
+        locked: () => t('Spells of this kind are still recharging'),
         range: () => t('Too far from the enchanter'),
         fog: () => t('Hidden in the fog of war'),
         cost: () => t('Not enough resources'),

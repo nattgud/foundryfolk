@@ -990,9 +990,10 @@ CityBuilder.Config.buildings = {
     // Trollformler blandas av upp till 'slots' ingredienser (se systems/spells.js för hur blandningen blir en formel). Varje ingredient bär
     // essenser; essensernas ordning här är också 'hjulet' som en ingrediens vrider nästa ingrediens längs. Himlen (moon/sun) är gratis
     // ingredienser som bara finns på natten respektive dagen. Formeln läses på en plats högst spellRange rutor från förtrollaren och
-    // varje förtrollare vilar spellCooldown sekunder efteråt. 'book' är trollboken man börjar med.
+    // varje förtrollare vilar efteråt, och slaget formeln hör till (Spells.group) laddas om för alla spelarens förtrollare lika länge. Vilan växer med
+    // formelns styrka (Spells.recharge): spellRecharge.min sekunder för den svagaste formeln, .max för den starkaste. 'book' är trollboken man börjar med.
     spellRange: 30,
-    spellCooldown: 20,
+    spellRecharge: { min: 30, max: 180 },
     mixing: {
       slots: 5, maxAmount: 6, maxBook: 20,
       weights: [1.5, 1, 0.8, 0.6, 0.45],   // första ingrediensen väger mest

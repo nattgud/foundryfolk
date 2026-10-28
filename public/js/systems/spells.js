@@ -3,7 +3,7 @@
      - en ingrediens vrider en del av nästa ingrediens essenser några steg på hjulet, så ordningen ändrar resultatet
      - den starkaste essensen väljer formelns slag, den näst starkaste ger en bieffekt eller ändrar den (vatten förlänger, jord vidgar ...)
    En formel kostar ingredienserna ur lagret och läses på en plats inom spellRange rutor från förtrollaren; varje förtrollare vilar
-   spellCooldown sekunder efteråt (building.spellCooldown, sparas med byggnaden). Slag (spell.kind):
+   en stund efteråt (building.spellCooldown, sparas med byggnaden), och slaget formeln hör till är låst för alla spelarens förtrollare lika länge (Spells.locks). Slag (spell.kind):
      create   förvandlar lediga gräsrutor runt målet till nya fyndigheter (träd, bär, sten, malm ...)
      pace     arbetare och verkstäder i området arbetar 'factor' gånger så fort i 'seconds' sekunder
      yield    byggnader i området ger 'bonus' extra utdata (1 = dubbelt) i 'seconds' sekunder
@@ -23,10 +23,12 @@
 
   const Spells = {
     zones: [],   // { kind, x, y, radius, player, left, total, factor?, bonus? }: pågående effekter
+    locks: {},   // { 'spelare:slag': sekunder kvar }: slag som laddas om efter ett kast, för alla spelarens förtrollare
     book: null,  // trollboken: [{ mix: [{ id, amount }] }]. Hör till spelaren, inte till ett spel: den ligger i webbläsarens lagring och följer med mellan banor
 
     reset() {
       this.zones = [];
+      this.locks = {};
       if (this.book) return;
       let saved = null;
       try { saved = JSON.parse(localStorage.getItem(BOOK_KEY)); } catch (error) { /* ingen sparad bok */ }
@@ -129,10 +131,27 @@
       return tiles;
     },
 
+    // Slaget en formel hör till: skapa mark, förstärkning, väder eller strid
+    group(spell) {
+      return { create: 'shaping', smite: 'combat', rain: 'weather', storm: 'weather', clear: 'weather', tornado: 'weather' }[spell.kind] || 'boost';
+    },
+
+    // Hur länge förtrollaren vilar och slaget är låst efter formeln: växer med styrkan (essensmängden, spell.power)
+    recharge(spell) {
+      const { min, max } = Config.buildings.enchanter.spellRecharge;
+      return Math.round((min + (max - min) * (Math.min(2.5, Math.max(0.4, spell.power)) - 0.4) / 2.1) / 5) * 5;
+    },
+
+    lockKey: (player, group) => player + ':' + group,
+
+    // Sekunder kvar innan slaget går att kasta igen
+    lockLeft(player, group) { return this.locks[this.lockKey(player, group)] || 0; },
+
     // Orsaken till att formeln inte går att läsa nu, annars null
     problem(building, spell, x, y) {
       if (building.buildProgress < 1) return 'unbuilt';
       if ((building.spellCooldown || 0) > 0) return 'cooldown';
+      if (this.lockLeft(building.player, this.group(spell)) > 0) return 'locked';
       if (Utils.distance(building.x - x, building.y - y) > building.definition.spellRange) return 'range';
       if (Construction.isHidden(x, y, building.player)) return 'fog';
       if (spell.sky && (spell.sky === 'night') !== CityBuilder.Weather.isNight()) return 'sky';
@@ -221,7 +240,8 @@
       else if (spell.kind === 'tornado') CityBuilder.Weather.spawnTornado(x, y, spell.radius, spell.seconds, building.player);
       else { if (spell.kind === 'smite') this.smite(spell, x, y, building.player); zone(spell); }
       if (spell.echo) zone(spell.echo);
-      building.spellCooldown = building.definition.spellCooldown;
+      building.spellCooldown = building.spellTotal = this.recharge(spell);
+      this.locks[this.lockKey(building.player, this.group(spell))] = building.spellCooldown;
       CityBuilder.Sound?.play('built', { x, y });
       return null;
     },
@@ -232,6 +252,7 @@
   CityBuilder.Systems.spells = {
     update(deltaSeconds) {
       for (const building of World.buildings) if (building.spellCooldown > 0) building.spellCooldown = Math.max(0, building.spellCooldown - deltaSeconds);
+      for (const key in Spells.locks) if ((Spells.locks[key] -= deltaSeconds) <= 0) delete Spells.locks[key];
       if (!Spells.zones.length) return;
       for (const zone of Spells.zones) {
         if (zone.kind !== 'rain' && zone.kind !== 'storm' || (zone.scan = (zone.scan || 0) - deltaSeconds) > 0) continue;

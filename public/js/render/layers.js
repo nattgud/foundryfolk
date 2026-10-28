@@ -423,6 +423,10 @@
         renderer.drawResourceIcons(context, building.inputStock, x, y + tileSize - 17);
         renderer.drawResourceIcons(context, building.outputStock, x, building.definition.pile ? y + tileSize * .42 : y + 1 + shift);
       }
+      if (isFinished && building.spellCooldown > 0) { // förtrollare som vilar: lila stapel som fylls tills den kan kasta igen
+        context.fillStyle = '#000'; context.fillRect(x + 2, y + tileSize - 5, tileSize - 4, 3);
+        context.fillStyle = '#b88cf0'; context.fillRect(x + 2, y + tileSize - 5, (tileSize - 4) * (1 - building.spellCooldown / (building.spellTotal || building.spellCooldown)), 3);
+      }
       if (building.player !== CityBuilder.Players.HUMAN) { // andra spelares byggnader: ram i spelarens färg
         context.strokeStyle = CityBuilder.Config.settings.playerColors[building.player] || '#fff'; context.lineWidth = 2;
         context.strokeRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
