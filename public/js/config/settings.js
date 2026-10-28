@@ -17,6 +17,11 @@ CityBuilder.Config.settings = {
   // de första banornas byggnader, innan smederna öppnar; hammare går åt som byggkostnad.
   startingResources: { wood: 10, plank: 10, stone: 10, hammer: 15, axe: 12, pickaxe: 12, scythe: 8, shovel: 8, saw: 6, knife: 8 },
   gameSpeeds: [1, 2, 4, 8],
+  // Simuleringen går i fasta steg om simStep sekunder (samma steg ger samma spel, och 20 steg per sekund kostar mindre än ett steg per bildruta).
+  // Rörelsen ritas mellanliggande (interpolerad), så den ser jämn ut. Efter ett för långt dröjsmål körs högst maxStepsPerFrame steg per bildruta
+  // (spelet går då långsammare i stället för att hänga sig).
+  simStep: 0.05,
+  maxStepsPerFrame: 8,
   maxBuildDistance: 35,          // längst avstånd (rutor) från en egen byggnad som man får bygga på
   defaultEquipment: {}, // utrustning som varje produktionshus måste få (kan åsidosättas med requiredEquipment)
   // Boost per byggnad (spelaren slår på det i infopanelen). Varan går åt: 'cycles' omgångar per vara. Gäller alla hus av jobbtypen

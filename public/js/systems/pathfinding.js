@@ -103,7 +103,7 @@
       this.frame++;
       this.expireCache();
 
-      let budget = this.settings().nodesPerFrame ?? 3000;
+      let budget = this.settings().nodesPerFrame ?? 9000;
       while (budget > 0) {
         if (!this.active) {
           const request = this.nextRequest();

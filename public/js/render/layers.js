@@ -6,6 +6,10 @@
   // Utanför synfältet (Renderer.viewBounds)? Byggnader och enheter utanför bild hoppas över, så ritkostnaden följer vad som syns.
   const outside = (view, x, y) => x < view.left || x > view.right || y < view.top || y > view.bottom;
 
+  // Enhetens ritade läge: simuleringen går i fasta steg, så läget mellan förra och nuvarande steget blandas efter Game.alpha. Hopp (teleport) ritas direkt.
+  const lerpShown = (from, to) => from === undefined || Math.abs(to - from) > 1.5 ? to : from + (to - from) * CityBuilder.Game.alpha;
+  const shownX = unit => lerpShown(unit.px, unit.x), shownY = unit => lerpShown(unit.py, unit.y);
+
   // Någon annans byggnad eller enhet som spelaren inte ser (i dimman): ritas inte
   const hidden = thing => thing.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, thing);
 
@@ -471,18 +475,19 @@
     context.imageSmoothingQuality = gfx.smoothing ? 'high' : 'low';
     const view = renderer.viewBounds(tileSize * 2);
     for (const unit of World.units) {
-      if (outside(view, unit.x * tileSize, unit.y * tileSize) || hidden(unit)) { unit.lastX = unit.x; unit.lastY = unit.y; continue; } // förflyttningen utanför bild ger ingen riktning
+      const shownAtX = shownX(unit), shownAtY = shownY(unit);
+      if (outside(view, shownAtX * tileSize, shownAtY * tileSize) || hidden(unit)) { unit.lastX = shownAtX; unit.lastY = shownAtY; continue; } // förflyttningen utanför bild ger ingen riktning
       const definition = unit.definition, image = findUnitImage(unit);
       const frameW = image && (definition.frame || image.naturalWidth), frameH = image && (definition.frame || image.naturalHeight);
       const cols = image ? Math.max(1, Math.floor(image.naturalWidth / frameW)) : 1, rows = image ? Math.max(1, Math.floor(image.naturalHeight / frameH)) : 1;
 
       // Rörelse sedan förra bilden: riktning (står enheten still behålls den) och tidpunkt för senaste rörelse
-      const moveX = unit.x - (unit.lastX ?? unit.x), moveY = unit.y - (unit.lastY ?? unit.y);
+      const moveX = shownAtX - (unit.lastX ?? shownAtX), moveY = shownAtY - (unit.lastY ?? shownAtY);
       if (Math.abs(moveX) > 1e-4) unit.faceLeft = moveX < 0;
       if (Math.abs(moveX) + Math.abs(moveY) > 1e-4) { unit.direction = directionOf(moveX, moveY, rows >= 9); unit.lastMoveAt = now; }
-      unit.lastX = unit.x; unit.lastY = unit.y;
+      unit.lastX = shownAtX; unit.lastY = shownAtY;
 
-      const pixelX = unit.x * tileSize, pixelY = unit.y * tileSize;
+      const pixelX = shownAtX * tileSize, pixelY = shownAtY * tileSize;
       if (image) {
         const size = definition.imageSize;
         // 150 ms eftersläp så att enheten inte växlar mellan gå och stå mellan bildrutor
@@ -525,7 +530,7 @@
     const tileSize = renderer.tileSize, colors = Config.settings.playerColors, view = renderer.viewBounds(tileSize * 2);
 
     for (const unit of World.units) {
-      const definition = unit.definition, pixelX = unit.x * tileSize, pixelY = unit.y * tileSize;
+      const definition = unit.definition, pixelX = shownX(unit) * tileSize, pixelY = shownY(unit) * tileSize;
       if (outside(view, pixelX, pixelY) || hidden(unit)) continue;
 
       if (definition.isSoldier) {
@@ -632,7 +637,7 @@
       } else { mask.fillStyle = '#000'; mask.beginPath(); mask.arc(x, y, radius + fade / 2, 0, Math.PI * 2); mask.fill(); }   // enkel jämn cirkel
     };
     for (const building of World.buildings) if (building.player === Players.HUMAN && !building.definition.pile) light(building.x + .5, building.y + .5, buildingLight);
-    if (gfx.nightUnits) for (const unit of World.units) if (unit.player === Players.HUMAN) light(unit.x, unit.y, unitLight);
+    if (gfx.nightUnits) for (const unit of World.units) if (unit.player === Players.HUMAN) light(shownX(unit), shownY(unit), unitLight);
     context.imageSmoothingEnabled = true;
     context.drawImage(dusk, left * size, top * size, cols * size, rows * size);
   }

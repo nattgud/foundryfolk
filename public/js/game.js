@@ -12,6 +12,8 @@
     lastFrameTime: 0,
     deltaSeconds: 0,
     paused: false,          // sätts av huvudmenyn medan den är öppen
+    pending: 0,             // speltid som ännu inte körts som steg (sekunder, mindre än ett steg)
+    alpha: 0,               // hur långt vi kommit mot nästa steg (0-1), för jämn ritning mellan stegen
     tick: 0,                // antal simuleringssteg som körts (kommandon loggas med detta)
     focusPaused: false,     // true när fönstret/fliken inte har fokus. Spelet står ALLTID stilla då (ingen inställning)
 
@@ -144,6 +146,7 @@
     // En simuleringsruta (anropas av loopen, och kan anropas direkt av tester)
     advanceSimulation(deltaSeconds) {
       this.deltaSeconds = deltaSeconds;
+      for (const unit of World.units) { unit.px = unit.x; unit.py = unit.y; }   // läget före steget, för interpolerad ritning
       Pathfinder.update(deltaSeconds);
 
       // Ett fel i ett system får aldrig stoppa hela spelet (t.ex. en gammal sparning med oväntade data): felet loggas en gång per sort och övriga system går vidare
@@ -181,8 +184,13 @@
       const started = performance.now();
       const realSeconds = Math.min(.1, (time - this.lastFrameTime) / 1000);
       this.lastFrameTime = time;
-      const simulatedSeconds = this.paused ? 0 : realSeconds * Config.settings.gameSpeeds[this.speedIndex];
-      this.advanceSimulation(simulatedSeconds);
+      const { simStep, maxStepsPerFrame } = Config.settings;
+      if (!this.paused) this.pending += realSeconds * Config.settings.gameSpeeds[this.speedIndex];
+      let steps = 0;
+      while (this.pending >= simStep && steps < maxStepsPerFrame) { this.advanceSimulation(simStep); this.pending -= simStep; steps++; }
+      if (this.pending >= simStep) this.pending %= simStep;   // överbelastat: spelet går långsammare än önskat, tiden som blev över släpps
+      this.alpha = this.pending / simStep;
+      const simulatedSeconds = steps * simStep;
       try {
         CityBuilder.Renderer.draw();
         UI.refresh();
