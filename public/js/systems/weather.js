@@ -64,7 +64,14 @@
         for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) if (Utils.distance(dx, dy) <= zone.radius) check(zone.x + dx, zone.y + dy);
         return;
       }
-      for (const { cx, cy } of Vision.activeChunks) for (let y = cy * size; y < (cy + 1) * size; y++) for (let x = cx * size; x < (cx + 1) * size; x++) check(x, y);
+      for (const { cx, cy } of Vision.activeChunks) {
+        const left = cx * size, top = cy * size, key = Utils.tileKey(cx, cy);
+        const tiles = World.chunks.get(key) || (World.getTile(left, top), World.chunks.get(key));   // rutorna ligger rad för rad i chunken
+        for (let row = 0, i = 0; row < size; row++) for (let column = 0; column < size; column++, i++) {
+          const tile = tiles[i];
+          if (growth[tile.terrainType] && tile.remainingAmount > 0 && Vision.visible(Players.HUMAN, left + column, top + row)) visit(tile, left + column, top + row);
+        }
+      }
     },
 
     hasPlants(zone) { let found = false; this.forEachPlant(() => { found = true; }, zone); return found; },

@@ -90,31 +90,37 @@
       return false;
     },
 
-    // Cellförskjutningar inom radius (rutor) från mittcellen
+    // Cirkeln för en räckvidd som rader: [dy, minDx, maxDx, ...] i celler från mittcellen (varje rad är sammanhängande)
     disc(radius) {
-      let offsets = this.discs.get(radius);
-      if (!offsets) {
-        const reach = radius / cellSize();
-        offsets = [];
-        for (let dy = -Math.ceil(reach); dy <= Math.ceil(reach); dy++) {
-          for (let dx = -Math.ceil(reach); dx <= Math.ceil(reach); dx++) if (dx * dx + dy * dy <= reach * reach + .25) offsets.push(dx, dy);
+      let rows = this.discs.get(radius);
+      if (!rows) {
+        const reach = radius / cellSize(), span = Math.ceil(reach);
+        rows = [];
+        rows.left = 0; rows.right = 0;   // yttersta cellerna i sidled
+        for (let dy = -span; dy <= span; dy++) {
+          let from = null, to = null;
+          for (let dx = -span; dx <= span; dx++) if (dx * dx + dy * dy <= reach * reach + .25) { if (from === null) from = dx; to = dx; }
+          if (from !== null) { rows.push(dy, from, to); rows.left = Math.min(rows.left, from); rows.right = Math.max(rows.right, to); }
         }
-        this.discs.set(radius, offsets);
+        this.discs.set(radius, rows);
       }
-      return offsets;
+      return rows;
     },
 
-    // Spelaren ser cellerna runt (x, y) tills expiry
+    // Spelaren ser cellerna runt (x, y) tills expiry. Varje rad skrivs som ett eller flera sammanhängande stycken (ett per chunk),
+    // och de få chunkar cirkeln berör slås bara upp en gång var.
     stamp(player, x, y, radius, expiry) {
-      const centreX = this.cellOf(x), centreY = this.cellOf(y), offsets = this.disc(radius);
-      let chunk = null, chunkX = NaN, chunkY = NaN;
-      for (let i = 0; i < offsets.length; i += 2) {
-        const cellX = centreX + offsets[i], cellY = centreY + offsets[i + 1];
-        if ((cellX >> SHIFT) !== chunkX || (cellY >> SHIFT) !== chunkY) {
-          chunk = this.chunkOf(player, cellX, cellY, true);
-          chunkX = cellX >> SHIFT; chunkY = cellY >> SHIFT;
+      const centreX = this.cellOf(x), centreY = this.cellOf(y), rows = this.disc(radius), count = rows.length;
+      const firstX = (centreX + rows.left) >> SHIFT, firstY = (centreY + rows[0]) >> SHIFT;
+      const width = ((centreX + rows.right) >> SHIFT) - firstX + 1, height = ((centreY + rows[count - 3]) >> SHIFT) - firstY + 1;
+      const chunks = new Array(width * height);
+      for (let i = 0; i < count; i += 3) {
+        const cellY = centreY + rows[i], last = centreX + rows[i + 2], base = (cellY & MASK) << SHIFT, rowOffset = ((cellY >> SHIFT) - firstY) * width;
+        for (let cellX = centreX + rows[i + 1]; cellX <= last;) {
+          const end = Math.min(last, cellX | MASK), slot = rowOffset + (cellX >> SHIFT) - firstX;   // end = sista cellen i samma chunk
+          (chunks[slot] ||= this.chunkOf(player, cellX, cellY, true)).cells.fill(expiry, base + (cellX & MASK), base + (end & MASK) + 1);
+          cellX = end + 1;
         }
-        chunk.cells[((cellY & MASK) << SHIFT) | (cellX & MASK)] = expiry;
       }
     },
 

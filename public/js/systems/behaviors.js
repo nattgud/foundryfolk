@@ -4,6 +4,8 @@
   'use strict';
   const { Config, World, Utils, Jobs } = CityBuilder;
 
+  const statusClass = new WeakMap();   // byggnad -> { text, counted, reason } (se trackEfficiency)
+
   const Behaviors = {
     registry: {},
 
@@ -156,12 +158,17 @@
       const slot = Math.floor(eff.time / BUCKET);
       let bucket = eff.buckets[slot % count];
       if (!bucket || bucket.slot !== slot) bucket = eff.buckets[slot % count] = { slot, total: 0, work: 0, reasons: {} };
-      // Tom status eller sökning = arbetaren planerar: räknas varken som arbete eller stillestånd
-      const status = CityBuilder.I18n.canonicalStatus(building.status || '');
-      if (status && status !== 'Searching...') {
-        const reason = this.idleReason(building);
+      // Tom status eller sökning = arbetaren planerar: räknas varken som arbete eller stillestånd. Statusens klass räknas om bara när texten ändrats.
+      let known = statusClass.get(building);
+      if (!known || known.text !== building.status) {
+        const status = CityBuilder.I18n.canonicalStatus(building.status || '');
+        known = { text: building.status, counted: Boolean(status) && status !== 'Searching...', reason: null };
+        if (known.counted) known.reason = this.idleReason(building);
+        statusClass.set(building, known);
+      }
+      if (known.counted) {
         bucket.total += deltaSeconds;
-        if (reason) bucket.reasons[reason] = (bucket.reasons[reason] || 0) + deltaSeconds; else bucket.work += deltaSeconds;
+        if (known.reason) bucket.reasons[known.reason] = (bucket.reasons[known.reason] || 0) + deltaSeconds; else bucket.work += deltaSeconds;
       }
       if ((eff.timer -= deltaSeconds) > 0) return;
       eff.timer = 1; // sammanfattningen uppdateras en gång per sekund
