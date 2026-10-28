@@ -107,6 +107,11 @@
       return spell;
     },
 
+    // Formeln för en id-sträng ("earth:2,fire:1"), så att ett kommando kan bära formeln som text
+    fromId(id) {
+      return this.evaluate(String(id).split(',').filter(Boolean).map(part => { const [slot, amount] = part.split(':'); return { id: slot, amount: Number(amount) }; }));
+    },
+
     // Dagens recept ur trollboken som formler
     recipes() { return this.book.map(recipe => this.evaluate(recipe.mix)).filter(Boolean); },
 

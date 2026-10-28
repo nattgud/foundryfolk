@@ -12,6 +12,7 @@
     lastFrameTime: 0,
     deltaSeconds: 0,
     paused: false,          // sätts av huvudmenyn medan den är öppen
+    tick: 0,                // antal simuleringssteg som körts (kommandon loggas med detta)
     focusPaused: false,     // true när fönstret/fliken inte har fokus. Spelet står ALLTID stilla då (ingen inställning)
 
     get systems() { return Config.settings.systemOrder.map(name => CityBuilder.Systems[name]); },
@@ -76,7 +77,7 @@
 
     castSpell(x, y) {
       const { building, spell } = this.casting;
-      const problem = CityBuilder.Spells.cast(building, spell, x, y);
+      const problem = CityBuilder.Commands.issue('cast', { building: building.id, spell: spell.id, x, y });
       if (!problem) { this.casting = null; return; }
       this.refuse({
         cooldown: () => t('The enchanter is resting'),
@@ -102,7 +103,7 @@
       if (CityBuilder.Levels && !CityBuilder.Levels.isUnlocked(buildingType)) {
         return this.refuse(t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(buildingType) }));
       }
-      const problem = CityBuilder.Construction.build(buildingType, x, y);
+      const problem = CityBuilder.Commands.issue('build', { type: buildingType, x, y });
       if (problem) {
         return this.refuse({
           terrain: () => t('Must be built on: {terrain}', { terrain: UI.terrainName(definition.placeOnTerrain) }),
@@ -127,7 +128,7 @@
 
     demolish(building) {
       CityBuilder.Sound?.play('demolish', { x: building.x, y: building.y });
-      CityBuilder.Construction.dismantle(building, true);
+      CityBuilder.Commands.issue('demolish', { building: building.id });
       this.selectBuilding(null);
     },
 
@@ -150,6 +151,7 @@
         try { system.update(deltaSeconds); } catch (error) { Errors.report(error, 'simulation'); } // ett felaktigt system stoppar inte övriga
       }
       this.dropBrokenUnits();
+      this.tick++;
     },
 
     // Enheter med ogiltigt läge (NaN) kan förgifta sökningar och ritning: de tas bort och felet rapporteras

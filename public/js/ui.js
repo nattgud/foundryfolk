@@ -1022,7 +1022,7 @@
         const button = make('button', 'market-trade');
         button.type = 'button';
         button.onclick = () => {
-          const done = Economy[state.mode](resourceId, state.amount);
+          const done = CityBuilder.Commands.issue('trade', { mode: state.mode, resource: resourceId, amount: state.amount });
           if (done) CityBuilder.Sound?.play('drop');
           this.updateMarket(true);
         };
@@ -3011,12 +3011,12 @@
         if (byId('stanceButton')) {
           byId('stanceButton').onclick = () => {
             const Garrison = CityBuilder.Garrison;
-            Garrison.setStance(building, Garrison.isAttacking(building) ? 'defend' : 'attack');
+            CityBuilder.Commands.issue('stance', { building: building.id, stance: Garrison.isAttacking(building) ? 'defend' : 'attack' });
           };
         }
 
         for (const button of panel.querySelectorAll('.train-button')) {
-          button.onclick = () => CityBuilder.Garrison.setTrainingType(building, button.dataset.kind);
+          button.onclick = () => CityBuilder.Commands.issue('train', { building: building.id, kind: button.dataset.kind });
         }
 
         for (const button of panel.querySelectorAll('.spell-button')) {
@@ -3025,16 +3025,16 @@
         if (byId('mixButton')) byId('mixButton').onclick = () => this.openWorkshop(building);
 
         for (const button of panel.querySelectorAll('.tool-toggle')) {
-          button.onclick = () => CityBuilder.Behaviors.toggleRecipe(building, +button.dataset.index);
+          button.onclick = () => CityBuilder.Commands.issue('recipe', { building: building.id, index: +button.dataset.index });
         }
 
         if (byId('choiceButton')) {
-          const Behaviors = CityBuilder.Behaviors;
+          const Behaviors = CityBuilder.Behaviors, focus = type => CityBuilder.Commands.issue('focus', { building: building.id, type });
           if (focuses.length > 1) {
-            for (const radio of panel.querySelectorAll('.choice-radio')) radio.onclick = event => { event.stopPropagation(); Behaviors.setFocus(building, radio.dataset.type); };
-            byId('choiceButton').onclick = () => { const list = Behaviors.focusesOf(building); Behaviors.setFocus(building, list[(list.indexOf(building.type) + 1) % list.length]); };   // snabbtangenten R
+            for (const radio of panel.querySelectorAll('.choice-radio')) radio.onclick = event => { event.stopPropagation(); focus(radio.dataset.type); };
+            byId('choiceButton').onclick = () => { const list = Behaviors.focusesOf(building); focus(list[(list.indexOf(building.type) + 1) % list.length]); };   // snabbtangenten R
           } else {
-            const choose = index => { building.choice = index; };
+            const choose = index => CityBuilder.Commands.issue('choice', { building: building.id, index });
             for (const radio of panel.querySelectorAll('.choice-radio')) radio.onclick = event => { event.stopPropagation(); choose(+radio.dataset.index); };
             byId('choiceButton').onclick = () => choose(((building.choice || 0) + 1) % building.definition.job.choices.length);   // snabbtangenten R
           }
@@ -3043,14 +3043,14 @@
         if (byId('marketButton')) byId('marketButton').onclick = () => this.openMarket();
 
         if (byId('boostButton')) {
-          byId('boostButton').onclick = () => { building.boostOn = !building.boostOn; };
+          byId('boostButton').onclick = () => CityBuilder.Commands.issue('boost', { building: building.id, on: !building.boostOn });
         }
 
-        if (byId('priorityButton')) byId('priorityButton').onclick = () => { building.prioritized = !building.prioritized; };
+        if (byId('priorityButton')) byId('priorityButton').onclick = () => CityBuilder.Commands.issue('priority', { building: building.id, on: !building.prioritized });
 
         if (byId('pauseButton')) {
           byId('pauseButton').onclick = () => {
-            building.paused = !building.paused;
+            CityBuilder.Commands.issue('pause', { building: building.id, on: !building.paused });
           };
         }
 
