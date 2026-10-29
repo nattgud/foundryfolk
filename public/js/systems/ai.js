@@ -217,7 +217,7 @@
       const hq = World.hqOf(player);
       let nearest = Infinity;
       for (const thing of [...World.buildings, ...World.units]) {
-        if (!Players.isHostile(player, thing.player) || !Vision.knows(player, thing)) continue;
+        if (!Players.isPlayer(thing.player) || !Players.isHostile(player, thing.player) || !Vision.knows(player, thing)) continue;   // monster visar inte var motståndaren finns
         const half = thing.buildProgress !== undefined ? .5 : 0;
         const distance = Utils.distance(thing.x + half - hq.x, thing.y + half - hq.y);
         if (distance < nearest) { nearest = distance; state.lead = { x: Math.round(thing.x), y: Math.round(thing.y) }; }

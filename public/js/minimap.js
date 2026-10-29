@@ -640,13 +640,13 @@
       }
       context.globalAlpha = 1;
 
-      // Soldater: små cirklar (röda för andra spelare, blå för dina egna)
+      // Soldater: små cirklar (röda för andra spelare, lila för monster, blå för dina egna)
       const dot = Math.max(2, Math.round(scale * 1.2));
       for (const unit of World.units) {
         if (selection || !unit.definition.isSoldier || (unit.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, unit))) continue;
         const x = toX(unit.x), y = toY(unit.y);
         if (Math.hypot(x - radius, y - radius) > radius) continue;
-        context.fillStyle = unit.player === Players.HUMAN ? '#4aa3ff' : rivalColor;
+        context.fillStyle = unit.player === Players.HUMAN ? '#4aa3ff' : unit.player === Players.MONSTER ? Config.settings.playerColors[Players.MONSTER] : rivalColor;
         context.beginPath();
         context.arc(x, y, dot, 0, Math.PI * 2);
         context.fill();

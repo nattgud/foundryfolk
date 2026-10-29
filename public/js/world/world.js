@@ -57,6 +57,7 @@
       Utils.seedRandom(Config.world.seed * 7919 + 17);   // spelets slump följer världens seed
       CityBuilder.Vision.reset();
       CityBuilder.Flags.reset();
+      CityBuilder.Monsters.reset();
       CityBuilder.Spells.reset();
       CityBuilder.Weather.reset();
       Players.team = { ...CityBuilder.Levels?.current?.teams };

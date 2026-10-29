@@ -78,6 +78,7 @@
         });
       }
 
+      animal.push(...CityBuilder.Monsters.populate(key, random, candidates, animal.length));   // monster på banor med monster (efter djuren: de har sin egen slumpföljd)
       World.animalsByChunk.set(key, animal);
     },
 	
@@ -94,6 +95,7 @@
 
     // Gör en post till en enhet i världen
     activate(record, key) {
+      if (Config.units[record.kind].isMonster) return CityBuilder.Monsters.activate(record, key);
       // spawnUnit lägger till 0.5 till koordinaterna.
       const unit = World.spawnUnit(record.kind, record.x - 0.5, record.y - 0.5);
       unit.animalRecordId = record.id;
@@ -174,6 +176,7 @@
         );
 
         if (record) this.save(unit, record);
+        unit.removed = true;   // så att ingen jagar en enhet som lämnat världen
       }
 
       World.units = remainingUnits;

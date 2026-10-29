@@ -134,7 +134,7 @@
       // Utskickade soldater räknas som hemma i sin byggnad (de går ut igen om fienden finns kvar). Fria soldater sparas var för sig.
       const soldiers = [];
       for (const unit of World.units) {
-        if (!unit.definition.isSoldier) continue;
+        if (!unit.definition.isSoldier || unit.definition.isMonster) continue;   // monstren sparas för sig (Animals och Monsters)
         const snapshot = unit.quarters && snapshots.get(unit.quarters);
         if (snapshot) {
           const garrison = snapshot.fields.garrison = snapshot.fields.garrison || {};
@@ -193,6 +193,7 @@
         haulers: haulerStates,
         tiles: this.collectTileChanges(),
         flags: CityBuilder.Flags.pack(),
+        monsters: CityBuilder.Monsters.pack(),
         animalChunks: (
           CityBuilder.Animals.syncActive(),
           CityBuilder.Animals.pack(Array.from(World.animalsByChunk.entries()))
@@ -269,6 +270,8 @@
       });
 
       part('flags', () => CityBuilder.Flags.restore(data.flags));
+
+      part('monsters', () => CityBuilder.Monsters.restore(data.monsters));
 
       part('carriers', () => {
         // Nytt format: varje bärare står kvar där den var, bär det den bar och fortsätter sitt uppdrag

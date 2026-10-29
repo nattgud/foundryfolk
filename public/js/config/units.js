@@ -7,7 +7,11 @@
    Soldater (isSoldier) har dessutom:
    attackDamage, attackRange (rutor), attackCooldown (sekunder mellan slag), armor (dras från skadan, minst 1 går alltid igenom),
    searchRadius (hur långt från sin post eller byggnad en soldat upptäcker fiender),
-   training: { inputs, seconds } = vad en ny soldat kostar och hur lång tid träningen tar i en garnisonsbyggnad. */
+   training: { inputs, seconds } = vad en ny soldat kostar och hur lång tid träningen tar i en garnisonsbyggnad.
+
+   Monster (isMonster, se systems/monsters.js) är soldater som tillhör Players.MONSTER och har dessutom:
+   roam (rutor de rör sig från sin startplats, 0 = står helt still), aggro (hur långt utanför det de upptäcker fiender),
+   from (första banan arten finns på), spawnWeight (hur vanlig arten är), raider (anfaller basen, och byggnader), attackSound/idleSound. */
 
   // SPRITE SHEETS (frame: 64 on a unit = sheet; without frame the whole image is drawn as one picture)
   // Cells are frame x frame px. Rows = state/direction, columns = animation frames.
@@ -173,3 +177,27 @@ CityBuilder.Config.units = {
     },
   },
 };
+
+// Monster: bor på kartan och försvarar sitt område. roam 0 = står helt still och slår bara det som kommer inom attackRange.
+// De anfaller soldater, och bärare som kommer nära (settings.monsters.carrierRange), men aldrig arbetare. Byggnader anfaller bara raider.
+const MONSTER_DEFAULTS = {
+  isSoldier: true,
+  isMonster: true,
+  player: CityBuilder.Players.MONSTER,
+  armor: 0,
+  roam: 0,
+  aggro: 0,
+  from: 35,
+  spawnWeight: 1,
+  fallbackShape: 'circle',
+};
+
+Object.assign(CityBuilder.Config.units, {
+  slime:    { ...MONSTER_DEFAULTS, maxHp: 22,  attackDamage: 3,  attackRange: 1.2, attackCooldown: 1.2, speedMultiplier: 0.35, roam: 5,  aggro: 4, spawnWeight: 5, from: 35, color: '#6fbf4a', fallbackSize: 6, imageSize: 18, attackSound: 'monster_squelch' },
+  spider:   { ...MONSTER_DEFAULTS, maxHp: 38,  attackDamage: 6,  attackRange: 1.2, attackCooldown: 0.9, speedMultiplier: 0.85, roam: 9,  aggro: 7, spawnWeight: 3, from: 35, color: '#4a3a52', fallbackSize: 6, imageSize: 20, attackSound: 'monster_screech' },
+  maneater: { ...MONSTER_DEFAULTS, maxHp: 45,  attackDamage: 5,  attackRange: 2.4, attackCooldown: 0.7, speedMultiplier: 0,    roam: 0,           spawnWeight: 3, from: 35, color: '#b0405a', fallbackSize: 7, imageSize: 22, attackSound: 'monster_snap' },
+  golem:    { ...MONSTER_DEFAULTS, maxHp: 150, attackDamage: 12, attackRange: 1.8, attackCooldown: 2.2, speedMultiplier: 0,    roam: 0, armor: 2, spawnWeight: 2, from: 36, color: '#8a8f94', fallbackSize: 8, imageSize: 26, attackSound: 'monster_rumble' },
+  wolf:     { ...MONSTER_DEFAULTS, maxHp: 55,  attackDamage: 8,  attackRange: 1.2, attackCooldown: 1.0, speedMultiplier: 1.0,  roam: 13, aggro: 9, spawnWeight: 2, from: 37, color: '#7b7f86', fallbackSize: 6, imageSize: 20, attackSound: 'monster_howl' },
+  troll:    { ...MONSTER_DEFAULTS, maxHp: 140, attackDamage: 14, attackRange: 1.4, attackCooldown: 1.8, speedMultiplier: 0.4,  roam: 8,  aggro: 7, armor: 2, spawnWeight: 1, from: 40, color: '#5f7d4e', fallbackSize: 8, imageSize: 28, attackSound: 'monster_roar' },
+  ogre:     { ...MONSTER_DEFAULTS, maxHp: 160, attackDamage: 18, attackRange: 1.5, attackCooldown: 2.0, speedMultiplier: 0.5,  aggro: 6, armor: 2, spawnWeight: 0, raider: true, color: '#a0522d', fallbackSize: 9, imageSize: 30, attackSound: 'monster_roar' },
+});

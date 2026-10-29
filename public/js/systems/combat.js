@@ -20,7 +20,7 @@
    Soldater styrs via stegkön (Jobs) som övriga enheter, så Units.update gör själva förflyttningen. */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Jobs, Behaviors, Players, Garrison, Flags, Vision, Utils } = CityBuilder;
+  const { Config, World, Jobs, Behaviors, Players, Garrison, Flags, Monsters, Vision, Utils } = CityBuilder;
 
   const settings = () => Config.settings.military;
   const TIMERS = ['attackCooldownLeft', 'scanTimer', 'repathTimer', 'orderCooldown', 'homeSearchTimer'];
@@ -78,7 +78,8 @@
     },
 
     // Bästa fiende till 'player' inom radius från (x, y): lägst prioritet först, sedan närmast (vid lika: den som kom först i listan).
-    findEnemy(player, x, y, radius, ignore) {
+    // 'hunter' (valfri): monstret som söker. Det får bara slå vissa mål (Monsters.mayHit) och ser allt (ingen fog of war).
+    findEnemy(player, x, y, radius, ignore, hunter) {
       const list = this.targets(), grid = this.grid, reach = radius + GRID_MARGIN, radiusSquared = radius * radius;
       const fromX = Math.floor((x - reach) / GRID_CELL), toX = Math.floor((x + reach) / GRID_CELL), fromY = Math.floor((y - reach) / GRID_CELL), toY = Math.floor((y + reach) / GRID_CELL);
       let best = null, bestPriority = Infinity, bestDistance = Infinity, bestIndex = Infinity;
@@ -87,11 +88,11 @@
         if (!cell) continue;
         for (const index of cell) {
           const target = list[index];
-          if (target.removed || target === ignore || !Players.isHostile(player, target.player)) continue;
+          if (target.removed || target === ignore || !Players.isHostile(player, target.player) || (hunter && !Monsters.mayHit(hunter, target))) continue;
           const dx = centreX(target) - x, dy = centreY(target) - y, squared = dx * dx + dy * dy;
           if (squared > radiusSquared) continue;
           const distance = Math.sqrt(squared);
-          if (!Vision.knows(player, target)) continue;   // fog of war: bara det spelaren ser, eller (dator) känner till
+          if (player !== Players.MONSTER && !Vision.knows(player, target)) continue;   // fog of war: bara det spelaren ser, eller (dator) känner till
           const rank = priority(target);
           if (rank > bestPriority || (rank === bestPriority && (distance > bestDistance || (distance === bestDistance && index > bestIndex)))) continue;
           best = target; bestPriority = rank; bestDistance = distance; bestIndex = index;
@@ -107,7 +108,7 @@
       attacker.attackCooldownLeft = definition.attackCooldown;
       if (definition.attackRange <= MELEE_RANGE) {
         this.effects.push({ x1: attacker.x, y1: attacker.y, x2: centreX(target), y2: centreY(target), life: 0.18 });
-        CityBuilder.Sound?.play('swing', { x: attacker.x, y: attacker.y });
+        CityBuilder.Sound?.play(definition.attackSound || 'swing', { x: attacker.x, y: attacker.y });
         this.damage(target, amount, attacker);
         return;
       }
@@ -158,10 +159,11 @@
     kill(target, attacker) {
       if (target.removed) return;
       const Levels = CityBuilder.Levels;
-      if (attacker?.player === Players.HUMAN && Players.isHostile(Players.HUMAN, target.player)) Levels?.onDefeated?.(target);
+      if (attacker?.player === Players.HUMAN && Players.isPlayer(target.player) && Players.isHostile(Players.HUMAN, target.player)) Levels?.onDefeated?.(target);   // monster räknas inte mot banans mål
       if (isBuilding(target)) return this.destroyBuilding(target);
       const unit = target;
-      if (unit.definition.isSoldier) CityBuilder.Sound?.play('died', { x: unit.x, y: unit.y });
+      if (unit.definition.isSoldier) CityBuilder.Sound?.play(unit.definition.isMonster ? 'monster_die' : 'died', { x: unit.x, y: unit.y });
+      if (unit.animalRecordId) CityBuilder.Animals.markDead(unit);   // ett dödat monster kommer inte tillbaka
       CityBuilder.Logistics.abortTask(unit); // en bärare som dör släpper sina reservationer
       if (unit.definition.isHauler) CityBuilder.Logistics.carrierLost(unit);
       Garrison.release(unit);
@@ -278,6 +280,8 @@
     updateSoldier(unit, deltaSeconds) {
       for (const timer of TIMERS) unit[timer] = Math.max(0, unit[timer] - deltaSeconds);
 
+      const monster = unit.definition.isMonster;
+      if (monster) Monsters.growl(unit);
       const anchor = this.anchorOf(unit);
       if (unit.target && !this.isValidTarget(unit, anchor)) unit.target = null;
 
@@ -285,7 +289,7 @@
       if ((!unit.target || priority(unit.target) > 0) && unit.scanTimer <= 0) {
         unit.scanTimer = settings().scanIntervalSeconds;
         const ignored = unit.ignoreUntil > this.time ? unit.ignore : null;
-        const found = this.findEnemy(unit.player, anchor.x, anchor.y, anchor.radius, ignored);
+        const found = this.findEnemy(unit.player, anchor.x, anchor.y, anchor.radius, ignored, monster ? unit : undefined);
         if (found && (!unit.target || priority(found) < priority(unit.target))) unit.target = found;
       }
 
@@ -298,6 +302,7 @@
     // Platsen soldaten vaktar och hur långt därifrån den upptäcker fiender: flaggan (på väg dit: där soldaten står, så att fiender på vägen
     // bekämpas), annars sin byggnad, annars sin post
     anchorOf(unit) {
+      if (unit.definition.isMonster) return Monsters.anchorOf(unit);
       const home = unit.quarters;
       if (home && !home.removed) {
         const flag = Garrison.flagOf(home), radius = Flags.radius();
@@ -315,14 +320,14 @@
     // Målet gäller så länge det lever, fortfarande är en fiende och inte tagit sig för långt från vaktplatsen
     isValidTarget(unit, anchor) {
       const target = unit.target;
-      return !target.removed && Players.isHostile(unit.player, target.player) &&
+      return !target.removed && Players.isHostile(unit.player, target.player) && (!unit.definition.isMonster || Monsters.mayHit(unit, target)) &&
         Utils.distance(centreX(target) - anchor.x, centreY(target) - anchor.y) <= anchor.radius * settings().leashFactor;
     },
 
     // Närstrid mot en enhet kräver att den står i samma ruta, annars räknas avståndet (mot en byggnad från dess kant)
     inReach(unit, target) {
       const range = unit.definition.attackRange;
-      if (range <= MELEE_RANGE && !isBuilding(target)) return Math.floor(target.x) === Math.floor(unit.x) && Math.floor(target.y) === Math.floor(unit.y);
+      if (range <= MELEE_RANGE && !isBuilding(target) && !unit.definition.isMonster) return Math.floor(target.x) === Math.floor(unit.x) && Math.floor(target.y) === Math.floor(unit.y);
       return Utils.distance(centreX(target) - unit.x, centreY(target) - unit.y) <= range + (isBuilding(target) ? BUILDING_REACH : 0);
     },
 
@@ -337,6 +342,8 @@
         if (unit.attackCooldownLeft <= 0) this.attack(unit, target);
         return;
       }
+
+      if (unit.definition.isMonster && !unit.definition.roam && !unit.definition.raider) { unit.target = null; return; }   // en stillastående slår bara det som är inom räckhåll
 
       // Vägen räknas om bara när målet bytt ruta, och inte oftare än repathSeconds (sökningar kostar).
       // Byte från ett annat uppdrag (t.ex. på väg hem) sker direkt.
@@ -355,6 +362,7 @@
 
     // Inga fiender: gå hem och stig in, eller tillbaka till posten
     standDown(unit) {
+      if (unit.definition.isMonster) return Monsters.rest(unit);
       const home = unit.quarters, flag = home && !home.removed ? Garrison.flagOf(home) : null;
       if (flag) {   // till flaggan och stå kvar där
         if (Utils.distance(unit.x - flag.x - .5, unit.y - flag.y - .5) > POST_TOLERANCE) this.goTo(unit, flag, () => [Jobs.walkTo(flag.x, flag.y)]);

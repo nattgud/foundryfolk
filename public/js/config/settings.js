@@ -105,7 +105,7 @@ CityBuilder.Config.settings = {
       // night: 'sounds/ambient/night.mp3',             // loopas nattetid
     },
   },
-  playerColors: { 1: '#4aa3ff', 2: '#e5534b', 3: '#e0a030', 4: '#a56bd6' }, // lagfärg per spelare (ring runt soldater, ram runt byggnader), se core/players.js
+  playerColors: { 1: '#4aa3ff', 2: '#e5534b', 3: '#e0a030', 4: '#a56bd6', '-1': '#9b59d0' }, // lagfärg per spelare (ring runt soldater, ram runt byggnader), se core/players.js
   military: {
     searchRadius: 20,          // standardräckvidd (rutor) för att upptäcka fiender (försvarsläge)
     flagRadius: 10,            // soldater vid flaggan (attackläge) slåss mot fiender så här långt från den, och på vägen dit
@@ -179,5 +179,27 @@ CityBuilder.Config.settings = {
       oreAmount: 1,                        // andel av malmrutans normala mängd
     },
   },
-  systemOrder: ['ai', 'construction', 'production', 'spells', 'logistics', 'combat', 'units', 'weather', 'vision'],
+  // Monster (systems/monsters.js). På banor med monster (Levels.current.monsters) får varje chunk monster med en chans som växer med banan.
+  monsters: {
+    chance: 0.18,                          // chans per chunk att få monster på första banan med monster
+    perStrength: 0.006,                    // och så mycket mer per bana därefter
+    maxChance: 0.4,
+    packChance: 0.25,                      // chans att ett monster har sällskap av ett till (annan plats, annan art) i samma chunk
+    safeRadius: 40,                        // inga monster närmare än så (i rutor) någon spelares huvudlager
+    carrierRange: 5,                       // monster anfaller bärare som kommer så nära (arbetare anfaller de aldrig)
+    wanderSeconds: [4, 12],                // paus mellan två promenader inom området
+    growlSeconds: [10, 30],                // hur ofta ett monster låter när spelaren ser det
+    raid: {
+      firstSeconds: 900,                   // banan med raiden: så lång banatid tar det innan monsterhorden dyker upp
+      window: [900, 2700],                 // senare banor: raiden (om det blir någon) kommer någon gång i det här tidsintervallet
+      chance: 0.12,                        // chans per bana (efter den första) att det blir en raid
+      warnSeconds: 45,                     // varningen kommer så här länge innan hordens ankomst
+      distance: [55, 75],                  // hur långt från huvudlagret hordens startplats ligger
+      size: 2,                             // antal raiders första gången, och ett till per perStrength banor
+      perStrength: 6,
+      maxSize: 6,
+      sweepRadius: 24,                     // väl framme letar raiders efter byggnader och fiender så här långt från huvudlagret
+    },
+  },
+  systemOrder: ['ai', 'construction', 'production', 'spells', 'logistics', 'monsters', 'combat', 'units', 'weather', 'vision'],
 };

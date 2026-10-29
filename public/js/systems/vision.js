@@ -155,7 +155,7 @@
         const units = World.units, parts = PHASES - 2;
         for (let i = Math.floor(units.length * (phase - 1) / parts), end = Math.floor(units.length * phase / parts); i < end; i++) {
           const unit = units[i];
-          if (unit.player === Players.NEUTRAL) continue;
+          if (!Players.isPlayer(unit.player)) continue;   // djur och monster ser ingenting
           this.stamp(unit.player, unit.x, unit.y, reach(unit.definition.vision ?? (unit.definition.isSoldier ? settings.soldier : settings.unit)), expiry);
         }
       } else {

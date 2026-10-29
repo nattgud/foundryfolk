@@ -27,6 +27,9 @@
   const RIVALS_FROM = [60, 90];  // a second rival from level 60, a third from level 90 (the player colours allow three)
   const FIRST_RIVAL = MISSION_START - 1;   // below this level there is no enemy at all: nobody can attack you before you have learned to defend
   const rivalsAt = level => (level < FIRST_RIVAL ? 0 : 1 + RIVALS_FROM.filter(from => level >= from).length);
+  const FIRST_MONSTER = FIRST_RIVAL - 4;   // monsters roam the map from here (see systems/monsters.js): a few levels before the first rival, and on every level after
+  const RAID_LEVEL = FIRST_RIVAL - 2;      // the level where a monster horde marches on your base after a while; on later levels it happens rarely and at random
+  const monstersAt = level => (level < FIRST_MONSTER ? null : { level, strength: level - FIRST_MONSTER, raid: level === RAID_LEVEL ? 'fixed' : level > RAID_LEVEL ? 'random' : null });
   const ALLIED_FROM = 80;        // with several rivals: each plays for itself (free-for-all) until this level, from here they are allied against you
   const alliedAt = level => rivalsAt(level) > 1 && level >= ALLIED_FROM;
   const LEVEL_KEY = 'citybuilder.level';
@@ -677,6 +680,7 @@
     if (bounty) tagKeys.push('Wealth level');
     if (trial) tagKeys.push('Trial');
     if (rivalsAt(level) > 1) tagKeys.push(alliedAt(level) ? 'Allied rivals' : 'Rivals fight each other');
+    if (level >= FIRST_MONSTER) tagKeys.push(level === RAID_LEVEL ? 'Monster raid' : 'Monsters');
     if (guardian) tagKeys.push('Guardian level');
     if (signatureDef) tagKeys.push(signatureDef.name);
     twists.forEach(twist => tagKeys.push(twist.name));
@@ -707,6 +711,7 @@
       trial, bounty, guardian,
       difficulty,
       rivals: rivalsAt(level),   // antal datorspelare (minst en per bana)
+      monsters: monstersAt(level),   // null (inga monster) eller { level, strength (banor sedan första monstren), raid: 'fixed' | 'random' | null } (se systems/monsters.js)
       teams: alliedAt(level) ? Object.fromEntries(Array.from({ length: rivalsAt(level) }, (_, i) => [CityBuilder.Players.ENEMY + i, CityBuilder.Players.ENEMY])) : {},   // spelare -> lag (se Players.team)
       seed,
       keep,
@@ -774,6 +779,7 @@
       tags: [], trial: false, bounty: false, guardian: false,
       difficulty: strongest / MAX_LEVELS,
       rivals: settings.enemies.length, teams, aiLevels,
+      monsters: settings.enemies.length ? { level: Math.max(FIRST_MONSTER, strongest), strength: Math.max(0, strongest - FIRST_MONSTER), raid: 'random' } : null,
       seed: settings.seed,
       keep, twists: [],
       tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.9, 0.70 * richness), scatteredOre: 0.01 * richness * richness, forest: FOREST[settings.forest] },

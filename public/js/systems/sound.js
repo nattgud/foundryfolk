@@ -57,6 +57,14 @@
     // Flaggor: en kort ton när spelaren sätter sin flagga, och en varning när en fiendes flagga syns (egna filer: settings.audio.sounds.flag och flag_enemy)
     flag: { synth: render(0.3, time => (note(659, time, 0, 0.2) + note(988, time, 0.1, 0.25)) * 0.35), maxVoices: 1, cooldown: 0.1 },
     flag_enemy: { synth: render(0.7, time => (note(330, time, 0, 0.3) + note(247, time, 0.25, 0.4)) * 0.4), volume: 0.8, maxVoices: 1, cooldown: 1 },
+    // Monster (egna filer: settings.audio.sounds.<id>). Varje art har ett eget läte (units.js: attackSound), alla dör med monster_die
+    monster_squelch: { synth: (() => { let low = 0; return render(0.3, (time, p) => { low += (noise() - low) * 0.18; return (low * 1.4 + Math.sin(TAU * (160 - 90 * p) * time) * 0.35) * Math.pow(1 - p, 1.5) * 0.7; }); })(), volume: 0.6, ...EFFECT },
+    monster_screech: { synth: render(0.35, (time, p) => (Math.sin(TAU * (1500 + 700 * Math.sin(p * 26)) * time) * 0.25 + noise() * 0.12) * Math.sin(Math.PI * p) * 0.8), volume: 0.5, ...EFFECT },
+    monster_howl: { synth: render(0.8, (time, p) => Math.sin(TAU * (260 + 240 * Math.sin(Math.PI * p)) * time + Math.sin(TAU * 6 * time) * 1.5) * 0.4 * Math.sin(Math.PI * Math.pow(p, 0.7))), volume: 0.6, ...EFFECT },
+    monster_snap: { synth: render(0.14, (time, p) => (noise() * 0.5 * Math.pow(1 - p, 6) + Math.sin(TAU * 420 * time) * 0.3 * Math.pow(1 - p, 3))), volume: 0.6, ...EFFECT },
+    monster_rumble: { synth: (() => { let low = 0; return render(0.7, (time, p) => { low += (noise() - low) * 0.06; return (low * 2.2 + Math.sin(TAU * 52 * time) * 0.5) * Math.sin(Math.PI * Math.pow(p, 0.6)) * 0.8; }); })(), volume: 0.8, ...EFFECT },
+    monster_roar: { synth: render(0.9, (time, p) => { const saw = ((time * (95 - 25 * p) * (1 + Math.sin(TAU * 11 * time) * 0.04)) % 1) * 2 - 1; return (saw * 0.45 + noise() * 0.12) * Math.sin(Math.PI * Math.pow(p, 0.5)) * 0.8; }), volume: 0.8, ...EFFECT },
+    monster_die: { synth: render(0.6, (time, p) => (Math.sin(TAU * (180 - 130 * p) * time) * 0.45 + noise() * 0.18 * (1 - p)) * Math.pow(1 - p, 1.3)), volume: 0.7, ...EFFECT },
     // Strid
     arrow: { synth: render(0.25, (time, p) => (noise() * 0.22 * Math.sin(Math.PI * p) + note(240, time, 0, 0.12) * 0.25)), volume: 0.6, ...EFFECT },
     swing: { synth: render(0.18, (time, p) => noise() * 0.28 * Math.sin(Math.PI * p)), volume: 0.6, ...EFFECT },
