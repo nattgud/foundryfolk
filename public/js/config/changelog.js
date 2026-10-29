@@ -6,6 +6,8 @@
 
   CityBuilder.Changelog = {
     '0.8.9': [
+      'Every mountain now has a moonstone at its peak, and the ore inside a mountain is generated as part of the terrain instead of being scattered afterwards',
+      'Level themes now change the climate: barren and drought levels are drier with more sand and less water, swamps are wetter with more bogs, forests are damper with denser woods, and archipelagos have more sea',
       'The build hotkeys (Q W E R T Y U I O P) now work as long as the buildings of an open category are shown, also while one of your buildings is selected; only the letters that control the selected building (P, B, R, T, S, Z X C V) go to it. Opening a category with the mouse now deselects the building, just like the number keys do',
       'Fixed "Not enough resources" when the top bar and tooltips said you had enough: stock that carriers are already fetching, or that buildings under construction are waiting for, is reserved. The resource tooltip now shows Reserved and Free, the number in the top bar is underlined while buildings wait for that resource, build costs turn red against what is really free, and the message says which resource is short',
       'The build menu now shows how many of a building are under construction after the finished ones, in grey: 3+2',

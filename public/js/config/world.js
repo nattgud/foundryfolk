@@ -83,7 +83,9 @@
   //   oreShare:      andel av bergets kärna som blir malm
   //   scatteredOre:  chans per ruta att vara ett utspritt malmfynd (före stenvillkoret). Lägre = färre fynd
   //   forest:        faktor på trädens täthet
-  const TUNING = { sea: 0.2, mountain: 0.76, oreShare: 0.74, scatteredOre: 0.01, forest: 1.1 };
+  //   bog:           faktor på hur mycket träsk fuktig lågmark blir
+  //   moisture:      läggs till fuktigheten överallt: negativt = torrare (öken, mindre träsk och skog), positivt = fuktigare
+  const TUNING = { sea: 0.2, mountain: 0.76, oreShare: 0.70, scatteredOre: 0.01, forest: 1.1, moisture: 0, bog: 1 };
   const tuning = { ...TUNING };
   // Malm utanför berg: enstaka fynd på en eller två rutor, väldigt utspridda och helst intill vanlig sten.
   const SCATTERED_ORE_FAR_CHANCE = 0.2;    // andel av fynden som får ligga utan sten i närheten (1 = överallt, 0 = bara intill sten)
@@ -136,7 +138,7 @@
     const coastal = 1 - smoothstep(0, 0.12, elevation - tuning.sea);
     const moisture = clamp01(
       regionalMoisture * 0.85 + 0.02 + 0.25 * nearWater + 0.22 * coastal + startArea * 0.12 -
-      0.30 * smoothstep(0.62, 0.85, relief)
+      0.30 * smoothstep(0.62, 0.85, relief) + tuning.moisture * (1 - startArea)   // klimatet gäller inte själva startplatsen
     );
 
     // Bergruta: högt relief, ojämn kant och aldrig nära start
@@ -186,7 +188,7 @@
   const mountainOre = context => {
     const { x, y } = context;
     const cluster = fbm(context, x, y, 9, 400, 1.0);
-    const chance = clamp01(tuning.oreShare + (cluster - 0.5) * 0.3);   // svag klungbildning: malmen ligger jämnt, så en tunnel aldrig har långt till nästa fyndighet
+    const chance = clamp01(tuning.oreShare + (cluster - 0.5) * 0.2);   // svag klungbildning: malmen ligger jämnt, så en tunnel aldrig har långt till nästa fyndighet
     if (random(context, x, y, 401) >= chance) return;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const neighbor = Object.create(context);
@@ -202,7 +204,7 @@
   const bogAt = (context, model) => {
     const aboveSea = -model.seaDepth;
     if (aboveSea < 0.015 || aboveSea > 0.2 || model.moisture < 0.62 || model.origin < 15) return; // inget träsk vid starten
-    const bogness = stretch(fbm(context, context.x, context.y, 38, 170, 0.5), 2.4) * smoothstep(0.6, 0.78, model.moisture);
+    const bogness = stretch(fbm(context, context.x, context.y, 38, 170, 0.5), 2.4) * smoothstep(0.6, 0.78, model.moisture) * tuning.bog;
     if (bogness < 0.42) return;
     if (fbm(context, context.x, context.y, 5, 171, 1.1) > 0.74) return 'water';
     if (random(context, context.x, context.y, 172) < 0.85) return 'bog';
@@ -227,6 +229,42 @@
       }
     }
     return 'rock';
+  };
+
+  // Under den här fuktigheten är marken öken (sand)
+  const DESERT_LINE = 0.2;
+
+  // Bergstoppar: en per berg. I varje cell (PEAK_CELL rutor) letas den högsta bergspunkten fram, och den är en topp bara om ingenting inom
+  // PEAK_RING rutor är högre (annars hör toppen till grannens cell). Små kullar (PEAK_DEPTH) får ingen. Svaret sparas per värld.
+  const PEAK_CELL = 48, PEAK_STEP = 4, PEAK_RING = 9, PEAK_DEPTH = 0.04;
+  let peakCache = { key: null, cells: new Map() };
+  const peakIn = context => {
+    const key = currentSeed() + ':' + tuning.mountain + ':' + tuning.sea;
+    if (peakCache.key !== key) peakCache = { key, cells: new Map() };
+    const cellX = Math.floor(context.x / PEAK_CELL), cellY = Math.floor(context.y / PEAK_CELL), id = cellX + ',' + cellY;
+    if (peakCache.cells.has(id)) return peakCache.cells.get(id);
+    const reliefAt = (x, y) => landscapeAt(contextAt(context, x, y));
+    let best = null;
+    for (let y = cellY * PEAK_CELL; y < (cellY + 1) * PEAK_CELL; y += PEAK_STEP) {
+      for (let x = cellX * PEAK_CELL; x < (cellX + 1) * PEAK_CELL; x += PEAK_STEP) {
+        const model = reliefAt(x, y);
+        if (model.inMountain && model.mountainDepth > PEAK_DEPTH && (!best || model.relief > best.relief)) best = { x, y, relief: model.relief };
+      }
+    }
+    if (best) {   // finslipa runt den bästa provpunkten
+      let top = best;
+      for (let y = best.y - PEAK_STEP; y <= best.y + PEAK_STEP; y++) for (let x = best.x - PEAK_STEP; x <= best.x + PEAK_STEP; x++) {
+        const model = reliefAt(x, y);
+        if (model.inMountain && model.relief > top.relief) top = { x, y, relief: model.relief };
+      }
+      best = top;
+      for (let k = 0; k < 16 && best; k++) {   // är något annat inom ringen högre, är det inte toppen
+        const angle = k / 16 * 2 * Math.PI, other = reliefAt(Math.round(best.x + Math.cos(angle) * PEAK_RING), Math.round(best.y + Math.sin(angle) * PEAK_RING));
+        if (other.relief > best.relief) best = null;
+      }
+    }
+    peakCache.cells.set(id, best);
+    return best;
   };
 
   // En kopia av kontexten för en annan ruta (landskapet cachas per kontext)
@@ -480,10 +518,10 @@
     // 9. Träsk: fuktiga lågmarker, med små vattenpölar. Pölarna sitter i mitten av träsket.
     context => bogAt(context, landscapeAt(context)),
 
-    // 10. Månsten: på höga toppar.
+    // 10. Månsten: på toppen av varje berg (en per bergstopp, se peakIn)
     context => {
-      const model = landscapeAt(context);
-      if (model.relief > 0.85 && random(context, context.x, context.y, 180) < 0.002) return 'moonstone';
+      const peak = peakIn(context);
+      if (peak && peak.x === context.x && peak.y === context.y) return 'moonstone';
     },
 
     // 11–20. Malm och mineraler. Allt följer geologi: ådror (veinDistance) inom provinser (brusmasker).
@@ -498,8 +536,15 @@
       return model.inMountain ? mountainOre(context) : scatteredOre(context, model);
     },
 
-    // (guld/silver: se regeln ovan)
-    () => undefined,
+    // Öken: torr mark blir sand. Gränsen buktar med ett lågfrekvent brus (dyner). Torrhet kommer från fuktigheten, så ett tema som
+    // sänker fuktigheten (tuning.moisture) får mer sand och, eftersom vatten och träsk följer samma klimat, mindre av dem.
+    // (Platshållaren för guld/silver: malmen ligger i regeln ovan.)
+    context => {
+      const model = landscapeAt(context);
+      if (model.inMountain || model.origin < 22 || isOpenWater(model)) return;
+      const line = DESERT_LINE + (fbm(context, context.x, context.y, 28, 190, 0.5) - 0.5) * 0.12;
+      if (model.moisture < line && random(context, context.x, context.y, 191) < 0.93) return 'sand';
+    },
 
     // Svavel: vulkaniska provinser i bergen, i små fläckar.
     context => {

@@ -133,28 +133,16 @@
   /* ---------- Themes (material palettes) ---------- */
   const THEMES = [
     { id: 'valleys', noun: 'Valley', keep: {}, extras: [] },
-    { id: 'forest', noun: 'Old forest', keep: { berry_bush: 0.5 }, extras: [
-      c => (stretch(N(c, 38, 501), 2.2) > 0.62 && R(c, 502) < 0.8 ? 'tree' : undefined),
-    ] },
-    { id: 'barren', noun: 'Stone desert', keep: { tree: 0.25 }, extras: [
+    // Climate themes change the landscape's own parameters (Config.world.tuning: moisture, sea level, forest density) instead of laying
+    // terrain over it: a dry level gets desert and less water, a wet one bog and forest, because the world generator follows the climate.
+    { id: 'forest', noun: 'Old forest', keep: { berry_bush: 0.5 }, tuning: { moisture: 0.1, forest: 2.4 }, extras: [] },
+    { id: 'barren', noun: 'Stone desert', keep: { tree: 0.25 }, tuning: { moisture: -0.3, sea: 0.13, forest: 0.6 }, extras: [
       c => (N(c, 5, 510) > 0.64 && R(c, 511) < 0.6 ? 'rock' : undefined),   // small outcrops, never big fields
-      c => (stretch(N(c, 30, 512), 2.2) > 0.52 && R(c, 513) < 0.92 ? 'sand' : undefined),   // wide dunes: the desert feel
     ] },
-    { id: 'swamp', noun: 'Swamp', keep: {}, extras: [
-      c => {
-        if (stretch(N(c, 26, 520), 2.4) < 0.6) return undefined;
-        if (N(c, 5, 521) > 0.72) return 'water';
-        return R(c, 522) < 0.8 ? 'bog' : undefined;
-      },
+    { id: 'swamp', noun: 'Swamp', keep: {}, tuning: { moisture: 0.25, bog: 2.6 }, extras: [
       c => (N(c, 8, 523) > 0.6 && R(c, 524) < 0.3 ? 'mushrooms' : undefined),
     ] },
-    { id: 'archipelago', noun: 'Archipelago', keep: {}, extras: [
-      c => {
-        const lake = stretch(N(c, 24, 530), 2.2);
-        if (lake > 0.76) return 'water';
-        if (lake > 0.7 && R(c, 531) < 0.7 && SIDES.some(([dx, dy]) => stretch(N(beside(c, dx, dy), 24, 530), 2.2) > 0.76)) return 'sand';   // bara intill vattnet
-      },
-    ] },
+    { id: 'archipelago', noun: 'Archipelago', keep: {}, tuning: { sea: 0.3 }, extras: [] },
     { id: 'crag', noun: 'Crag', keep: { tree: 0.6 }, extras: [
       c => (N(c, 5, 540) > 0.62 && R(c, 541) < 0.6 ? 'rock' : undefined),   // small outcrops, never big fields
       c => (N(c, 70, 542) > 0.6 && N(c, 9, 543) > 0.7 && R(c, 544) < 0.7 ? 'iron_ore' : undefined),
@@ -190,10 +178,9 @@
       c => (N(c, 14, 580) > 0.6 && R(c, 581) < 0.6 ? 'clay' : undefined),
       c => (N(c, 16, 582) > 0.64 && R(c, 583) < 0.5 ? 'limestone' : undefined),
     ] },
-    { id: 'drought', noun: 'Drought', keep: { tree: 0.2, berry_bush: 0.3 }, extras: [
+    { id: 'drought', noun: 'Drought', keep: { tree: 0.2, berry_bush: 0.3 }, tuning: { moisture: -0.15, sea: 0.17 }, extras: [
       c => (N(c, 12, 590) > 0.68 && R(c, 591) < 0.6 ? 'salt_ore' : undefined),
       c => (N(c, 9, 592) > 0.7 && R(c, 593) < 0.3 ? 'petrified_wood' : undefined),
-      c => (stretch(N(c, 30, 594), 2.2) > 0.68 && R(c, 595) < 0.8 ? 'sand' : undefined),
     ] },
   ];
 
@@ -729,6 +716,7 @@
       seed,
       keep,
       twists,
+      tuning: theme.tuning || {},   // the theme's climate (see THEMES)
       // Buildings that become available on this level
       // (en byggnad med inriktning visas per inriktning, t.ex. "Mine (Coal)", inte som byggnaden själv)
       get unlocks() { return Object.keys(CityBuilder.Config.buildings).filter(id => { const definition = CityBuilder.Config.buildings[id]; return unlockLevelOf(id) === level && id !== 'hq' && !definition.variants && (!definition.hiddenInMenu || definition.group); }); },
@@ -793,7 +781,7 @@
       rivals: settings.enemies.length, teams, aiLevels,
       seed: settings.seed,
       keep, twists: [],
-      tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.9, 0.74 * richness), scatteredOre: 0.01 * richness * richness, forest: FOREST[settings.forest] },
+      tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.9, 0.70 * richness), scatteredOre: 0.01 * richness * richness, forest: FOREST[settings.forest] },
       unlocks: [],
       goal: { items: [{ key: 'm:eliminate', type: 'eliminate', amount: settings.enemies.filter(enemy => enemy.team !== 'you').length }], par: 0 },
       needs: ['iron_ore', 'tree', 'rock', 'clay', 'coal'],
