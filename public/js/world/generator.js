@@ -11,7 +11,7 @@
 
   const Generator = {
     // Glömmer det som cachats per värld (sandrev, gångar). Anropas när landskapsreglagen eller seedet byts utan omladdning (förhandsvisningen).
-    reset() { this.barKey = this.tableKey = null; this.plain = this.sand = null; },
+    reset() { this.barKey = this.tableKey = null; this.plain = this.ground = null; },
 
     // Slutlig terräng: plainTypeAt, men utan små otillgängliga öar (se islet).
     terrainTypeAt(x, y) { return this.islet(x, y, this.plainTypeAt(x, y)); },
@@ -41,24 +41,26 @@
     // plainTypeAt sparas per ruta (högst CACHE_LIMIT stycken åt gången), eftersom ögranskningen läser grannrutorna om och om igen
     plainTypeAt(x, y) {
       const seed = CityBuilder.Config.world.seed;
-      if (!this.plain || this.plainSeed !== seed || this.plain.size > CACHE_LIMIT) { this.plain = new Map(); this.sand = new Set(); this.plainSeed = seed; }
+      if (!this.plain || this.plainSeed !== seed || this.plain.size > CACHE_LIMIT) { this.plain = new Map(); this.ground = new Map(); this.plainSeed = seed; }
       const key = Utils.tileKey(x, y);
       let type = this.plain.get(key);
       if (type === undefined) this.plain.set(key, type = this.computeType(x, y));
       return type;
     },
 
-    // Marken under rutan: 'sand' i öknen och där terrängen är sand, annars 'grass'. Det som växer eller ligger på sanden (träd, sten, malm)
-    // står på sandmark, och när det tagit slut blir marken kvar. Beror bara på världen, så den behöver inte sparas.
+    // Marken under rutan: 'sand' i öknen och där terrängen är sand, 'dirt' i stäppen och vid bergens fot, annars 'grass'. Det som växer eller
+    // ligger på marken (träd, sten, malm) står på den, och när det tagit slut blir marken kvar. Rutor ändrar mark först när spelet gräver
+    // (Behaviors, Config.exposesDirt), och det sparas av Save.collectTileChanges.
     groundAt(x, y) {
-      return this.plainTypeAt(x, y) === 'sand' || this.sand.has(Utils.tileKey(x, y)) ? 'sand' : 'grass';
+      return this.plainTypeAt(x, y) === 'sand' ? 'sand' : this.ground.get(Utils.tileKey(x, y)) || 'grass';
     },
 
     // Terräng efter utjämning av enstaka rutor, vadställen över smala vattendrag och holmar utan fyndigheter.
     computeType(x, y) {
       const base = this.baseTypeAt(x, y), context = this.context;   // context: rutans egen, innan grannarna frågas
       if (base !== 'mountain' && base !== 'water') {
-        if (context && CityBuilder.Config.world.sandGround(context)) this.sand.add(Utils.tileKey(x, y));
+        const ground = context && CityBuilder.Config.world.groundOf(context);
+        if (ground) this.ground.set(Utils.tileKey(x, y), ground);
         return this.settle(x, y, base);
       }
       const around = [];   // grannarnas terräng i NEIGHBOURS-ordning, hämtas först när den behövs

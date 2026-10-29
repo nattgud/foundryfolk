@@ -233,10 +233,22 @@
 
   // Under den här fuktigheten är marken öken (sand)
   const DESERT_LINE = 0.2;
+  // Hur mycket torrare än öknen (fuktighet) stäppen är, där marken är jord, och hur långt ut från bergen (bergsdjup) bergsfoten är
+  const STEPPE_WIDTH = 0.07, FOOTHILL_WIDTH = 0.05;
   const isDesert = context => {
     const model = landscapeAt(context);
     if (model.moisture > DESERT_LINE + 0.06 || model.inMountain || model.origin < 22 || isOpenWater(model)) return false;
     return model.moisture < DESERT_LINE + (fbm(context, context.x, context.y, 28, 190, 0.5) - 0.5) * 0.12;
+  };
+
+  // Marken under rutan (se Generator.groundAt): sand i öknen, jord i stäppen (torr mark vid öknens kant) och vid bergens fot, annars gräs.
+  // Gränserna buktar med samma lågfrekventa brus som öknen. Aldrig nära start, i berg eller i vatten.
+  const groundOf = context => {
+    const model = landscapeAt(context);
+    if (model.inMountain || model.origin < 22 || isOpenWater(model)) return;
+    const wobble = fbm(context, context.x, context.y, 28, 190, 0.5) - 0.5;
+    if (model.moisture < DESERT_LINE + wobble * 0.12) return 'sand';
+    if (model.mountainDepth > -FOOTHILL_WIDTH + wobble * 0.05 || model.moisture < DESERT_LINE + STEPPE_WIDTH + wobble * 0.06) return 'dirt';
   };
 
   // Bergstoppar: en per berg. I varje cell (PEAK_CELL rutor) letas den högsta bergspunkten fram, och den är en topp bara om ingenting inom
@@ -657,7 +669,7 @@
     landscapeMountain: context => landscapeAt(context).inMountain,   // bara landskapets berg
     isMountain: context => landscapeAt(context).inMountain,   // är rutan berg? Banorna lägger till sina bergsstrukturer (levels.js). Teman och strukturer lämnar bergen ifred
     mountainOre,
-    sandGround: isDesert,   // mark som är sand under det som växer eller ligger på den (Generator.groundAt)
+    groundOf,   // marken under det som växer eller ligger på rutan: 'sand', 'dirt' eller undefined = gräs (Generator.groundAt)
     seed: Math.floor(Math.random() * 1000000), // ny värld vid varje start. Skriv ett fast tal här för en bestämd värld
     clearRadius: 4,
     roads: [],                 // landvägar { x1, y1, x2, y2, width, wobble, wavelength, phase } som ersätter vatten och berg med gräs (World.rivalSite lägger till en till varje bas)

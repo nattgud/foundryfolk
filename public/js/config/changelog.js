@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.9': [
+      'New ground: bare dirt. It lies at the foot of mountains and on dry steppe next to deserts, and it is left behind where you dig out a mountain, rock, ore, clay or sand. Dirt is built on and walked on like grass',
       'Trees, rocks, herbs, mushrooms and other things standing on the ground are now drawn with transparent backgrounds on top of the ground, so they look right on sand too, without any green fringe',
       'The rock crusher now digs a tunnel of rock only, straight towards the nearest deposit it can not reach. Deposits count as impassable for this, so it never relies on carriers walking over other deposits: a deposit is reachable once a free tile touches it. When only deposits block the way, the crusher waits until you mine them',
       'Deserts have real sand ground now: trees and rocks can stand on sand, palms grow in oases (woodcutters chop them like any tree), and ground you have emptied stays sand instead of turning into grass',

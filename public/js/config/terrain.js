@@ -13,6 +13,7 @@ CityBuilder.Config.terrain = {
   mountain:         { name: "Mountain",   color: '#aaa',    walkCost: Infinity, resourceAmount: 1 },
   lava:             { name: "Lava",       color: '#e8590c', walkCost: Infinity },   // bara från vulkaner (systems/weather.js), stelnar till gräs eller malm
   water:            { name: "Water",      color: '#2b5d86', walkCost: Infinity, gatherersStopBefore: true, resourceAmount: 500 },
+  dirt:             { name: "Dirt",       color: '#86653f', walkCost: 1 },   // bara mark (tile.ground), aldrig terrängtyp
   sand:             { name: "Sand",       color: '#c9b887', walkCost: 1.5, resourceAmount: 25, buildable: true },
   clay:             { name: "Clay",       color: '#946b58', walkCost: 3, resourceAmount: 25 },
   limestone:        { name: "Limestone",  color: '#b8b4a5', walkCost: 5, resourceAmount: 25 },
@@ -53,3 +54,6 @@ CityBuilder.Config.terrain = {
   fallen_star:      { name: "Fallen Star",      color: '#faf', walkCost: 5, fallbackShape: 'rock', resourceAmount: 7 },
   meteor_crater:    { name: "Meteor Crater",    color: '#4c414f', walkCost: 5, fallbackShape: 'rock', resourceAmount: 6 },
 };
+
+// Terräng som lämnar bar jord efter sig när den är slut (tile.ground blir 'dirt'): berg, sten, malm, lera och sand
+CityBuilder.Config.exposesDirt = new Set(['mountain', 'rock', 'clay', 'limestone', 'sand', 'iron_ore', 'copper_ore', 'tin_ore', 'silver_ore', 'coal', 'gold_ore', 'salt_ore', 'sulfur', 'gemstone', 'crystal', 'moonstone']);

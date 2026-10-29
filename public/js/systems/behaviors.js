@@ -515,7 +515,10 @@
         Jobs.wait(job.workSeconds, 'Gathering'),
         Jobs.run(() => {
           if (target.tile.remainingAmount <= 0) return false; // någon annan hann före
-          if (--target.tile.remainingAmount <= 0) target.tile.terrainType = 'grass';
+          if (--target.tile.remainingAmount <= 0) {
+            if (Config.exposesDirt.has(target.tile.terrainType)) target.tile.ground = 'dirt';   // bar jord där det grävts
+            target.tile.terrainType = 'grass';
+          }
           worker.carriedResource = job.outputResource;
           worker.carriedOutputs = Behaviors.yielded(building, { [job.outputResource]: 1 }, boosted);
         }),

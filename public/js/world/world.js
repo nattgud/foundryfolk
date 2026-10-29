@@ -19,7 +19,7 @@
     nextBuildingId: 1,
     animalsByChunk: new Map(),
 
-    // Ruta: { terrainType, remainingAmount, wear, ground }. ground: 'grass' eller 'sand', marken under terrängen (Generator.groundAt)
+    // Ruta: { terrainType, remainingAmount, wear, ground }. ground: 'grass', 'sand' eller 'dirt', marken under terrängen (Generator.groundAt)
     getTile(x, y) {
       const chunkSize = Config.settings.chunkSize;
       const chunkX = Math.floor(x / chunkSize), chunkY = Math.floor(y / chunkSize);
@@ -35,6 +35,7 @@
         chunk.cx = chunkX; chunk.cy = chunkY;
         chunk.types = chunk.map(tile => tile.terrainType);
         chunk.amounts = chunk.map(tile => tile.remainingAmount);
+        chunk.grounds = chunk.map(tile => tile.ground);
         this.chunks.set(chunkKey, chunk);
       }
       return chunk[(y - chunkY * chunkSize) * chunkSize + (x - chunkX * chunkSize)];

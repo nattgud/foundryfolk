@@ -887,8 +887,8 @@
   wrapped.splice(18, 0, wrapRule(signatureNear, 99));    // structures win over the theme's scatter
   wrapped.splice(1, 0, wrapRule(signatureEarly, 99));    // right after natural water
   world.rules = wrapped;
-  const baseSandGround = world.sandGround;
-  world.sandGround = c => baseSandGround(seeded(c));
+  const baseGroundOf = world.groundOf;
+  world.groundOf = c => baseGroundOf(seeded(c));
 
   /* ---------- Goal progress ---------- */
   const Economy = () => CityBuilder.Economy;

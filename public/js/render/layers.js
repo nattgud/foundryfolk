@@ -53,11 +53,11 @@
 
   // Mjuka hörn: sand, vatten och lera mot gräs får rundade yttre hörn, så att fläckarna ser organiska ut i stället för att bestå av kvadrater.
   // Ett hörn rundas när båda grannarna vid hörnet är gräs. Gräsbilden ritas över hörnet utanför en kvartscirkel.
-  const ROUNDED = new Set(['sand', 'water', 'clay']), CORNER_RADIUS = 0.34;
+  const ROUNDED = new Set(['sand', 'dirt', 'water', 'clay']), CORNER_RADIUS = 0.34;
   const roundCorners = (context, x, y, left, top, width, height) => {
     const grass = Assets.getVariant(Config.terrain.grass.image, x, y);
     if (!grass) return;
-    const isGrass = (dx, dy) => { const tile = World.getTile(x + dx, y + dy); return tile?.terrainType === 'grass' && tile.ground !== 'sand'; };
+    const isGrass = (dx, dy) => { const tile = World.getTile(x + dx, y + dy); return tile?.terrainType === 'grass' && tile.ground === 'grass'; };
     const radius = width * CORNER_RADIUS;
     for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
       if (!isGrass(dx, 0) || !isGrass(0, dy)) continue;
@@ -266,7 +266,7 @@
       const x = chunk.cx * PATH_CHUNK + i - 1, y = chunk.cy * PATH_CHUNK + j - 1, index = j * GRID + i;
       const isBuilt = World.buildingAt(x, y) ? 1 : 0;
       const tile = World.getTile(x, y);
-      const isGrass = tile && tile.terrainType === 'grass' && tile.ground !== 'sand' ? 1 : 0;
+      const isGrass = tile && tile.terrainType === 'grass' && tile.ground === 'grass' ? 1 : 0;
       const level = isGrass && !isBuilt ? wearLevel(tile.wear) : 0; // stigar bara på gräs, och inte under byggnader
       grid[index] = level;
       ground[index] = isGrass;

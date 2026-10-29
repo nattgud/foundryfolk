@@ -86,11 +86,11 @@
       const changes = [], size = CityBuilder.Config.settings.chunkSize;
       for (const chunk of CityBuilder.World.chunks.values()) {
         for (let index = 0; index < chunk.length; index++) {
-          const tile = chunk[index], base = { terrainType: chunk.types[index], remainingAmount: chunk.amounts[index], wear: 0 };
+          const tile = chunk[index], base = { terrainType: chunk.types[index], remainingAmount: chunk.amounts[index], wear: 0, ground: chunk.grounds[index] };
           let changed = null;
           for (const key in tile) {
             const value = tile[key];
-            if (key !== 'ground' && isPrimitive(value) && value !== base[key]) (changed = changed || {})[key] = value;
+            if (isPrimitive(value) && value !== base[key]) (changed = changed || {})[key] = value;
           }
           if (changed) changes.push([chunk.cx * size + index % size, chunk.cy * size + Math.floor(index / size), changed]);
         }
