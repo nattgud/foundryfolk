@@ -58,11 +58,9 @@
     // Terräng efter utjämning av enstaka rutor, vadställen över smala vattendrag och holmar utan fyndigheter.
     computeType(x, y) {
       const base = this.baseTypeAt(x, y), context = this.context;   // context: rutans egen, innan grannarna frågas
-      if (base !== 'mountain' && base !== 'water') {
-        const ground = context && CityBuilder.Config.world.groundOf(context);
-        if (ground) this.ground.set(Utils.tileKey(x, y), ground);
-        return this.settle(x, y, base);
-      }
+      const ground = context && base !== 'water' && CityBuilder.Config.world.groundOf(context);
+      if (ground) this.ground.set(Utils.tileKey(x, y), ground);
+      if (base !== 'mountain' && base !== 'water') return this.settle(x, y, base);
       const around = [];   // grannarnas terräng i NEIGHBOURS-ordning, hämtas först när den behövs
       const at = i => around[i] ??= this.baseTypeAt(x + NEIGHBOURS[i][0], y + NEIGHBOURS[i][1]);
       const type = this.despeckle(x, y, base, at);

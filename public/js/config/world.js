@@ -241,11 +241,12 @@
     return model.moisture < DESERT_LINE + (fbm(context, context.x, context.y, 28, 190, 0.5) - 0.5) * 0.12;
   };
 
-  // Marken under rutan (se Generator.groundAt): sand i öknen, jord i stäppen (torr mark vid öknens kant) och vid bergens fot, annars gräs.
-  // Gränserna buktar med samma lågfrekventa brus som öknen. Aldrig nära start, i berg eller i vatten.
+  // Marken under rutan (se Generator.groundAt): jord i bergen (under malmen och i gångar genom dem), sand i öknen, jord i stäppen (torr mark
+  // vid öknens kant) och vid bergens fot, annars gräs. Gränserna buktar med samma lågfrekventa brus som öknen. Aldrig nära start eller i vatten.
   const groundOf = context => {
+    if (CityBuilder.Config.world.isMountain(context)) return 'dirt';   // landskapets berg och banans bergsstrukturer (levels.js)
     const model = landscapeAt(context);
-    if (model.inMountain || model.origin < 22 || isOpenWater(model)) return;
+    if (model.origin < 22 || isOpenWater(model)) return;
     const wobble = fbm(context, context.x, context.y, 28, 190, 0.5) - 0.5;
     if (model.moisture < DESERT_LINE + wobble * 0.12) return 'sand';
     if (model.mountainDepth > -FOOTHILL_WIDTH + wobble * 0.05 || model.moisture < DESERT_LINE + STEPPE_WIDTH + wobble * 0.06) return 'dirt';

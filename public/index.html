@@ -34,7 +34,7 @@
   <div id="toast"></div>
 
   <script>
-    var version = "0.8.9999";
+    var version = "0.9";
     // Service workern får versionen i adressen: en ny version ger en ny cache som förladdas, och den gamla rensas
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=' + version).catch(() => {});
     document.write('<script src="js/files.js?v=' + version + '"><\/script>');   // skriptlistan (GAME_SCRIPTS), ihop med service workern
