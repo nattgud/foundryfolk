@@ -15,7 +15,7 @@ CityBuilder.Config.terrain = {
   water:            { name: "Water",      color: '#2b5d86', walkCost: Infinity, gatherersStopBefore: true, resourceAmount: 500 },
   dirt:             { name: "Dirt",       color: '#86653f', walkCost: 1 },   // bara mark (tile.ground), aldrig terrängtyp
   sand:             { name: "Sand",       color: '#c9b887', walkCost: 1.5, resourceAmount: 25, buildable: true },
-  clay:             { name: "Clay",       color: '#946b58', walkCost: 3, resourceAmount: 25 },
+  clay:             { name: "Clay",       color: '#946b58', walkCost: 1.5, resourceAmount: 25 },
   limestone:        { name: "Limestone",  color: '#b8b4a5', walkCost: 5, resourceAmount: 25 },
 
   // Skog och växter

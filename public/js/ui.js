@@ -675,7 +675,7 @@
         let takes = cache.get(building.type);
         if (!takes) {
           const definition = building.definition, job = definition.job || {};
-          takes = new Set([job.inputs, definition.requiredEquipment, ...(job.choices || []).map(choice => choice.inputs), ...(job.trains || []).map(kind => Config.units[kind]?.training?.inputs)]
+          takes = new Set([job.inputs, definition.requiredEquipment, ...(job.choices || []).map(Config.takesOf), ...(job.trains || []).map(kind => Config.units[kind]?.training?.inputs)]
             .flatMap(amounts => Object.keys(amounts || {})));
           for (const group of [].concat(job.eats || [])) group.any.forEach(id => takes.add(id));
           cache.set(building.type, takes);
@@ -894,7 +894,7 @@
         add(job.outputs);
         add(job.byproducts);
         if (job.outputResource) known.add(job.outputResource);
-        for (const choice of job.choices || []) { add(choice.inputs); add(choice.outputs); }
+        for (const choice of job.choices || []) { add(Config.takesOf(choice)); add(choice.outputs); }
         if (building.mixing) for (const cost of CityBuilder.Spells.costs()) add(cost);
         for (const group of [].concat(job.eats || [])) group.any.forEach(resourceId => known.add(resourceId));
         for (const kind of job.trains || []) add(Config.units[kind]?.training?.inputs);
@@ -924,7 +924,7 @@
         if (building.isMarket && Config.buildings.market.market.prices[resourceId] !== undefined) { use.add(id); make.add(id); }
         const job = building.job;
         if (!job) continue;
-        const takes = [job.inputs, building.requiredEquipment, ...(building.mixing ? CityBuilder.Spells.costs() : []), ...(job.choices || []).map(choice => choice.inputs), ...(job.trains || []).map(kind => Config.units[kind]?.training?.inputs)];
+        const takes = [job.inputs, building.requiredEquipment, ...(building.mixing ? CityBuilder.Spells.costs() : []), ...(job.choices || []).map(Config.takesOf), ...(job.trains || []).map(kind => Config.units[kind]?.training?.inputs)];
         if (takes.some(amounts => amounts && amounts[resourceId] !== undefined) || [].concat(job.eats || []).some(group => group.any.includes(resourceId)) || Behaviors.boostOf(building)?.resource === resourceId) use.add(id);
         if ([job.outputs, job.byproducts, ...(job.choices || []).map(choice => choice.outputs)].some(amounts => amounts && amounts[resourceId] !== undefined) || job.outputResource === resourceId) make.add(id);
       }
@@ -2926,6 +2926,11 @@
         .join('');
     },
 
+    // Ett recepts insatser som ikoner: alternativa grundingredienser åtskilda av "/", därefter tillbehören
+    recipeTakesHtml({ inputs, any }) {
+      return [any && any.map(option => this.resourceIconsHtml(option)).join(' / '), this.resourceIconsHtml(inputs)].filter(Boolean).join(' + ');
+    },
+
     // Statustext där resurser visas som ikoner: "Missing: Iron (2)" -> Saknas: [järn] (2)
     statusHtml(text) {
       text = I18n().canonicalStatus(text || '');
@@ -2987,7 +2992,7 @@
         lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.resourceIconsHtml(job.choices[0].inputs), outputs: job.choices.map(choice => this.resourceChip(Object.keys(choice.outputs)[0])).join('') }));
         lines.push(t('Makes the tool there is least of, among those switched on. Click a tool to switch it on or off'));
       } else if (job?.kind === 'craft' && job.choices) {
-        for (const { inputs, outputs } of job.choices) lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.resourceIconsHtml(inputs), outputs: this.resourceIconsHtml(amountsOf(outputs)) }));
+        for (const { inputs, any, outputs } of job.choices) lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.recipeTakesHtml({ inputs, any }), outputs: this.resourceIconsHtml(amountsOf(outputs)) }));
         lines.push(t('Choose what it makes in the info panel'));
       } else if (job?.kind === 'craft') {
         const inputs = this.resourceIconsHtml(job.inputs);
@@ -3351,15 +3356,15 @@
       } else if (byId('choiceButton')) {
         const choices = building.definition.job.choices, chosen = building.choice || 0;
         panel.querySelectorAll('.choice-radio').forEach(radio => {
-          const { inputs, outputs } = choices[+radio.dataset.index], selected = +radio.dataset.index === chosen;
+          const { inputs, any, outputs } = choices[+radio.dataset.index], selected = +radio.dataset.index === chosen;
           // Ger alla recept samma vara (köket: alltid en måltid) visas bara hur många man får. Varan syns under Exports.
           const same = choices.every(choice => Object.keys(choice.outputs).join() === Object.keys(outputs).join());
-          const made = same ? Object.values(outputs).reduce((sum, amount) => sum + amount, 0) : this.resourceIconsHtml(outputs), takes = this.resourceIconsHtml(inputs);
+          const made = same ? Object.values(outputs).reduce((sum, amount) => sum + amount, 0) : this.resourceIconsHtml(outputs), takes = this.recipeTakesHtml({ inputs, any });
           const html = `${selected ? '●' : '○'} ${takes ? takes + ' → ' : ''}${made}`;
           if (radio.dataset.html !== html) { radio.dataset.html = html; radio.innerHTML = html; }
           radio.classList.toggle('on', selected);
           const plain = amounts => Object.entries(amounts || {}).map(([id, amount]) => `${amount} ${this.resourceName(id)}`).join(' + ');
-          radio.title = inputs && Object.keys(inputs).length ? t('Processing: {inputs} → {outputs}', { inputs: plain(inputs), outputs: plain(outputs) }) : t('Producing: {outputs}', { outputs: plain(outputs) });
+          radio.title = Object.keys(Config.takesOf({ inputs, any })).length ? t('Processing: {inputs} → {outputs}', { inputs: [any && any.map(plain).join(' / '), plain(inputs)].filter(Boolean).join(' + '), outputs: plain(outputs) }) : t('Producing: {outputs}', { outputs: plain(outputs) });
         });
       }
       if (building.definition.job?.auto) {

@@ -6,6 +6,10 @@
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.9.2': [
+      'The Kitchen now cooks from any one of berries, mushrooms, meat, fish, apples or flour with water, and you choose how fancy the meal is: the plain dish makes 1 meal, with herbs 2, with salt 3, and with both herbs and salt 5',
+      'Workers walk as fast on clay as on sand',
+    ],
     '0.9.1': [
       'Graves are rare now: a few single graves here and there on grass, sand and dirt, instead of whole graveyards in rows. They are only scenery',
       'Fixed the resources around your headquarters being thinned out on hard levels: the starting deposits (iron, coal, limestone and the rest) are now always all there, as intended',

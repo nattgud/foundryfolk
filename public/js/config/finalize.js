@@ -16,6 +16,11 @@
   applyDefaultImages('units', 'units');
   for (const definition of Object.values(Config.buildings)) if (definition.group) definition.image = Config.buildings[definition.group].image;   // varianter av en byggnad med inriktning ser likadana ut
 
+  // Recept med `any` (köket): `inputs` är tillbehören och `any` en lista av alternativa grundingredienser, av vilka en räcker.
+  // takesOf = allt receptet kan ta emot (leveranser, ikoner), firstInputs = ett fullständigt exempel (banor och AI räknar på det).
+  Config.takesOf = recipe => Object.assign({}, ...(recipe.any || []), recipe.inputs);
+  Config.firstInputs = recipe => ({ ...recipe.any?.[0], ...recipe.inputs });
+
   for (const boost of Object.values(Config.settings.boosts)) if (!Config.resources[boost.resource]) warn(`okänd boostresurs '${boost.resource}'`);
 
   for (const [id, building] of Object.entries(Config.buildings)) {
@@ -39,7 +44,7 @@
       for (const resourceId of outputs) if (!Config.resources[resourceId]) warn(`${id}: okänd resurs '${resourceId}'`);
     } else if (job.kind === 'craft') {
       for (const recipe of job.choices || [job]) {
-        for (const resourceId of [...Object.keys(recipe.inputs || {}), ...Object.keys(recipe.outputs || {})]) {
+        for (const resourceId of [...Object.keys(Config.takesOf(recipe)), ...Object.keys(recipe.outputs || {})]) {
           if (!Config.resources[resourceId]) warn(`${id}: okänd resurs '${resourceId}'`);
         }
       }

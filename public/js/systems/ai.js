@@ -34,7 +34,7 @@
   const inputsOf = definition => {
     const job = definition.job;
     if (!job) return [];
-    const inputs = [...Object.keys((job.choices?.[0] ?? job).inputs || {}), ...Object.keys(definition.requiredEquipment || {})];
+    const inputs = [...Object.keys(Config.firstInputs(job.choices?.[0] ?? job)), ...Object.keys(definition.requiredEquipment || {})];
     if (job.kind === 'garrison') inputs.push(...Object.keys(Config.units[job.trains[0]].training.inputs));
     for (const group of [].concat(job.eats || [])) inputs.push(group.any[0]);
     return inputs;

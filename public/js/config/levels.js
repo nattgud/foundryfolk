@@ -355,7 +355,7 @@
         for (const recipe of recipesOf(job)) {
           const ok = job.kind === 'gather'
             ? !!job.sourceUnit || job.sourceTerrain === 'water' || (keep[job.sourceTerrain] ?? 1) >= 0.2
-            : Object.keys(recipe.inputs || {}).every(resourceId => have.has(resourceId));
+            : Object.keys(CityBuilder.Config.firstInputs(recipe)).every(resourceId => have.has(resourceId));
           if (!ok) continue;
           for (const resourceId of outputsOf({ job: recipe })) if (!have.has(resourceId)) { have.add(resourceId); changed = true; }
         }
@@ -378,7 +378,7 @@
       const recipe = recipesOf(job).find(candidate => makes(candidate, resourceId));
       if (!recipe) continue;
       if (job.kind === 'gather') return job.sourceTerrain ? [job.sourceTerrain] : [];
-      return Object.keys(recipe.inputs || {}).flatMap(input => sourcesOf(input, level, [...guard, resourceId]));
+      return Object.keys(CityBuilder.Config.firstInputs(recipe)).flatMap(input => sourcesOf(input, level, [...guard, resourceId]));
     }
     return [];
   };
@@ -390,7 +390,7 @@
       const job = definition.job;
       if (unlockLevelOf(id) === info.level && job) {
         if (job.kind === 'gather') needs.add(job.sourceTerrain);
-        else for (const recipe of recipesOf(job)) for (const input of Object.keys(recipe.inputs || {})) sourcesOf(input, info.level).forEach(terrain => needs.add(terrain));
+        else for (const recipe of recipesOf(job)) for (const input of Object.keys(CityBuilder.Config.firstInputs(recipe))) sourcesOf(input, info.level).forEach(terrain => needs.add(terrain));
       }
     }
     for (const item of info.goal.items) {
@@ -427,7 +427,7 @@
         if (!amount) continue;
         const work = job.kind === 'gather' ? job.workSeconds || job.craftSeconds || 6 : job.craftSeconds || 10;
         const candidate = { seconds: (work + 8) / amount, latency: work + HOP_SECONDS, depth: 1, ids: new Set([id]) };
-        for (const [input, count] of Object.entries(recipe.inputs || {})) {
+        for (const [input, count] of Object.entries(CityBuilder.Config.firstInputs(recipe))) {
           const source = chain(input, level, [...guard, resourceId]);
           candidate.seconds += count * source.seconds / amount;
           candidate.latency = Math.max(candidate.latency, source.latency + work + HOP_SECONDS);

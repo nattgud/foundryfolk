@@ -1,3 +1,6 @@
+// Köket tar en av dessa grundingredienser per måltid (valfri; vatten och mjöl räknas som en)
+const MEAL_BASES = [{ berries: 1 }, { mushrooms: 1 }, { meat: 1 }, { fish: 1 }, { apples: 1 }, { flour: 1, water: 1 }];
+
 CityBuilder.Config.buildings = {
 // Lagring
   hq: {
@@ -741,10 +744,10 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'craft',
       choices: [
-        { inputs: { meat: 1, mushrooms: 2 }, outputs: { meal: 3 } },
-        { inputs: { flour: 1, apples: 1, berries: 2 }, outputs: { meal: 3 } },
-        { inputs: { fish: 1, mushrooms: 1, berries: 1 }, outputs: { meal: 2 } },
-        { inputs: { meat: 1, apples: 1 }, outputs: { meal: 2 } }
+        { any: MEAL_BASES, outputs: { meal: 1 } },
+        { any: MEAL_BASES, inputs: { herbs: 1 }, outputs: { meal: 2 } },
+        { any: MEAL_BASES, inputs: { salt: 1 }, outputs: { meal: 3 } },
+        { any: MEAL_BASES, inputs: { herbs: 1, salt: 1 }, outputs: { meal: 5 } }
       ],
       craftSeconds: 12
     },

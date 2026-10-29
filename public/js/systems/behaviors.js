@@ -326,6 +326,18 @@
       return job.choices[job.auto ? this.autoChoice(building) : building.choice] || job.choices[0];
     },
 
+    // Receptets `any`: den av grundingredienserna (en mängd) som det finns mest av i lagret, eller undefined om ingen är komplett.
+    // Receptet utan `any` har ingen grundingrediens ({}).
+    baseOf(building, recipe) {
+      if (!recipe.any) return {};
+      let best, bestShare = 1;
+      for (const option of recipe.any) {
+        const share = Math.min(...Object.entries(option).map(([id, amount]) => (building.inputStock[id] || 0) / amount));
+        if (share >= bestShare) { best = option; bestShare = share; }
+      }
+      return best;
+    },
+
     recipeEnabled: (building, index) => !((building.recipesOff || 0) & (1 << index)),
 
     // Index på det påslagna valet med minst lager (lagren plus det byggnaden själv har tillverkat); vid lika vinner det första
@@ -531,13 +543,14 @@
   // Förädlare: konsumerar inputs, väntar craftSeconds, producerar outputs i utbufferten
   Behaviors.register('craft', {
     inputCapacities: building => Object.fromEntries(
-      Object.entries(Behaviors.recipe(building).inputs || {}).map(([resourceId, amount]) => [resourceId, Behaviors.inputBuffer(amount)])
+      Object.entries(Config.takesOf(Behaviors.recipe(building))).map(([resourceId, amount]) => [resourceId, Behaviors.inputBuffer(amount)])
     ),
 
     update(building, deltaSeconds) {
       const job = building.definition.job;
       const recipe = Behaviors.recipe(building);
-      const inputs = recipe.inputs || {};
+      const base = Behaviors.baseOf(building, recipe);
+      const inputs = { ...base, ...recipe.inputs };
 
       if (building.paused) {
         building.status = 'Paused';
@@ -550,11 +563,12 @@
           return;
         }
         if (!Behaviors.eatsReady(building)) { building.status = Behaviors.eatStatus(building); return; }
-        const missingInputs = Object.entries(inputs)
+        const missingInputs = Object.entries(recipe.inputs || {})
           .filter(([id, amount]) => (building.inputStock[id] || 0) < amount)
           .map(([id, amount]) =>
             `${Config.resources[id].name} (${amount - (building.inputStock[id] || 0)})`
           );
+        if (!base) missingInputs.push(recipe.any.map(option => Config.resources[Object.keys(option)[0]].name).join(' / '));
 
         if (missingInputs.length) {
           building.status = `Missing: ${missingInputs.join(', ')}`;
