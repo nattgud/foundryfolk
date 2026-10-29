@@ -17,6 +17,8 @@
       'Remove from favorites': 'إزالة من المفضلة',
       'Add to favorites': 'إضافة إلى المفضلة',
       'Free: {amount}': 'المتاح: {amount}',
+      'Reserved: {amount}': 'محجوز: {amount}',
+      'Not enough {name}: {have} of {need} free': '{name} غير كافٍ: المتاح {have} من {need}',
       'Main menu': 'القائمة الرئيسية',
       'Continue': 'متابعة',
       'Save game': 'حفظ اللعبة',

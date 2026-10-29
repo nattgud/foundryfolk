@@ -16,6 +16,8 @@
       'Remove from favorites': '从收藏中移除',
       'Add to favorites': '加入收藏',
       'Free: {amount}': '空闲：{amount}',
+      'Reserved: {amount}': '已预留：{amount}',
+      'Not enough {name}: {have} of {need} free': '{name}不足：可用 {have}，需要 {need}',
       'Main menu': '主菜单',
       'Continue': '继续',
       'Save game': '保存游戏',

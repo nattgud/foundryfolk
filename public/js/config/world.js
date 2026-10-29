@@ -83,7 +83,7 @@
   //   oreShare:      andel av bergets kärna som blir malm
   //   scatteredOre:  chans per ruta att vara ett utspritt malmfynd (före stenvillkoret). Lägre = färre fynd
   //   forest:        faktor på trädens täthet
-  const TUNING = { sea: 0.2, mountain: 0.76, oreShare: 0.60, scatteredOre: 0.01, forest: 1.1 };
+  const TUNING = { sea: 0.2, mountain: 0.76, oreShare: 0.74, scatteredOre: 0.01, forest: 1.1 };
   const tuning = { ...TUNING };
   // Malm utanför berg: enstaka fynd på en eller två rutor, väldigt utspridda och helst intill vanlig sten.
   const SCATTERED_ORE_FAR_CHANCE = 0.2;    // andel av fynden som får ligga utan sten i närheten (1 = överallt, 0 = bara intill sten)
@@ -143,10 +143,8 @@
     const mountainEdge = (macro(context, x, y, 10, 265, 0.5) - 0.5) * 0.06;
     const mountainDepth = relief + mountainEdge - tuning.mountain; // > 0 = bergsruta, högre = längre in/upp
     const inMountain = origin > 20 && mountainDepth > 0;
-    // Bergskärna: marginellt högre upp än bergets kant. Malm i berg ligger bara här, så den är alltid omsluten av berg.
-    const coreMountain = inMountain && mountainDepth > MOUNTAIN_ORE_MARGIN;
 
-    model = { x, y, origin, startArea, elevation, relief, mountain, inMountain, coreMountain, mountainDepth, mountainZone, moisture, seaDepth, riverDistance, riverHalfWidth, warpX, warpY };
+    model = { x, y, origin, startArea, elevation, relief, mountain, inMountain, mountainDepth, mountainZone, moisture, seaDepth, riverDistance, riverHalfWidth, warpX, warpY };
     modelCache.set(context, model);
     return model;
   };
@@ -156,7 +154,6 @@
   // Malm inne i bergen: ungefär så här stor andel av bergsrutorna blir malm (tuning.oreShare, exklusive svavel och månsten).
   // Mängden är en slumpandel per ruta, så den ligger nära målet oavsett hur bruset ser ut. Klungbildningen
   // flyttar den lokalt men inte i snitt.
-  const MOUNTAIN_ORE_MARGIN = 0.03; // hur mycket högre än bergets kant en ruta måste ligga för att få malm (större = bredare malmfri kant)
   // Bas-vikter (summan 1) för vilken malm en malmruta i berg blir. Provinser (brus) förskjuter dem regionalt.
   const MOUNTAIN_ORE_MIX = [
     // [terräng, vikt, provinskanal (samma kanal = samma provins, så brons-malmerna hamnar nära varandra)]
@@ -183,26 +180,21 @@
     return second < 0 ? undefined : MOUNTAIN_ORE_MIX[second][0];
   };
 
-  const mountainOre = (context, model) => {
+  // Malm på en bergsruta (bergsrutor avgörs av Config.world.isMountain, så att också banornas bergsstrukturer får malm). Bara rutor som inte
+  // gränsar rakt mot öppen mark (fyra grannar) kan bli malm: den ligger alltid instängd bakom minst en ruta berg. Hela berget utom den
+  // yttersta raden är alltså malmbärande, med lite berg emellan som gör att malmen aldrig blir ett enda block.
+  const mountainOre = context => {
     const { x, y } = context;
-    if (!model.coreMountain) return; // bergets kant är bara berg
     const cluster = fbm(context, x, y, 9, 400, 1.0);
-    const chance = clamp01(tuning.oreShare + (cluster - 0.5) * 0.35);   // svag klungbildning: malmen ligger jämnt, så en tunnel aldrig har långt till nästa fyndighet
+    const chance = clamp01(tuning.oreShare + (cluster - 0.5) * 0.3);   // svag klungbildning: malmen ligger jämnt, så en tunnel aldrig har långt till nästa fyndighet
     if (random(context, x, y, 401) >= chance) return;
-
-    // Garanti: alla åtta grannar måste också vara bergsrutor, så malmen aldrig gränsar mot öppen mark.
-    // (Kontrollen körs bara för rutor som redan blivit malmkandidater, så den är billig.)
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (!dx && !dy) continue;
-        const neighbor = Object.create(context);
-        neighbor.x = x + dx;
-        neighbor.y = y + dy;
-        neighbor.distanceFromOrigin = Math.hypot(neighbor.x, neighbor.y);
-        if (!landscapeAt(neighbor).inMountain) return;
-      }
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const neighbor = Object.create(context);
+      neighbor.x = x + dx;
+      neighbor.y = y + dy;
+      neighbor.distanceFromOrigin = Math.hypot(neighbor.x, neighbor.y);
+      if (!CityBuilder.Config.world.isMountain(neighbor)) return;
     }
-
     return pickOre(context, x, y);
   };
 
@@ -503,7 +495,7 @@
     // indexen i levels.js) ska vara oförändrad.
     context => {
       const model = landscapeAt(context);
-      return model.inMountain ? mountainOre(context, model) : scatteredOre(context, model);
+      return model.inMountain ? mountainOre(context) : scatteredOre(context, model);
     },
 
     // (guld/silver: se regeln ovan)
@@ -610,7 +602,9 @@
 
   CityBuilder.Config.world = {
     tuning, defaults: TUNING,
-    inMountain: context => landscapeAt(context).inMountain,   // för banorna: teman och strukturer lämnar bergen ifred
+    landscapeMountain: context => landscapeAt(context).inMountain,   // bara landskapets berg
+    isMountain: context => landscapeAt(context).inMountain,   // är rutan berg? Banorna lägger till sina bergsstrukturer (levels.js). Teman och strukturer lämnar bergen ifred
+    mountainOre,
     seed: Math.floor(Math.random() * 1000000), // ny värld vid varje start. Skriv ett fast tal här för en bestämd värld
     clearRadius: 4,
     roads: [],                 // landvägar { x1, y1, x2, y2, width, wobble, wavelength, phase } som ersätter vatten och berg med gräs (World.rivalSite lägger till en till varje bas)

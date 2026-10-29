@@ -17,6 +17,8 @@
       'Remove from favorites': 'Убрать из избранного',
       'Add to favorites': 'Добавить в избранное',
       'Free: {amount}': 'Свободно: {amount}',
+      'Reserved: {amount}': 'Зарезервировано: {amount}',
+      'Not enough {name}: {have} of {need} free': 'Не хватает: {name}: свободно {have} из {need}',
       'Main menu': 'Главное меню',
       'Continue': 'Продолжить',
       'Save game': 'Сохранить игру',

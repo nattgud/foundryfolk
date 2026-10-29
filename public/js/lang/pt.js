@@ -17,6 +17,8 @@
       'Remove from favorites': 'Remover dos favoritos',
       'Add to favorites': 'Adicionar aos favoritos',
       'Free: {amount}': 'Livre: {amount}',
+      'Reserved: {amount}': 'Reservado: {amount}',
+      'Not enough {name}: {have} of {need} free': '{name} insuficiente: {have} de {need} livres',
       'Main menu': 'Menu principal',
       'Continue': 'Continuar',
       'Save game': 'Salvar jogo',

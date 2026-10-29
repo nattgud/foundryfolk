@@ -761,9 +761,9 @@
     resourceTooltip(resourceId) {
       const resource = Config.resources[resourceId];
       const total = Economy.totalAmount(resourceId);
-      const free = Economy.freeAmount ? Economy.freeAmount(resourceId) : total;
+      const free = CityBuilder.Construction.available(resourceId);   // det som går att använda: inte reserverat av bärare och inte utlovat åt byggen
       const details = [this.stockText(resourceId, total)];
-      if (free !== total) details.push(t('Free: {amount}', { amount: free }));
+      if (free !== total) { details.push(t('Reserved: {amount}', { amount: total - free })); details.push(t('Free: {amount}', { amount: free })); }
       if (resource.description) details.push(resource.description);
       return this.tooltipContent(this.resourceName(resourceId), null, details);
     },
@@ -1700,6 +1700,7 @@
         toggle.setAttribute('aria-expanded', 'false');
         toggle.setAttribute('aria-controls', 'build-submenu-' + categoryId);
         toggle.onclick = () => {
+          if (this.openCategoryId !== categoryId && CityBuilder.Game.selectedBuilding) CityBuilder.Game.selectBuilding(null);   // menyn är det nya målet (som med siffertangenterna)
           this.setOpenCategory(
             this.openCategoryId === categoryId ? null : categoryId
           );
@@ -1816,22 +1817,19 @@
       }
       if (this.CATEGORY_KEYS.includes(key)) return false;
 
-      // En byggnad i den öppna kategorin (men bokstäverna går till den markerade byggnaden så länge en är markerad)
-      const buildIndex = this.BUILD_KEYS.indexOf(key);
-      if (buildIndex >= 0 && this.openCategoryId && !(selected && byId('info').style.display !== 'none')) {
-        const button = this.categorySubmenus.get(this.openCategoryId).children[buildIndex];
-        if (!button) return false;
-        button.click();
+      // Den markerade byggnadens knappar (bara spelarens egna har några). En bokstav som inte styr den markerade byggnaden går vidare till byggmenyn.
+      const panel = byId('info');
+      const showing = selected && panel.style.display !== 'none';
+      const trainIndex = this.TRAIN_KEYS.indexOf(key);
+      const button = !showing ? null : trainIndex >= 0 ? panel.querySelectorAll('.train-button')[trainIndex]
+        : byId(Object.keys(this.HOTKEYS).find(id => this.HOTKEYS[id].toLowerCase() === key.toLowerCase() || (id === 'demolishButton' && key === 'Backspace')));
+      if (!button || button.disabled) {
+        // En byggnad i den öppna kategorin: så länge knapparna syns fungerar bokstäverna, också när en byggnad är markerad
+        const buildIndex = this.BUILD_KEYS.indexOf(key), target = buildIndex >= 0 && this.openCategoryId ? this.categorySubmenus.get(this.openCategoryId).children[buildIndex] : null;
+        if (!target) return false;
+        target.click();
         return true;
       }
-
-      // Den markerade byggnadens knappar (bara spelarens egna har några)
-      const panel = byId('info');
-      if (!selected || panel.style.display === 'none') return false;
-      const trainIndex = this.TRAIN_KEYS.indexOf(key);
-      const button = trainIndex >= 0 ? panel.querySelectorAll('.train-button')[trainIndex]
-        : byId(Object.keys(this.HOTKEYS).find(id => this.HOTKEYS[id].toLowerCase() === key.toLowerCase() || (id === 'demolishButton' && key === 'Backspace')));
-      if (!button || button.disabled) return false;
       if (button.id === 'demolishButton') { // rivning kräver en andra tryckning (inom 3 sekunder)
         if (!(performance.now() - (this.demolishArmedAt || -1e9) < 3000)) {
           this.demolishArmedAt = performance.now();
@@ -2421,6 +2419,8 @@
           font-variant-numeric: tabular-nums;
         }
 
+        .resource-amount.is-promised { text-decoration: underline dotted; text-underline-offset: 2px; }
+
         .resource-amount.is-full {
           color: #f0a040;
           font-weight: 700;
@@ -2730,16 +2730,18 @@
     refresh() {
       const game = CityBuilder.Game;
 
+      const pending = this.pendingNow = CityBuilder.Construction.pendingNeed(CityBuilder.Players.HUMAN);   // en gång per uppdatering: används av alla knappar och tooltips
       for (const resourceId in Config.resources) {
         const amount = Economy.totalAmount(resourceId);
 
         const full = amount >= Economy.capacity(resourceId); // lagertaket nått: siffran blir orange
+        const promised = (pending[resourceId] || 0) > 0;     // byggen väntar på resursen: en del av lagret är redan utlovad (understruken siffra, se tooltipen)
 
         const topAmount = byId('amount_' + resourceId);
-        if (topAmount) { topAmount.textContent = amount; topAmount.classList.toggle('is-full', full); }
+        if (topAmount) { topAmount.textContent = amount; topAmount.classList.toggle('is-full', full); topAmount.classList.toggle('is-promised', promised); }
 
         const windowAmount = byId('resourceWindowAmount_' + resourceId);
-        if (windowAmount) { windowAmount.textContent = amount; windowAmount.classList.toggle('is-full', full); }
+        if (windowAmount) { windowAmount.textContent = amount; windowAmount.classList.toggle('is-full', full); windowAmount.classList.toggle('is-promised', promised); }
       }
       if (this.resourceWindowOpen) { this.renderResourceFlow(); this.updateKnownResources(); }
       this.updatePinnedResources(performance.now());
@@ -2784,7 +2786,7 @@
         button.setAttribute('aria-pressed', String(isSelected));
         button.classList.toggle(
           'unaffordable',
-          !button.classList.contains('locked') && !CityBuilder.Construction.canAfford(Config.buildings[buildingId].buildCost)
+          !button.classList.contains('locked') && !CityBuilder.Construction.canAfford(Config.buildings[buildingId].buildCost, CityBuilder.Players.HUMAN, pending)
         );
       }
 
@@ -2917,9 +2919,10 @@
     },
 
     resourceIconsHtml(amounts, shortage) {
+      const { Construction, Players } = CityBuilder, pending = shortage ? Construction.pendingNeed(Players.HUMAN) : null;
       return Object.entries(amounts || {})
         .filter(([, amount]) => amount > 0)
-        .map(([resourceId, amount]) => this.resourceChip(resourceId, amount, shortage && Economy.freeAmount(resourceId) < amount ? 'info-short' : ''))
+        .map(([resourceId, amount]) => this.resourceChip(resourceId, amount, shortage && Construction.available(resourceId, Players.HUMAN, pending) < amount ? 'info-short' : ''))
         .join('');
     },
 

@@ -86,10 +86,21 @@
       return pending;
     },
 
+    // Hur mycket av resursen som går att använda till något nytt: lagret minus det som bärare redan hämtar (reserverat) och det pågående byggen
+    // ännu väntar på. 'pending' (pendingNeed) kan skickas in när många resurser ska frågas på en gång.
+    available(resourceId, player = Players.HUMAN, pending = this.pendingNeed(player)) {
+      return Math.max(0, Economy.freeAmount(resourceId, player) - (pending[resourceId] || 0));
+    },
+
     // Räcker lagren till kostnaden, utöver vad pågående byggen redan väntar på?
-    canAfford(cost, player = Players.HUMAN) {
+    canAfford(cost, player = Players.HUMAN, pending = this.pendingNeed(player)) {
+      return Object.entries(cost).every(([resourceId, amount]) => this.available(resourceId, player, pending) >= amount);
+    },
+
+    // Det som saknas för kostnaden: [{ resourceId, need, have }] där have är det som går att använda just nu (tom lista = det räcker)
+    shortage(cost, player = Players.HUMAN) {
       const pending = this.pendingNeed(player);
-      return Object.entries(cost).every(([resourceId, amount]) => Economy.freeAmount(resourceId, player) - (pending[resourceId] || 0) >= amount);
+      return Object.entries(cost).map(([resourceId, need]) => ({ resourceId, need, have: this.available(resourceId, player, pending) })).filter(item => item.have < item.need);
     },
 
     // Det som ännu saknas på en byggplats (tomt när den inte väntar på något)

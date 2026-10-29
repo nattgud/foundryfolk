@@ -115,7 +115,12 @@
           far: () => t('Too far from your buildings'),
           unreachable: () => t('This spot cannot be reached'),
           fog: () => t('Hidden in the fog of war'),
-          cost: () => t('Not enough resources'),
+          cost: () => {
+            const lacking = CityBuilder.Construction.shortage(definition.buildCost)[0];
+            if (!lacking) return t('Not enough resources');
+            const reserved = Economy.totalAmount(lacking.resourceId) - lacking.have;   // lagret finns men är bokat: bärare på väg eller byggen som väntar
+            return t('Not enough {name}: {have} of {need} free', { name: UI.resourceName(lacking.resourceId), have: lacking.have, need: lacking.need }) + (reserved > 0 ? ' · ' + t('Reserved: {amount}', { amount: reserved }) : '');
+          },
           unique: () => t('You can only build one'),
         }[problem]());
       }

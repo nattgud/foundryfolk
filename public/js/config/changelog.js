@@ -6,10 +6,12 @@
 
   CityBuilder.Changelog = {
     '0.8.9': [
+      'The build hotkeys (Q W E R T Y U I O P) now work as long as the buildings of an open category are shown, also while one of your buildings is selected; only the letters that control the selected building (P, B, R, T, S, Z X C V) go to it. Opening a category with the mouse now deselects the building, just like the number keys do',
+      'Fixed "Not enough resources" when the top bar and tooltips said you had enough: stock that carriers are already fetching, or that buildings under construction are waiting for, is reserved. The resource tooltip now shows Reserved and Free, the number in the top bar is underlined while buildings wait for that resource, build costs turn red against what is really free, and the message says which resource is short',
       'The build menu now shows how many of a building are under construction after the finished ones, in grey: 3+2',
       'Select one of your buildings and the minimap shows only buildings of that kind: bright green for the same focus (e.g. the same kind of mine), orange for other focuses of the same building, and in red the resources the building gathers from',
       'The minimap colours for the resources of a selected gatherer or mine now match what they are: apples red, herbs green, copper orange, crystal green, gold yellow, and so on',
-      'Mountains hold even more ore, spread evenly so that a tunnel never has far to the next deposit. On hard levels the rare ores stay rare, and the ore that would have been there is common ore instead',
+      'Mountains are now full of ore: about 60% of every mountain is ore, with only a thin rim of plain rock around it, spread evenly so that a tunnel never has far to the next deposit. The cliff ring, canyon and mountain spur walls hold ore too. On hard levels the rare ores stay rare, and the ore that would have been there is common ore instead',
       'Music now always carries on when the game gets focus again (also on phones), if it is switched on in Settings',
       'The tooltip of terrain you cannot gather from (meteor craters, bogs, tar pits, graves, mountains and the like) no longer shows a Remaining amount',
       'When you pick a gatherer or mine to build, the minimap only lights up resources you can actually see: nothing in the fog of war is shown any more',
@@ -21,7 +23,7 @@
       'Missions could show as done when a new level started: every level and every new game now starts with all missions empty',
       'Big rock fields and rings are now mountain instead: Stone desert and Crag levels only have small outcrops of rock, while the Cliff ring, Canyon and a new Mountain spur are walls and ridges of mountain that you can dig and tunnel through',
       'Spells now have to recharge, so you cannot cast all the time: after a cast the Enchanter rests from 30 seconds (weak spells) up to 3 minutes (strong ones), and that kind of spell (shaping, boosts, weather or combat) is locked for all your Enchanters for as long. The Enchanter shows a timer bar on the map and in its panel, and the Spellbook shows which kinds are recharging',
-      'Mountains are rich again: about 55-65% of the inside of every mountain is ore (iron, coal, copper, tin, silver, gold, crystal and a few gemstones), with a plain rim of rock around it. Dig for it with a Rock crusher or build a mine on the deposits you can reach',
+      'Mountains are rich again: about 60% of the inside of every mountain is ore (iron, coal, copper, tin, silver, gold, crystal and a few gemstones), with a plain rim of rock around it. Dig for it with a Rock crusher or build a mine on the deposits you can reach',
       'The Rock crusher now digs with a purpose: it tunnels the shortest way through the mountain to the nearest ore deposit, so you reach the ore inside quickly. It crushes a tile in 15 seconds (was 20)',
       'Level themes and structures (ruins, cursed ground, fungi and so on) no longer spill into the middle of mountains: inside a mountain there is only rock and ore',
       'The Enchanter now has a Spellbook: one open book with all your saved spells listed on the left and the chosen one explained on the right. Pick a kind with the tabs (shaping, boosts, weather, combat), tick Can cast now to see only what you have the ingredients for, and press Cast (or double-click a spell, or Enter). Every spell says in plain words what it does, how far it reaches, how long it lasts and what it costs. The Enchanter\'s panel is no longer filled with one button per spell',

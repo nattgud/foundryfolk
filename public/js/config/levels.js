@@ -223,7 +223,7 @@
         if (Math.abs(d - radius) > width / 2 + (N(c, 7, 701) - 0.5) * 1.5) return undefined;
         return inGap(c, p, 2 + (p.c > 0.5 ? 1 : 0), 4.5) ? 'sand' : 'water';
       } },
-    { id: 'cliffs', name: 'Cliff ring',          // a wall of mountain with a few passes
+    { id: 'cliffs', mountains: true, name: 'Cliff ring',          // a wall of mountain with a few passes
       early(c, p) {
         const radius = 46 + 16 * p.a, width = 4 + 3 * p.b, d = c.distanceFromOrigin;
         if (Math.abs(d - radius) > width / 2 + (N(c, 6, 711) - 0.5) * 1.6) return undefined;
@@ -253,7 +253,7 @@
         const density = stretch(N(c, 8, 731), 2.2);
         return density > 0.3 + 0.2 * p.c && R(c, 732) < 0.9 ? 'tree' : undefined;
       } },
-    { id: 'canyon', name: 'Canyon',              // two mountain walls: the start lies in a corridor
+    { id: 'canyon', mountains: true, name: 'Canyon',              // two mountain walls: the start lies in a corridor
       near(c, p) {
         const { along, across } = alongAcross(c, p);
         const half = 14 + 6 * p.a;
@@ -278,7 +278,7 @@
         if (d < radius) return 'water';
         if (d < radius + 1.1 && R(c, 761) < 0.9) return 'sand';
       } },
-    { id: 'spur', name: 'Mountain spur',        // a wedge of mountain with gaps: the way is partly blocked
+    { id: 'spur', mountains: true, name: 'Mountain spur',        // a wedge of mountain with gaps: the way is partly blocked
       near(c, p) {
         const d = c.distanceFromOrigin;
         if (d < 26 || d > 85) return undefined;
@@ -793,7 +793,7 @@
       rivals: settings.enemies.length, teams, aiLevels,
       seed: settings.seed,
       keep, twists: [],
-      tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.9, 0.60 * richness), scatteredOre: 0.01 * richness * richness, forest: FOREST[settings.forest] },
+      tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.9, 0.74 * richness), scatteredOre: 0.01 * richness * richness, forest: FOREST[settings.forest] },
       unlocks: [],
       goal: { items: [{ key: 'm:eliminate', type: 'eliminate', amount: settings.enemies.filter(enemy => enemy.team !== 'you').length }], par: 0 },
       needs: ['iron_ore', 'tree', 'rock', 'clay', 'coal'],
@@ -825,7 +825,25 @@
     return w;
   };
 
-  const solid = c => world.inMountain(c);
+  // Berg = landskapets berg eller en bergsstruktur (klippring, kanjon, rygg). Allt som ska undvika berg eller ha malm i berg frågar här.
+  const structureOf = (c, part) => {
+    const signature = state.info.signature;
+    if (!signature || !signature.def.mountains || !signature.def[part] || homeDistance(c) < (part === 'early' ? 42 : 12)) return undefined;
+    return signature.def[part](c, signature.params);   // c is already seeded (see wrapRule)
+  };
+  const solid = c => world.isMountain(c);
+  // Many rules ask about the same tile (and every ore candidate asks about its four neighbours), so the answer is kept per tile for the current level
+  let mountainMemo = new Map(), memoInfo = null;
+  world.isMountain = c => {
+    if (memoInfo !== state.info || mountainMemo.size > 300000) { mountainMemo = new Map(); memoInfo = state.info; }
+    const key = (c.x + 100000) * 200003 + c.y + 100000;
+    let answer = mountainMemo.get(key);
+    if (answer === undefined) {
+      answer = world.landscapeMountain(c) || structureOf(c, 'early') === 'mountain' || structureOf(c, 'near') === 'mountain';
+      mountainMemo.set(key, answer);
+    }
+    return answer;
+  };
 
   // Inside a mountain only the mountain itself, ore and a few rare finds may appear: no rock, ruins, fungi, cursed ground and the like
   const MOUNTAIN_KEEPS = new Set(['water', 'sand', 'grass', 'mountain', 'meteor_crater', 'fallen_star', ...world.deposits]);
@@ -863,15 +881,17 @@
 
   // Signature structures: "early" can overwrite almost anything but never touches the start (42 tiles);
   // "near" fills what ore and rock left free, and shapes the start area from 12 tiles out.
+  // A structure's mountain tiles get ore like the landscape's mountains do (the same rule: a rim of plain mountain, ore behind it)
+  const withOre = (c, terrain) => (terrain === 'mountain' ? world.mountainOre(c) ?? terrain : terrain);
   const signatureEarly = c => {
     const signature = state.info.signature;
     if (!signature || !signature.def.early || homeDistance(c) < 42) return undefined;
-    return signature.def.early(c, signature.params);
+    return withOre(c, signature.def.early(c, signature.params));
   };
   const signatureNear = c => {
     const signature = state.info.signature;
     if (!signature || !signature.def.near || homeDistance(c) < 12) return undefined;
-    return signature.def.near(c, signature.params);
+    return withOre(c, signature.def.near(c, signature.params));
   };
 
   const wrapped = baseRules.map(wrapRule);

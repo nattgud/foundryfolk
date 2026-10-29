@@ -16,6 +16,8 @@
       'Remove from favorites': 'お気に入りから外す',
       'Add to favorites': 'お気に入りに追加',
       'Free: {amount}': '空き：{amount}',
+      'Reserved: {amount}': '予約済み：{amount}',
+      'Not enough {name}: {have} of {need} free': '{name}が足りません：空き {have} / 必要 {need}',
       'Main menu': 'メインメニュー',
       'Continue': '続ける',
       'Save game': 'ゲームを保存',
