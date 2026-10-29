@@ -726,7 +726,7 @@ CityBuilder.Config.buildings = {
       kind: 'craft',
       inputs: { wood: 1 },
       outputs: { charcoal: 1 },
-      byproducts: { tar: 1, ash: 1 },
+      byproducts: { tar: 1, ash: 2 },
       craftSeconds: 10
     },
     buildDuration: 30
