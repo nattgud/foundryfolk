@@ -23,6 +23,7 @@ button:disabled, button.unavailable { border-color: var(--bad-line); background:
 
 #top { position: fixed; top: 0; left: 0; right: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .res { display: flex; align-items: center; gap: 4px; }
+.resource-amount[data-total]::after { content: '/' attr(data-total); opacity: .55; font-size: .85em; }
 .res i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; background-size: cover; }
 .res img { width: 14px; height: 14px; image-rendering: pixelated; }
 

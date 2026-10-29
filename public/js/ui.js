@@ -2738,7 +2738,12 @@
         const promised = (pending[resourceId] || 0) > 0;     // byggen väntar på resursen: en del av lagret är redan utlovad (understruken siffra, se tooltipen)
 
         const topAmount = byId('amount_' + resourceId);
-        if (topAmount) { topAmount.textContent = amount; topAmount.classList.toggle('is-full', full); topAmount.classList.toggle('is-promised', promised); }
+        if (topAmount) {   // fältet visar det lediga (inte reserverat av bärare, inte utlovat åt byggen); är något bundet står hela lagret efter ett snedstreck (CSS)
+          const free = CityBuilder.Construction.available(resourceId, CityBuilder.Players.HUMAN, pending);
+          topAmount.textContent = free;
+          if (free !== amount) topAmount.dataset.total = amount; else delete topAmount.dataset.total;
+          topAmount.classList.toggle('is-full', full); topAmount.classList.toggle('is-promised', promised);
+        }
 
         const windowAmount = byId('resourceWindowAmount_' + resourceId);
         if (windowAmount) { windowAmount.textContent = amount; windowAmount.classList.toggle('is-full', full); windowAmount.classList.toggle('is-promised', promised); }
