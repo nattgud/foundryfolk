@@ -242,6 +242,7 @@
       if (spell.echo) zone(spell.echo);
       building.spellCooldown = building.spellTotal = this.recharge(spell);
       this.locks[this.lockKey(building.player, this.group(spell))] = building.spellCooldown;
+      CityBuilder.Levels?.onCast(building.player);
       CityBuilder.Sound?.play('built', { x, y });
       return null;
     },

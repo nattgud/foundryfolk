@@ -6,7 +6,9 @@
 
   CityBuilder.Changelog = {
     '0.8.9': [
-      'No more giant fields and rings of rock: the Stone desert and Crag levels now only have small outcrops of a few stones, and the Cliff ring, Canyon and Boulder field structures are gone',
+      'New kinds of missions besides gathering resources: build the building a level teaches, own a number of buildings, reach a number of carriers (warehouses and depots bring many at once) and, from level 12, cast spells with the Enchanter',
+      'Missions could show as done when a new level started: every level and every new game now starts with all missions empty',
+      'Big rock fields and rings are now mountain instead: Stone desert and Crag levels only have small outcrops of rock, while the Cliff ring, Canyon and a new Mountain spur are walls and ridges of mountain that you can dig and tunnel through',
       'Spells now have to recharge, so you cannot cast all the time: after a cast the Enchanter rests from 30 seconds (weak spells) up to 3 minutes (strong ones), and that kind of spell (shaping, boosts, weather or combat) is locked for all your Enchanters for as long. The Enchanter shows a timer bar on the map and in its panel, and the Spellbook shows which kinds are recharging',
       'Mountains are rich again: about 40-50% of the inside of every mountain is ore (iron, coal, copper, tin, silver, gold, crystal and a few gemstones), with a plain rim of rock around it. Dig for it with a Rock crusher or build a mine on the deposits you can reach',
       'The Rock crusher now digs with a purpose: it tunnels the shortest way through the mountain to the nearest ore deposit, so you reach the ore inside quickly. It crushes a tile in 15 seconds (was 20)',

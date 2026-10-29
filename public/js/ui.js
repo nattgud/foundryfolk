@@ -198,6 +198,9 @@
       const numbers = { have: item.have, need: item.amount };
       switch (item.type) {
         case 'build': return t('Build {name}: {have}/{need}', { name: this.buildingName(item.id), ...numbers });
+        case 'buildings': return t('Own buildings: {have}/{need}', numbers);
+        case 'carriers': return t('Carriers: {have}/{need}', numbers);
+        case 'casts': return t('Cast spells: {have}/{need}', numbers);
         case 'soldiers': return t('Train soldiers: {have}/{need}', numbers);
         case 'kills': return t('Defeat enemy units: {have}/{need}', numbers);
         case 'destroy': return item.id === 'any' ? t('Destroy enemy buildings: {have}/{need}', numbers) : t('Destroy enemy {name}: {have}/{need}', { name: lower(this.buildingName(item.id)), ...numbers });

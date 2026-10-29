@@ -3,7 +3,7 @@
 
    - Each level has its own seed (derived from a "run-seed" + level number), so the same level = the same world.
    - UNIQUE LEVELS: every level gets a distinct combination of a theme (12 material palettes) and a SIGNATURE (12 landscape
-     structures: ring lake, spiral ...). The combinations are dealt out from a shuffled deck, so no two
+     structures: ring lake, cliff ring, canyon, spiral ...). The combinations are dealt out from a shuffled deck, so no two
      levels in a run share one (12 x 12 = 144 combinations for 120 levels). The structure's size, direction and shape
      come from the level seed, so even the same signature looks different from run to run.
    - Rarity: medium, rare, and epic resources become scarcer the higher the level (sawtooth over chapters of 10 levels).
@@ -31,9 +31,7 @@
   const alliedAt = level => rivalsAt(level) > 1 && level >= ALLIED_FROM;
   const LEVEL_KEY = 'citybuilder.level';
   const RUN_KEY = 'citybuilder.runSeed';
-  const PROGRESS_KEY = 'citybuilder.progress';
   const CUSTOM_KEY = 'citybuilder.custom';                  // inställningarna för en egen bana: finns nyckeln startar spelet den banan
-  const CUSTOM_PROGRESS_KEY = 'citybuilder.progress.custom';
 
   /* ---------- Helpers ---------- */
   const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -52,6 +50,8 @@
     set(key, value) { try { window.localStorage.setItem(key, String(value)); } catch (e) { /* ignore */ } },
     remove(key) { try { window.localStorage.removeItem(key); } catch (e) { /* ignore */ } },
   };
+  // Äldre versioner sparade målframstegen i lagringen och återanvände dem på nästa bana med samma nyckel: mål kunde stå som klara redan vid start
+  ['citybuilder.progress', 'citybuilder.progress.custom'].forEach(key => store.remove(key));
 
   // Noise and randomness per cell (c = wrapper context)
   const N = (c, scale, channel) => c.fractalNoise(c.x / scale, c.y / scale, channel);
@@ -223,6 +223,13 @@
         if (Math.abs(d - radius) > width / 2 + (N(c, 7, 701) - 0.5) * 1.5) return undefined;
         return inGap(c, p, 2 + (p.c > 0.5 ? 1 : 0), 4.5) ? 'sand' : 'water';
       } },
+    { id: 'cliffs', name: 'Cliff ring',          // a wall of mountain with a few passes
+      early(c, p) {
+        const radius = 46 + 16 * p.a, width = 4 + 3 * p.b, d = c.distanceFromOrigin;
+        if (Math.abs(d - radius) > width / 2 + (N(c, 6, 711) - 0.5) * 1.6) return undefined;
+        if (inGap(c, p, 2 + (p.c > 0.6 ? 1 : 0), 5)) return undefined;
+        return R(c, 712) < 0.93 ? 'mountain' : undefined;
+      } },
     { id: 'river', name: 'River crossing',      // a river with fords, crossing the start area
       near(c, p) {
         const { along, across } = alongAcross(c, p);
@@ -246,6 +253,14 @@
         const density = stretch(N(c, 8, 731), 2.2);
         return density > 0.3 + 0.2 * p.c && R(c, 732) < 0.9 ? 'tree' : undefined;
       } },
+    { id: 'canyon', name: 'Canyon',              // two mountain walls: the start lies in a corridor
+      near(c, p) {
+        const { along, across } = alongAcross(c, p);
+        const half = 14 + 6 * p.a;
+        if (Math.abs(Math.abs(across) - half) > 2.2 + 1.5 * p.b || Math.abs(along) > 95) return undefined;
+        if (((along % 44) + 44) % 44 < 7) return undefined; // passes through the walls
+        return R(c, 741) < 0.94 ? 'mountain' : undefined;
+      } },
     { id: 'spiral', name: 'Tree spiral',         // trees grow in a spiral arm
       near(c, p) {
         const d = c.distanceFromOrigin;
@@ -262,6 +277,14 @@
         const d = Math.hypot(c.x - s.x, c.y - s.y), radius = 2 + 3.2 * s.roll + p.b;
         if (d < radius) return 'water';
         if (d < radius + 1.1 && R(c, 761) < 0.9) return 'sand';
+      } },
+    { id: 'spur', name: 'Mountain spur',        // a wedge of mountain with gaps: the way is partly blocked
+      near(c, p) {
+        const d = c.distanceFromOrigin;
+        if (d < 26 || d > 85) return undefined;
+        const width = (0.38 + 0.2 * p.a) * Math.PI;
+        if (angleDiff(angleOf(c), p.rot) > width) return undefined;
+        return N(c, 11, 771) > 0.34 && R(c, 772) < 0.8 ? 'mountain' : undefined;
       } },
     { id: 'orebelt', name: 'Ore belt',            // a belt of ore clusters in an arc
       early(c, p) {
@@ -478,6 +501,8 @@
     return best || { seconds: size * 120, ids: new Set() };
   };
 
+  const CARRIERS_AT_START = 20;    // the headquarters' own carriers (settings.logistics.baseCarriers); each finished building adds one, a warehouse five and a depot more
+  const CAST_SECONDS = 90;         // one spell: mix it, gather the ingredients, wait for the recharge
   const KILL_SECONDS = 25, DESTROY_SECONDS = 150, ELIMINATE_SECONDS = 1200;
 
   // Kalibrering mot spelade nivåer: nivå 10 beräknades till 45 min men klaras på ca 20, så de tidiga nivåerna skalas ner (≈0,55).
@@ -497,6 +522,9 @@
     const war = items.some(item => item.type === 'kills' || item.type === 'destroy' || item.type === 'eliminate');
     for (const item of items) {
       if (item.type === 'build') seconds += item.amount * buildSeconds(CityBuilder.Config.buildings[item.id]);
+      else if (item.type === 'buildings') seconds += item.amount * PLACE_SECONDS;
+      else if (item.type === 'carriers') seconds += Math.max(0, item.amount - CARRIERS_AT_START) * PLACE_SECONDS;
+      else if (item.type === 'casts') { seconds += item.amount * CAST_SECONDS; ids.add('enchanter'); }
       else if (item.type === 'soldiers') {
         const army = armyPlan(level, item.amount, workers);
         trained += item.amount;
@@ -546,7 +574,9 @@
     return items;
   };
 
-  // A level's goals: { items: [{ key, type: 'build'|'stock', id|resource, amount }], par (seconds) }
+  const SPELLS_FROM = 12;   // the level the Enchanter unlocks on
+
+  // A level's goals: { items: [{ key, type: 'stock'|'build'|'buildings'|'carriers'|'casts'|..., id|resource, amount }], par (seconds) }
   const makeGoals = info => {
     const level = info.level, buildings = CityBuilder.Config.buildings;
     const rand = k => frac(info.seed, 9000 + k);
@@ -576,8 +606,22 @@
     }
     const recentPool = pool.filter(id => recent.has(id));
 
-    const stockCount = 3 + (level >= 10 ? 1 : 0) + (level >= 30 ? 1 : 0);
     const scale = info.trial ? 1.4 : info.bounty ? 0.6 : 1;
+
+    // 3. Goals that are not about resources: build the building this level teaches, and one of: a number of buildings, of carriers
+    // (storage buildings are the quick way up), or of spells cast. At most one of those three per level, in a changing order.
+    const extra = [];
+    const taught = Object.keys(buildings).filter(id => unlockLevelOf(id) === level && !buildings[id].isWinBuilding && !buildings[id].placeOnTerrain);
+    if (level >= 2 && taught.length) { const id = pick(taught, 70); extra.push({ key: 'b:' + id, type: 'build', id, amount: 1 }); }
+    const kinds = [];
+    if (level >= 3) kinds.push('buildings');
+    if (level >= 5) kinds.push('carriers');
+    if (level >= SPELLS_FROM && buildings.enchanter) kinds.push('casts');
+    const kind = level === SPELLS_FROM ? 'casts' : kinds.length ? pick(kinds, 71) : null;   // the Enchanter's first level: learn to cast
+    if (kind === 'buildings') extra.push({ key: 'x:buildings', type: 'buildings', amount: Math.min(50, Math.round((5 + level * 0.8) * scale)) });
+    if (kind === 'carriers') extra.push({ key: 'x:carriers', type: 'carriers', amount: Math.min(120, Math.round((CARRIERS_AT_START + 10 + level * 1.2) * scale)) });
+    if (kind === 'casts') extra.push({ key: 'x:casts', type: 'casts', amount: Math.min(4, 1 + Math.floor((level - SPELLS_FROM) / 15)) });
+    const stockCount = Math.max(2, 3 + (level >= 10 ? 1 : 0) + (level >= 30 ? 1 : 0) - extra.length);
     const addStock = resource => {
       const factor = storageFactor(resource);
       // Det man får vid start räknas inte: målet är så många till (annars är t.ex. verktygsmålen klara redan från början)
@@ -591,7 +635,9 @@
       addStock(pick(source, 30 + attempt));
     }
 
-    // 3. Late trials: build the monument (the only building goal)
+    extra.forEach(add);
+
+    // Late trials: build the monument
     if (info.trial && level >= 60 && buildings.monument) add({ key: 'b:monument', type: 'build', id: 'monument', amount: 1 });
 
     // 4. Military. 1-15: practice for fighting a rival (an army, later a first strike). 16-25: only attack missions.
@@ -833,30 +879,29 @@
 
   /* ---------- Goal progress ---------- */
   const Economy = () => CityBuilder.Economy;
-  const progress = { run: null, level: null, latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, destroyed: {}, rivalsDown: 0, won: false };
+  const progress = { run: null, level: null, latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, destroyed: {}, rivalsDown: 0, won: false };
   const completeListeners = [];
-  let checkTimer = 0, saveTimer = 0;
+  let checkTimer = 0;
 
-  const progressKey = () => (state.info.custom ? CUSTOM_PROGRESS_KEY : PROGRESS_KEY);
-  // Framstegen för den här banan ur 'saved' (från lagringen eller en sparning). Gäller bara samma omgång och bana, annars börjar de om.
+  // Framstegen hör bara till en sparning (se restoreProgress): varje bana och varje nytt spel börjar med tomma mål.
   const applyProgress = saved => {
     const same = saved && saved.run === runSeed && saved.level === state.info.key;
-    Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
+    Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, casts: same ? saved.casts || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
   };
-  const loadProgress = () => {
-    let saved = null;
-    try { saved = JSON.parse(store.get(progressKey())); } catch (e) { /* ignore */ }
-    applyProgress(saved);
-  };
-  const resetProgress = () => Object.assign(progress, { latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, destroyed: {}, rivalsDown: 0, won: false });
-  const saveProgress = () => store.set(progressKey(), JSON.stringify(progress));
+  const resetProgress = () => Object.assign(progress, { latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, destroyed: {}, rivalsDown: 0, won: false });
 
+  // Finished buildings of the player: of one kind (id), or all of them except the headquarters
   const countBuilt = id => {
-    const definition = CityBuilder.Config.buildings[id];
+    const { World, Players, Config } = CityBuilder, definition = id && Config.buildings[id], hq = World.hqOf(Players.HUMAN);
     let count = 0;
-    for (const building of CityBuilder.World.buildings) {
-      if (building.player === CityBuilder.Players.HUMAN && building.definition === definition && building.buildProgress >= 1) count++;
+    for (const building of World.buildings) {
+      if (building.player === Players.HUMAN && building.buildProgress >= 1 && (definition ? building.definition === definition : building !== hq)) count++;
     }
+    return count;
+  };
+  const countCarriers = () => {
+    let count = 0;
+    for (const unit of CityBuilder.World.units) if (unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN) count++;
     return count;
   };
 
@@ -864,6 +909,9 @@
   const haveOf = item => {
     switch (item.type) {
       case 'build': return countBuilt(item.id);
+      case 'buildings': return countBuilt();
+      case 'carriers': return countCarriers();
+      case 'casts': return progress.casts;
       case 'soldiers': return CityBuilder.Garrison.soldiersOf(CityBuilder.Players.HUMAN);
       case 'kills': return progress.kills;
       case 'destroy': return progress.destroyed[item.id] || 0;
@@ -887,17 +935,15 @@
   Systems.levels = {
     update(deltaSeconds) {
       if (!progress.complete) progress.seconds += deltaSeconds;
-      checkTimer += deltaSeconds; saveTimer += deltaSeconds;
+      checkTimer += deltaSeconds;
       if (checkTimer >= 1) {
         checkTimer = 0;
         if (!progress.complete && (progress.won || evaluate().every(item => item.done))) {
           progress.complete = true;
           progress.stars = state.info.custom ? 0 : starsFor(progress.seconds);
-          saveProgress();
           completeListeners.forEach(fn => { try { fn(Levels.result()); } catch (e) { console.error(e); } });
         }
       }
-      if (saveTimer >= 5) { saveTimer = 0; saveProgress(); }
     },
   };
 
@@ -912,11 +958,11 @@
     Object.assign(world.tuning, world.defaults, info.tuning);
     return info;
   };
-  const setCustom = raw => { const info = enter(customInfo(raw)); loadProgress(); return info; };
+  const setCustom = raw => { const info = enter(customInfo(raw)); applyProgress(null); return info; };
   const setLevel = (n, silent) => {
     const info = enter(levelInfo(n));
     store.set(LEVEL_KEY, info.level);
-    loadProgress();
+    applyProgress(null);
     if (!silent) {
       listeners.forEach(fn => { try { fn(info); } catch (e) { console.error(e); } });
       try { window.dispatchEvent(new CustomEvent('citybuilder:levelchange', { detail: info })); } catch (e) { /* ignore */ }
@@ -977,6 +1023,8 @@
       progress.destroyed.any = (progress.destroyed.any || 0) + 1;
       progress.destroyed[target.type] = (progress.destroyed[target.type] || 0) + 1;
     },
+    // The player cast a spell (counts towards the 'casts' goal)
+    onCast(player) { if (player === CityBuilder.Players.HUMAN) progress.casts++; },
     // A rival's base is destroyed (counts towards the 'eliminate' goal)
     onRivalDown() { progress.rivalsDown++; },
     // The last rival is gone: the level is won, whatever the other goals say
@@ -984,7 +1032,7 @@
 
     // Framstegen följer med sparningen (annars kan en äldre sparning få mål som redan är gröna). hold(true) medan en sparning återställs.
     snapshot: () => JSON.parse(JSON.stringify(progress)),
-    restoreProgress(saved) { applyProgress(saved || null); saveProgress(); },
+    restoreProgress(saved) { applyProgress(saved || null); },
     hold(value) { held = !!value; },
 
     // Goals
@@ -1006,7 +1054,6 @@
       const settings = normalizeCustom(raw), save = CityBuilder.Save;
       if (save && save.ready) save.save(save.slot());
       store.set(CUSTOM_KEY, JSON.stringify(settings));
-      store.remove(CUSTOM_PROGRESS_KEY);
       if (save && save.newGame) save.newGame('autocustom'); else location.reload();
     },
     // Back to the levels (the page reloads and continues from the autosave of the levels)
@@ -1049,7 +1096,6 @@
     // Same level again, from scratch: new world from the same seed, goals and time reset (the autosave is removed)
     restart() {
       resetProgress();
-      saveProgress();
       const save = CityBuilder.Save;
       if (save && save.newGame) save.newGame(); else location.reload();
     },
