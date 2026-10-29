@@ -2926,10 +2926,13 @@
         .join('');
     },
 
-    // Ett recepts insatser som ikoner: alternativa grundingredienser åtskilda av "/", därefter tillbehören
+    // Ett recepts insatser som ikoner. De alternativa grundingredienserna (`any`) blir ett enda tecken ✱, som förklaras av en rad
+    // med alla alternativ (anyLegendHtml) och av tooltipen, så att receptraderna blir korta; därefter tillbehören.
     recipeTakesHtml({ inputs, any }) {
-      return [any && any.map(option => this.resourceIconsHtml(option)).join(' / '), this.resourceIconsHtml(inputs)].filter(Boolean).join(' + ');
+      return [any && `<span title="${this.anyNames(any)}">✱</span>`, this.resourceIconsHtml(inputs)].filter(Boolean).join(' + ');
     },
+    anyNames(any) { return any.map(option => Object.keys(option).map(id => this.resourceName(id)).join(' + ')).join(' / '); },
+    anyLegendHtml(any) { return `✱ = ${any.map(option => this.resourceIconsHtml(option)).join(' ')}`; },
 
     // Statustext där resurser visas som ikoner: "Missing: Iron (2)" -> Saknas: [järn] (2)
     statusHtml(text) {
@@ -2992,6 +2995,8 @@
         lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.resourceIconsHtml(job.choices[0].inputs), outputs: job.choices.map(choice => this.resourceChip(Object.keys(choice.outputs)[0])).join('') }));
         lines.push(t('Makes the tool there is least of, among those switched on. Click a tool to switch it on or off'));
       } else if (job?.kind === 'craft' && job.choices) {
+        const base = job.choices.find(choice => choice.any)?.any;
+        if (base) lines.push(this.anyLegendHtml(base));
         for (const { inputs, any, outputs } of job.choices) lines.push(t('Processing: {inputs} → {outputs}', { inputs: this.recipeTakesHtml({ inputs, any }), outputs: this.resourceIconsHtml(amountsOf(outputs)) }));
         lines.push(t('Choose what it makes in the info panel'));
       } else if (job?.kind === 'craft') {
@@ -3364,7 +3369,7 @@
           if (radio.dataset.html !== html) { radio.dataset.html = html; radio.innerHTML = html; }
           radio.classList.toggle('on', selected);
           const plain = amounts => Object.entries(amounts || {}).map(([id, amount]) => `${amount} ${this.resourceName(id)}`).join(' + ');
-          radio.title = Object.keys(Config.takesOf({ inputs, any })).length ? t('Processing: {inputs} → {outputs}', { inputs: [any && any.map(plain).join(' / '), plain(inputs)].filter(Boolean).join(' + '), outputs: plain(outputs) }) : t('Producing: {outputs}', { outputs: plain(outputs) });
+          radio.title = Object.keys(Config.takesOf({ inputs, any })).length ? t('Processing: {inputs} → {outputs}', { inputs: [any && this.anyNames(any), plain(inputs)].filter(Boolean).join(' + '), outputs: plain(outputs) }) : t('Producing: {outputs}', { outputs: plain(outputs) });
         });
       }
       if (building.definition.job?.auto) {

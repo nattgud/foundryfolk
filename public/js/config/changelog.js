@@ -9,6 +9,7 @@
     '0.9.2': [
       'The Kitchen now cooks from any one of berries, mushrooms, meat, fish, apples or flour with water, and you choose how fancy the meal is: the plain dish makes 1 meal, with herbs 2, with salt 3, and with both herbs and salt 5',
       'Workers walk as fast on clay as on sand',
+      'The Kitchen\'s recipe lists are shorter: ✱ stands for any one of the base ingredients, listed once above the recipes and in the tooltips',
     ],
     '0.9.1': [
       'Graves are rare now: a few single graves here and there on grass, sand and dirt, instead of whole graveyards in rows. They are only scenery',
