@@ -999,8 +999,11 @@
     // Silent start: reads saved level (level 1 if nothing is saved), sets seed and offset. Called before World.init().
     start: () => {
       registerSystem();
+      const restored = progress.run === null ? null : { ...progress };   // Save.prepareStart har redan återställt tid och mål: setLevel/setCustom nollar dem
       const custom = readCustom();
-      return custom ? setCustom(custom) : setLevel(clampLevel(store.get(LEVEL_KEY)), true);
+      const info = custom ? setCustom(custom) : setLevel(clampLevel(store.get(LEVEL_KEY)), true);
+      applyProgress(restored);   // behålls bara om den hör till samma körning och bana
+      return info;
     },
     // The singleplayer level the game continues at (also while a custom map is open)
     get campaignLevel() { return clampLevel(store.get(LEVEL_KEY)); },
