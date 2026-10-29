@@ -6,6 +6,8 @@
 
   CityBuilder.Changelog = {
     '0.8.9': [
+      'You can now build on sand as well as on grass (mines and other buildings that need a certain resource still go where it lies)',
+      'The Stone desert levels are now really deserted: wide dunes of sand cover a quarter of the land, with a few small outcrops of rock',
       'New kinds of missions besides gathering resources: build the building a level teaches, own a number of buildings, reach a number of carriers (warehouses and depots bring many at once) and, from level 12, cast spells with the Enchanter',
       'Missions could show as done when a new level started: every level and every new game now starts with all missions empty',
       'Big rock fields and rings are now mountain instead: Stone desert and Crag levels only have small outcrops of rock, while the Cliff ring, Canyon and a new Mountain spur are walls and ridges of mountain that you can dig and tunnel through',

@@ -167,9 +167,13 @@
       });
     },
 
+    // Får en byggnad stå på den här terrängen? Byggnader med placeOnTerrain bara där (en eller flera typer), övriga på gräs och på terräng som är buildable (sand)
+    buildsOn(definition, terrainType) {
+      return definition.placeOnTerrain ? [].concat(definition.placeOnTerrain).includes(terrainType) : terrainType === 'grass' || !!Config.terrain[terrainType]?.buildable;
+    },
+
     canPlace(buildingType, x, y) {
-      const required = [].concat(Config.buildings[buildingType].placeOnTerrain || 'grass');   // en eller flera tillåtna terrängtyper
-      return !this.buildingAt(x, y) && required.includes(this.getTile(x, y).terrainType);
+      return !this.buildingAt(x, y) && this.buildsOn(Config.buildings[buildingType], this.getTile(x, y).terrainType);
     },
 
     // player = vem byggnaden tillhör (se core/players.js)

@@ -138,7 +138,7 @@
     ] },
     { id: 'barren', noun: 'Stone desert', keep: { tree: 0.25 }, extras: [
       c => (N(c, 5, 510) > 0.64 && R(c, 511) < 0.6 ? 'rock' : undefined),   // small outcrops, never big fields
-      c => (stretch(N(c, 30, 512), 2.2) > 0.7 && R(c, 513) < 0.8 ? 'sand' : undefined),
+      c => (stretch(N(c, 30, 512), 2.2) > 0.52 && R(c, 513) < 0.92 ? 'sand' : undefined),   // wide dunes: the desert feel
     ] },
     { id: 'swamp', noun: 'Swamp', keep: {}, extras: [
       c => {

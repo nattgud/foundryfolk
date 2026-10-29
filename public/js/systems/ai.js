@@ -339,11 +339,10 @@
 
     // Lediga byggplatser (närmast 'centre' först) på byggnadens terrängtyp, med minst en tom ruta till andra byggnader
     * free(centre, definition, limit) {
-      const terrain = definition.placeOnTerrain || 'grass';
       for (const { dx, dy, distance } of OFFSETS) {
         if (distance > limit) return;
         const x = centre.x + dx, y = centre.y + dy;
-        if (World.getTile(x, y).terrainType !== terrain || World.buildingAt(x, y) || !Vision.visible(AI.current, x, y)) continue;   // bara platser datorn ser
+        if (!World.buildsOn(definition, World.getTile(x, y).terrainType) || World.buildingAt(x, y) || !Vision.visible(AI.current, x, y)) continue;   // bara platser datorn ser
         let crowded = false;
         for (let ny = -1; ny <= 1 && !crowded; ny++) for (let nx = -1; nx <= 1; nx++) if (World.buildingAt(x + nx, y + ny)) { crowded = true; break; }
         if (!crowded) yield [x, y];
