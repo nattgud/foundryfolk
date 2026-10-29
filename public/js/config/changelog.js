@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.9': [
+      'Main menu: Continue, Save and Load sit side by side, Settings comes before Statistics, and on a custom map the old "Back to the levels" button is now "Continue singleplayer" and says which level you return to',
       'You can now build on sand as well as on grass (mines and other buildings that need a certain resource still go where it lies)',
       'The Stone desert levels are now really deserted: wide dunes of sand cover a quarter of the land, with a few small outcrops of rock',
       'New kinds of missions besides gathering resources: build the building a level teaches, own a number of buildings, reach a number of carriers (warehouses and depots bring many at once) and, from level 12, cast spells with the Enchanter',

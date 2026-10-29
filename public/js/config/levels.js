@@ -989,6 +989,8 @@
       const custom = readCustom();
       return custom ? setCustom(custom) : setLevel(clampLevel(store.get(LEVEL_KEY)), true);
     },
+    // The singleplayer level the game continues at (also while a custom map is open)
+    get campaignLevel() { return clampLevel(store.get(LEVEL_KEY)); },
     get runSeed() { return runSeed; },
     // Restores level and run-seed from a save (silent, before world generation)
     restore: (level, seed) => {

@@ -1550,28 +1550,32 @@
           },
         }), '', '✨');
         // Grupper: spela vidare - spara och ladda - ny omgång och banor - information och inställningar
-        body.append(
+        const row = make('div', 'main-menu-row');
+        row.append(
           button(t('Continue'), () => this.toggleMainMenu(false), '', '▶'),
-          ...(CityBuilder.Levels?.completed && !level?.custom ? [button(t('Next level'), () => CityBuilder.Levels.advance(), '', '⏭')] : []),
-          gap(),
           button(t('Save game'), () => this.renderMainMenu('save'), '', '💾'),
-          button(t('Load game'), entries.size ? () => this.renderMainMenu('load') : null, '', '📂'),
-          gap(),
-          restart,
-          newGame,
-          button(t('Custom map'), () => this.renderMainMenu('custom'), '', '🗺️'),
-          ...(level?.custom ? [button(t('Back to the levels'), () => this.renderMainMenu('confirm', {
-            text: t('Return to your levels? The custom map is kept in its autosave and in your manual saves.'),
-            confirmLabel: t('Back to the levels'),
+          button(t('Load game'), entries.size ? () => this.renderMainMenu('load') : null, '', '📂')
+        );
+        body.append(
+          row,
+          ...(CityBuilder.Levels?.completed && !level?.custom ? [button(t('Next level'), () => CityBuilder.Levels.advance(), '', '⏭')] : []),
+          // On a custom map: back to the singleplayer game, at the level you had reached
+          ...(level?.custom ? [button(t('Continue singleplayer'), () => this.renderMainMenu('confirm', {
+            text: t('Leave this custom map and continue your singleplayer game at level {level}? The custom map is kept in its autosave and in your manual saves.', { level: CityBuilder.Levels.campaignLevel }),
+            confirmLabel: t('Continue singleplayer'),
             back: 'main',
             onConfirm: () => CityBuilder.Levels.leaveCustom(),
           }), '', '↩️')] : []),
           gap(),
+          restart,
+          newGame,
+          button(t('Custom map'), () => this.renderMainMenu('custom'), '', '🗺️'),
+          gap(),
+          button(t('Settings'), () => this.renderMainMenu('options'), '', '⚙️'),
           button(t('Statistics'), () => this.renderMainMenu('stats'), '', '📊'),
           button(t('How to play'), () => this.openTutorial('basics'), '', '❓'),
           button(t('Advanced guide'), () => this.openTutorial('advanced'), '', '📖'),
-          button('Changelog', () => this.openChangelog(), '', '📜'),
-          button(t('Settings'), () => this.renderMainMenu('options'), '', '⚙️')
+          button('Changelog', () => this.openChangelog(), '', '📜')
         );
         if (window.version) body.append(make('div', 'main-menu-note', 'Version ' + window.version));
       } else if (view === 'save') {
@@ -2641,6 +2645,10 @@
         }
 
         .main-menu-gap { height: 6px; flex: none; }
+        .main-menu-row { display: flex; gap: 8px; }
+        .main-menu-row .main-menu-button { flex: 1 1 0; min-width: 0; padding: 10px 6px; font-size: 13px; text-align: center; }
+        .main-menu-row .main-menu-button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+        .main-menu-row .main-menu-icon { width: auto; margin: 0; font-size: 18px; }
 
         .main-menu-icon {
           display: inline-block;
