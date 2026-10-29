@@ -9,6 +9,9 @@
     '0.9.2': [
       'The Kitchen now cooks from any one of berries, mushrooms, meat, fish, apples or flour with water, and you choose how fancy the meal is: the plain dish makes 1 meal, with herbs 2, with salt 3, and with both herbs and salt 5',
       'Workers walk as fast on clay as on sand',
+      'Priority buildings get their deliveries much faster: they can order past the carrier queue limit, restock as soon as anything is missing, and take a carrier from an ordinary delivery that has not picked anything up yet when all carriers are busy',
+      'Carriers with nothing to do now top up the buildings\' input stock even before it runs low, without ever taking material that construction sites are waiting for',
+      'A carrier whose destination is destroyed on the way turns around and takes the goods to the nearest store or building that needs them',
       'The resource bar at the top now shows what is free to use: stock that carriers are already fetching or that construction sites are waiting for is left out, and the full stock is shown dimmed after a slash, like 7/12',
       'The Kitchen\'s recipe lists are shorter: ✱ stands for any one of the base ingredients, listed once above the recipes and in the tooltips',
     ],
