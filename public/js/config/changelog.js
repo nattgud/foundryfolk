@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.9': [
+      'The rock crusher now digs a tunnel of rock only, straight towards the nearest deposit it can not reach. Deposits count as impassable for this, so it never relies on carriers walking over other deposits: a deposit is reachable once a free tile touches it. When only deposits block the way, the crusher waits until you mine them',
       'Deserts have real sand ground now: trees and rocks can stand on sand, palms grow in oases (woodcutters chop them like any tree), and ground you have emptied stays sand instead of turning into grass',
       'Every mountain now has a moonstone at its peak, and the ore inside a mountain is generated as part of the terrain instead of being scattered afterwards',
       'Level themes now change the climate: barren and drought levels are drier with more sand and less water, swamps are wetter with more bogs, forests are damper with denser woods, and archipelagos have more sea',

@@ -62,18 +62,22 @@
     // Bergsgrävning (job.digFor): vilken bergsruta som ska grävas bort härnäst.
     //  1. Finns en fyndighet inom räckvidden som inte går att nå från huset: ta den närmaste (fågelvägen från huset). Berget som ligger i
     //     vägen grävs bort, en ruta i taget, tills fyndigheten går att nå; sedan tar nästa fyndighet som inte går att nå vid.
+    //     Fyndigheter räknas som ogenomträngliga: ingen bär sig fram över andra fyndigheter, så en fyndighet går att nå först när
+    //     en fri ruta (inte en annan fyndighet) gränsar till den, och tunneln går genom enbart berg.
     //  2. Går alla fyndigheter att nå grävs det bergsruta som är närmast huset, tills allt berg inom räckvidden är borta.
     // Den ruta som grävs är den på kortaste vägen mot målet som gränsar till marken man redan kan gå till (så tunneln växer inifrån och ut).
     // En fyndighet som varken går att nå eller gräva sig till (en holme) hoppas över. Returnerar { x, y, tile } eller null.
     tunnelTarget(building, job) {
       const radius = job.searchRadius, size = 2 * radius + 1, total = size * size;
       const ORTHOGONAL = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      const solid = new Set(Config.world.deposits);   // inte att gå över
       const deposits = new Set(job.digFor === 'deposits' ? Config.world.deposits : [].concat(job.digFor));
       const open = new Uint8Array(total);
       const indexOf = (dx, dy) => (dy + radius) * size + dx + radius;
       const inside = (dx, dy) => dx * dx + dy * dy <= radius * radius;
       const tileAt = (dx, dy) => World.getTile(building.x + dx, building.y + dy);
       const diggable = tile => tile.terrainType === 'mountain' && tile.remainingAmount > 0;
+      const free = (dx, dy) => CityBuilder.Pathfinder.tileCost(building.x + dx, building.y + dy) !== Infinity && !solid.has(tileAt(dx, dy).terrainType);   // går att gå på
       const result = (dx, dy) => ({ x: building.x + dx, y: building.y + dy, tile: tileAt(dx, dy) });
 
       // Allt som går att gå till från huset
@@ -82,7 +86,7 @@
       for (let head = 0; head < walk.length; head += 2) {
         for (const [ox, oy] of ORTHOGONAL) {
           const dx = walk[head] + ox, dy = walk[head + 1] + oy;
-          if (!inside(dx, dy) || open[indexOf(dx, dy)] || CityBuilder.Pathfinder.tileCost(building.x + dx, building.y + dy) === Infinity) continue;
+          if (!inside(dx, dy) || open[indexOf(dx, dy)] || !free(dx, dy)) continue;
           open[indexOf(dx, dy)] = 1;
           walk.push(dx, dy);
         }
@@ -92,7 +96,7 @@
       // Fyndigheter som inte går att nå, närmast huset först
       const targets = [];
       for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
-        if (!inside(dx, dy) || open[indexOf(dx, dy)]) continue;
+        if (!inside(dx, dy) || open[indexOf(dx, dy)] || touchesOpen(dx, dy)) continue;
         const tile = tileAt(dx, dy);
         if (deposits.has(tile.terrainType) && tile.remainingAmount > 0) targets.push({ dx, dy, distance: dx * dx + dy * dy });
       }
@@ -105,7 +109,7 @@
       for (const target of targets) {
         if (dead[indexOf(target.dx, target.dy)]) continue;
         const reached = [];
-        let level = [target.dx, target.dy];
+        let level = [target.dx, target.dy], found = null, foundDistance = Infinity;
         seen[indexOf(target.dx, target.dy)] = 1; reached.push(indexOf(target.dx, target.dy));
         while (level.length) {
           const next = [];
@@ -116,13 +120,15 @@
               if (!inside(dx, dy) || open[index] || seen[index]) continue;
               const tile = tileAt(dx, dy);
               if (diggable(tile)) {
-                if (touchesOpen(dx, dy)) return result(dx, dy);
-                seen[index] = 1; reached.push(index); next.push(dx, dy);
-              } else if (CityBuilder.Pathfinder.tileCost(building.x + dx, building.y + dy) !== Infinity) {
-                seen[index] = 1; reached.push(index); level.push(dx, dy);   // fri mark (t.ex. andra malmrutor): samma nivå
+                if (touchesOpen(dx, dy)) {   // på en kortaste väg: av de rutorna den som ligger närmast huset, så att tunneln växer inifrån och ut
+                  if (dx * dx + dy * dy < foundDistance) { foundDistance = dx * dx + dy * dy; found = [dx, dy]; }
+                } else { seen[index] = 1; reached.push(index); next.push(dx, dy); }
+              } else if (free(dx, dy)) {
+                seen[index] = 1; reached.push(index); level.push(dx, dy);   // fri mark inne i berget: samma nivå
               }
             }
           }
+          if (found) return result(found[0], found[1]);
           level = next;
         }
         for (const index of reached) { seen[index] = 0; dead[index] = 1; }   // ingen väg härifrån
