@@ -12,7 +12,7 @@ CityBuilder.Config.terrain = {
   mountain:         { name: "Mountain",   color: '#aaa',    walkCost: Infinity, resourceAmount: 1 },
   lava:             { name: "Lava",       color: '#e8590c', walkCost: Infinity },   // bara från vulkaner (systems/weather.js), stelnar till gräs eller malm
   water:            { name: "Water",      color: '#2b5d86', walkCost: Infinity, gatherersStopBefore: true, resourceAmount: 500 },
-  sand:             { name: "Sand",       color: '#c9b887', walkCost: 2, resourceAmount: 25, buildable: true },
+  sand:             { name: "Sand",       color: '#c9b887', walkCost: 1.5, resourceAmount: 25, buildable: true },
   clay:             { name: "Clay",       color: '#946b58', walkCost: 3, resourceAmount: 25 },
   limestone:        { name: "Limestone",  color: '#b8b4a5', walkCost: 5, resourceAmount: 25 },
 
