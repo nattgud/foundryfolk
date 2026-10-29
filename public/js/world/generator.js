@@ -11,7 +11,7 @@
 
   const Generator = {
     // Glömmer det som cachats per värld (sandrev, gångar). Anropas när landskapsreglagen eller seedet byts utan omladdning (förhandsvisningen).
-    reset() { this.barKey = this.tableKey = null; this.plain = null; },
+    reset() { this.barKey = this.tableKey = null; this.plain = this.sand = null; },
 
     // Slutlig terräng: plainTypeAt, men utan små otillgängliga öar (se islet).
     terrainTypeAt(x, y) { return this.islet(x, y, this.plainTypeAt(x, y)); },
@@ -41,17 +41,26 @@
     // plainTypeAt sparas per ruta (högst CACHE_LIMIT stycken åt gången), eftersom ögranskningen läser grannrutorna om och om igen
     plainTypeAt(x, y) {
       const seed = CityBuilder.Config.world.seed;
-      if (!this.plain || this.plainSeed !== seed || this.plain.size > CACHE_LIMIT) { this.plain = new Map(); this.plainSeed = seed; }
+      if (!this.plain || this.plainSeed !== seed || this.plain.size > CACHE_LIMIT) { this.plain = new Map(); this.sand = new Set(); this.plainSeed = seed; }
       const key = Utils.tileKey(x, y);
       let type = this.plain.get(key);
       if (type === undefined) this.plain.set(key, type = this.computeType(x, y));
       return type;
     },
 
+    // Marken under rutan: 'sand' i öknen och där terrängen är sand, annars 'grass'. Det som växer eller ligger på sanden (träd, sten, malm)
+    // står på sandmark, och när det tagit slut blir marken kvar. Beror bara på världen, så den behöver inte sparas.
+    groundAt(x, y) {
+      return this.plainTypeAt(x, y) === 'sand' || this.sand.has(Utils.tileKey(x, y)) ? 'sand' : 'grass';
+    },
+
     // Terräng efter utjämning av enstaka rutor, vadställen över smala vattendrag och holmar utan fyndigheter.
     computeType(x, y) {
-      const base = this.baseTypeAt(x, y);
-      if (base !== 'mountain' && base !== 'water') return this.settle(x, y, base);
+      const base = this.baseTypeAt(x, y), context = this.context;   // context: rutans egen, innan grannarna frågas
+      if (base !== 'mountain' && base !== 'water') {
+        if (context && CityBuilder.Config.world.sandGround(context)) this.sand.add(Utils.tileKey(x, y));
+        return this.settle(x, y, base);
+      }
       const around = [];   // grannarnas terräng i NEIGHBOURS-ordning, hämtas först när den behövs
       const at = i => around[i] ??= this.baseTypeAt(x + NEIGHBOURS[i][0], y + NEIGHBOURS[i][1]);
       const type = this.despeckle(x, y, base, at);
@@ -168,6 +177,7 @@
     baseTypeAt(x, y) {
       const worldConfig = CityBuilder.Config.world;
       const distanceFromOrigin = Math.hypot(x, y);
+      this.context = null;
       if (distanceFromOrigin < worldConfig.clearRadius) return 'grass';
       for (const clearing of worldConfig.clearings) if (Math.hypot(x - clearing.x, y - clearing.y) < clearing.radius) return 'grass';
 
@@ -179,6 +189,7 @@
         moisture: Utils.fractalNoise(x / 12, y / 12, 2) + (distanceFromOrigin > 4 && distanceFromOrigin < 18 ? .08 : 0),
       };
 
+      this.context = context;
       let terrainType = 'grass';
       for (const rule of worldConfig.rules) {
         const result = rule(context);

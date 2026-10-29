@@ -233,6 +233,11 @@
 
   // Under den här fuktigheten är marken öken (sand)
   const DESERT_LINE = 0.2;
+  const isDesert = context => {
+    const model = landscapeAt(context);
+    if (model.moisture > DESERT_LINE + 0.06 || model.inMountain || model.origin < 22 || isOpenWater(model)) return false;
+    return model.moisture < DESERT_LINE + (fbm(context, context.x, context.y, 28, 190, 0.5) - 0.5) * 0.12;
+  };
 
   // Bergstoppar: en per berg. I varje cell (PEAK_CELL rutor) letas den högsta bergspunkten fram, och den är en topp bara om ingenting inom
   // PEAK_RING rutor är högre (annars hör toppen till grannens cell). Små kullar (PEAK_DEPTH) får ingen. Svaret sparas per värld.
@@ -530,20 +535,17 @@
     // Malm. I berg avgörs allt av mountainOre (en bestämd andel av bergets kärna). Utanför berg ligger enstaka
     // fynd på en eller två rutor, väldigt utspridda och helst intill sten (scatteredOre). Reglerna för
     // guld/silver, koppar/tenn, järn och kol nedan är därför tomma platshållare: regelordningen (och
-    // indexen i levels.js) ska vara oförändrad.
+    // indexen i levels.js) ska vara oförändrad. Sanden ligger sist i listan.
     context => {
       const model = landscapeAt(context);
       return model.inMountain ? mountainOre(context) : scatteredOre(context, model);
     },
 
-    // Öken: torr mark blir sand. Gränsen buktar med ett lågfrekvent brus (dyner). Torrhet kommer från fuktigheten, så ett tema som
-    // sänker fuktigheten (tuning.moisture) får mer sand och, eftersom vatten och träsk följer samma klimat, mindre av dem.
+    // Oas: i öknen växer palmer (träd på sandmark, se ground i Generator) i klungor.
     // (Platshållaren för guld/silver: malmen ligger i regeln ovan.)
     context => {
-      const model = landscapeAt(context);
-      if (model.inMountain || model.origin < 22 || isOpenWater(model)) return;
-      const line = DESERT_LINE + (fbm(context, context.x, context.y, 28, 190, 0.5) - 0.5) * 0.12;
-      if (model.moisture < line && random(context, context.x, context.y, 191) < 0.93) return 'sand';
+      if (!isDesert(context)) return;
+      if (fbm(context, context.x, context.y, 14, 192, 0.5) > 0.62 && random(context, context.x, context.y, 193) < 0.45) return 'tree';
     },
 
     // Svavel: vulkaniska provinser i bergen, i små fläckar.
@@ -643,6 +645,11 @@
       const cluster = fbm(context, context.x, context.y, 9, 330, 0.5);
       if (cluster > 0.54 && random(context, context.x, context.y, 331) < 0.5) return 'herbs';
     },
+
+    // 29. Öken: torr mark blir sand, och allt som ligger före i listan (sten, träd, malm) står på sandmark. Gränsen buktar med ett
+    // lågfrekvent brus (dyner). Torrhet kommer från fuktigheten, så ett tema som sänker fuktigheten (tuning.moisture) får mer sand och,
+    // eftersom vatten och träsk följer samma klimat, mindre av dem.
+    context => { if (isDesert(context)) return 'sand'; },
   ];
 
   CityBuilder.Config.world = {
@@ -650,6 +657,7 @@
     landscapeMountain: context => landscapeAt(context).inMountain,   // bara landskapets berg
     isMountain: context => landscapeAt(context).inMountain,   // är rutan berg? Banorna lägger till sina bergsstrukturer (levels.js). Teman och strukturer lämnar bergen ifred
     mountainOre,
+    sandGround: isDesert,   // mark som är sand under det som växer eller ligger på den (Generator.groundAt)
     seed: Math.floor(Math.random() * 1000000), // ny värld vid varje start. Skriv ett fast tal här för en bestämd värld
     clearRadius: 4,
     roads: [],                 // landvägar { x1, y1, x2, y2, width, wobble, wavelength, phase } som ersätter vatten och berg med gräs (World.rivalSite lägger till en till varje bas)

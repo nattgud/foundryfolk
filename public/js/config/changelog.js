@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.9': [
+      'Deserts have real sand ground now: trees and rocks can stand on sand, palms grow in oases (woodcutters chop them like any tree), and ground you have emptied stays sand instead of turning into grass',
       'Every mountain now has a moonstone at its peak, and the ore inside a mountain is generated as part of the terrain instead of being scattered afterwards',
       'Level themes now change the climate: barren and drought levels are drier with more sand and less water, swamps are wetter with more bogs, forests are damper with denser woods, and archipelagos have more sea',
       'The build hotkeys (Q W E R T Y U I O P) now work as long as the buildings of an open category are shown, also while one of your buildings is selected; only the letters that control the selected building (P, B, R, T, S, Z X C V) go to it. Opening a category with the mouse now deselects the building, just like the number keys do',

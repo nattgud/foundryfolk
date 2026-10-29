@@ -19,7 +19,7 @@
     nextBuildingId: 1,
     animalsByChunk: new Map(),
 
-    // Ruta: { terrainType, remainingAmount, wear }
+    // Ruta: { terrainType, remainingAmount, wear, ground }. ground: 'grass' eller 'sand', marken under terrängen (Generator.groundAt)
     getTile(x, y) {
       const chunkSize = Config.settings.chunkSize;
       const chunkX = Math.floor(x / chunkSize), chunkY = Math.floor(y / chunkSize);
@@ -29,7 +29,7 @@
         chunk = [];
         for (let row = 0; row < chunkSize; row++) for (let column = 0; column < chunkSize; column++) {
           const terrainType = CityBuilder.Generator.terrainTypeAt(chunkX * chunkSize + column, chunkY * chunkSize + row);
-          chunk.push({ terrainType, remainingAmount: Config.terrain[terrainType].resourceAmount || 0, wear: 0 });
+          chunk.push({ terrainType, remainingAmount: Config.terrain[terrainType].resourceAmount || 0, wear: 0, ground: CityBuilder.Generator.groundAt(chunkX * chunkSize + column, chunkY * chunkSize + row) });
         }
         // Utgångsläget sparas på chunken, så att sparningen kan se vilka rutor som ändrats (Save.collectTileChanges)
         chunk.cx = chunkX; chunk.cy = chunkY;

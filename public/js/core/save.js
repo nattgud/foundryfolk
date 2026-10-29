@@ -90,7 +90,7 @@
           let changed = null;
           for (const key in tile) {
             const value = tile[key];
-            if (isPrimitive(value) && value !== base[key]) (changed = changed || {})[key] = value;
+            if (key !== 'ground' && isPrimitive(value) && value !== base[key]) (changed = changed || {})[key] = value;
           }
           if (changed) changes.push([chunk.cx * size + index % size, chunk.cy * size + Math.floor(index / size), changed]);
         }
