@@ -111,7 +111,10 @@
       const tile = Renderer.screenToTile(screenX, screenY), game = CityBuilder.Game;
       Renderer.hoverTile = tile;
 
-      if (game.flagging) { game.placeFlag(tile.x, tile.y); return; }
+      if (game.flagging) {   // flaggläget består tills Esc, flaggknappen eller ett tryck på en egen byggnad (som då markeras)
+        if (CityBuilder.World.seenBuildingAt(tile.x, tile.y)?.player !== CityBuilder.Players.HUMAN) { game.placeFlag(tile.x, tile.y); return; }
+        game.setFlagging(false);
+      }
       if (game.placingType) { game.tryBuild(game.placingType, tile.x, tile.y); return; }
       if (game.casting) { game.castSpell(tile.x, tile.y); return; }
 
