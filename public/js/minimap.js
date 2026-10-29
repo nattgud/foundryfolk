@@ -428,15 +428,14 @@
       const reach = radius / scale + CHUNK;
       const minCX = Math.floor((centerX - reach) / CHUNK), maxCX = Math.floor((centerX + reach) / CHUNK);
       const minCY = Math.floor((centerY - reach) / CHUNK), maxCY = Math.floor((centerY + reach) / CHUNK);
-      // Fog of war: brickor utan en enda synlig cell byggs och ritas inte. Undantag: när en gather-byggnad ska placeras visas
-      // alla fyndigheter av dess slag, också i dimman (så att man vet vart man ska spana)
+      // Fog of war: brickor utan en enda synlig cell byggs och ritas inte, och i filterläget (vald gather-byggnad) ritas bara fyndigheter som syns
       const visible = [];
       for (let cy = minCY; cy <= maxCY; cy++) {
         for (let cx = minCX; cx <= maxCX; cx++) {
           const chunk = this.chunkAt(cx, cy);
           chunk.usedAt = now;
           chunk.lit = Vision.anyVisible(Players.HUMAN, cx * CHUNK, cy * CHUNK, cx * CHUNK + CHUNK - 1, cy * CHUNK + CHUNK - 1);
-          if (chunk.lit || mode === 'filter') visible.push(chunk);
+          if (chunk.lit) visible.push(chunk);
         }
       }
       const distance = chunk => Math.hypot(chunk.cx * CHUNK + 8 - centerX, chunk.cy * CHUNK + 8 - centerY);
@@ -485,6 +484,7 @@
           else { context.globalAlpha = 1; lastColor = null; }
           for (const chunk of visible) {
             for (const node of chunk.nodes) {
+              if (mode === 'filter' && !Vision.visible(Players.HUMAN, node.x + .5, node.y + .5)) continue;   // inget i dimman
               const color = this.nodeColor(node.type, mode, favorites, cache);
               if (!color) continue;
               const left = Math.round(toX(node.x)), top = Math.round(toY(node.y));
