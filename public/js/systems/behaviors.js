@@ -59,20 +59,24 @@
       return null;
     },
 
-    // Bergsgrävning (job.digFor): den närmaste fyndigheten som berget stänger inne, och den bergsruta som ska grävas bort härnäst för
-    // att nå den. Marken som går att nå från huset flödas ut först; sedan växer en bredden-först-sökning inåt genom berget från
-    // rutorna som gränsar till den marken, så den kortaste tunneln vinner. Finns ingen instängd fyndighet grävs närmaste bergsruta.
-    // Returnerar { x, y, tile } eller null.
+    // Bergsgrävning (job.digFor): vilken bergsruta som ska grävas bort härnäst.
+    //  1. Finns en fyndighet inom räckvidden som inte går att nå från huset: ta den närmaste (fågelvägen från huset). Berget som ligger i
+    //     vägen grävs bort, en ruta i taget, tills fyndigheten går att nå; sedan tar nästa fyndighet som inte går att nå vid.
+    //  2. Går alla fyndigheter att nå grävs det bergsruta som är närmast huset, tills allt berg inom räckvidden är borta.
+    // Den ruta som grävs är den på kortaste vägen mot målet som gränsar till marken man redan kan gå till (så tunneln växer inifrån och ut).
+    // En fyndighet som varken går att nå eller gräva sig till (en holme) hoppas över. Returnerar { x, y, tile } eller null.
     tunnelTarget(building, job) {
       const radius = job.searchRadius, size = 2 * radius + 1, total = size * size;
       const ORTHOGONAL = [[1, 0], [-1, 0], [0, 1], [0, -1]];
       const deposits = new Set(job.digFor === 'deposits' ? Config.world.deposits : [].concat(job.digFor));
-      const open = new Uint8Array(total), seen = new Uint8Array(total), root = new Int32Array(total).fill(-1);
+      const open = new Uint8Array(total);
       const indexOf = (dx, dy) => (dy + radius) * size + dx + radius;
       const inside = (dx, dy) => dx * dx + dy * dy <= radius * radius;
       const tileAt = (dx, dy) => World.getTile(building.x + dx, building.y + dy);
+      const diggable = tile => tile.terrainType === 'mountain' && tile.remainingAmount > 0;
+      const result = (dx, dy) => ({ x: building.x + dx, y: building.y + dy, tile: tileAt(dx, dy) });
 
-      // 1. Allt som går att gå till från huset
+      // Allt som går att gå till från huset
       const walk = [0, 0];
       open[indexOf(0, 0)] = 1;
       for (let head = 0; head < walk.length; head += 2) {
@@ -83,41 +87,58 @@
           walk.push(dx, dy);
         }
       }
+      const touchesOpen = (dx, dy) => ORTHOGONAL.some(([ox, oy]) => inside(dx + ox, dy + oy) && open[indexOf(dx + ox, dy + oy)]);
 
-      // 2. Bergsrutorna längs kanten är startpunkter. Närmast huset först, så att utan fyndighet grävs närmaste ruta.
-      const front = [];
+      // Fyndigheter som inte går att nå, närmast huset först
+      const targets = [];
+      for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+        if (!inside(dx, dy) || open[indexOf(dx, dy)]) continue;
+        const tile = tileAt(dx, dy);
+        if (deposits.has(tile.terrainType) && tile.remainingAmount > 0) targets.push({ dx, dy, distance: dx * dx + dy * dy });
+      }
+      targets.sort((a, b) => a.distance - b.distance);
+
+      // Kortaste vägen från en fyndighet ut mot det som går att nå: berg kostar 1, annan mark 0, och det som inte går att passera (vatten) stoppar.
+      // Nivå för nivå (antal bergsrutor); den första bergsruta som gränsar till nåbar mark ligger på en kortaste väg.
+      const dead = new Uint8Array(total);   // rutor vars område saknar väg: nästa fyndighet där behöver inte sökas om
+      const seen = new Uint8Array(total);
+      for (const target of targets) {
+        if (dead[indexOf(target.dx, target.dy)]) continue;
+        const reached = [];
+        let level = [target.dx, target.dy];
+        seen[indexOf(target.dx, target.dy)] = 1; reached.push(indexOf(target.dx, target.dy));
+        while (level.length) {
+          const next = [];
+          for (let head = 0; head < level.length; head += 2) {
+            const x = level[head], y = level[head + 1];
+            for (const [ox, oy] of ORTHOGONAL) {
+              const dx = x + ox, dy = y + oy, index = indexOf(dx, dy);
+              if (!inside(dx, dy) || open[index] || seen[index]) continue;
+              const tile = tileAt(dx, dy);
+              if (diggable(tile)) {
+                if (touchesOpen(dx, dy)) return result(dx, dy);
+                seen[index] = 1; reached.push(index); next.push(dx, dy);
+              } else if (CityBuilder.Pathfinder.tileCost(building.x + dx, building.y + dy) !== Infinity) {
+                seen[index] = 1; reached.push(index); level.push(dx, dy);   // fri mark (t.ex. andra malmrutor): samma nivå
+              }
+            }
+          }
+          level = next;
+        }
+        for (const index of reached) { seen[index] = 0; dead[index] = 1; }   // ingen väg härifrån
+      }
+
+      // Alla fyndigheter går att nå: närmaste bergsruta som gränsar till det nåbara
+      let best = null, bestDistance = Infinity;
       for (let head = 0; head < walk.length; head += 2) {
         for (const [ox, oy] of ORTHOGONAL) {
-          const dx = walk[head] + ox, dy = walk[head + 1] + oy, index = indexOf(dx, dy);
-          if (!inside(dx, dy) || open[index] || seen[index]) continue;
-          const tile = tileAt(dx, dy);
-          if (tile.terrainType !== 'mountain' || !(tile.remainingAmount > 0)) continue;
-          seen[index] = 1; root[index] = index;
-          front.push(dx, dy);
+          const dx = walk[head] + ox, dy = walk[head + 1] + oy;
+          if (!inside(dx, dy) || open[indexOf(dx, dy)] || !diggable(tileAt(dx, dy))) continue;
+          const distance = dx * dx + dy * dy;
+          if (distance < bestDistance) { bestDistance = distance; best = [dx, dy]; }
         }
       }
-      if (!front.length) return null;
-      const nearest = { index: -1, distance: Infinity };
-      for (let i = 0; i < front.length; i += 2) {
-        const distance = Utils.distance(front[i], front[i + 1]);
-        if (distance < nearest.distance) { nearest.distance = distance; nearest.index = indexOf(front[i], front[i + 1]); }
-      }
-
-      // 3. Inåt genom berget tills en instängd fyndighet ligger intill
-      for (let head = 0; head < front.length; head += 2) {
-        const x = front[head], y = front[head + 1], from = indexOf(x, y);
-        for (const [ox, oy] of ORTHOGONAL) {
-          const dx = x + ox, dy = y + oy, index = indexOf(dx, dy);
-          if (!inside(dx, dy) || open[index] || seen[index]) continue;
-          const tile = tileAt(dx, dy);
-          if (deposits.has(tile.terrainType)) { nearest.index = root[from]; head = front.length; break; }
-          if (tile.terrainType !== 'mountain' || !(tile.remainingAmount > 0)) continue;
-          seen[index] = 1; root[index] = root[from];
-          front.push(dx, dy);
-        }
-      }
-      const dx = nearest.index % size - radius, dy = Math.floor(nearest.index / size) - radius;
-      return { x: building.x + dx, y: building.y + dy, tile: tileAt(dx, dy) };
+      return best && result(best[0], best[1]);
     },
 
     // ---- Enheter som källa (jakt m.m.) --------------------------------------------------------

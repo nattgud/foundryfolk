@@ -6,6 +6,7 @@
 
   CityBuilder.Changelog = {
     '0.8.9': [
+      'The Rock crusher now digs straight towards the nearest ore it cannot reach, taking away the mountain in the way one tile at a time. When all ore within reach can be reached it digs away the mountain closest to it, until none is left in its range',
       'Main menu: Continue, Save and Load sit side by side, Settings comes before Statistics, and on a custom map the old "Back to the levels" button is now "Continue singleplayer" and says which level you return to',
       'You can now build on sand as well as on grass (mines and other buildings that need a certain resource still go where it lies)',
       'The Stone desert levels are now really deserted: wide dunes of sand cover a quarter of the land, with a few small outcrops of rock',
