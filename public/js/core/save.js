@@ -192,6 +192,7 @@
         carried,
         haulers: haulerStates,
         tiles: this.collectTileChanges(),
+        flags: CityBuilder.Flags.pack(),
         animalChunks: (
           CityBuilder.Animals.syncActive(),
           CityBuilder.Animals.pack(Array.from(World.animalsByChunk.entries()))
@@ -266,6 +267,8 @@
           unit.hp = saved.hp ?? unit.hp;
         }
       });
+
+      part('flags', () => CityBuilder.Flags.restore(data.flags));
 
       part('carriers', () => {
         // Nytt format: varje bärare står kvar där den var, bär det den bar och fortsätter sitt uppdrag

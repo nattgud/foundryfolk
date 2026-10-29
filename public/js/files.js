@@ -46,6 +46,7 @@ self.GAME_SCRIPTS = [
   'js/systems/spells.js',
   'js/systems/pathdecay.js',
   'js/systems/vision.js',
+  'js/systems/flags.js',
   'js/systems/animals.js',
   'js/systems/weather.js',
   'js/systems/combat.js',

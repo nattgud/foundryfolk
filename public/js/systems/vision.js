@@ -61,6 +61,11 @@
       return this.expiry(player, this.cellOf(x), this.cellOf(y)) > this.time;
     },
 
+    // Har spelaren någon gång sett rutan (x, y)?
+    explored(player, x, y) {
+      return this.expiry(player, this.cellOf(x), this.cellOf(y)) > 0;
+    },
+
     // Ser spelaren byggnaden eller enheten? Egna syns alltid.
     sees(player, thing) {
       if (thing.player === player) return true;

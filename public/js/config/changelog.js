@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'New: the flag. Press F or the Flag button and tap the map to place or move it. Soldiers in Attack mode go there and fight everything within 10 tiles of it and on the way; without a flag everyone defends. Rivals place flags too, and you see theirs where you can see the spot',
       'The Kitchen now cooks from any one of berries, mushrooms, meat, fish, apples or flour with water, and you choose how fancy the meal is: the plain dish makes 1 meal, with herbs 2, with salt 3, and with both herbs and salt 5',
       'Workers walk as fast on clay as on sand',
       'Priority buildings get their deliveries much faster: they can order past the carrier queue limit, restock as soon as anything is missing, and take a carrier from an ordinary delivery that has not picked anything up yet when all carriers are busy',

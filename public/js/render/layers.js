@@ -903,4 +903,35 @@
     context.beginPath(); context.arc((x + .5) * size, (y + .5) * size, (spell.radius + .5) * size, 0, Math.PI * 2); context.fill(); context.stroke();
   });
 
+  // Flaggor: stång och vimpel i spelarens färg, och en ring med soldaternas räckvidd. Andras flaggor syns bara när platsen syns.
+  Renderer.addLayer('flags', (context, renderer) => {
+    if (!CityBuilder.Flags.byPlayer.size) return;
+    const size = renderer.tileSize, view = renderer.viewBounds(size * 12), colors = Config.settings.playerColors, radius = CityBuilder.Flags.radius();
+    const wave = Math.sin(performance.now() / 300) * size * .06;
+    for (const [player, flag] of CityBuilder.Flags.byPlayer) {
+      if (player !== Players.HUMAN && !Vision.visible(Players.HUMAN, flag.x, flag.y)) continue;
+      const x = (flag.x + .5) * size, y = (flag.y + .5) * size;
+      if (outside(view, x, y)) continue;
+      const color = colors[player] || '#ffffff';
+      context.globalAlpha = .12; context.fillStyle = color;
+      context.beginPath(); context.arc(x, y, radius * size, 0, Math.PI * 2); context.fill();
+      context.globalAlpha = .45; context.strokeStyle = color; context.lineWidth = 1.5; context.setLineDash([size * .3, size * .3]); context.stroke(); context.setLineDash([]);
+      context.globalAlpha = 1;
+      context.strokeStyle = '#2b2118'; context.lineWidth = Math.max(2, size * .08);
+      context.beginPath(); context.moveTo(x, y + size * .4); context.lineTo(x, y - size * .45); context.stroke();
+      context.fillStyle = color; context.strokeStyle = 'rgba(0,0,0,.6)'; context.lineWidth = 1;
+      context.beginPath(); context.moveTo(x, y - size * .45); context.lineTo(x + size * .5, y - size * .33 + wave); context.lineTo(x, y - size * .15); context.closePath(); context.fill(); context.stroke();
+    }
+  });
+
+  // Flaggläget: rutan under pekaren, grön där flaggan får stå och röd där den inte får det
+  Renderer.addLayer('flagGhost', (context, renderer) => {
+    if (!CityBuilder.Game.flagging || !renderer.hoverTile) return;
+    const { x, y } = renderer.hoverTile, size = renderer.tileSize, ok = !CityBuilder.Flags.siteProblem(Players.HUMAN, x, y) ? '95,181,95' : '217,83,79';
+    context.fillStyle = `rgba(${ok},.35)`; context.strokeStyle = `rgba(${ok},.9)`; context.lineWidth = 2;
+    context.fillRect(x * size, y * size, size, size); context.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    context.setLineDash([6, 6]); context.strokeStyle = 'rgba(255,255,255,.35)';
+    context.beginPath(); context.arc((x + .5) * size, (y + .5) * size, CityBuilder.Flags.radius() * size, 0, Math.PI * 2); context.stroke(); context.setLineDash([]);
+  });
+
 })(window.CityBuilder);

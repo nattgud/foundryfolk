@@ -8,6 +8,7 @@
     selectedBuilding: null,
     placingType: null,      // byggnadstyp som spelaren håller på att placera
     casting: null,          // { building, spell }: en trollformel väntar på att spelaren pekar ut ett mål
+    flagging: false,        // flaggläget: nästa tryck på kartan sätter eller flyttar flaggan (ett tryck på flaggan själv tar bort den)
     speedIndex: 0,          // index i Config.settings.gameSpeeds
     lastFrameTime: 0,
     deltaSeconds: 0,
@@ -70,7 +71,25 @@
       request();
     },
 
-    setPlacingType(buildingType) { this.placingType = buildingType; this.casting = null; this.selectedBuilding = null; },
+    setPlacingType(buildingType) { this.placingType = buildingType; this.casting = null; this.flagging = false; this.selectedBuilding = null; },
+
+    // Flaggläget (systems/flags.js)
+    setFlagging(on) {
+      this.flagging = on;
+      if (on) { this.placingType = null; this.casting = null; this.selectedBuilding = null; }
+    },
+
+    placeFlag(x, y) {
+      const flag = CityBuilder.Flags.of(CityBuilder.Players.HUMAN);
+      if (flag && flag.x === x && flag.y === y) { CityBuilder.Commands.issue('flag', { clear: true }); CityBuilder.Sound?.play('click'); return; }
+      const problem = CityBuilder.Commands.issue('flag', { x, y });
+      if (!problem) { CityBuilder.Sound?.play('flag'); return; }
+      this.refuse({
+        unexplored: () => t('You have not explored this spot'),
+        terrain: () => t('A flag cannot stand here'),
+        unreachable: () => t('Soldiers cannot reach this spot'),
+      }[problem]());
+    },
 
     // Trollformler (systems/spells.js): knappen i förtrollarens panel (eller blandningsfönstret) väljer formeln, nästa tryck på kartan läser den
     beginSpell(building, spell) {

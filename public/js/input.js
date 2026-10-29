@@ -111,6 +111,7 @@
       const tile = Renderer.screenToTile(screenX, screenY), game = CityBuilder.Game;
       Renderer.hoverTile = tile;
 
+      if (game.flagging) { game.placeFlag(tile.x, tile.y); return; }
       if (game.placingType) { game.tryBuild(game.placingType, tile.x, tile.y); return; }
       if (game.casting) { game.castSpell(tile.x, tile.y); return; }
 

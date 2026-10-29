@@ -1,5 +1,5 @@
 /* Spelarens handlingar. Allt en spelare kan göra i spelvärlden går genom Commands.issue(typ, argument, spelare):
-   bygga, riva, läsa formler, pausa, prioritera, byta inriktning, träna, handla. UI:t ändrar aldrig världen direkt.
+   bygga, riva, läsa formler, pausa, prioritera, byta inriktning, träna, handla, sätta flaggan. UI:t ändrar aldrig världen direkt.
 
    - Argumenten är rena data (byggnader som id, formler som sin id-sträng), så ett kommando kan skickas över nätet till den klient
      som kör simuleringen eller spelas upp ur en logg.
@@ -33,6 +33,7 @@
     choice: onBuilding((target, { index }) => { target.choice = index; return null; }),
     focus: onBuilding((target, { type }) => { CityBuilder.Behaviors.setFocus(target, type); return null; }),
     recipe: onBuilding((target, { index }) => { CityBuilder.Behaviors.toggleRecipe(target, index); return null; }),
+    flag: (player, { x, y, clear }) => CityBuilder.Flags.set(player, x, y, clear),
     stance: onBuilding((target, { stance }) => { CityBuilder.Garrison.setStance(target, stance); return null; }),
     train: onBuilding((target, { kind }) => { CityBuilder.Garrison.setTrainingType(target, kind); return null; }),
     trade: (player, { mode, resource, amount }) => (mode === 'buy' || mode === 'sell') ? CityBuilder.Economy[mode](resource, amount, player) : 0,

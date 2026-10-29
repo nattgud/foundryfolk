@@ -82,6 +82,7 @@
           this.current = player;
           this.players.set(player, state = { timer: Utils.random() * this.interval(), blocked: {}, short: {} });
         }
+        this.moveFlag(player, state);
         if ((state.timer -= deltaSeconds) > 0) continue;
         this.current = player;
         state.timer = this.interval();
@@ -112,6 +113,7 @@
       const ready = this.ready(player), target = ready && this.enemyTarget(player, state);
       const attacking = !!target && gameSeconds() >= Config.ai.attack.afterSeconds;   // anfaller först efter en tid, och bara om den sett något av motståndaren
       this.setStance(player, attacking ? 'attack' : 'defend');
+      state.flagGoal = attacking ? { x: target.x, y: target.y } : null;
 
       const [base, every, cap] = Config.ai.maxUnderConstruction;
       if (census.unfinished >= Math.min(cap, base + Math.floor((this.level() - 1) / every))) return;
@@ -190,12 +192,18 @@
       return producer;
     },
 
-    // ---- Anfall: samma sätt som spelaren (utposter av vakttorn nära fienden, sedan attackläge) --------
+    // ---- Anfall: samma sätt som spelaren (attackläge och en flagga som flyttas mot fienden, se flags.js) --------
 
     // Redo för krig: från en viss bana, och när armén är stor nog
     ready(player) {
       const { fromLevel, soldiers: [base, extra, cap] } = Config.ai.attack, level = this.level();
       return level >= fromLevel && Garrison.soldiersOf(player) >= Math.min(cap, base + extra * (level - fromLevel));
+    },
+
+    // Flaggan flyttas mot anfallsmålet (Flags.advance begränsar takten och stegen), och tas bort när datorn inte anfaller
+    moveFlag(player, state) {
+      if (state.flagGoal) CityBuilder.Flags.advance(player, state.flagGoal);
+      else if (CityBuilder.Flags.of(player)) CityBuilder.Flags.set(player, 0, 0, true);
     },
 
     setStance(player, stance) {
@@ -227,21 +235,20 @@
       return best ?? state.lead;
     },
 
-    // Bygger ett vakttorn närmare fienden tills någon garnison når den med sitt attackläge. Vet datorn inte var fienden finns bygger den
-    // utkikstorn utåt (explore). Returnerar true om något byggdes (eller väntas på).
+    // Bygger ett vakttorn närmare fienden tills det syns var den finns (en ledtråd måste datorn komma nära: en känd byggnad går soldaterna
+    // direkt mot med flaggan). Vet datorn inte var fienden finns bygger den utkikstorn utåt (explore). Returnerar true om något byggdes (eller väntas på).
     advance(player, state, census) {
       const target = this.enemyTarget(player, state);
       if (!target) return this.explore(player, state, census);
-      const known = target.buildProgress !== undefined;        // en känd byggnad kan anfallas på långt håll, en ledtråd måste datorn komma nära
-      const reach = known ? Config.settings.military.attackRadius * .8 : Config.buildings.guard_tower.vision * .7;
-      let from, fromDistance = Infinity, garrisonDistance = Infinity;   // närmaste egna byggnad är utgångspunkt, och soldaterna bor i garnisoner
+      if (target.buildProgress !== undefined) return false;    // en känd byggnad går flaggan direkt mot
+      const reach = Config.buildings.guard_tower.vision * .7;
+      let from, fromDistance = Infinity;                       // närmaste egna byggnad är utgångspunkt
       for (const building of World.buildings) {
         if (building.player !== player || building.buildProgress < 1) continue;
         const distance = Utils.distance(building.x - target.x, building.y - target.y);
         if (distance < fromDistance) { from = building; fromDistance = distance; }
-        if (distance < garrisonDistance && Garrison.isGarrison(building)) garrisonDistance = distance;
       }
-      if (!from || (known ? garrisonDistance : fromDistance) <= reach) return false;
+      if (!from || fromDistance <= reach) return false;
       if ((census.count.guard_tower || 0) + (census.count.garrison || 0) >= Config.ai.attack.maxTowers) return false;
 
       const next = this.need(player, state, census, 'guard_tower', []);

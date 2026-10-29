@@ -296,7 +296,7 @@
         { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
         { title: 'Find the enemy', target: ['#build_watchtower'], category: 'war', lines: ['From level 39 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
         { title: 'Train soldiers', target: ['#build_garrison', '#build_guard_tower'], category: 'war', lines: ['Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.', 'Each soldier needs weapons and armour, which carriers deliver to the building.'] },
-        { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. Attack mode hunts down enemies up to 75 tiles away.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.', 'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.', 'Enemy buildings only show their health, nothing about what they import, export or produce.', 'Soldiers walk like other units. Several soldiers on one tile spread out inside it, and soldiers who fight stand on the same tile.'] },
+        { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. In attack mode soldiers go to your flag and fight everything near it and on the way.', 'Place the flag with the Flag button or F: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.', 'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.', 'Rivals place flags too. You only see one where you can see the spot, and a coloured arrow on the minimap points to it.', 'Enemy buildings only show their health, nothing about what they import, export or produce.', 'Soldiers walk like other units. Several soldiers on one tile spread out inside it, and soldiers who fight stand on the same tile.'] },
         { title: 'If something goes wrong', lines: ['If the game hits an unexpected error, a small box appears and the game keeps running. Tap Details to see what happened and copy it into a report.', 'The game saves by itself, and you are told if saving fails. If an old saved game cannot be fully restored, a copy of the original is kept.'] },
       ],
     },
@@ -1683,6 +1683,18 @@
       this.categoryToggles = new Map();
       this.categorySubmenus = new Map();
 
+      // Flaggan (systems/flags.js): visas när garnisonen är upplåst. Tangenten F, och Esc går ur läget.
+      const flagButton = this.createIconButton({
+        id: 'flagButton',
+        className: 'build-category-toggle flag-toggle',
+        label: t('Flag'),
+        icon: { image: `images/ui/categories/flag.png?v=${version}`, symbol: '⚑' },
+        tooltip: () => this.tooltipContent(t('Flag'), null, [t('Soldiers in buildings set to attack mode go to the flag and fight everything near it and on the way'), t('Tap the map to place or move it. Tap the flag to remove it'), ...this.hotkeyLines('f')]),
+        showOnTouch: true,
+      });
+      flagButton.onclick = () => this.toggleFlagging();
+      categoryRow.appendChild(flagButton);
+
       for (const [categoryId, buildingIds] of this.groupBuildingsByCategory()) {
         const category = CATEGORIES[categoryId];
 
@@ -1796,12 +1808,29 @@
       });
     },
 
+    // Flaggläget på eller av
+    toggleFlagging() {
+      const game = CityBuilder.Game, on = !game.flagging;
+      game.setFlagging(on);
+      if (on) this.showToast(t('Tap the map to place the flag. Tap the flag to remove it'));
+    },
+
+    // Flaggknappen: synlig när garnisonen är upplåst, intryckt i flaggläget
+    updateFlagButton() {
+      const button = byId('flagButton'), Levels = CityBuilder.Levels;
+      if (!button) return;
+      button.hidden = !!Levels && !Levels.isUnlocked('garrison');
+      button.classList.toggle('on', CityBuilder.Game.flagging);
+    },
+
     // Returnerar true om tangenten användes
     handleHotkey(key) {
       const game = CityBuilder.Game, selected = game.selectedBuilding;
+      if (key === 'f' && byId('flagButton') && !byId('flagButton').hidden) { this.toggleFlagging(); return true; }
 
       if (key === 'Escape') { // ett steg tillbaka: placering, öppen kategori, vald byggnad
-        if (game.casting) game.casting = null;
+        if (game.flagging) game.setFlagging(false);
+        else if (game.casting) game.casting = null;
         else if (game.placingType) game.setPlacingType(null);
         else if (this.openCategoryId) this.setOpenCategory(null);
         else if (selected) game.selectBuilding(null);
@@ -2751,6 +2780,8 @@
       if (this.resourceWindowOpen) { this.renderResourceFlow(); this.updateKnownResources(); }
       this.updatePinnedResources(performance.now());
       this.updateMarket();
+      this.updateFlagButton();
+      CityBuilder.Flags.watch();
 
       const carriers = World.units.filter(unit => unit.definition.isHauler && unit.player === CityBuilder.Players.HUMAN);
       const idleCarriers = carriers.filter(

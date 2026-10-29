@@ -108,7 +108,10 @@ CityBuilder.Config.settings = {
   playerColors: { 1: '#4aa3ff', 2: '#e5534b', 3: '#e0a030', 4: '#a56bd6' }, // lagfärg per spelare (ring runt soldater, ram runt byggnader), se core/players.js
   military: {
     searchRadius: 20,          // standardräckvidd (rutor) för att upptäcka fiender (försvarsläge)
-    attackRadius: 75,          // räckvidd (rutor) i attackläge: soldaterna söker upp fiender så här långt bort
+    flagRadius: 10,            // soldater vid flaggan (attackläge) slåss mot fiender så här långt från den, och på vägen dit
+    flagStep: 10,              // datorn flyttar sin flagga högst så här många rutor åt gången
+    flagSeconds: 2,            // och högst så här ofta (sekunder speltid)
+    flagAlertSeconds: 30,      // tid mellan ljuden när spelaren ser en fiendes flagga
     buildingHp: 100,           // livspoäng för en byggnad som saknar eget maxHp
     leashFactor: 1.25,         // en soldat jagar inte längre bort än searchRadius * detta från sin byggnad eller post
     scanIntervalSeconds: 0.5,  // hur ofta byggnader och soldater letar efter fiender

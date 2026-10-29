@@ -9,8 +9,8 @@
      Dör en bärare ersätts den av Logistics.balanceCarriers (en i taget, carrierRespawnSeconds emellan), en arbetare av sin
      byggnad (efter workerRespawnSeconds).
      En förstörd byggnad lämnar inget tillbaka. Förstörs en bas är spelaren utslagen (eliminate).
-   - Garnisonsbyggnadens läge (building.stance): 'defend' vaktar inom job.searchRadius, 'attack' söker upp fiender inom
-     settings.attackRadius och jagar dem dit.
+   - Garnisonsbyggnadens läge (building.stance): 'defend' vaktar inom job.searchRadius. 'attack' skickar soldaterna till spelarens flagga
+     (flags.js): de slåss mot fiender på vägen dit och inom flagRadius från den, och står kvar där. Utan flagga försvarar de som vanligt.
 
    En soldat har dessa fält utöver vanliga enhetsfält (alla sätts i spawnSoldier):
      quarters   byggnaden den hör till (null = fri soldat)    post     fri soldats vaktplats { x, y }
@@ -20,7 +20,7 @@
    Soldater styrs via stegkön (Jobs) som övriga enheter, så Units.update gör själva förflyttningen. */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Jobs, Behaviors, Players, Garrison, Vision, Utils } = CityBuilder;
+  const { Config, World, Jobs, Behaviors, Players, Garrison, Flags, Vision, Utils } = CityBuilder;
 
   const settings = () => Config.settings.military;
   const TIMERS = ['attackCooldownLeft', 'scanTimer', 'repathTimer', 'orderCooldown', 'homeSearchTimer'];
@@ -247,6 +247,8 @@
         if (left > 0) { this.alertTimers.set(building, left); continue; }
         this.alertTimers.set(building, settings().scanIntervalSeconds);
 
+        const flag = Garrison.flagOf(building);
+        if (flag) { Garrison.deploy(building, null); continue; }   // på väg till flaggan
         const enemy = this.findEnemy(building.player, building.x + .5, building.y + .5, Garrison.radius(building));
         if (enemy) Garrison.deploy(building, enemy);
       }
@@ -293,10 +295,16 @@
       this.standDown(unit);
     },
 
-    // Platsen soldaten vaktar och hur långt därifrån den upptäcker fiender: sin byggnad, annars sin post
+    // Platsen soldaten vaktar och hur långt därifrån den upptäcker fiender: flaggan (på väg dit: där soldaten står, så att fiender på vägen
+    // bekämpas), annars sin byggnad, annars sin post
     anchorOf(unit) {
       const home = unit.quarters;
       if (home && !home.removed) {
+        const flag = Garrison.flagOf(home), radius = Flags.radius();
+        if (flag) {
+          const onTheWay = Utils.distance(unit.x - flag.x - .5, unit.y - flag.y - .5) > radius;
+          return onTheWay ? { x: unit.x, y: unit.y, radius } : { x: flag.x + .5, y: flag.y + .5, radius };
+        }
         return { x: home.x + .5, y: home.y + .5, radius: Garrison.radius(home) };
       }
       if (home) Garrison.release(unit); // byggnaden finns inte längre
@@ -347,7 +355,12 @@
 
     // Inga fiender: gå hem och stig in, eller tillbaka till posten
     standDown(unit) {
-      const home = unit.quarters;
+      const home = unit.quarters, flag = home && !home.removed ? Garrison.flagOf(home) : null;
+      if (flag) {   // till flaggan och stå kvar där
+        if (Utils.distance(unit.x - flag.x - .5, unit.y - flag.y - .5) > POST_TOLERANCE) this.goTo(unit, flag, () => [Jobs.walkTo(flag.x, flag.y)]);
+        else if (unit.mode === 'return') { unit.mode = 'idle'; unit.goal = null; }
+        return;
+      }
       if (home && !home.removed) {
         this.goTo(unit, home, () => [Jobs.walkTo(home.x, home.y), Jobs.run(() => Garrison.enter(unit))]);
         return;

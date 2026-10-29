@@ -652,6 +652,21 @@
         context.fill();
       }
 
+      // Flaggor: en liten flagga i spelarens färg (din alltid, fiendens när platsen är utforskad); utanför kartan en pil i kanten
+      const flags = [];
+      for (const [player, flag] of CityBuilder.Flags.byPlayer) {
+        if (player !== Players.HUMAN && !Vision.explored(Players.HUMAN, flag.x, flag.y)) continue;
+        const color = Config.settings.playerColors[player] || '#fff', x = toX(flag.x + 0.5), y = toY(flag.y + 0.5);
+        flags.push({ flag, color });
+        if (Math.hypot(x - radius, y - radius) > radius) continue;
+        const px = Math.round(x), py = Math.round(y), h = Math.ceil(marker / 2) + 3;
+        context.strokeStyle = '#0d1115'; context.lineWidth = 3; context.lineJoin = 'round';
+        context.beginPath(); context.moveTo(px, py + 2); context.lineTo(px, py - h); context.lineTo(px + h, py - h / 2); context.lineTo(px, py); context.stroke();
+        context.fillStyle = color; context.strokeStyle = color; context.lineWidth = 1;
+        context.beginPath(); context.moveTo(px, py + 2); context.lineTo(px, py - h); context.stroke();
+        context.beginPath(); context.moveTo(px, py - h); context.lineTo(px + h, py - h / 2); context.lineTo(px, py); context.closePath(); context.fill();
+      }
+
       // Huvudlagret: större, guld med vit ring
       const hq = World.headquarters;
       const hqX = toX(hq.x + 0.5), hqY = toY(hq.y + 0.5);
@@ -692,6 +707,13 @@
       const attack = CityBuilder.Combat.alarmArrow();
       if (attack && !(attack.x >= range.minX && attack.x <= range.maxX && attack.y >= range.minY && attack.y <= range.maxY)) {
         this.drawArrow(context, Math.atan2(attack.y + 0.5 - centerY, attack.x + 0.5 - centerX), radius, '#ff3b30');
+      }
+
+      // Pilar mot flaggor som ligger utanför kartans synfält
+      for (const { flag, color } of flags) {
+        if (!(flag.x >= range.minX && flag.x <= range.maxX && flag.y >= range.minY && flag.y <= range.maxY)) {
+          this.drawArrow(context, Math.atan2(flag.y + 0.5 - centerY, flag.x + 0.5 - centerX), radius, color);
+        }
       }
     },
 

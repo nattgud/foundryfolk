@@ -11,7 +11,8 @@
      deployed       soldater som är ute i världen (lista med enheter, sparas inte: save.js räknar dem som hemma)
      trainingType   vald soldattyp (sparas)
      trainingUnit   typen som tränas just nu (sparas)
-     stance         'defend' (standard: vaktar inom job.searchRadius) eller 'attack' (söker fiender inom settings.attackRadius) (sparas)
+     stance         'defend' (standard: vaktar inom job.searchRadius) eller 'attack' (soldaterna går till spelarens flagga, se flags.js, och
+                    försvarar som vanligt så länge det inte finns någon flagga) (sparas)
    isCrafting, craftTimeLeft och craftTotalTime återanvänds så att förloppsstapeln ritas som för vanliga craft-byggnader.
    På en soldat pekar unit.quarters på byggnaden den hör till (null = fri soldat). */
 (function (CityBuilder) {
@@ -49,10 +50,11 @@
     isAttacking: building => building.stance === 'attack',
     setStance(building, stance) { building.stance = stance === 'attack' ? 'attack' : 'defend'; },
 
-    // Hur långt byggnadens soldater letar efter fiender, beroende på läge
-    radius: building => Garrison.isAttacking(building)
-      ? Config.settings.military.attackRadius
-      : building.definition.job.searchRadius ?? Config.settings.military.searchRadius,
+    // Spelarens flagga om byggnadens soldater ska gå dit (attackläge och en flagga finns), annars undefined
+    flagOf: building => Garrison.isAttacking(building) ? CityBuilder.Flags.of(building.player) : undefined,
+
+    // Hur långt byggnadens soldater letar efter fiender när de vaktar byggnaden
+    radius: building => building.definition.job.searchRadius ?? Config.settings.military.searchRadius,
 
     // Vald soldattyp (den första om inget valts eller valet inte längre gäller)
     trainingType(building) {
