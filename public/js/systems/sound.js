@@ -115,13 +115,15 @@
       for (const type of ['pointerdown', 'touchend', 'keydown']) addEventListener(type, unlock, true);
 
       // Tyst när fönstret inte har fokus
+      // Tillbaka i fokus: ljudet startas igen och musiken (om den är på) fortsätter, när det väl är igång (resume är asynkront)
       const focus = () => {
         if (!this.context) return;
-        if (document.hidden || !document.hasFocus()) this.context.suspend(); else this.context.resume();
-        this.updateMusic();
+        if (document.hidden || !document.hasFocus()) { this.context.suspend(); this.updateMusic(); return; }
+        Promise.resolve(this.context.resume()).catch(() => {}).then(() => this.updateMusic());
       };
       addEventListener('focus', focus);
       addEventListener('blur', focus);
+      addEventListener('pageshow', focus);
       document.addEventListener('visibilitychange', focus);
 
       // Ett klickljud för alla knappar och val
@@ -136,6 +138,10 @@
       if (!AudioContextClass) return null;
       if (navigator.audioSession) navigator.audioSession.type = 'ambient';   // ljudet blandas med andra appars ljud i stället för att pausa dem (iOS)
       const context = this.context = new AudioContextClass();
+      context.addEventListener('statechange', () => {   // t.ex. ett samtal eller en annan app stoppar ljudet, eller det går igång igen
+        if (context.state === 'interrupted' && !document.hidden) context.resume().catch(() => {});
+        this.updateMusic();
+      });
       this.sfxGain = context.createGain();
       this.musicGain = context.createGain();
       this.sfxGain.connect(context.destination);
@@ -315,7 +321,19 @@
         context.createMediaElementSource(element).connect(this.musicGain);
         element.addEventListener('ended', () => this.nextTrack());
       }
-      if (!this.musicElement.src) this.nextTrack(); else this.musicElement.play().catch(() => {});
+      if (!this.musicElement.src) this.nextTrack(); else this.playMusic();
+    },
+
+    // Spelar låten. Vägrar webbläsaren (mobiler kräver ibland en ny användaråtgärd efter ett avbrott) görs ett nytt försök vid nästa tryck.
+    playMusic() {
+      const element = this.musicElement;
+      if (!element) return;
+      const promise = element.play();
+      if (promise) promise.catch(() => {
+        if (this.retryMusic) return;
+        this.retryMusic = true;
+        addEventListener('pointerdown', () => { this.retryMusic = false; if (this.context) this.context.resume().catch(() => {}); this.updateMusic(); }, { once: true, capture: true });
+      });
     },
 
     // Blandad kö: alla låtar spelas i slumpad ordning innan någon upprepas, och en ny omgång börjar aldrig med låten som just spelades
@@ -331,7 +349,7 @@
       }
       this.currentTrack = this.queue.pop();
       this.musicElement.src = this.currentTrack;
-      this.musicElement.play().catch(() => {});
+      this.playMusic();
     },
 
     /* ---------- Inställningar ---------- */

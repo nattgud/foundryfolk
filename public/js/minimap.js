@@ -28,13 +28,22 @@
     { id: 'resources', name: 'Resources', icon: '💎' },
     { id: 'favorites', name: 'Favorites', icon: '★' },
   ];
-  // Färger för olika slags fyndigheter när en byggnad ska placeras (olika för varje typ, så att de går att skilja åt: resursfärgerna är för lika).
+  // Reservfärger för fyndigheter utan fast färg (se FILTER_COLORS) när en byggnad ska placeras: olika för varje typ, så att de går att skilja åt.
   // Färgerna följer Okabe-Itos palett, som är vald för att gå att skilja åt även vid röd-grön- och blå-gul-färgblindhet, och skiljer sig också i ljushet.
   // Är det fler än sju typer får resten en mörk prick i mitten (ring), så att färgerna aldrig behöver upprepas utan att formen skiljer dem åt.
   const FILTER_STYLES = [
     { color: '#E69F00' }, { color: '#56B4E9' }, { color: '#F0E442' }, { color: '#CC79A7' }, { color: '#00C48C' }, { color: '#D55E00' }, { color: '#FFFFFF' },
     { color: '#4C8DFF', ring: true }, { color: '#E69F00', ring: true }, { color: '#F0E442', ring: true }, { color: '#CC79A7', ring: true }, { color: '#00C48C', ring: true }, { color: '#FFFFFF', ring: true },
   ];
+  // Men de flesta typer har en fast färg som säger vad det är: äpplen röda, örter gröna, koppar orange, kristall grön, guld gult osv. Inom en grupp
+  // (t.ex. alla malmer för en gruva) är färgerna olika nog att skilja åt; kol är grått med en mörk prick. Övriga typer får färg ur listan ovan.
+  const FILTER_COLORS = {
+    tree: '#2E9E4F', apple_tree: '#E53935', berry_bush: '#B04FD8', herbs: '#A6E22E', mushrooms: '#E8D2B0',
+    rock: '#B8C0C8', clay: '#C76B3A', sand: '#EBD9A0', limestone: '#F4F4EC', water: '#3FA9F5',
+    iron_ore: '#8FA8C8', copper_ore: '#E8772E', tin_ore: '#D3DCE4', coal: { color: '#7C7C88', ring: true }, silver_ore: '#FFFFFF', gold_ore: '#FFD21F',
+    salt_ore: '#F6C9D0', sulfur: '#C6E21E', gemstone: '#D43CFF', crystal: '#19D98B', moonstone: '#9FB4FF', fallen_star: '#FFF3A0', ruins: '#B8A58C',
+  };
+  const SELECT_SAME = '#0f0', SELECT_OTHER = '#fa0', SELECT_RESOURCE = '#f00';   // vald byggnad: samma inriktning, annan inriktning, det den hämtar
   const LEGEND_MAX = 10;         // högst så många rader i teckenförklaringen
   const CHUNK = 16;              // rutor per bricka
   const BUILD_BUDGET_MS = 4;     // högst så här lång tid per bildruta åt att bygga brickor
@@ -372,6 +381,10 @@
         if (!resourceId) { cache.set(type, null); return null; }
       } else if (mode === 'filter' && !this.filter.has(type)) {
         cache.set(type, null); return null;
+      } else if (mode === 'select') {
+        const color = this.selection && this.selection.terrains.has(type) ? SELECT_RESOURCE : null;
+        if (color) this.labels.set(type, CityBuilder.UI ? CityBuilder.UI.terrainName(type) : type);
+        cache.set(type, color); return color;
       } else if (resourceIds) {
         resourceId = resourceIds.values().next().value;
       }
@@ -380,7 +393,8 @@
       const UI = CityBuilder.UI;
       let color = (resource && resource.color) || (terrain && terrain.color) || '#fff', label = resourceId && UI ? UI.resourceName(resourceId) : UI ? UI.terrainName(type) : type;
       if (mode === 'filter') {
-        const style = FILTER_STYLES[[...this.filter].indexOf(type) % FILTER_STYLES.length];
+        const fixed = FILTER_COLORS[type];
+        const style = fixed ? (typeof fixed === 'string' ? { color: fixed } : fixed) : FILTER_STYLES[[...this.filter].indexOf(type) % FILTER_STYLES.length];
         color = style.color; label = UI ? UI.terrainName(type) : type;
         if (style.ring) this.rings.add(type);
       }
@@ -402,6 +416,16 @@
       return this.filter;
     },
 
+    // Vald egen byggnad -> hur den visas på kartan: bara byggnader av samma slag (grön = samma inriktning, orange = annan inriktning av samma
+    // byggnad) och, för en samlare eller gruva, de fyndigheter den hämtar från (röda). Annars null.
+    selectionInfo() {
+      const selected = CityBuilder.Game && CityBuilder.Game.selectedBuilding;
+      if (!selected || selected.removed || selected.player !== Players.HUMAN) return null;
+      const definition = selected.definition, job = definition.job;
+      const terrains = job && job.kind === 'gather' && job.sourceTerrain ? [].concat(job.sourceTerrain).filter(type => isNode(Config.terrain[type])) : [];
+      return { selected, group: definition.group || null, terrains: new Set(terrains) };
+    },
+
     // ---- Ritning ----
 
     frame() {
@@ -417,7 +441,11 @@
       const size = this.size, scale = this.scale, radius = size / 2, context = this.context;
       this.filter = this.placingFilter();
       this.legend = [];
-      const mode = this.filter ? 'filter' : this.mode.id; // vald gather-byggnad går före vanligt läge
+      const selection = this.filter ? null : this.selectionInfo();
+      this.selection = selection;
+      // Byggnad som ska placeras går först, sedan vald byggnad, sedan vanligt läge
+      const mode = this.filter ? 'filter' : selection ? 'select' : this.mode.id;
+      const overlay = mode === 'filter' || mode === 'select';   // mörk karta med bara det som valts upplyst
       const range = Renderer.visibleTileRange();
       const centerX = Math.round((range.minX + range.maxX + 1) / 2);
       const centerY = Math.round((range.minY + range.maxY + 1) / 2);
@@ -476,7 +504,7 @@
         // Varje nod fyller exakt sin egen ruta (samma kantlinjer som terrängen under)
         const limit = (radius + 2 * scale + 2) * (radius + 2 * scale + 2);
         let shown = 0;
-        const grow = mode === 'favorites' || mode === 'filter' ? 1 : 0;
+        const grow = mode === 'favorites' || overlay ? 1 : 0;
         const halo = 0;   // ingen kant runt de upplysta resurserna: den gjorde dem svårare att se
         for (let pass = halo ? 0 : 1, lastColor = null; pass < 2; pass++) {
           const spread = grow + (pass === 0 ? halo : 0);
@@ -484,7 +512,7 @@
           else { context.globalAlpha = 1; lastColor = null; }
           for (const chunk of visible) {
             for (const node of chunk.nodes) {
-              if (mode === 'filter' && !Vision.visible(Players.HUMAN, node.x + .5, node.y + .5)) continue;   // inget i dimman
+              if (overlay && !Vision.visible(Players.HUMAN, node.x + .5, node.y + .5)) continue;   // inget i dimman
               const color = this.nodeColor(node.type, mode, favorites, cache);
               if (!color) continue;
               const left = Math.round(toX(node.x)), top = Math.round(toY(node.y));
@@ -525,7 +553,7 @@
       if (mode !== 'all') {
         context.fillStyle = 'rgb(6 9 12 / 80%)';
         context.fillRect(0, 0, size, size);
-        if (mode !== 'filter') drawNodes();
+        if (!overlay) drawNodes();
       }
 
       // Dimman: sudda ut det spelaren inte ser (mjuka kanter), lägg bakgrunden bakom, och lägg sedan fyndigheterna i filterläget ovanpå
@@ -543,19 +571,27 @@
       if (this.background && this.background.complete && this.background.naturalWidth) context.drawImage(this.background, 0, 0, size, size);
       else { context.fillStyle = '#0d1115'; context.fillRect(0, 0, size, size); }
       context.globalCompositeOperation = 'source-over';
-      if (mode === 'filter') drawNodes();
+      if (overlay) drawNodes();
 
-      // Byggnader: tydlig färg med mörk kant (ofärdiga är genomskinliga)
+      // Byggnader: tydlig färg med mörk kant (ofärdiga är genomskinliga). Vald byggnad: bara egna av samma slag, grön om det är samma inriktning
+      // (samma typ) och orange om det är en annan inriktning av samma byggnad (samma group)
+      const matchOf = building => {
+        if (building.player !== Players.HUMAN) return null;
+        if (building.type === selection.selected.type) return SELECT_SAME;
+        return selection.group && building.definition.group === selection.group ? SELECT_OTHER : null;
+      };
       const marker = Math.max(4, Math.round(scale * 2));
       const rivalColor = '#e5534b';  // andra spelares byggnader och soldater: röda
       for (const building of World.buildings) {
         if (building === World.headquarters || building.definition.pile || (building.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, building))) continue;
+        const match = selection && matchOf(building);
+        if (selection && !match) continue;   // vald byggnad: bara samma slag visas
         const x = toX(building.x + 0.5), y = toY(building.y + 0.5);
         if (Math.hypot(x - radius, y - radius) > radius + marker) continue;
         context.globalAlpha = building.buildProgress >= 1 ? 1 : 0.55;
         context.fillStyle = '#05080a';
         context.fillRect(Math.round(x - marker / 2) - 1, Math.round(y - marker / 2) - 1, marker + 2, marker + 2);
-        context.fillStyle = building.player !== Players.HUMAN ? rivalColor : (building.definition && building.definition.color) || '#e8e8e8';
+        context.fillStyle = match || (building.player !== Players.HUMAN ? rivalColor : (building.definition && building.definition.color) || '#e8e8e8');
         context.fillRect(Math.round(x - marker / 2), Math.round(y - marker / 2), marker, marker);
       }
       context.globalAlpha = 1;
@@ -570,9 +606,10 @@
         if (!own && !Vision.sees(Players.HUMAN, building)) continue;
         const x = toX(building.x + 0.5), y = toY(building.y + 0.5);
         if (Math.hypot(x - radius, y - radius) > radius + marker) continue;
+        if (selection && !matchOf(building)) continue;
         const same = selected && !selected.removed && building.type === selected.type && building.player === selected.player;
         const problem = own ? Behaviors.problemOf(building) : null;
-        if (same) {
+        if (same && (!selection || building === selected)) {
           context.strokeStyle = building === selected ? '#ffd23f' : '#fff';
           context.lineWidth = 1;
           context.globalAlpha = .75 + .25 * pulse;
@@ -606,7 +643,7 @@
       // Soldater: små cirklar (röda för andra spelare, blå för dina egna)
       const dot = Math.max(2, Math.round(scale * 1.2));
       for (const unit of World.units) {
-        if (!unit.definition.isSoldier || (unit.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, unit))) continue;
+        if (selection || !unit.definition.isSoldier || (unit.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, unit))) continue;
         const x = toX(unit.x), y = toY(unit.y);
         if (Math.hypot(x - radius, y - radius) > radius) continue;
         context.fillStyle = unit.player === Players.HUMAN ? '#4aa3ff' : rivalColor;

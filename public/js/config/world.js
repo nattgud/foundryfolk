@@ -83,7 +83,7 @@
   //   oreShare:      andel av bergets kärna som blir malm
   //   scatteredOre:  chans per ruta att vara ett utspritt malmfynd (före stenvillkoret). Lägre = färre fynd
   //   forest:        faktor på trädens täthet
-  const TUNING = { sea: 0.2, mountain: 0.76, oreShare: 0.50, scatteredOre: 0.01, forest: 1.1 };
+  const TUNING = { sea: 0.2, mountain: 0.76, oreShare: 0.60, scatteredOre: 0.01, forest: 1.1 };
   const tuning = { ...TUNING };
   // Malm utanför berg: enstaka fynd på en eller två rutor, väldigt utspridda och helst intill vanlig sten.
   const SCATTERED_ORE_FAR_CHANCE = 0.2;    // andel av fynden som får ligga utan sten i närheten (1 = överallt, 0 = bara intill sten)
@@ -164,22 +164,30 @@
     ['silver_ore', 0.08, 423], ['gold_ore', 0.05, 424], ['crystal', 0.06, 425], ['gemstone', 0.04, 426],
   ];
 
-  // Väljer malmtyp för en ruta (vikter + regionala provinser)
+  // Väljer malmtyp för en ruta (vikter + regionala provinser). Banorna gör vissa malmer sällsynta (oreKeep = andel som blir kvar): en malmruta
+  // som faller bort blir i stället en av de vanligare malmerna, så berget förblir lika rikt och bara innehållet skiftar.
+  const COMMON_KEEP = 0.39;   // malmer som minst så mycket finns kvar av räknas som vanliga
   const pickOre = (context, x, y) => {
     const weights = MOUNTAIN_ORE_MIX.map(([terrain, base, channel]) =>
       base * (0.2 + 1.6 * smoothstep(0.38, 0.62, fbm(context, x, y, 70, channel, 0.8))));
-    let pick = random(context, x, y, 402) * weights.reduce((sum, weight) => sum + weight, 0);
-    for (let i = 0; i < weights.length; i++) {
-      if ((pick -= weights[i]) < 0) return MOUNTAIN_ORE_MIX[i][0];
-    }
-    return MOUNTAIN_ORE_MIX[0][0];
+    const choose = (list, salt) => {
+      let pick = random(context, x, y, salt) * list.reduce((sum, weight) => sum + weight, 0);
+      for (let i = 0; i < list.length; i++) if ((pick -= list[i]) < 0) return i;
+      return -1;
+    };
+    const first = choose(weights, 402);
+    const kept = CityBuilder.Config.world.oreKeep(MOUNTAIN_ORE_MIX[first][0]);
+    if (kept >= 1 || random(context, x, y, 403) < kept) return MOUNTAIN_ORE_MIX[first][0];
+    const common = weights.map((weight, i) => (CityBuilder.Config.world.oreKeep(MOUNTAIN_ORE_MIX[i][0]) >= COMMON_KEEP ? weight : 0));
+    const second = choose(common, 404);
+    return second < 0 ? undefined : MOUNTAIN_ORE_MIX[second][0];
   };
 
   const mountainOre = (context, model) => {
     const { x, y } = context;
     if (!model.coreMountain) return; // bergets kant är bara berg
     const cluster = fbm(context, x, y, 9, 400, 1.0);
-    const chance = clamp01(tuning.oreShare + (cluster - 0.5) * 0.9);
+    const chance = clamp01(tuning.oreShare + (cluster - 0.5) * 0.35);   // svag klungbildning: malmen ligger jämnt, så en tunnel aldrig har långt till nästa fyndighet
     if (random(context, x, y, 401) >= chance) return;
 
     // Garanti: alla åtta grannar måste också vara bergsrutor, så malmen aldrig gränsar mot öppen mark.
@@ -607,6 +615,8 @@
     clearRadius: 4,
     roads: [],                 // landvägar { x1, y1, x2, y2, width, wobble, wavelength, phase } som ersätter vatten och berg med gräs (World.rivalSite lägger till en till varje bas)
     clearings: [],             // fler gräsplaner { x, y, radius } (datorspelarnas baser läggs in av World.rivalSite)
+    oreKeep: () => 1,   // hur stor andel av en malmtyp i berg som blir kvar (levels.js sätter den efter banans svårighet)
+    mountainOres: MOUNTAIN_ORE_MIX.map(([terrain]) => terrain),
     deposits: ['iron_ore', 'copper_ore', 'tin_ore', 'silver_ore', 'gold_ore', 'coal', 'salt_ore', 'sulfur', 'gemstone', 'crystal', 'moonstone'], // fyndigheter som inte får ligga på små holmar (Generator.settle)
     landBridges: { density: .7, maxGap: 12 }, // sandrev över vatten som binder ihop öar: chans per slumpad linje och längsta vattensträcka (rutor)
     islandMin: 6,              // gångbar mark som hänger ihop med färre rutor än så här, omgiven av vatten eller berg, blir vatten (inga otillgängliga småöar)

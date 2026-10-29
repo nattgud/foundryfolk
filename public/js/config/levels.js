@@ -793,7 +793,7 @@
       rivals: settings.enemies.length, teams, aiLevels,
       seed: settings.seed,
       keep, twists: [],
-      tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.85, 0.50 * richness), scatteredOre: 0.01 * richness * richness, forest: FOREST[settings.forest] },
+      tuning: { sea: SEA[settings.water], mountain: MOUNTAIN[settings.mountains], oreShare: Math.min(0.9, 0.60 * richness), scatteredOre: 0.01 * richness * richness, forest: FOREST[settings.forest] },
       unlocks: [],
       goal: { items: [{ key: 'm:eliminate', type: 'eliminate', amount: settings.enemies.filter(enemy => enemy.team !== 'you').length }], par: 0 },
       needs: ['iron_ore', 'tree', 'rock', 'clay', 'coal'],
@@ -830,12 +830,15 @@
   // Inside a mountain only the mountain itself, ore and a few rare finds may appear: no rock, ruins, fungi, cursed ground and the like
   const MOUNTAIN_KEEPS = new Set(['water', 'sand', 'grass', 'mountain', 'meteor_crater', 'fallen_star', ...world.deposits]);
 
+  world.oreKeep = terrain => state.info.keep[terrain] ?? 1;
+
   const wrapRule = (rule, index) => context => {
     const c = seeded(context);
     const terrain = rule(c);
     // rule 0 (water) and 5 (starting riches) are never depleted
     if (terrain === undefined || index === 0 || index === 5) return terrain;
     if (!MOUNTAIN_KEEPS.has(terrain) && solid(c)) return undefined;
+    if (solid(c) && world.mountainOres.includes(terrain)) return terrain;   // berget gallrar själv sin malm (World.oreKeep): ett bortfallet fynd blir en vanligare malm
     const k = state.info.keep[terrain];
     if (k === undefined || k >= 1) return terrain;
     return c.hash(c.x, c.y, 9100 + world.seed * 131) < k ? terrain : undefined;

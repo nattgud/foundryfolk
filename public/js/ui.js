@@ -2113,6 +2113,8 @@
           pointer-events: none;
         }
 
+        #bottom .build-count-underway { color: #9aa3ab; }
+
         #bottom .build-category-toggle[aria-expanded="true"] {
           border-color: var(--accent);
           background: #2d5a36;
@@ -2751,23 +2753,30 @@
       byId('carrierCount').textContent = t('Carriers {idle}/{total}', { idle: idleCarriers, total: carriers.length });
       this.updateWeatherBadge();
 
-      const builtCounts = {};
-      for (const placed of World.buildings) if (placed.player === CityBuilder.Players.HUMAN) { const key = placed.definition.group || placed.type; builtCounts[key] = (builtCounts[key] || 0) + 1; }   // en byggnad med inriktning räknas under sin byggnad (Mine)
+      const builtCounts = {}, underway = {};
+      for (const placed of World.buildings) if (placed.player === CityBuilder.Players.HUMAN) { const counts = placed.buildProgress >= 1 ? builtCounts : underway; const key = placed.definition.group || placed.type; counts[key] = (counts[key] || 0) + 1; }   // färdiga och pågående räknas var för sig. En byggnad med inriktning räknas under sin byggnad (Mine)
 
       for (const buildingId in Config.buildings) {
         const button = byId('build_' + buildingId);
         if (!button) continue;
 
-        // Antal byggnader av typen (inklusive de som byggs). Siffran ritas om bara när den ändras.
+        // Antal färdiga byggnader av typen, och efter ett plus (grått) hur många som byggs: 3+2. Siffran ritas om bara när den ändras.
         let badge = button.countBadge;
         if (!badge || !badge.isConnected) {
           badge = button.countBadge = document.createElement('span');
           badge.className = 'build-count';
           badge.hidden = true;
+          badge.append(document.createElement('span'), document.createElement('span'));
+          badge.lastChild.className = 'build-count-underway';
           button.appendChild(badge);
         }
-        const builtCount = builtCounts[buildingId] || 0;
-        if (badge.count !== builtCount) { badge.count = builtCount; badge.textContent = builtCount; badge.hidden = !builtCount; }
+        const builtCount = builtCounts[buildingId] || 0, underwayCount = underway[buildingId] || 0, shown = builtCount + ':' + underwayCount;
+        if (badge.count !== shown) {
+          badge.count = shown;
+          badge.firstChild.textContent = builtCount;
+          badge.lastChild.textContent = underwayCount ? '+' + underwayCount : '';
+          badge.hidden = !builtCount && !underwayCount;
+        }
 
         const isSelected = game.placingType === buildingId;
 
@@ -3029,18 +3038,20 @@
       const { tile, terrain } = node;
       const lines = [];
 
-      if (terrain.resourceAmount > 0 && terrain.resourceAmount < 10000) {
+      const gatheredBy = [], buildableWith = [];
+      for (const [buildingId, building] of Object.entries(Config.buildings)) {
+        if (building.job?.kind === 'gather' && [].concat(building.job.sourceTerrain || []).includes(tile.terrainType)) gatheredBy.push(this.buildingName(buildingId));
+        if (!building.group && [].concat(building.placeOnTerrain || []).includes(tile.terrainType)) buildableWith.push(this.buildingName(buildingId));
+      }
+
+      // Bara det som går att hämta har något kvar att visa (meteorkratrar, berg m.fl. går inte att samla från)
+      if (gatheredBy.length && terrain.resourceAmount > 0 && terrain.resourceAmount < 10000) {
         lines.push(t('Remaining: {amount} of {total}', { amount: tile.remainingAmount, total: Math.max(terrain.resourceAmount, tile.remainingAmount) }));
       }
 
       if (terrain.walkCost === Infinity) lines.push(t('Blocked terrain'));
       else if (terrain.walkCost > 1.5) lines.push(t('Slow terrain'));
 
-      const gatheredBy = [], buildableWith = [];
-      for (const [buildingId, building] of Object.entries(Config.buildings)) {
-        if (building.job?.kind === 'gather' && building.job.sourceTerrain === tile.terrainType) gatheredBy.push(this.buildingName(buildingId));
-        if (!building.group && [].concat(building.placeOnTerrain || []).includes(tile.terrainType)) buildableWith.push(this.buildingName(buildingId));
-      }
       if (gatheredBy.length) lines.push(t('Gathered by: {list}', { list: gatheredBy.join(', ') }));
       if (buildableWith.length) lines.push(t('Can be built with: {list}', { list: buildableWith.join(', ') }));
 
