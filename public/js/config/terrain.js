@@ -52,7 +52,7 @@ CityBuilder.Config.terrain = {
   moonstone:        { name: "Moonstone",      color: '#ffa', walkCost: 3, resourceAmount: 8 },
   ancient_altar:    { name: "Ancient Altar",    color: '#afa', walkCost: 5, fallbackShape: 'rock', resourceAmount: 5 },
   fallen_star:      { name: "Fallen Star",      color: '#faf', walkCost: 5, fallbackShape: 'rock', resourceAmount: 7 },
-  meteor_crater:    { name: "Meteor Crater",    color: '#4c414f', walkCost: 5, fallbackShape: 'rock', resourceAmount: 6 },
+  meteor_crater:    { name: "Meteor Crater",    color: '#4c414f', walkCost: 8, fallbackShape: 'rock', resourceAmount: 6 },
 };
 
 // Terräng som lämnar bar jord efter sig när den är slut (tile.ground blir 'dirt'): berg, sten, malm, lera och sand
