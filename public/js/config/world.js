@@ -151,6 +151,7 @@
     return model;
   };
 
+  const GRAVE_CHANCE = 1 / 1500;   // andel rutor som får en grav
   const isOpenWater = model => model.seaDepth > 0 || model.riverDistance < 0;
 
   // Malm inne i bergen: ungefär så här stor andel av bergsrutorna blir malm (tuning.oreShare, exklusive svavel och månsten).
@@ -233,6 +234,33 @@
 
   // Under den här fuktigheten är marken öken (sand)
   const DESERT_LINE = 0.2;
+  // Svavelfläckar: i varje cell (PATCH_CELL rutor) finns en fläck med chansen PATCH_CHANCE, utom nära starten: två ihopsittande bergsrutor
+  // (en ensam bergsruta jämnas ut av generatorn) med 2-3 svavelrutor intill. Fläcken ligger minst PATCH_MARGIN rutor från cellens kant, så en
+  // ruta bara behöver fråga sin egen cell. Fungerar likadant på banor utan berg. Returnerar 'mountain', 'sulfur' eller undefined.
+  const PATCH_CELL = 28, PATCH_MARGIN = 4, PATCH_CHANCE = 0.55, PATCH_FROM = 20;
+  const PATCH_AROUND = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const sulfurPatch = context => {
+    const cellX = Math.floor(context.x / PATCH_CELL), cellY = Math.floor(context.y / PATCH_CELL);
+    if (random(context, cellX, cellY, 220) >= PATCH_CHANCE) return;
+    const span = PATCH_CELL - 2 * PATCH_MARGIN;
+    const x = cellX * PATCH_CELL + PATCH_MARGIN + Math.floor(random(context, cellX, cellY, 221) * span);
+    const y = cellY * PATCH_CELL + PATCH_MARGIN + Math.floor(random(context, cellX, cellY, 222) * span);
+    const dx = context.x - x, dy = context.y - y;
+    if (dx < -2 || dx > 2 || dy < -2 || dy > 2 || Math.hypot(x, y) < PATCH_FROM) return;
+    const horizontal = random(context, cellX, cellY, 223) < 0.5;
+    const rock = [[0, 0], horizontal ? [1, 0] : [0, 1]];
+    if (rock.some(([rx, ry]) => rx === dx && ry === dy)) return 'mountain';
+    // Svavlet ligger på bergets sex grannrutor, i en slumpad ordning (varje fläck får 2-3 av dem)
+    const around = [];
+    for (const [rx, ry] of rock) for (const [ax, ay] of PATCH_AROUND) {
+      const tx = rx + ax, ty = ry + ay;
+      if (!rock.some(([qx, qy]) => qx === tx && qy === ty) && !around.some(([qx, qy]) => qx === tx && qy === ty)) around.push([tx, ty]);
+    }
+    around.sort((a, b) => random(context, cellX * 8 + a[0], cellY * 8 + a[1], 224) - random(context, cellX * 8 + b[0], cellY * 8 + b[1], 224));
+    const count = 2 + (random(context, cellX, cellY, 225) < 0.5 ? 1 : 0);
+    if (around.slice(0, count).some(([tx, ty]) => tx === dx && ty === dy)) return 'sulfur';
+  };
+
   // Hur mycket torrare än öknen (fuktighet) stäppen är, där marken är jord, och hur långt ut från bergen (bergsdjup) bergsfoten är
   const STEPPE_WIDTH = 0.07, FOOTHILL_WIDTH = 0.05;
   const isDesert = context => {
@@ -246,7 +274,9 @@
   const groundOf = context => {
     if (CityBuilder.Config.world.isMountain(context)) return 'dirt';   // landskapets berg och banans bergsstrukturer (levels.js)
     const model = landscapeAt(context);
-    if (model.origin < 22 || isOpenWater(model)) return;
+    if (isOpenWater(model)) return;
+    if (sulfurPatch(context)) return 'dirt';
+    if (model.origin < 22) return;
     const wobble = fbm(context, context.x, context.y, 28, 190, 0.5) - 0.5;
     if (model.moisture < DESERT_LINE + wobble * 0.12) return 'sand';
     if (model.mountainDepth > -FOOTHILL_WIDTH + wobble * 0.05 || model.moisture < DESERT_LINE + STEPPE_WIDTH + wobble * 0.06) return 'dirt';
@@ -490,12 +520,11 @@
       if (random(context, context.x, context.y, 325) < chance) return 'ruins';
     },
 
-    // 5. Kyrkogård: gravar i regelbundna rader.
+    // 5. Gravar: enstaka, här och var på land (gräs, sand och jord). De används inte till något, så de ska vara få: ungefär en per 1500 rutor.
     context => {
-      const site = siteInCell(context, 85, 330, 0.28, 9);
-      if (!site) return;
-      const dx = context.x - site.centerX, dy = context.y - site.centerY;
-      if (Math.abs(dx) <= 4 && Math.abs(dy) <= 3 && dx % 2 === 0 && dy % 2 === 0 && random(context, context.x, context.y, 335) < 0.85) return 'grave';
+      if (context.distanceFromOrigin < 10 || random(context, context.x, context.y, 335) >= GRAVE_CHANCE) return;
+      const model = landscapeAt(context);
+      if (!isOpenWater(model) && !CityBuilder.Config.world.isMountain(context)) return 'grave';
     },
 
     // 6. Startområdets rikedomar (oregelbundna fläckar nära huvudlagret).
@@ -561,8 +590,10 @@
       if (fbm(context, context.x, context.y, 14, 192, 0.5) > 0.62 && random(context, context.x, context.y, 193) < 0.45) return 'tree';
     },
 
-    // Svavel: vulkaniska provinser i bergen, i små fläckar.
+    // Svavel: små fläckar utspridda över hela världen (sulfurPatch), och vulkaniska provinser i bergen.
     context => {
+      const patch = sulfurPatch(context);
+      if (patch) return patch;
       const model = landscapeAt(context);
       if (model.mountain < 0.3) return;
       const volcanic = fbm(context, context.x, context.y, 110, 210, 1.0);

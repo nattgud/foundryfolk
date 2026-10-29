@@ -1,11 +1,18 @@
 /* Changelog: raderna grupperade per hel version, nyast överst. Texten visas för spelaren (bara engelska) första gången en ny hel version
    startas. Mellersta talet är stora funktioner (0.9 sammanfattar dem, och kommer före allt under 0.9.n) och sista talet små funktioner och
-   buggrättningar (0.9.1, 0.9.2 ...). Mellanversioner (0.9.14, 0.9.1999 ...) samlas under nästa hela version (0.9.2): nya rader läggs överst i
+   buggrättningar (0.9.1, 0.9.2 ...). Mellanversioner (0.9.14, 0.9.1999 ...) samlas under nästa hela version (0.9.1): nya rader läggs överst i
    den. Versionsnumret jämförs som decimaltal i sista delen (0.4.2 = 0.4.20, och är alltså senare än 0.4.18; 0.9.10 kommer före 0.9.2). */
 (function (CityBuilder) {
   'use strict';
 
   CityBuilder.Changelog = {
+    '0.9.1': [
+      'Graves are rare now: a few single graves here and there on grass, sand and dirt, instead of whole graveyards in rows. They are only scenery',
+      'Fixed the resources around your headquarters being thinned out on hard levels: the starting deposits (iron, coal, limestone and the rest) are now always all there, as intended',
+      'Hard levels now leave enough rare resources for war, every building and plenty of spells: gold, gemstones, crystal, silver, sulfur and fallen stars are still scarcer than on easy levels, but several times more of them are within reach than before (on the hardest levels about 75% of iron, coal and the like, 60% of the rare and 50% of the epic resources remain)',
+      'Moonstones are no longer thinned out on hard levels: every mountain peak has its moonstone, which the Enchanter and the Resonance Monument need',
+      'Sulfur is now scattered across the whole world, also on levels with few or no mountains: small patches of two rock tiles with 2-3 sulfur tiles next to them on bare dirt, never right next to your start',
+    ],
     '0.9': [
       'A new world generator: mountains, ore and climate are now rules of the terrain itself instead of things scattered over it afterwards. Every mountain is about 60% ore behind a thin rim of plain rock, evenly spread so a tunnel never has far to the next deposit, with a moonstone at its peak. The rare ores stay rare on hard levels',
       'Level themes change the climate: barren and drought levels are drier with more sand and less water, swamps are wetter with more bogs, forests are damper with denser woods, and archipelagos have more sea',

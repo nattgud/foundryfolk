@@ -115,10 +115,11 @@
     iron_ore: 'medium', coal: 'medium', limestone: 'medium', copper_ore: 'medium', tin_ore: 'medium',
     salt_ore: 'medium', petrified_wood: 'medium',
     silver_ore: 'rare', sulfur: 'rare', tar_pit: 'rare', crystal: 'rare',
-    gold_ore: 'epic', gemstone: 'epic', moonstone: 'epic', fallen_star: 'epic', ancient_altar: 'epic',
+    gold_ore: 'epic', gemstone: 'epic', fallen_star: 'epic', ancient_altar: 'epic',   // moonstone is not thinned: there is one per mountain peak, and the Enchanter and the Monument need it
   };
-  // Proportion remaining at maximum difficulty
-  const FLOOR = { medium: 0.4, rare: 0.15, epic: 0.05 };
+  // Proportion remaining at maximum difficulty. Hard levels have war, every building and a lot of spells to pay for, and spells eat rare
+  // ingredients, so even epic finds must leave enough within reach (measured: a few hundred gold and about a hundred gemstones within 80 tiles).
+  const FLOOR = { medium: 0.75, rare: 0.6, epic: 0.5 };
 
   /* ---------- Twists (from level 20) ---------- */
   const TWISTS = [
@@ -153,12 +154,6 @@
     ] },
     { id: 'ruined', noun: 'Ruin', keep: {}, extras: [
       c => (N(c, 10, 560) > 0.62 && R(c, 561) < 0.3 ? 'ruins' : undefined),
-      c => {
-        const s = site(c, 60, 562, 0.5);
-        if (!s) return undefined;
-        const dx = c.x - s.x, dy = c.y - s.y;
-        return Math.abs(dx) <= 4 && Math.abs(dy) <= 3 && dx % 2 === 0 && dy % 2 === 0 ? 'grave' : undefined;
-      },
     ] },
     { id: 'meteor', noun: 'Meteor shower', keep: {}, extras: [
       c => {
@@ -841,8 +836,8 @@
   const wrapRule = (rule, index) => context => {
     const c = seeded(context);
     const terrain = rule(c);
-    // rule 0 (water) and 5 (starting riches) are never depleted
-    if (terrain === undefined || index === 0 || index === 5) return terrain;
+    // rule 0 (water) and 6 (starting riches) are never depleted
+    if (terrain === undefined || index === 0 || index === 6) return terrain;
     if (!MOUNTAIN_KEEPS.has(terrain) && solid(c)) return undefined;
     if (solid(c) && world.mountainOres.includes(terrain)) return terrain;   // berget gallrar själv sin malm (World.oreKeep): ett bortfallet fynd blir en vanligare malm
     const k = state.info.keep[terrain];
