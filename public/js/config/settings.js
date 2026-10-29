@@ -7,7 +7,7 @@ CityBuilder.Config.settings = {
   inputBufferFactor: 4,           // ett hus håller så många omgångar indata (insats per omgång * detta)
   outputBufferCapacity: 20,       // max i utbuffert innan producenten pausar
   flushThreshold: 0,             // överskott över detta skickas till lagret
-  carriersPerBuilding: 3,
+  carriersPerBuilding: 4,
   animalPerChunk: 5,
   // Förökning: ju färre andra djur inom radius rutor, desto oftare får ett djur ungar (upp till 1 + boost gånger oftare, inga alls
   // när capacity djur finns i närheten). Ungen föds högst dispersal rutor bort.
@@ -39,7 +39,7 @@ CityBuilder.Config.settings = {
     planningIntervalSeconds: .25,
     maxTasks: 8,
     requestsPerBuilding: 4,
-    baseCarriers: 20,
+    baseCarriers: 30,
     // Ett hus beställer nya insatser först när lagret (med det som är på väg) sjunkit till 'refillBelow' av kapaciteten, och fyller sedan på till full
     // kapacitet. Det ger färre och jämnare beställningar, och en buffert som tål att leveranserna dröjer en stund (så att inga extrabärare behövs).
     refillBelow: 0.5,
