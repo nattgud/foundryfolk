@@ -75,47 +75,65 @@
     }
   };
 
-  // Terrängbilderna har gräs som bakgrund. På sandmark klipps varje bild ut genom att pixlar som är lika gräsbildens blir genomskinliga.
-  // Resultatet sparas per bild, och en bild som inte hunnit laddas ger null (brickan ritas om när den är klar).
-  const cutOuts = new Map();
-  const onGround = (image, grass) => {
-    if (!image || !grass) return null;
+  // Terrängbilder med genomskinlig bakgrund (träd, sten, örter ...) ritas ovanpå markens bild. En bild utan genomskinlighet som har gräs som
+  // bakgrund klipps i stället ut på annan mark än gräs: pixlar som är lika gräsbildens blir genomskinliga. Svaret sparas per bild.
+  // En bild som inte hunnit laddas ger null (brickan ritas om när den är klar).
+  const transparent = new Map(), cutOuts = new Map();
+  const isTransparent = image => {
+    let answer = transparent.get(image);
+    if (answer === undefined) {
+      const canvas = document.createElement('canvas'), context = canvas.getContext('2d', { willReadFrequently: true });
+      canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      answer = false;
+      for (let i = 3; i < pixels.length && !answer; i += 4) answer = pixels[i] < 255;
+      transparent.set(image, answer);
+    }
+    return answer;
+  };
+  const cutOut = (image, grass) => {
     let cut = cutOuts.get(image);
     if (cut) return cut;
     const width = image.naturalWidth, height = image.naturalHeight;
     cut = document.createElement('canvas');
     cut.width = width; cut.height = height;
-    const context = cut.getContext('2d', { willReadFrequently: true });
-    context.drawImage(image, 0, 0);
-    const picture = context.getImageData(0, 0, width, height), pixels = picture.data;
-    const back = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    const context = cut.getContext('2d', { willReadFrequently: true }), back = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
     back.canvas.width = width; back.canvas.height = height;
+    context.drawImage(image, 0, 0);
     back.drawImage(grass, 0, 0, width, height);
-    const ground = back.getImageData(0, 0, width, height).data;
+    const picture = context.getImageData(0, 0, width, height), pixels = picture.data, ground = back.getImageData(0, 0, width, height).data;
     for (let i = 0; i < pixels.length; i += 4) if (pixels[i] === ground[i] && pixels[i + 1] === ground[i + 1] && pixels[i + 2] === ground[i + 2]) pixels[i + 3] = 0;
     context.putImageData(picture, 0, 0);
     cutOuts.set(image, cut);
     return cut;
   };
 
+  // Terräng som är sin egen mark: ritas som hela rutor, utan något under
+  const WHOLE_TILE = new Set(['sand', 'water', 'mountain']);
+
   // Ritar brickan med sitt övre vänstra hörn i origo; types (valfri) får rutornas terrängtyper
   const paintTerrainChunk = (context, cx, cy, scale, tileSize, types) => {
     const N = TERRAIN_CHUNK, x0 = edge(cx * N, scale), y0 = edge(cy * N, scale), factor = scale / tileSize;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const x = cx * N + i, y = cy * N + j, tile = World.getTile(x, y), type = tile.terrainType, terrain = Config.terrain[type], sandTerrain = Config.terrain.sand;
+      const x = cx * N + i, y = cy * N + j, tile = World.getTile(x, y), type = tile.terrainType, terrain = Config.terrain[type];
       const left = edge(x, scale) - x0, top = edge(y, scale) - y0;
       const width = edge(x + 1, scale) - x0 - left, height = edge(y + 1, scale) - y0 - top;
       if (types) types[j * N + i] = type;
-      const sandy = tile.ground === 'sand' && type !== 'sand' && type !== 'water' && type !== 'mountain';
       let image = Assets.getVariant(terrain.image, x, y);
-      context.fillStyle = sandy ? sandTerrain.color : terrain.color;
+      const layered = type === 'grass' || !WHOLE_TILE.has(type);   // gräs är bara marken; allt annat utom hela rutor ligger ovanpå den
+      const ground = layered ? Config.terrain[tile.ground] : terrain;
+      context.fillStyle = ground.color;
       context.fillRect(left, top, width, height);
-      if (sandy) {   // sandmark: sanden ritas först, och det som står på den klipps ut ur sin gräsbakgrund
-        const sand = Assets.getVariant(sandTerrain.image, x, y);
-        if (sand) { context.drawImage(sand, left, top, width, height); roundCorners(context, x, y, left, top, width, height); }
+      if (layered) {
+        if (type === 'grass') image = Assets.getVariant(ground.image, x, y);
+        else if (tile.ground === 'sand' && terrain.sandImage) image = Assets.get(terrain.sandImage) || image;
+        const groundImage = Assets.getVariant(ground.image, x, y);
+        if (type === 'grass' || tile.ground !== 'grass' || (image && isTransparent(image))) {   // marken först
+          if (groundImage) { context.drawImage(groundImage, left, top, width, height); if (ROUNDED.has(tile.ground)) roundCorners(context, x, y, left, top, width, height); }
+        }
         if (type === 'grass') continue;
-        const source = Assets.get(terrain.sandImage) || image;
-        if (source && !(image = onGround(source, Assets.getVariant(Config.terrain.grass.image, x, y)))) continue;
+        if (image && tile.ground !== 'grass' && !isTransparent(image) && !(image = cutOut(image, Assets.getVariant(Config.terrain.grass.image, x, y)))) continue;
       }
       const clustered = image && CLUSTERS.has(type);
       if (clustered) drawFlipped(context, image, left, top, width, height, Utils.hash(x, y, 80) < 0.5, false);
