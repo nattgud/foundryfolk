@@ -68,16 +68,16 @@ CityBuilder.Config.settings = {
       alarm: 'sounds/alarm.mp3',
       arrow: 'sounds/arrow.mp3',          // pil avfyras
       swing: 'sounds/swing.mp3',          // närstrid
-      // hit: 'sounds/hit.mp3',              // träff (flera filer: en lista, ['sounds/hit1.mp3', 'sounds/hit2.mp3'], så slumpas en varje gång)
-      // died: 'sounds/died.mp3',            // soldat dör
-      // destroyed: 'sounds/destroyed.mp3',  // byggnad förstörs
-      // chop: 'sounds/chop.mp3',            // träd (skogshuggare)
-      // mine: 'sounds/mine.mp3',            // sten och malm
-      // pick: 'sounds/pick.mp3',            // bär, örter, svamp, äpplen
-      // dig: 'sounds/dig.mp3',              // lera och sand
-      // fish: 'sounds/fish.mp3',            // fiskare
-      // hunt: 'sounds/hunt.mp3',            // jägare
-      // plant: 'sounds/plant.mp3',          // planterare
+      hit: ['sounds/hit/hit1.mp3','sounds/hit/hit2.mp3','sounds/hit/hit3.mp3','sounds/hit/hit4.mp3'],              // träff (flera filer: en lista, ['sounds/hit1.mp3', 'sounds/hit2.mp3'], så slumpas en varje gång)
+      died: ['sounds/died/died1.mp3','sounds/died/died2.mp3','sounds/died/died3.mp3'],            // soldat dör
+      destroyed: 'sounds/destroyed.mp3',  // byggnad förstörs
+      chop: 'sounds/chop.mp3',            // träd (skogshuggare)
+      mine: 'sounds/mine.mp3',            // sten och malm
+      pick: 'sounds/pick.mp3',            // bär, örter, svamp, äpplen
+      dig: 'sounds/dig.mp3',              // lera och sand
+      fish: 'sounds/fish.mp3',            // fiskare
+      hunt: 'sounds/hunt.mp3',            // jägare
+      plant: 'sounds/plant.mp3',          // planterare
       // craft: 'sounds/craft.mp3',          // förädlare
       // smelt: 'sounds/smelt.mp3',          // smältverk, gjuteri, kolbrännare
     },
