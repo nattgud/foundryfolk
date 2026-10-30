@@ -11,7 +11,7 @@
      surge    djuren i området får ungar 'factor' gånger så ofta i 'seconds' sekunder
      smite    fiendens soldater i området får högst 'health' (0-1) av sitt liv kvar
      rain     växter i området ökar i mängd (factor = hur ofta mot vanligt regn) i 'seconds' sekunder
-     storm    växter i området blåser till lediga grannrutor (factor = hur ofta mot vanlig storm) i 'seconds' sekunder
+     storm    lågt land vid vattnet i området översvämmas i 'seconds' sekunder (Weather.spawnFlood) och torkar sedan upp
      clear    vädret över hela kartan blir klart i 'seconds' sekunder: ingen dimma, storm eller tornado (pågående tornados släpper sitt byte)
      tornado  en tornado med radien 'radius' och livslängden 'seconds' uppstår på platsen
    Tidsbegränsade effekter är zoner (Spells.zones, sparas) som övriga system frågar efter med Spells.factor och Spells.bonus. */
@@ -167,7 +167,8 @@
         case 'smite': return World.units.some(unit => unit.definition.isSoldier && Players.isHostile(player, unit.player) && inside(unit));
         case 'surge': return World.units.some(unit => unit.definition.isAnimal && inside(unit));
         case 'carriers': return World.units.some(unit => unit.definition.isHauler && unit.player === player && inside(unit));
-        case 'rain': case 'storm': return CityBuilder.Weather.hasPlants({ x, y, radius: spell.radius });
+        case 'rain': return CityBuilder.Weather.hasPlants({ x, y, radius: spell.radius });
+        case 'storm': return CityBuilder.Weather.canFlood(x, y, spell.radius);
         case 'clear': return CityBuilder.Weather.type !== 'clear' || CityBuilder.Weather.tornadoes.length > 0;
         case 'tornado': return true;
         default: return World.buildings.some(other => other.player === player && other.buildProgress >= 1 && other.definition.job && inside(other));
@@ -238,6 +239,7 @@
       if (spell.kind === 'create') this.create(spell, x, y, building.player);
       else if (spell.kind === 'clear') CityBuilder.Weather.clearSky(spell.seconds);
       else if (spell.kind === 'tornado') CityBuilder.Weather.spawnTornado(x, y, spell.radius, spell.seconds, building.player);
+      else if (spell.kind === 'storm') { CityBuilder.Weather.spawnFlood(x, y, spell.radius, spell.seconds); zone(spell); }
       else { if (spell.kind === 'smite') this.smite(spell, x, y, building.player); zone(spell); }
       if (spell.echo) zone(spell.echo);
       building.spellCooldown = building.spellTotal = this.recharge(spell);
@@ -256,7 +258,7 @@
       for (const key in Spells.locks) if ((Spells.locks[key] -= deltaSeconds) <= 0) delete Spells.locks[key];
       if (!Spells.zones.length) return;
       for (const zone of Spells.zones) {
-        if (zone.kind !== 'rain' && zone.kind !== 'storm' || (zone.scan = (zone.scan || 0) - deltaSeconds) > 0) continue;
+        if (zone.kind !== 'rain' || (zone.scan = (zone.scan || 0) - deltaSeconds) > 0) continue;
         zone.scan = Config.settings.weather.scanSeconds;
         CityBuilder.Weather.affectPlants(zone.kind, zone);   // lokalt väder: samma effekt som det vanliga, men bara inom zonen
       }
