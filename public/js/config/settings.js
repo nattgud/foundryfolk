@@ -81,10 +81,10 @@ CityBuilder.Config.settings = {
       // craft: 'sounds/craft.mp3',          // förädlare
       // smelt: 'sounds/smelt.mp3',          // smältverk, gjuteri, kolbrännare
       // Varje byggnad kan ha ett eget arbetsljud: id.byggnadens id. Saknas det används grundljudet (craft, smelt ...). Alla kan vara en lista för slumpade varianter.
-      // 'craft.sawmill': 'sounds/craft_sawmill.mp3',
+      'craft.sawmill': 'sounds/craft_sawmill.mp3',
       // 'craft.mill': 'sounds/craft_mill.mp3',
       // 'craft.bakery': 'sounds/craft_bakery.mp3',
-      // 'craft.kitchen': 'sounds/craft_kitchen.mp3',
+      'craft.kitchen': 'sounds/craft_kitchen.mp3',
       // 'craft.brickworks': 'sounds/craft_brickworks.mp3',
       // 'craft.glassworks': 'sounds/craft_glassworks.mp3',
       // 'craft.steelworks': 'sounds/craft_steelworks.mp3',
