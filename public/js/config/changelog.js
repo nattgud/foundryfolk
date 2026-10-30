@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'The building sound now loops at every construction site you can see, from when the work starts until the building is finished',
       'The music no longer stops when a new level starts; it carries on where it was',
       'Different music plays during fights and when a tornado or lava disaster begins',
       'Storms now flood the low land next to water for a short while. When the water goes down again it may leave something valuable behind. The Tempest spell does the same in a small area instead of blowing plants around',

@@ -59,7 +59,7 @@ CityBuilder.Config.settings = {
   audio: {  // play('coin', { x: ruta_x, y: ruta_y })
     sounds: {
       click: 'sounds/click.mp3',
-      build: 'sounds/build.mp3',
+      build: 'sounds/build.mp3',            // loopas vid varje byggarbetsplats tills byggnaden är färdig (build: { file: 'sounds/build.mp3', loop: false } ger ett enstaka ljud vid placeringen)
       built: 'sounds/built.mp3',
       demolish: 'sounds/demolish.mp3',
       error: 'sounds/error.mp3',

@@ -15,6 +15,9 @@
                   loops: { rain: ..., storm: ..., fog: ..., tornado: ..., volcano: ... },   // loopas så länge vädret varar; tornado och volcano bara där de finns
                   day: 'sounds/ambient/day.mp3', night: 'sounds/ambient/night.mp3' }        // loopas dag respektive natt och tonas över i skymning och gryning
      Ett värde är en filsökväg eller { file, volume }. Alla loopar tonas mjukt in och ut.
+   - Pågående ljud: ett ljud med loop: true spelas som en loop så länge något pågår, i stället för som ett enstaka ljud (se LOOPING). Just nu finns det
+     för 'build' (på som standard): en loop vid varje byggarbetsplats som syns, från att bygget går framåt tills byggnaden är färdig. Egen fil:
+       audio: { sounds: { build: { file: 'sounds/build.mp3', loop: true } } }    // loop: false ger tillbaka det enstaka ljudet vid placeringen
    - Webbläsare kräver en användaråtgärd innan ljud får spelas. Ljudet startar vid första tryck/tangent.
    - Ljudet stängs av när fönstret förlorar fokus (precis som spelet pausas).
    Inställningarna sparas i localStorage ('citybuilder.audio') och visas i Inställningar via settingRows(). */
@@ -28,6 +31,17 @@
   const MUSIC_RESUME_MS = 60000;           // så färskt måste det sparade läget vara
   // Musiken är avstängd från start på pekskärmar: spelets musik tar ljudfokus och pausar spelarens egen musik (Spotify m.m.). Spelaren kan slå på den i inställningarna.
   const DEFAULTS = { musicOn: !(typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches), musicVolume: 0.5, sfxOn: true, sfxVolume: 0.7 };
+  // Ljud som kan loopas medan något pågår: id -> { fade, sources() }. sources() ger det som ska låta nu: [{ key, x, y }]. fade = sekunder in- och utljusning.
+  const LOOPING = {
+    build: {   // byggen som just nu går framåt (inte de som väntar på material) och som spelaren ser
+      fade: 0.25,
+      sources: () => {
+        const { World, Construction, Vision, Players } = CityBuilder;
+        return World.buildings.filter(building => building.buildProgress < 1 && building.buildProgress < Construction.delivered(building) - 1e-6 && Vision.sees(Players.HUMAN, building))
+          .map(building => ({ key: building, x: building.x, y: building.y }));
+      },
+    },
+  };
   const MAX_VOICES = 24; // samtidiga effekter totalt (mobilvänligt)
   const TAU = Math.PI * 2;
 
@@ -89,7 +103,7 @@
 
   const DEFAULT_SOUNDS = {
     click: { synth: render(0.05, (time, p) => Math.sin(TAU * 1600 * time) * Math.pow(1 - p, 3) * 0.45), volume: 0.6, cooldown: 0.04, maxVoices: 3 },
-    build: { synth: render(0.22, (time, p) => (Math.sin(TAU * (170 - 90 * p) * time) * 0.8 + (Math.random() * 2 - 1) * 0.3 * (1 - p)) * Math.pow(1 - p, 2)), maxVoices: 3 },
+    build: { loop: true, synth: render(0.22, (time, p) => (Math.sin(TAU * (170 - 90 * p) * time) * 0.8 + (Math.random() * 2 - 1) * 0.3 * (1 - p)) * Math.pow(1 - p, 2)), maxVoices: 3 },
     built: { synth: render(0.5, time => (note(523, time, 0, 0.25) + note(784, time, 0.15, 0.35)) * 0.4), maxVoices: 3, cooldown: 0.1 },
     demolish: {
       synth: (() => { let low = 0; return render(0.28, (time, p) => { low += ((Math.random() * 2 - 1) - low) * (0.12 + 0.45 * (1 - p)); return low * Math.pow(1 - p, 1.5) * 1.6; }); })(),
@@ -273,7 +287,7 @@
       const context = this.context;
       if (!context || context.state !== 'running' || !this.settings.sfxOn || this.settings.sfxVolume <= 0) return;
       const definition = this.sounds.get(id);
-      if (!definition || definition.voices >= definition.maxVoices || this.voices >= MAX_VOICES) return;
+      if (!definition || (definition.loop && LOOPING[id]) || definition.voices >= definition.maxVoices || this.voices >= MAX_VOICES) return;   // loopande ljud sköts av updateAmbient
       const now = context.currentTime;
       if (now - definition.last < definition.cooldown) return;
 
@@ -313,6 +327,13 @@
       const Weather = CityBuilder.Weather, config = this.weather, targets = new Map();
       if (!Weather || !config || !this.settings.sfxOn || this.settings.sfxVolume <= 0 || !CityBuilder.World?.headquarters) return targets;
       const add = (key, value, level, pan = 0) => { const file = value && spec(value); if (file && level > 0.01) targets.set(key, { ...file, volume: file.volume ?? 1, level, pan }); };
+      // Hur högt något på kartan hörs: full styrka på skärmen, bleknar utanför den
+      const hearing = (x, y) => {
+        const point = this.screenPoint(x, y);
+        if (!point) return null;
+        const outside = Math.hypot(Math.max(0, -point.x, point.x - innerWidth), Math.max(0, -point.y, point.y - innerHeight));
+        return { level: clamp(1 - outside / (Math.min(innerWidth, innerHeight) * 0.7), 0, 1), pan: clamp((point.x / innerWidth - 0.5) * 1.2, -0.7, 0.7) };
+      };
       const loops = config.loops || {}, dark = Weather.darkness();
       add('day', config.day, 1 - dark);
       add('night', config.night, dark);
@@ -322,13 +343,18 @@
       for (const [list, id] of [[Weather.tornadoes, 'tornado'], [Weather.volcanoes, 'volcano']]) {
         if (!loops[id]) continue;
         for (const source of list) {
-          const point = this.screenPoint(source.x, source.y);
-          if (!point) continue;
-          const outside = Math.hypot(Math.max(0, -point.x, point.x - innerWidth), Math.max(0, -point.y, point.y - innerHeight));
-          near.push({ source, id, level: clamp(1 - outside / (Math.min(innerWidth, innerHeight) * 0.7), 0, 1), pan: clamp((point.x / innerWidth - 0.5) * 1.2, -0.7, 0.7) });
+          const heard = hearing(source.x, source.y);
+          if (heard) near.push({ source, id, ...heard });
         }
       }
       for (const { source, id, level, pan } of near.sort((a, b) => b.level - a.level).slice(0, 3)) add(source, loops[id], level, pan);
+      // Pågående ljud (LOOPING): de tre närmaste platserna
+      for (const [id, looping] of Object.entries(LOOPING)) {
+        const definition = this.sounds.get(id);
+        if (!definition?.loop) continue;
+        const heard = looping.sources().map(source => ({ source, ...hearing(source.x, source.y) })).filter(entry => entry.level > 0.01);
+        for (const { source, level, pan } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) targets.set(source.key, { definition, volume: definition.volume, level, pan, fade: looping.fade });
+      }
       return targets;
     },
 
@@ -347,9 +373,9 @@
       const context = this.context;
       if (!context || context.state !== 'running') return;
       this.loops ||= new Map();
-      const fade = this.weather.fade ?? 3, tau = fade / 3, now = context.currentTime, targets = this.ambientTargets();
+      const fade = this.weather.fade ?? 3, now = context.currentTime, targets = this.ambientTargets();
       for (const [key, target] of targets) {
-        const buffer = this.loopBuffer(target.file);
+        const buffer = target.definition ? this.bufferFor(target.definition) : this.loopBuffer(target.file);
         let loop = this.loops.get(key);
         if (!loop && buffer) {
           const source = context.createBufferSource(), gain = context.createGain(), panner = context.createStereoPanner ? context.createStereoPanner() : null;
@@ -358,20 +384,21 @@
           source.connect(gain);
           (panner ? gain.connect(panner) && panner : gain).connect(this.sfxGain);
           source.start(0, Math.random() * buffer.duration);
-          loop = { source, gain, panner, silentSince: null };
+          loop = { source, gain, panner, silentSince: null, fade: target.fade ?? fade };
           this.loops.set(key, loop);
         }
         if (!loop) continue;
         loop.silentSince = null;
-        loop.gain.gain.setTargetAtTime(target.level * target.volume, now, tau);
+        loop.fade = target.fade ?? fade;
+        loop.gain.gain.setTargetAtTime(target.level * target.volume, now, loop.fade / 3);
         if (loop.panner) loop.panner.pan.setTargetAtTime(target.pan, now, 0.2);
       }
       // Det som inte längre ska höras tonas ut och stoppas när det blivit tyst
       for (const [key, loop] of this.loops) {
         if (targets.has(key)) continue;
-        loop.gain.gain.setTargetAtTime(0, now, tau);
+        loop.gain.gain.setTargetAtTime(0, now, loop.fade / 3);
         loop.silentSince ??= now;
-        if (now - loop.silentSince > fade * 1.5) { loop.source.stop(); loop.gain.disconnect(); this.loops.delete(key); }
+        if (now - loop.silentSince > loop.fade * 1.5) { loop.source.stop(); loop.gain.disconnect(); this.loops.delete(key); }
       }
     },
 
