@@ -35,6 +35,8 @@
     water: 'Water',
   };
 
+  const TITLE_TOOLTIP_MS = 2500;   // så länge en title-tooltip visas efter ett tryck på pekskärm (se initTouchTitles)
+
   const UI = {
     toastTimer: null,
     openCategoryId: null,
@@ -60,6 +62,7 @@
 
       this.buildBuildMenu(buildMenu);
       this.initHotkeys();
+      this.initTouchTitles();
       this.initBuildingRange();
       this.createCopyrightLabel();
       this.createGoalPanel();
@@ -1796,6 +1799,21 @@
       if (digit) return digit[1];
       if (event.code === 'Minus' || event.code === 'NumpadSubtract') return '-';
       return event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    },
+
+    // Pekskärmar visar inte title-texter (de kommer av hovring). Ett tryck på ett element med title visar därför texten i spelets egen tooltip en stund.
+    // Knappar med egen tooltip (.icon-button) och kartans kontroller hoppas över. Lyssnaren sitter på document: infopanelen byggs om hela tiden.
+    initTouchTitles() {
+      let pointerType = 'mouse';
+      document.addEventListener('pointerdown', event => { pointerType = event.pointerType; }, true);
+      document.addEventListener('click', event => {
+        if (pointerType === 'mouse' || !event.target.closest) return;
+        const element = event.target.closest('[title]');
+        if (!element || !element.title || element.closest('.icon-button, #minimap, #minimapMode, .minimap-zoom, #menuButton')) return;
+        this.showTooltip(element, this.tooltipContent(element.title), 'below');
+        clearTimeout(this.touchTooltipTimer);
+        this.touchTooltipTimer = setTimeout(() => this.hideTooltip(), TITLE_TOOLTIP_MS);
+      });
     },
 
     initHotkeys() {

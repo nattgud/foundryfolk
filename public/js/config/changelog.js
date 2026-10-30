@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Tooltips now work on touch screens: tap a resource or other labelled item to read its name or hint',
       'New: monsters roam the map from level 35. Some stand still, others wander near where they live; they attack soldiers and carriers that come close, but never workers. Defeating them does not count towards the goals',
       'Level 37: a monster horde marches on your base after a while, with a warning first. Later levels have rare raids at random times',
       'New: the flag. Press F or the Flag button and tap the map to place or move it. Soldiers in Attack mode go there and fight everything within 10 tiles of it and on the way; without a flag everyone defends. Rivals place flags too, and you see theirs where you can see the spot',
