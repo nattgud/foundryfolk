@@ -131,8 +131,8 @@ CityBuilder.Config.settings = {
         // tornado: { file: 'sounds/weather/tornado_loop.mp3', volume: 0.9 },
         // volcano: 'sounds/weather/volcano_loop.mp3',
       },
-      // day: 'sounds/ambient/day.mp3',                 // loopas dagtid
-      // night: 'sounds/ambient/night.mp3',             // loopas nattetid
+      day: 'sounds/day.mp3',                 // loopas dagtid
+      night: 'sounds/night.mp3',             // loopas nattetid
     },
   },
   playerColors: { 1: '#4aa3ff', 2: '#e5534b', 3: '#e0a030', 4: '#a56bd6', '-1': '#9b59d0' }, // lagfärg per spelare (ring runt soldater, ram runt byggnader), se core/players.js
