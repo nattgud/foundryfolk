@@ -58,13 +58,13 @@ CityBuilder.Config.settings = {
   },
   audio: {  // play('coin', { x: ruta_x, y: ruta_y })
     sounds: {
-      // click: 'sounds/click.mp3',
+      click: 'sounds/click.mp3',
       build: 'sounds/build.mp3',
       built: 'sounds/built.mp3',
-      // demolish: 'sounds/demolish.mp3',
-      // error: 'sounds/error.mp3',
+      demolish: 'sounds/demolish.mp3',
+      error: 'sounds/error.mp3',
       levelComplete: 'sounds/level_complete.mp3',
-      // drop: 'sounds/drop.mp3',
+      drop: 'sounds/drop.mp3',
       alarm: 'sounds/alarm.mp3',
       // arrow: 'sounds/arrow.mp3',          // pil avfyras
       // swing: 'sounds/swing.mp3',          // närstrid
@@ -83,8 +83,9 @@ CityBuilder.Config.settings = {
     },
     music: ["music/song1.mp3", "music/song2.mp3", "music/song3.mp3"],
     // Väderljud och ljudlandskap (systems/sound.js). Alla filer är valfria: saknas en fil är det tyst. Ta bort // för att slå på en rad.
+    battleMusic: [],
     weather: {
-      fade: 3,                                          // sekunder in- och utljusning för alla loopar
+      fade: 2,                                          // sekunder in- och utljusning för alla loopar
       start: {                                          // spelas en gång när vädret börjar
         // clear: 'sounds/weather/clear_start.mp3',
         // rain: 'sounds/weather/rain_start.mp3',
