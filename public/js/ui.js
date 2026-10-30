@@ -624,6 +624,10 @@
       carrierCount.id = 'carrierCount';
       carrierCount.style.color = '#4fd1e8';
 
+      const playerCount = document.createElement('span');   // levande / alla spelare, fylls i av updatePlayerCount
+      playerCount.id = 'playerCount';
+      playerCount.style.cssText = 'cursor:help;white-space:nowrap';
+
       const weatherBadge = document.createElement('span');   // dygn och väder, fylls i av updateWeatherBadge
       weatherBadge.id = 'weatherBadge';
       weatherBadge.style.cssText = 'cursor:help;white-space:nowrap';
@@ -643,7 +647,7 @@
       menuButton.setAttribute('aria-haspopup', 'dialog');
       menuButton.onclick = () => this.toggleMainMenu();
 
-      controls.append(allButton, carrierCount, weatherBadge, speedButton, menuButton);
+      controls.append(allButton, carrierCount, playerCount, weatherBadge, speedButton, menuButton);
       resourceBar.append(pinned, controls);
 
       this.createResourceWindow();
@@ -2826,6 +2830,7 @@
 
       byId('carrierCount').textContent = t('Carriers {idle}/{total}', { idle: idleCarriers, total: carriers.length });
       this.updateWeatherBadge();
+      this.updatePlayerCount();
 
       const builtCounts = {}, underway = {};
       for (const placed of World.buildings) if (placed.player === CityBuilder.Players.HUMAN) { const counts = placed.buildProgress >= 1 ? builtCounts : underway; const key = placed.definition.group || placed.type; counts[key] = (counts[key] || 0) + 1; }   // färdiga och pågående räknas var för sig. En byggnad med inriktning räknas under sin byggnad (Mine)
@@ -2958,6 +2963,18 @@
     },
 
     // Dygn och väder som två ikoner. Texten (verktygstipset) byts bara när något ändras.
+    // Spelare kvar av alla i banan (människan och datorspelarna), synligt när det finns fler än en
+    updatePlayerCount() {
+      const Players = CityBuilder.Players, badge = byId('playerCount');
+      if (!badge) return;
+      const total = Players.aiPlayers().length + 1, alive = Players.active.length, key = alive + '/' + total + I18n().language;
+      if (badge.dataset.key === key) return;
+      badge.dataset.key = key;
+      badge.hidden = total < 2;
+      badge.textContent = `👥 ${alive}/${total}`;
+      badge.title = t('Players left / players in total');
+    },
+
     updateWeatherBadge() {
       const Weather = CityBuilder.Weather, night = Weather.isNight(), type = Weather.type, badge = byId('weatherBadge');
       const volcano = Weather.volcanoes.length > 0, key = night + type + volcano + I18n().language;

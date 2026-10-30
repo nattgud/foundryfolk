@@ -189,6 +189,10 @@
       if (player === Players.HUMAN) CityBuilder.Game?.defeat?.();
       else {
         if (!restoring && Players.isHostile(Players.HUMAN, player)) CityBuilder.Levels?.onRivalDown?.();
+        if (!restoring) {   // notis med spelarens färg och hur många som är kvar
+          const color = CityBuilder.Config.settings.playerColors[player] || '#fff', t = CityBuilder.t;
+          CityBuilder.UI?.showToast(t('{name} has been eliminated. {alive} of {total} players left', { name: `<b style="color:${color}">${t('Player {n}', { n: player })}</b>`, alive: Players.active.length, total: Players.aiPlayers().length + 1 }));
+        }
         if (!Players.hostileAI().length) CityBuilder.Levels?.win?.();
       }
     },

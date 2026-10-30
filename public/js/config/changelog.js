@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'A player who is eliminated now gives a message, and the top bar shows how many players are left of the total (👥 3/4)',
       'The building sound now loops at every construction site you can see, from when the work starts until the building is finished',
       'The music no longer stops when a new level starts; it carries on where it was',
       'Different music plays during fights and when a tornado or lava disaster begins',
