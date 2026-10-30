@@ -66,8 +66,8 @@ CityBuilder.Config.settings = {
       levelComplete: 'sounds/level_complete.mp3',
       drop: 'sounds/drop.mp3',
       alarm: 'sounds/alarm.mp3',
-      // arrow: 'sounds/arrow.mp3',          // pil avfyras
-      // swing: 'sounds/swing.mp3',          // närstrid
+      arrow: 'sounds/arrow.mp3',          // pil avfyras
+      swing: 'sounds/swing.mp3',          // närstrid
       // hit: 'sounds/hit.mp3',              // träff
       // died: 'sounds/died.mp3',            // soldat dör
       // destroyed: 'sounds/destroyed.mp3',  // byggnad förstörs
@@ -83,7 +83,7 @@ CityBuilder.Config.settings = {
     },
     music: ["music/song1.mp3", "music/song2.mp3", "music/song3.mp3"],
     // Väderljud och ljudlandskap (systems/sound.js). Alla filer är valfria: saknas en fil är det tyst. Ta bort // för att slå på en rad.
-    battleMusic: [],
+    battleMusic: ["music/battle1.mp3"],
     weather: {
       fade: 2,                                          // sekunder in- och utljusning för alla loopar
       start: {                                          // spelas en gång när vädret börjar
