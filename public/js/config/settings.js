@@ -80,16 +80,33 @@ CityBuilder.Config.settings = {
       plant: 'sounds/plant.mp3',          // planterare
       // craft: 'sounds/craft.mp3',          // förädlare
       // smelt: 'sounds/smelt.mp3',          // smältverk, gjuteri, kolbrännare
-      // Arbetsljud kan också sättas per grupp eller per byggnad (id.grupp, id.byggnad). Det mest specifika som finns används, annars craft eller smelt.
-      // Alla kan vara en lista för slumpade varianter. Smältverken har bara grundljudet smelt, men smelt.iron_smelter, smelt.gold_smelter ... fungerar också.
-      // 'craft.saw': 'sounds/craft_saw.mp3',           // sågverk
-      // 'craft.mill': 'sounds/craft_mill.mp3',         // kvarn, bageri, kök
-      // 'craft.smith': 'sounds/craft_smith.mp3',       // verktygssmed, svärdssmed, bågmakare, rustningssmed, stålverk, mynt
-      // 'craft.kiln': 'sounds/craft_kiln.mp3',         // tegelbruk, glasbruk
-      // 'craft.leather': 'sounds/craft_leather.mp3',   // läderverkstad
-      // 'craft.magic': 'sounds/craft_magic.mp3',       // alkemist, förtrollare, helgedom
-      // 'craft.farm': 'sounds/craft_farm.mp3',         // gård, stall
-      // 'craft.bakery': 'sounds/craft_bakery.mp3',     // en enskild byggnad (id.byggnadens id) går före gruppen
+      // Varje byggnad kan ha ett eget arbetsljud: id.byggnadens id. Saknas det används grundljudet (craft, smelt ...). Alla kan vara en lista för slumpade varianter.
+      // 'craft.sawmill': 'sounds/craft_sawmill.mp3',
+      // 'craft.mill': 'sounds/craft_mill.mp3',
+      // 'craft.bakery': 'sounds/craft_bakery.mp3',
+      // 'craft.kitchen': 'sounds/craft_kitchen.mp3',
+      // 'craft.brickworks': 'sounds/craft_brickworks.mp3',
+      // 'craft.glassworks': 'sounds/craft_glassworks.mp3',
+      // 'craft.steelworks': 'sounds/craft_steelworks.mp3',
+      // 'craft.toolsmith': 'sounds/craft_toolsmith.mp3',
+      // 'craft.swordsmith': 'sounds/craft_swordsmith.mp3',
+      // 'craft.bowyer': 'sounds/craft_bowyer.mp3',
+      // 'craft.leatherworker': 'sounds/craft_leatherworker.mp3',
+      // 'craft.armorsmith': 'sounds/craft_armorsmith.mp3',
+      // 'craft.mint': 'sounds/craft_mint.mp3',
+      // 'craft.alchemist': 'sounds/craft_alchemist.mp3',
+      // 'craft.enchanter': 'sounds/craft_enchanter.mp3',
+      // 'craft.shrine': 'sounds/craft_shrine.mp3',
+      // 'craft.farm': 'sounds/craft_farm.mp3',
+      // 'craft.stables': 'sounds/craft_stables.mp3',
+      // 'smelt.iron_smelter': 'sounds/smelt_iron_smelter.mp3',
+      // 'smelt.copper_smelter': 'sounds/smelt_copper_smelter.mp3',
+      // 'smelt.tin_smelter': 'sounds/smelt_tin_smelter.mp3',
+      // 'smelt.silver_smelter': 'sounds/smelt_silver_smelter.mp3',
+      // 'smelt.gold_smelter': 'sounds/smelt_gold_smelter.mp3',
+      // 'smelt.bronze_foundry': 'sounds/smelt_bronze_foundry.mp3',
+      // 'smelt.charcoal_burner': 'sounds/smelt_charcoal_burner.mp3',
+      // Samma sätt fungerar för de andra arbetsljuden, till exempel 'mine.quarry' eller 'chop.woodcutter' (byggnadens id efter punkten).
     },
     music: ["music/song1.mp3", "music/song2.mp3", "music/song3.mp3"],
     // Väderljud och ljudlandskap (systems/sound.js). Alla filer är valfria: saknas en fil är det tyst. Ta bort // för att slå på en rad.

@@ -616,16 +616,7 @@
   // Arbetsljud (systems/sound.js): vilket ljud en byggnads arbete ger. terrain = terrängen arbetaren samlar från (om någon).
   const SOFT_TERRAIN = new Set(['berry_bush', 'herbs', 'mushrooms', 'apple_tree', 'fallen_star', 'moonstone', 'ancient_altar']);
   const DIGGING_TERRAIN = new Set(['clay', 'sand', 'bog', 'cursed_ground', 'tar_pit']);
-  // Ljudgrupper: en byggnad kan ha ett eget ljud (id.byggnad, t.ex. craft.sawmill), annars gruppens (id.grupp, t.ex. craft.smith), annars grundljudet (craft)
-  const SOUND_GROUPS = {
-    sawmill: 'saw',
-    mill: 'mill', bakery: 'mill', kitchen: 'mill',
-    toolsmith: 'smith', swordsmith: 'smith', bowyer: 'smith', armorsmith: 'smith', steelworks: 'smith', mint: 'smith',
-    brickworks: 'kiln', glassworks: 'kiln',
-    leatherworker: 'leather',
-    alchemist: 'magic', enchanter: 'magic', shrine: 'magic',
-    farm: 'farm', stables: 'farm',
-  };
+  // Varje byggnad kan ha ett eget arbetsljud (id.byggnad, t.ex. craft.sawmill); saknas det används grundljudet (craft, smelt, chop ...)
   Behaviors.workSound = (building, terrain) => {
     const job = building.definition.job;
     let id;
@@ -637,8 +628,8 @@
     else if (SOFT_TERRAIN.has(terrain)) id = 'pick';
     else if (DIGGING_TERRAIN.has(terrain)) id = 'dig';
     else id = 'mine';
-    const Sound = CityBuilder.Sound, group = SOUND_GROUPS[building.type];
-    if (Sound) Sound.play([`${id}.${building.type}`, group && `${id}.${group}`, id].find(candidate => candidate && Sound.sounds.has(candidate)), { x: building.x, y: building.y });
+    const Sound = CityBuilder.Sound;
+    if (Sound) Sound.play(Sound.sounds.has(`${id}.${building.type}`) ? `${id}.${building.type}` : id, { x: building.x, y: building.y });
   };
 
   // Planterare: arbetaren går till en slumpad ledig gräsruta på avstånd minRadius-maxRadius (jämnt fördelat över ytan) och planterar ett träd (amount: [min, max] trä).
