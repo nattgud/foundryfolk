@@ -11,6 +11,7 @@
    - Flera filer för samma händelse: ange en lista, så slumpas en av dem varje gång (aldrig samma två i rad):
        audio: { sounds: { hit: ['sounds/hit1.mp3', 'sounds/hit2.mp3', 'sounds/hit3.mp3'], chop: { files: ['sounds/chop1.mp3', 'sounds/chop2.mp3'], volume: 0.8 } } }
      Gäller alla ljud i audio.sounds och väderljudens start-rader. Ett ljud med loop: true väljer en av filerna varje gång en ny loop startar.
+   - Arbetsljud per grupp eller byggnad: 'craft.smith', 'craft.sawmill' ... (se Behaviors.workSound och SOUND_GROUPS). Det mest specifika ljudet som finns används.
    - Nya ljud:  CityBuilder.Sound.define('mitt_ljud', { file: '...' | synth: rate => Float32Array, volume, maxVoices, cooldown, pitch })
    - Väderljud och ljudlandskap (Config.settings.audio.weather, alla filer valfria: saknas en fil är det tyst, utan fel):
        weather: { fade: 3,                                   // sekunder in- och utljusning för alla loopar

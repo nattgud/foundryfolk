@@ -80,6 +80,16 @@ CityBuilder.Config.settings = {
       plant: 'sounds/plant.mp3',          // planterare
       // craft: 'sounds/craft.mp3',          // förädlare
       // smelt: 'sounds/smelt.mp3',          // smältverk, gjuteri, kolbrännare
+      // Arbetsljud kan också sättas per grupp eller per byggnad (id.grupp, id.byggnad). Det mest specifika som finns används, annars craft eller smelt.
+      // Alla kan vara en lista för slumpade varianter. Smältverken har bara grundljudet smelt, men smelt.iron_smelter, smelt.gold_smelter ... fungerar också.
+      // 'craft.saw': 'sounds/craft_saw.mp3',           // sågverk
+      // 'craft.mill': 'sounds/craft_mill.mp3',         // kvarn, bageri, kök
+      // 'craft.smith': 'sounds/craft_smith.mp3',       // verktygssmed, svärdssmed, bågmakare, rustningssmed, stålverk, mynt
+      // 'craft.kiln': 'sounds/craft_kiln.mp3',         // tegelbruk, glasbruk
+      // 'craft.leather': 'sounds/craft_leather.mp3',   // läderverkstad
+      // 'craft.magic': 'sounds/craft_magic.mp3',       // alkemist, förtrollare, helgedom
+      // 'craft.farm': 'sounds/craft_farm.mp3',         // gård, stall
+      // 'craft.bakery': 'sounds/craft_bakery.mp3',     // en enskild byggnad (id.byggnadens id) går före gruppen
     },
     music: ["music/song1.mp3", "music/song2.mp3", "music/song3.mp3"],
     // Väderljud och ljudlandskap (systems/sound.js). Alla filer är valfria: saknas en fil är det tyst. Ta bort // för att slå på en rad.
