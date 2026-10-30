@@ -71,42 +71,44 @@ CityBuilder.Config.settings = {
       hit: ['sounds/hit/hit1.mp3','sounds/hit/hit2.mp3','sounds/hit/hit3.mp3','sounds/hit/hit4.mp3'],              // träff (flera filer: en lista, ['sounds/hit1.mp3', 'sounds/hit2.mp3'], så slumpas en varje gång)
       died: ['sounds/died/died1.mp3','sounds/died/died2.mp3','sounds/died/died3.mp3'],            // soldat dör
       destroyed: 'sounds/destroyed.mp3',  // byggnad förstörs
-      chop: 'sounds/chop.mp3',            // träd (skogshuggare)
-      mine: 'sounds/mine.mp3',            // sten och malm
-      pick: 'sounds/pick.mp3',            // bär, örter, svamp, äpplen
-      dig: 'sounds/dig.mp3',              // lera och sand
-      fish: 'sounds/fish.mp3',            // fiskare
-      hunt: 'sounds/hunt.mp3',            // jägare
-      plant: 'sounds/plant.mp3',          // planterare
-      // craft: 'sounds/craft.mp3',          // förädlare
-      // smelt: 'sounds/smelt.mp3',          // smältverk, gjuteri, kolbrännare
-      // Varje byggnad kan ha ett eget arbetsljud: id.byggnadens id. Saknas det används grundljudet (craft, smelt ...). Alla kan vara en lista för slumpade varianter.
-      'craft.sawmill': 'sounds/craft_sawmill.mp3',
-      // 'craft.mill': 'sounds/craft_mill.mp3',
-      // 'craft.bakery': 'sounds/craft_bakery.mp3',
-      'craft.kitchen': 'sounds/craft_kitchen.mp3',
-      // 'craft.brickworks': 'sounds/craft_brickworks.mp3',
-      // 'craft.glassworks': 'sounds/craft_glassworks.mp3',
-      // 'craft.steelworks': 'sounds/craft_steelworks.mp3',
-      // 'craft.toolsmith': 'sounds/craft_toolsmith.mp3',
-      // 'craft.swordsmith': 'sounds/craft_swordsmith.mp3',
-      // 'craft.bowyer': 'sounds/craft_bowyer.mp3',
-      // 'craft.leatherworker': 'sounds/craft_leatherworker.mp3',
-      // 'craft.armorsmith': 'sounds/craft_armorsmith.mp3',
-      // 'craft.mint': 'sounds/craft_mint.mp3',
-      // 'craft.alchemist': 'sounds/craft_alchemist.mp3',
-      // 'craft.enchanter': 'sounds/craft_enchanter.mp3',
-      // 'craft.shrine': 'sounds/craft_shrine.mp3',
-      // 'craft.farm': 'sounds/craft_farm.mp3',
-      // 'craft.stables': 'sounds/craft_stables.mp3',
-      // 'smelt.iron_smelter': 'sounds/smelt_iron_smelter.mp3',
-      // 'smelt.copper_smelter': 'sounds/smelt_copper_smelter.mp3',
-      // 'smelt.tin_smelter': 'sounds/smelt_tin_smelter.mp3',
-      // 'smelt.silver_smelter': 'sounds/smelt_silver_smelter.mp3',
-      // 'smelt.gold_smelter': 'sounds/smelt_gold_smelter.mp3',
-      // 'smelt.bronze_foundry': 'sounds/smelt_bronze_foundry.mp3',
-      // 'smelt.charcoal_burner': 'sounds/smelt_charcoal_burner.mp3',
-      // Samma sätt fungerar för de andra arbetsljuden, till exempel 'mine.quarry' eller 'chop.woodcutter' (byggnadens id efter punkten).
+    },
+    // Byggnadernas arbete. Varje byggnad kan ha tre valfria ljud: start (arbetet börjar), loop (loopas medan det pågår) och done (arbetet är klart).
+    // Det som inte anges är tyst. Ett ljud är en fil, en lista (en slumpas varje gång) eller { file, volume }. Exempel:
+    //   glassworks: { start: 'sounds/glass_start.mp3', loop: 'sounds/glass_loop.mp3', done: ['sounds/glass_done1.mp3', 'sounds/glass_done2.mp3'] },
+    // Byggnader: woodcutter planter apple_gatherer berry_gatherer herb_gatherer mushroom_gatherer hunters_cottage fishing_hut well sand_collector clay_pit
+    // limestone_quarry quarry rock_crusher iron_mine copper_mine tin_mine coal_mine gold_mine silver_mine gemstone_mine salt_mine sulfur_mine crystal_gatherer
+    // moonstone_gatherer relic_hunter fallen_star_collector sawmill farm stables mill bakery brickworks iron_smelter copper_smelter tin_smelter silver_smelter
+    // gold_smelter bronze_foundry charcoal_burner kitchen glassworks steelworks toolsmith swordsmith bowyer leatherworker armorsmith mint alchemist enchanter shrine
+    buildings: {
+      woodcutter: { start: 'sounds/chop.mp3' },
+      limestone_quarry: { start: 'sounds/mine.mp3' },
+      quarry: { start: 'sounds/mine.mp3' },
+      rock_crusher: { start: 'sounds/mine.mp3' },
+      iron_mine: { start: 'sounds/mine.mp3' },
+      copper_mine: { start: 'sounds/mine.mp3' },
+      tin_mine: { start: 'sounds/mine.mp3' },
+      coal_mine: { start: 'sounds/mine.mp3' },
+      gold_mine: { start: 'sounds/mine.mp3' },
+      silver_mine: { start: 'sounds/mine.mp3' },
+      gemstone_mine: { start: 'sounds/mine.mp3' },
+      salt_mine: { start: 'sounds/mine.mp3' },
+      sulfur_mine: { start: 'sounds/mine.mp3' },
+      crystal_gatherer: { start: 'sounds/mine.mp3' },
+      relic_hunter: { start: 'sounds/mine.mp3' },
+      apple_gatherer: { start: 'sounds/pick.mp3' },
+      berry_gatherer: { start: 'sounds/pick.mp3' },
+      herb_gatherer: { start: 'sounds/pick.mp3' },
+      mushroom_gatherer: { start: 'sounds/pick.mp3' },
+      moonstone_gatherer: { start: 'sounds/pick.mp3' },
+      fallen_star_collector: { start: 'sounds/pick.mp3' },
+      sand_collector: { start: 'sounds/dig.mp3' },
+      clay_pit: { start: 'sounds/dig.mp3' },
+      fishing_hut: { start: 'sounds/fish.mp3' },
+      well: { start: 'sounds/fish.mp3' },
+      hunters_cottage: { start: 'sounds/hunt.mp3' },
+      planter: { start: 'sounds/plant.mp3' },
+      sawmill: { start: 'sounds/craft_sawmill.mp3' },
+      kitchen: { start: 'sounds/craft_kitchen.mp3' },
     },
     music: ["music/song1.mp3", "music/song2.mp3", "music/song3.mp3"],
     // Väderljud och ljudlandskap (systems/sound.js). Alla filer är valfria: saknas en fil är det tyst. Ta bort // för att slå på en rad.

@@ -480,8 +480,9 @@
           prey.heldFor = 0;
           worker.huntTarget = prey;
         }),
-        Jobs.run(() => Behaviors.workSound(building)),
+        Jobs.run(() => Behaviors.workStart(building, job.workSeconds || 2)),
         Jobs.wait(job.workSeconds || 2, job.workLabel || 'Hunting'),
+        Jobs.run(() => Behaviors.workDone(building)),
         Jobs.run(() => {
           const target = worker.huntTarget;
           worker.huntTarget = null;
@@ -523,8 +524,9 @@
 
       worker.stepQueue = [
         Jobs.walkTo(target.x, target.y, stopBeside),
-        Jobs.run(() => Behaviors.workSound(building, target.tile.terrainType)),
+        Jobs.run(() => Behaviors.workStart(building, job.workSeconds)),
         Jobs.wait(job.workSeconds, 'Gathering'),
+        Jobs.run(() => Behaviors.workDone(building)),
         Jobs.run(() => {
           if (target.tile.remainingAmount <= 0) return false; // någon annan hann före
           if (--target.tile.remainingAmount <= 0) {
@@ -593,13 +595,14 @@
         building.craftOutputs = Behaviors.yielded(building, recipe.outputs, Behaviors.useBoost(building));
         building.craftTimeLeft = job.craftSeconds;
         building.craftTotalTime = building.craftTimeLeft;
-        Behaviors.workSound(building);
+        Behaviors.cue(building, 'start');
       }
 
       building.status = 'Working';
 
       if ((building.craftTimeLeft -= deltaSeconds) <= 0) {
         building.isCrafting = false;
+        Behaviors.cue(building, 'done');
 
         const outputs = building.craftOutputs || recipe.outputs;
         building.craftOutputs = null;
@@ -613,24 +616,13 @@
     },
   });
 
-  // Arbetsljud (systems/sound.js): vilket ljud en byggnads arbete ger. terrain = terrängen arbetaren samlar från (om någon).
-  const SOFT_TERRAIN = new Set(['berry_bush', 'herbs', 'mushrooms', 'apple_tree', 'fallen_star', 'moonstone', 'ancient_altar']);
-  const DIGGING_TERRAIN = new Set(['clay', 'sand', 'bog', 'cursed_ground', 'tar_pit']);
-  // Varje byggnad kan ha ett eget arbetsljud (id.byggnad, t.ex. craft.sawmill); saknas det används grundljudet (craft, smelt, chop ...)
-  Behaviors.workSound = (building, terrain) => {
-    const job = building.definition.job;
-    let id;
-    if (job.kind === 'craft') id = /smelter|foundry|burner/.test(building.type || '') ? 'smelt' : 'craft';
-    else if (job.kind === 'plant') id = 'plant';
-    else if (job.sourceUnit) id = 'hunt';
-    else if (terrain === 'water') id = 'fish';
-    else if (terrain === 'tree') id = 'chop';
-    else if (SOFT_TERRAIN.has(terrain)) id = 'pick';
-    else if (DIGGING_TERRAIN.has(terrain)) id = 'dig';
-    else id = 'mine';
-    const Sound = CityBuilder.Sound;
-    if (Sound) Sound.play(Sound.sounds.has(`${id}.${building.type}`) ? `${id}.${building.type}` : id, { x: building.x, y: building.y });
-  };
+  // Arbetsljud (audio.buildings.<byggnad>.start | loop | done, se systems/sound.js). Det som saknas är tyst.
+  // start: arbetet börjar, loop: så länge det pågår (Behaviors.working), done: arbetet är klart. Förädlare har sin egen tidtagning (isCrafting);
+  // samlare, jägare och planterare får en tidsgräns som löper ut av sig själv om arbetaren dör mitt i arbetet, så att en loop aldrig fastnar.
+  Behaviors.cue = (building, phase) => CityBuilder.Sound?.play(`${phase}.${building.type}`, { x: building.x, y: building.y });
+  Behaviors.workStart = (building, seconds) => { building.workingUntil = CityBuilder.Vision.time + seconds * 1.5 + 1; Behaviors.cue(building, 'start'); };
+  Behaviors.workDone = building => { building.workingUntil = 0; Behaviors.cue(building, 'done'); };
+  Behaviors.working = building => building.definition.job?.kind === 'craft' ? !!building.isCrafting && !building.paused : (building.workingUntil || 0) > CityBuilder.Vision.time;
 
   // Planterare: arbetaren går till en slumpad ledig gräsruta på avstånd minRadius-maxRadius (jämnt fördelat över ytan) och planterar ett träd (amount: [min, max] trä).
   // Insatserna (frön, vatten) förbrukas när arbetaren går ut, och lämnas tillbaka om rutan hunnit bli upptagen.
@@ -667,8 +659,9 @@
       for (const id in job.inputs) { building.inputStock[id] -= job.inputs[id]; Behaviors.note(building, 'use', id, job.inputs[id]); }
       worker.stepQueue = [
         Jobs.walkTo(spot.x, spot.y),
-        Jobs.run(() => Behaviors.workSound(building)),
+        Jobs.run(() => Behaviors.workStart(building, job.workSeconds)),
         Jobs.wait(job.workSeconds, 'Planting'),
+        Jobs.run(() => Behaviors.workDone(building)),
         Jobs.run(() => {
           const tile = World.getTile(spot.x, spot.y);
           if (!this.isFree(spot.x, spot.y)) {

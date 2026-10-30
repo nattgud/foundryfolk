@@ -11,7 +11,11 @@
    - Flera filer för samma händelse: ange en lista, så slumpas en av dem varje gång (aldrig samma två i rad):
        audio: { sounds: { hit: ['sounds/hit1.mp3', 'sounds/hit2.mp3', 'sounds/hit3.mp3'], chop: { files: ['sounds/chop1.mp3', 'sounds/chop2.mp3'], volume: 0.8 } } }
      Gäller alla ljud i audio.sounds och väderljudens start-rader. Ett ljud med loop: true väljer en av filerna varje gång en ny loop startar.
-   - Arbetsljud per byggnad: 'craft.sawmill', 'smelt.iron_smelter', 'mine.quarry' ... (id.byggnadens id, se Behaviors.workSound). Saknas det används grundljudet.
+   - Byggnadernas arbete (alla samlare, jägare, planterare och förädlare): varje byggnad kan ha tre valfria ljud, och det som saknas är tyst (inga standardljud):
+       audio: { buildings: { glassworks: { start: 'sounds/glass_start.mp3', loop: 'sounds/glass_loop.mp3', done: ['sounds/glass_done1.mp3', 'sounds/glass_done2.mp3'] } } }
+     start: arbetet börjar. loop: loopas vid byggnaden så länge arbetet pågår (de tre närmaste som syns). done: arbetet är klart. Varje ljud är en fil,
+     en lista (en slumpas) eller { file | files, volume }. Förädlare: ett varv från att materialet tas till att produkterna läggs ut. Samlare,
+     jägare och planterare: från att arbetaren börjar arbeta på platsen tills hen är klar. Se Behaviors.cue/workStart/workDone/working.
    - Nya ljud:  CityBuilder.Sound.define('mitt_ljud', { file: '...' | synth: rate => Float32Array, volume, maxVoices, cooldown, pitch })
    - Väderljud och ljudlandskap (Config.settings.audio.weather, alla filer valfria: saknas en fil är det tyst, utan fel):
        weather: { fade: 3,                                   // sekunder in- och utljusning för alla loopar
@@ -60,7 +64,6 @@
 
   const noise = () => Math.random() * 2 - 1;
   const EFFECT = { pitch: 0.08, cooldown: 0.1, maxVoices: 3 };
-  const WORK = { volume: 0.5, pitch: 0.1, cooldown: 0.15, maxVoices: 3 };
 
   /* ---------- Syntetisk musik (när inga filer finns): loopar med rate -> Float32Array ---------- */
   const MOOD = { battleSeconds: 20, disasterSeconds: 90, fadeSeconds: 2.5 };   // hur länge stridsmusiken dröjer sig kvar, hur länge katastrofmusiken spelas, tid för övertoning
@@ -137,16 +140,6 @@
     hit: { synth: render(0.12, (time, p) => (Math.sin(TAU * (130 - 70 * p) * time) * 0.6 + noise() * 0.25 * (1 - p)) * Math.pow(1 - p, 2)), volume: 0.6, ...EFFECT, cooldown: 0.08 },
     died: { synth: render(0.4, (time, p) => Math.sin(TAU * (320 - 200 * p) * time) * 0.35 * Math.pow(1 - p, 1.5)), volume: 0.6, ...EFFECT },
     destroyed: { synth: (() => { let low = 0; return render(0.6, (time, p) => { low += (noise() - low) * 0.25; return low * 1.4 * Math.pow(1 - p, 1.5); }); })(), volume: 0.8, ...EFFECT },
-    // Arbete: ett slag per arbetsvarv (se Behaviors.workSound)
-    chop: { synth: render(0.14, (time, p) => (Math.sin(TAU * 170 * time) * 0.7 + noise() * 0.35 * Math.pow(1 - p, 4)) * Math.pow(1 - p, 3)), ...WORK },
-    mine: { synth: render(0.12, (time, p) => (Math.sin(TAU * 1400 * time) * 0.35 + Math.sin(TAU * 2100 * time) * 0.2) * Math.pow(1 - p, 4)), ...WORK },
-    pick: { synth: render(0.12, (time, p) => noise() * 0.2 * Math.sin(Math.PI * p)), ...WORK },
-    dig: { synth: (() => { let low = 0; return render(0.22, (time, p) => { low += (noise() - low) * 0.3; return low * 0.9 * (1 - p); }); })(), ...WORK },
-    fish: { synth: render(0.28, (time, p) => noise() * 0.22 * Math.pow(Math.sin(Math.PI * p), 2) + Math.sin(TAU * (500 + 400 * p) * time) * 0.1 * (1 - p)), ...WORK },
-    hunt: { synth: render(0.16, (time, p) => Math.sin(TAU * 90 * time) * 0.6 * Math.pow(1 - p, 2)), ...WORK },
-    plant: { synth: render(0.14, (time, p) => Math.sin(TAU * (300 + 300 * p) * time) * 0.4 * Math.pow(1 - p, 2)), ...WORK },
-    craft: { synth: render(0.14, (time, p) => (Math.sin(TAU * 700 * time) * 0.4 + noise() * 0.3 * Math.pow(1 - p, 5)) * Math.pow(1 - p, 5)), ...WORK },
-    smelt: { synth: render(0.4, (time, p) => noise() * 0.18 * Math.sin(Math.PI * Math.pow(p, 0.7))), ...WORK },
     drop: { synth: render(0.04, (time, p) => Math.sin(TAU * 900 * time) * Math.pow(1 - p, 3) * 0.3), volume: 0.5, cooldown: 0.05, maxVoices: 4 },
   };
 
@@ -176,6 +169,12 @@
       // Egna ljud och musik från Config.settings.audio = { sounds: { click: 'sounds/click.mp3' }, music: ['music/a.mp3'] }
       const custom = Config.settings.audio || {};
       for (const [id, value] of Object.entries(custom.sounds || {})) this.define(id, spec(value));
+      this.workLoops = new Set();   // byggnader som har en arbetsloop
+      for (const [type, phases] of Object.entries(custom.buildings || {})) for (const phase of ['start', 'loop', 'done']) {
+        if (!phases[phase]) continue;
+        this.define(`${phase}.${type}`, spec(phases[phase]));
+        if (phase === 'loop') this.workLoops.add(type);
+      }
       this.channels = { calm: this.channel(custom.music), battle: this.channel(custom.battleMusic), disaster: this.channel(custom.disasterMusic) };
       try {   // sidan har just laddats om (t.ex. en ny bana): den lugna musiken fortsätter där den slutade
         const saved = JSON.parse(sessionStorage.getItem(MUSIC_KEY) || 'null');
@@ -370,6 +369,19 @@
         if (!definition?.loop) continue;
         const heard = looping.sources().map(source => ({ source, ...hearing(source.x, source.y) })).filter(entry => entry.level > 0.01);
         for (const { source, level, pan } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) targets.set(source.key, { definition, volume: definition.volume, level, pan, fade: looping.fade });
+      }
+      // Byggnadernas arbetsloopar (audio.buildings.<byggnad>.loop): en loop vid varje byggnad som arbetar just nu och syns, de tre närmaste
+      if (this.workLoops?.size) {
+        const { World, Behaviors, Vision, Players } = CityBuilder, heard = [];
+        for (const building of World.buildings) {
+          if (!this.workLoops.has(building.type) || !Behaviors.working(building) || !Vision.sees(Players.HUMAN, building)) continue;
+          const spot = hearing(building.x, building.y);
+          if (spot && spot.level > 0.01) heard.push({ building, ...spot });
+        }
+        for (const { building, level, pan } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) {
+          const definition = this.sounds.get('loop.' + building.type);
+          targets.set(building, { definition, volume: definition.volume, level, pan, fade: 0.3 });
+        }
       }
       return targets;
     },
