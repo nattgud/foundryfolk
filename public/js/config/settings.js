@@ -68,7 +68,7 @@ CityBuilder.Config.settings = {
       alarm: 'sounds/alarm.mp3',
       arrow: 'sounds/arrow.mp3',          // pil avfyras
       swing: 'sounds/swing.mp3',          // närstrid
-      // hit: 'sounds/hit.mp3',              // träff
+      // hit: 'sounds/hit.mp3',              // träff (flera filer: en lista, ['sounds/hit1.mp3', 'sounds/hit2.mp3'], så slumpas en varje gång)
       // died: 'sounds/died.mp3',            // soldat dör
       // destroyed: 'sounds/destroyed.mp3',  // byggnad förstörs
       // chop: 'sounds/chop.mp3',            // träd (skogshuggare)

@@ -8,6 +8,9 @@
      battleMusic (när spelaren är i strid) och disasterMusic (när en tornado eller lava härjar). Tonar över mjukt mellan de tre; den lugna
      musiken fortsätter där den slutade. Saknas filerna spelas en syntetisk loop i stället (SYNTH_MUSIC). Musikens läge (låt och plats)
      sparas när sidan laddas om, så att musiken fortsätter när en ny bana startar.
+   - Flera filer för samma händelse: ange en lista, så slumpas en av dem varje gång (aldrig samma två i rad):
+       audio: { sounds: { hit: ['sounds/hit1.mp3', 'sounds/hit2.mp3', 'sounds/hit3.mp3'], chop: { files: ['sounds/chop1.mp3', 'sounds/chop2.mp3'], volume: 0.8 } } }
+     Gäller alla ljud i audio.sounds och väderljudens start-rader. Ett ljud med loop: true väljer en av filerna varje gång en ny loop startar.
    - Nya ljud:  CityBuilder.Sound.define('mitt_ljud', { file: '...' | synth: rate => Float32Array, volume, maxVoices, cooldown, pitch })
    - Väderljud och ljudlandskap (Config.settings.audio.weather, alla filer valfria: saknas en fil är det tyst, utan fel):
        weather: { fade: 3,                                   // sekunder in- och utljusning för alla loopar
@@ -147,7 +150,7 @@
   };
 
   const AMBIENT_MS = 100;         // hur ofta loopar anpassas efter väder, tid på dygnet och kamera
-  const spec = value => typeof value === 'string' ? { file: value } : value;
+  const spec = value => typeof value === 'string' ? { file: value } : Array.isArray(value) ? { files: value } : value;   // en fil, flera filer (en slumpas varje gång) eller { file | files, volume }
   const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
   const perceived = volume => volume * volume; // gain som känns jämn mot reglaget
 
@@ -171,7 +174,7 @@
       for (const [id, definition] of Object.entries(DEFAULT_SOUNDS)) this.define(id, definition);
       // Egna ljud och musik från Config.settings.audio = { sounds: { click: 'sounds/click.mp3' }, music: ['music/a.mp3'] }
       const custom = Config.settings.audio || {};
-      for (const [id, value] of Object.entries(custom.sounds || {})) this.define(id, typeof value === 'string' ? { file: value } : value);
+      for (const [id, value] of Object.entries(custom.sounds || {})) this.define(id, spec(value));
       this.channels = { calm: this.channel(custom.music), battle: this.channel(custom.battleMusic), disaster: this.channel(custom.disasterMusic) };
       try {   // sidan har just laddats om (t.ex. en ny bana): den lugna musiken fortsätter där den slutade
         const saved = JSON.parse(sessionStorage.getItem(MUSIC_KEY) || 'null');
@@ -231,20 +234,32 @@
       return context;
     },
 
-    // definition: { file?, synth?, volume = 1, maxVoices = 4, cooldown = 0.03 (s), pitch = 0.06 (slumpad variation) }
+    // definition: { file? | files? (flera: en slumpas varje gång), synth?, volume = 1, maxVoices = 4, cooldown = 0.03 (s), pitch = 0.06 (slumpad variation) }
     define(id, definition) {
       const existing = this.sounds.get(id);
       const merged = { volume: 1, maxVoices: 4, cooldown: 0.03, pitch: 0.06, ...(existing || {}), ...definition, voices: existing ? existing.voices : 0, last: -1 };
-      if (definition.file || definition.synth) merged.buffer = null; // ny källa: bygg om bufferten
+      if (definition.file || definition.files || definition.synth) merged.buffer = null; // ny källa: bygg om bufferten
+      if (definition.files) { merged.file = null; merged.variants = definition.files.map(file => ({ file, loading: false, fileBuffer: null, buffer: null })); }
+      else if (definition.file) merged.variants = null;
       if (definition.file) { merged.loading = false; merged.fileBuffer = null; }
       this.sounds.set(id, merged);
-      if (this.context && merged.file) this.bufferFor(merged);
+      if (this.context) for (const source of merged.variants || [merged]) if (source.file) this.bufferFor(source);
     },
 
     // Hämtar alla ljudfiler direkt när ljudet startat. Annars började hämtningen först första gången ljudet skulle spelas, och då
     // spelades syntetljudet i stället (så ett ljud som bara hörs en gång, som banan klar, hördes aldrig från filen).
     preload() {
-      for (const definition of this.sounds.values()) if (definition.file) this.bufferFor(definition);
+      for (const definition of this.sounds.values()) for (const source of definition.variants || [definition]) if (source.file) this.bufferFor(source);
+    },
+
+    // Ljudets buffert att spela nu. Har ljudet flera filer väljs en av de som laddats slumpvis, aldrig samma två gånger i rad;
+    // annars (eller tills någon fil laddats) det vanliga: filen, eller det inbyggda syntetljudet.
+    pickBuffer(definition) {
+      const ready = (definition.variants || []).filter(variant => this.bufferFor(variant));
+      if (!ready.length) return this.bufferFor(definition);
+      const choices = ready.length > 1 ? ready.filter(variant => variant !== definition.lastVariant) : ready;
+      definition.lastVariant = choices[Math.floor(Math.random() * choices.length)];
+      return definition.lastVariant.buffer;
     },
 
     bufferFor(definition) {
@@ -297,7 +312,7 @@
         if (!position) return;
         pan = position.pan;
       }
-      const buffer = this.bufferFor(definition);
+      const buffer = this.pickBuffer(definition);
       if (!buffer) return;
 
       const source = context.createBufferSource();
@@ -375,8 +390,8 @@
       this.loops ||= new Map();
       const fade = this.weather.fade ?? 3, now = context.currentTime, targets = this.ambientTargets();
       for (const [key, target] of targets) {
-        const buffer = target.definition ? this.bufferFor(target.definition) : this.loopBuffer(target.file);
         let loop = this.loops.get(key);
+        const buffer = loop ? null : target.definition ? this.pickBuffer(target.definition) : this.loopBuffer(target.file);   // en ny loop med flera filer slumpar en av dem
         if (!loop && buffer) {
           const source = context.createBufferSource(), gain = context.createGain(), panner = context.createStereoPanner ? context.createStereoPanner() : null;
           source.buffer = buffer; source.loop = true;
