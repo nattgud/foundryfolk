@@ -7,6 +7,9 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'The music no longer stops when a new level starts; it carries on where it was',
+      'Different music plays during fights and when a tornado or lava disaster begins',
+      'Storms now flood the low land next to water for a short while. When the water goes down again it may leave something valuable behind',
       'Tooltips now work on touch screens: tap a resource or other labelled item to read its name or hint',
       'New: monsters roam the map from level 35. Some stand still, others wander near where they live; they attack soldiers and carriers that come close, but never workers. Defeating them does not count towards the goals',
       'Level 37: a monster horde marches on your base after a while, with a warning first. Later levels have rare raids at random times',

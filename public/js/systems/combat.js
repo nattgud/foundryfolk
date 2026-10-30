@@ -56,6 +56,7 @@
     effects: [],                      // korta slag för renderingen: { x1, y1, x2, y2, life }
     projectiles: [],                  // pilar i luften: { x, y, fromX, fromY, toX, toY, target, attacker, damage, time, duration }
     time: 0,                          // simuleringstid i sekunder
+    fightAt: -Infinity,               // när något av spelarens senast slogs med en fiende eller träffades av en (Sound väljer stridsmusik efter det)
     targetCache: null,                // kandidater med rutnät (se targets)
     gridTime: -Infinity,
     alertTimers: new WeakMap(),       // byggnad -> sekunder till nästa sökning
@@ -150,6 +151,7 @@
 
     damage(target, amount, attacker) {
       if (target.hp == null || target.removed) return;
+      if (attacker && (target.player === Players.HUMAN || attacker.player === Players.HUMAN) && Players.isHostile(target.player, attacker.player)) this.fightAt = this.time;
       this.raiseAlarm(target, attacker);
       CityBuilder.Sound?.play('hit', { x: centreX(target), y: centreY(target) });
       target.hp -= amount;

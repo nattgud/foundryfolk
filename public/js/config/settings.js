@@ -144,7 +144,15 @@ CityBuilder.Config.settings = {
     scanSeconds: 2,
     scanSpreadSeconds: 1,                  // en skanning delas på så lång speltid (några chunkar per steg), så att kostnaden blir jämn
     rain: { chance: 0.08, cap: 2 },        // chans per skanning att en växt får +1 mängd, högst cap gånger terrängens normala mängd
-    storm: { chance: 0.006 },              // chans per skanning att en växt blåser till en ledig grannruta
+    storm: { chance: 0.006 },              // trollformeln Tempest: chans per skanning att en växt blåser till en ledig grannruta
+    flood: {                               // stormen: översvämning (se systems/weather.js)
+      reach: 3,                            // så många rutor från vattnet når den som mest
+      riseSeconds: 6,                      // tid per ring när vattnet stiger
+      fallSeconds: 4,                      // och när det sjunker undan
+      washUp: 0.04,                        // chans per ruta som sjunker undan att vattnet lämnat en resurs
+      amount: 0.5,                         // fyndets mängd som andel av terrängens normala
+      finds: { salt_ore: 4, silver_ore: 3, gold_ore: 2, gemstone: 1, crystal: 1 },   // vilka fynd, och hur ofta (bara sådant spelaren låst upp en byggnad för)
+    },
     fog: { vision: 0.55 },                 // andel av synfältet som finns kvar
     tornado: {
       every: [15, 25],                     // sekunder mellan nya tornados medan vädret varar

@@ -2,7 +2,9 @@
    talismaner). Vädret byter slumpvis (Config.settings.weather):
      clear    ingen effekt, vanligast
      rain     växter (träd, bär, örter, svamp, äpplen) får större mängd på samma ruta
-     storm    växter blåser ibland till en ledig grannruta
+     storm    översvämning: vattnet stiger ring för ring över lågt land vid stränderna (gräs och sand utan byggnader och stigar), står kvar medan
+              stormen varar och sjunker sedan undan. Det kan skölja upp en värdefull resurs på rutor som sjunker undan (settings.weather.flood).
+              (Trollformeln Tempest blåser fortfarande växter till lediga grannrutor, se affectPlants.)
      fog      synfältet från byggnader och enheter krymper (Vision läser Weather.visionFactor)
      tornado  rycker upp växter inom några rutor och släpper dem som några högar när den dött ut
      volcano  sällsynt händelse (inte en väderruta): lava över vatten mellan två landmassor (blir gräs) eller över land vid berg (blir malm)
@@ -23,16 +25,23 @@
     time: 0, type: 'clear', left: 60, scanIn: 0, tornadoIn: 0, flash: 0, flashIn: 8,
     tornadoes: [],   // { x, y, radius, age, ripped, collected }
     volcanoes: [],   // { kind: 'link' | 'peak', x, y, age, pace, life, plan: [[x, y], ...], lit, tick, ores }
+    flood: { rings: null, level: 0, timer: 0, found: 0, tiles: new Map() },   // rings: ringar av rutor som stormen översvämmar (null = ingen översvämning), level: hur många som står under vatten, tiles: nyckel -> { x, y, type, amount, ring } (så som rutan var)
 
     reset() {
       const settings = Config.settings.weather;
-      Object.assign(this, { time: settings.dayLength * settings.startFraction, type: 'clear', left: between([settings.minSeconds, settings.maxSeconds]), scanIn: 0, scan: null, tornadoIn: 0, flash: 0, flashIn: 8, tornadoes: [], volcanoes: [] });
+      Object.assign(this, { time: settings.dayLength * settings.startFraction, type: 'clear', left: between([settings.minSeconds, settings.maxSeconds]), scanIn: 0, scan: null, tornadoIn: 0, flash: 0, flashIn: 8, flood: { rings: null, level: 0, timer: 0, found: 0, tiles: new Map() }, tornadoes: [], volcanoes: [] });
     },
 
-    snapshot() { return { time: this.time, type: this.type, left: this.left, tornadoes: this.tornadoes, volcanoes: this.volcanoes }; },
+    snapshot() {
+      const flood = this.flood;
+      return { time: this.time, type: this.type, left: this.left, tornadoes: this.tornadoes, volcanoes: this.volcanoes, flood: { level: flood.level, found: flood.found, tiles: [...flood.tiles.values()].map(tile => [tile.x, tile.y, tile.type, tile.amount, tile.ring]) } };
+    },
     restore(data) {
       this.reset();
-      if (data) Object.assign(this, { time: data.time, type: data.type, left: data.left, tornadoes: data.tornadoes || [], volcanoes: data.volcanoes || [] });
+      if (!data) return;
+      Object.assign(this, { time: data.time, type: data.type, left: data.left, tornadoes: data.tornadoes || [], volcanoes: data.volcanoes || [] });
+      const saved = data.flood?.tiles || [];   // en pågående översvämning står kvar på sin högsta nivå tills stormen är över (rings: [] = ingen mer stigning)
+      if (saved.length) this.flood = { rings: [], level: data.flood.level, timer: 0, found: data.flood.found || 0, tiles: new Map(saved.map(([x, y, type, amount, ring]) => [Utils.tileKey(x, y), { x, y, type, amount, ring }])) };
     },
 
     // 0 = full dag, 1 = full natt. Dag 0-55 % av dygnet, skymning 55-65, natt 65-90, gryning 90-100.
@@ -334,12 +343,15 @@
     },
 
     // Två malmsorter slumpade efter vikt bland dem spelaren låst upp (en gruva för dem finns); ovanliga väger tyngre
-    pickOres() {
-      const weights = Config.settings.weather.volcano.ores, Levels = CityBuilder.Levels;
+    pickOres() { return this.pickResources(Config.settings.weather.volcano.ores, 2); },
+
+    // 'count' terrängtyper slumpade efter vikt bland dem i 'weights' som spelaren låst upp en byggnad för (annars alla)
+    pickResources(weights, count) {
+      const Levels = CityBuilder.Levels;
       const open = ore => Object.entries(Config.buildings).some(([id, building]) => building.job?.sourceTerrain === ore && (!Levels || Levels.isUnlocked(id)));
       let options = Object.keys(weights).filter(open);
       if (!options.length) options = Object.keys(weights);
-      return Array.from({ length: 2 }, () => {
+      return Array.from({ length: count }, () => {
         let roll = Utils.random() * options.reduce((sum, ore) => sum + weights[ore], 0);
         return options.find(ore => (roll -= weights[ore]) < 0) || options[0];
       });
@@ -393,6 +405,82 @@
       CityBuilder.Pathfinder.clearCache();
     },
 
+    // ---- Översvämning (storm) --------------------------------------------------------------------
+
+    // Kan rutan översvämmas? Lågt land utan byggnad och utan upptrampad stig (stigar och vägar ligger torra)
+    floodable(x, y) {
+      const tile = World.getTile(x, y);
+      return !!tile && (tile.terrainType === 'grass' || tile.terrainType === 'sand') && !tile.wear && !World.buildingAt(x, y);
+    },
+
+    // Rutorna som kan översvämmas i ringar runt vattnet (ring 1 närmast), i de chunkar som någon spelare ser. Vattnet sprider sig bara över lågt land.
+    floodRings() {
+      const size = Config.settings.chunkSize, seen = new Set(), rings = [];
+      let frontier = [];
+      for (const { cx, cy } of Vision.activeChunks) {
+        const left = cx * size, top = cy * size, tiles = World.chunks.get(Utils.tileKey(cx, cy)) || (World.getTile(left, top), World.chunks.get(Utils.tileKey(cx, cy)));
+        for (let row = 0, i = 0; row < size; row++) for (let column = 0; column < size; column++, i++) {
+          if (tiles[i].terrainType === 'water') { frontier.push([left + column, top + row]); seen.add(Utils.tileKey(left + column, top + row)); }
+        }
+      }
+      for (let ring = 0; ring < Config.settings.weather.flood.reach; ring++) {
+        const next = [];
+        for (const [x, y] of frontier) for (const [dx, dy] of DIRECTIONS) {
+          const key = Utils.tileKey(x + dx, y + dy);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          if (this.floodable(x + dx, y + dy)) next.push([x + dx, y + dy]);
+        }
+        rings.push(next);
+        frontier = next;
+      }
+      return rings;
+    },
+
+    // Vattnet stiger över en ring (rutor med enheter på hoppas över)
+    raise(ring, index) {
+      const occupied = new Set(World.units.map(unit => Utils.tileKey(Math.floor(unit.x), Math.floor(unit.y))));
+      for (const [x, y] of ring) {
+        if (occupied.has(Utils.tileKey(x, y)) || !this.floodable(x, y)) continue;
+        const tile = World.getTile(x, y);
+        this.flood.tiles.set(Utils.tileKey(x, y), { x, y, type: tile.terrainType, amount: tile.remainingAmount, ring: index });
+        Utils.assign(tile, Config.terrain.water, { terrainType: 'water', remainingAmount: Config.terrain.water.resourceAmount });
+      }
+      CityBuilder.Pathfinder.clearCache();
+    },
+
+    // Vattnet sjunker undan från en ring: rutan blir som förut, med en liten chans att vattnet lämnat en värdefull resurs
+    recede(index) {
+      const { washUp, finds, amount } = Config.settings.weather.flood;
+      for (const [key, saved] of this.flood.tiles) {
+        if (saved.ring !== index) continue;
+        this.flood.tiles.delete(key);
+        const tile = World.getTile(saved.x, saved.y);
+        if (!tile || tile.terrainType !== 'water') continue;
+        const find = Utils.random() < washUp ? this.pickResources(finds, 1)[0] : null;
+        if (find) { this.flood.found++; Utils.assign(tile, Config.terrain[find], { terrainType: find, remainingAmount: Math.ceil((Config.terrain[find].resourceAmount || 1) * amount) }); }
+        else Utils.assign(tile, Config.terrain[saved.type], { terrainType: saved.type, remainingAmount: saved.amount });
+      }
+      CityBuilder.Pathfinder.clearCache();
+    },
+
+    // Stormen höjer vattnet en ring i taget och står kvar medan den varar. När den är över sjunker vattnet ring för ring, yttersta först.
+    updateFlood(deltaSeconds) {
+      const flood = this.flood, settings = Config.settings.weather.flood, storm = this.type === 'storm';
+      if (storm && !flood.rings) {
+        flood.rings = this.floodRings();
+        flood.found = 0;
+        CityBuilder.UI?.showToast(CityBuilder.t('The storm floods the shores'));
+      }
+      if (!flood.rings || (flood.timer -= deltaSeconds) > 0) return;
+      if (storm && flood.level < flood.rings.length) { flood.timer = settings.riseSeconds; this.raise(flood.rings[flood.level], flood.level++); }
+      else if (!storm && flood.level > 0) { flood.timer = settings.fallSeconds; this.recede(--flood.level); }
+      else if (!storm) {
+        flood.rings = null;
+        if (flood.found) CityBuilder.UI?.showToast(CityBuilder.t('The flood has gone down and left something behind'));
+      }
+    },
+
     updateVolcanoes(deltaSeconds) {
       for (const volcano of this.volcanoes) this.updateVolcano(volcano, deltaSeconds);
       if (this.volcanoes.some(volcano => volcano.done)) this.volcanoes = this.volcanoes.filter(volcano => !volcano.done);
@@ -407,13 +495,14 @@
       if ((Weather.left -= deltaSeconds) <= 0) Weather.next();
       if ((Weather.scanIn -= deltaSeconds) <= 0) {   // en ny skanning: chunkarna delas på flera steg (spridda över scanSpreadSeconds), så att kostnaden blir jämn
         Weather.scanIn = Config.settings.weather.scanSeconds;
-        if ((Weather.type === 'rain' || Weather.type === 'storm') && !Weather.scan) Weather.scan = { type: Weather.type, chunks: [...Vision.activeChunks], next: 0 };
+        if (Weather.type === 'rain' && !Weather.scan) Weather.scan = { type: Weather.type, chunks: [...Vision.activeChunks], next: 0 };
       }
       if (Weather.scan) {
         const scan = Weather.scan, perStep = Math.max(1, Math.ceil(scan.chunks.length * deltaSeconds / Config.settings.weather.scanSpreadSeconds));
         Weather.affectPlants(scan.type, undefined, scan.chunks.slice(scan.next, scan.next += perStep));
         if (scan.next >= scan.chunks.length) Weather.scan = null;
       }
+      Weather.updateFlood(deltaSeconds);
       Weather.updateTornadoes(deltaSeconds);
       Weather.updateVolcanoes(deltaSeconds);
       if (Weather.type === 'storm' && (Weather.flashIn -= deltaSeconds) <= 0) { Weather.flash = 1; Weather.flashIn = 6 + Math.random() * 9; CityBuilder.Sound?.play('weather.thunder'); }   // blixt

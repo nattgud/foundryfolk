@@ -4,7 +4,10 @@
    - Alla effekter har inbyggda syntetiska ljud, så allt fungerar utan ljudfiler. Egna filer (i Config.settings):
        audio: { sounds: { click: 'sounds/click.mp3', build: { file: 'sounds/build.mp3', volume: 0.8 } }, music: [...] }
      Syntetljudet används tills filen har laddats (och om den saknas).
-   - Musik: Config.settings.audio = { music: ['music/a.mp3', 'music/b.mp3'] } (spelas i slumpad ordning, strömmas).
+   - Musik: Config.settings.audio = { music: ['music/a.mp3', 'music/b.mp3'] } (spelas i slumpad ordning, strömmas). Två låtlistor till är valfria:
+     battleMusic (när spelaren är i strid) och disasterMusic (när en tornado eller lava härjar). Tonar över mjukt mellan de tre; den lugna
+     musiken fortsätter där den slutade. Saknas filerna spelas en syntetisk loop i stället (SYNTH_MUSIC). Musikens läge (låt och plats)
+     sparas när sidan laddas om, så att musiken fortsätter när en ny bana startar.
    - Nya ljud:  CityBuilder.Sound.define('mitt_ljud', { file: '...' | synth: rate => Float32Array, volume, maxVoices, cooldown, pitch })
    - Väderljud och ljudlandskap (Config.settings.audio.weather, alla filer valfria: saknas en fil är det tyst, utan fel):
        weather: { fade: 3,                                   // sekunder in- och utljusning för alla loopar
@@ -21,6 +24,8 @@
   const t = (text, variables) => CityBuilder.t(text, variables);
 
   const KEY = 'citybuilder.audio';
+  const MUSIC_KEY = 'citybuilder.music';   // sessionStorage: låt och plats när sidan laddas om
+  const MUSIC_RESUME_MS = 60000;           // så färskt måste det sparade läget vara
   // Musiken är avstängd från start på pekskärmar: spelets musik tar ljudfokus och pausar spelarens egen musik (Spotify m.m.). Spelaren kan slå på den i inställningarna.
   const DEFAULTS = { musicOn: !(typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches), musicVolume: 0.5, sfxOn: true, sfxVolume: 0.7 };
   const MAX_VOICES = 24; // samtidiga effekter totalt (mobilvänligt)
@@ -38,6 +43,49 @@
   const noise = () => Math.random() * 2 - 1;
   const EFFECT = { pitch: 0.08, cooldown: 0.1, maxVoices: 3 };
   const WORK = { volume: 0.5, pitch: 0.1, cooldown: 0.15, maxVoices: 3 };
+
+  /* ---------- Syntetisk musik (när inga filer finns): loopar med rate -> Float32Array ---------- */
+  const MOOD = { battleSeconds: 20, disasterSeconds: 90, fadeSeconds: 2.5 };   // hur länge stridsmusiken dröjer sig kvar, hur länge katastrofmusiken spelas, tid för övertoning
+  const lowPass = amount => { let state = 0; return value => (state += (value - state) * amount); };
+  const finish = (out, peak = 0.7) => {   // jämn nivå och mjuka ändar, så att loopen inte knäpper
+    let top = 0;
+    for (const value of out) top = Math.max(top, Math.abs(value));
+    const fade = Math.min(out.length >> 1, 1500);
+    for (let i = 0; i < out.length; i++) out[i] *= peak / (top || 1) * Math.min(1, i / fade, (out.length - 1 - i) / fade);
+    return out;
+  };
+  const SYNTH_MUSIC = {
+    // Strid: puls på 150 slag/min i a-moll, bas i åttondelar, slagverk och dissonanta ackord
+    battle: rate => {
+      const beat = 0.4, beats = 32, out = new Float32Array(Math.floor(beat * beats * rate)), bass = [55, 55, 65.4, 55, 82.4, 55, 73.4, 55], chord = [220, 261.6, 329.6, 233.1], hat = lowPass(0.5);
+      for (let i = 0; i < out.length; i++) {
+        const time = i / rate, b = Math.floor(time / beat), phase = time - b * beat, eighth = Math.floor(time / (beat / 2)), phase8 = time - eighth * beat / 2;
+        const kick = Math.sin(TAU * (50 * phase + 2.25 * (1 - Math.exp(-phase * 40)))) * Math.exp(-phase * 9) * 0.7;
+        const snare = b % 2 ? (noise() * 0.3 + Math.sin(TAU * 190 * phase) * 0.2) * Math.exp(-phase * 18) : 0;
+        const tick = (noise() - hat(noise())) * Math.exp(-phase8 * 60) * 0.12;
+        const f = bass[eighth % bass.length], low = (Math.sin(TAU * f * time) + Math.sin(TAU * 2 * f * time) * 0.5 + Math.sin(TAU * 3 * f * time) * 0.25) * Math.exp(-phase8 * 5) * 0.28;
+        let stab = 0;
+        if (b % 4 === 0 || b % 8 === 3) for (const frequency of chord) for (let h = 1; h <= 4; h++) stab += Math.sin(TAU * frequency * h * time) / h * 0.035 * Math.exp(-phase * 4);
+        out[i] = kick + snare + tick + low + stab;
+      }
+      return finish(out);
+    },
+    // Katastrof: mörk, svävande ton, hjärtslag, brusande vågor och ett tritonusackord
+    disaster: rate => {
+      const seconds = 16, out = new Float32Array(seconds * rate), rumble = lowPass(0.04);
+      for (let i = 0; i < out.length; i++) {
+        const time = i / rate, tremolo = 0.65 + 0.35 * Math.sin(TAU * 0.25 * time);
+        const drone = (Math.sin(TAU * 55 * time) * 0.3 + Math.sin(TAU * 55.875 * time) * 0.3 + Math.sin(TAU * 110.5 * time) * 0.1) * tremolo;
+        const second = time % 1, thud = (Math.sin(TAU * 62 * second) * Math.exp(-second * 12) + 0.7 * Math.sin(TAU * 58 * (second - 0.24)) * Math.exp(-(second - 0.24) * 14) * (second > 0.24 ? 1 : 0)) * 0.5;
+        const swell = Math.pow(Math.sin(Math.PI * (time % 8) / 8), 3), waves = rumble(noise()) * swell * 5;
+        const hit = time % 4;
+        let tritone = 0;
+        for (const frequency of [233.1, 329.6]) for (let h = 1; h <= 4; h++) tritone += Math.sin(TAU * frequency * h * time) / h * 0.06 * Math.exp(-hit * 1.8);
+        out[i] = drone + thud + waves * 0.5 + tritone;
+      }
+      return finish(out, 0.75);
+    },
+  };
 
   const DEFAULT_SOUNDS = {
     click: { synth: render(0.05, (time, p) => Math.sin(TAU * 1600 * time) * Math.pow(1 - p, 3) * 0.45), volume: 0.6, cooldown: 0.04, maxVoices: 3 },
@@ -94,8 +142,10 @@
     context: null,
     sounds: new Map(),
     voices: 0,
-    tracks: [],
-    musicElement: null,
+    channels: null,          // musikkanaler per läge: { calm, battle, disaster }, se channel()
+    mood: 'calm',            // vilket läge musiken har just nu: calm | battle | disaster (updateMood)
+    hazards: 0,              // antal pågående tornados och utbrott förra gången (ett nytt startar katastrofmusiken)
+    hazardUntil: 0,
 
     // Anropas en gång av UI.init
     install() {
@@ -108,10 +158,15 @@
       // Egna ljud och musik från Config.settings.audio = { sounds: { click: 'sounds/click.mp3' }, music: ['music/a.mp3'] }
       const custom = Config.settings.audio || {};
       for (const [id, value] of Object.entries(custom.sounds || {})) this.define(id, typeof value === 'string' ? { file: value } : value);
-      this.tracks = custom.music || [];
+      this.channels = { calm: this.channel(custom.music), battle: this.channel(custom.battleMusic), disaster: this.channel(custom.disasterMusic) };
+      try {   // sidan har just laddats om (t.ex. en ny bana): den lugna musiken fortsätter där den slutade
+        const saved = JSON.parse(sessionStorage.getItem(MUSIC_KEY) || 'null');
+        if (saved && Date.now() - saved.at < MUSIC_RESUME_MS && this.channels.calm.tracks.includes(saved.track)) { this.resume = saved; this.ensureContext(); }
+      } catch (error) { /* ingen sparad musik */ }
+      for (const type of ['pagehide', 'beforeunload']) addEventListener(type, () => this.saveMusic());
       this.weather = custom.weather || {};
       for (const [id, value] of Object.entries(this.weather.start || {})) this.define('weather.' + id, { ...spec(value), quiet: true, pitch: 0, maxVoices: 1, cooldown: 0 });
-      setInterval(() => this.updateAmbient(), AMBIENT_MS);
+      setInterval(() => { this.updateMood(); this.updateAmbient(); }, AMBIENT_MS);
       this.injectStyles();
 
       // Ljud får starta först efter en användaråtgärd
@@ -322,24 +377,64 @@
 
     /* ---------- Musik ---------- */
 
+    // En kanal per läge. Låtar: filer (strömmas), annars (strid och katastrof) en syntetisk loop.
+    channel: tracks => ({ tracks: tracks || [], queue: [], current: null, element: null, source: null, gain: null, stopTimer: 0, buffer: null }),
+
+    // Strid så länge något av spelarens slåss (Combat.fightAt) och en stund efter, katastrof en stund efter att en tornado eller ett utbrott börjar
+    updateMood() {
+      const now = performance.now() / 1000, { Weather, Combat } = CityBuilder;
+      const hazards = Weather ? Weather.tornadoes.length + Weather.volcanoes.length : 0;
+      if (hazards > this.hazards) this.hazardUntil = now + MOOD.disasterSeconds;
+      this.hazards = hazards;
+      const mood = hazards && now < this.hazardUntil ? 'disaster' : Combat && Combat.time - Combat.fightAt < MOOD.battleSeconds ? 'battle' : 'calm';
+      if (mood !== this.mood) { this.mood = mood; this.updateMusic(); }
+    },
+
     updateMusic() {
       const context = this.context;
-      const wanted = context && context.state === 'running' && this.settings.musicOn && this.settings.musicVolume > 0 && this.tracks.length > 0;
-      if (!wanted) { if (this.musicElement) this.musicElement.pause(); return; }
-      if (!this.musicElement) {
-        const element = this.musicElement = document.createElement('audio');
-        element.preload = 'none';
-        context.createMediaElementSource(element).connect(this.musicGain);
-        element.addEventListener('ended', () => this.nextTrack());
+      const on = !!context && context.state === 'running' && this.settings.musicOn && this.settings.musicVolume > 0;
+      for (const [mood, channel] of Object.entries(this.channels || {})) this.tune(mood, channel, on, mood === this.mood);
+    },
+
+    // Startar eller tonar ut en kanal. Är musiken av (eller ljudet stoppat) tystnar den direkt och fortsätter därifrån när den slås på.
+    tune(mood, channel, on, current) {
+      const context = this.context;
+      if (!context) return;
+      if (!channel.gain) { channel.gain = context.createGain(); channel.gain.gain.value = 0; channel.gain.connect(this.musicGain); }
+      clearTimeout(channel.stopTimer);
+      const plays = on && current && (channel.tracks.length || mood !== 'calm');   // den lugna kanalen utan låtar är tyst
+      channel.gain.gain.setTargetAtTime(plays ? 1 : 0, context.currentTime, MOOD.fadeSeconds / 3);
+      if (plays) this.start(mood, channel);
+      else if (!on) this.stop(channel);
+      else channel.stopTimer = setTimeout(() => this.stop(channel), MOOD.fadeSeconds * 1000);
+    },
+
+    start(mood, channel) {
+      if (!channel.tracks.length) {   // syntetisk loop
+        if (channel.source) return;
+        channel.buffer ??= (() => { const samples = SYNTH_MUSIC[mood](this.context.sampleRate), buffer = this.context.createBuffer(1, samples.length, this.context.sampleRate); buffer.copyToChannel(samples, 0); return buffer; })();
+        channel.source = Object.assign(this.context.createBufferSource(), { buffer: channel.buffer, loop: true });
+        channel.source.connect(channel.gain);
+        channel.source.start();
+        return;
       }
-      if (!this.musicElement.src) this.nextTrack(); else this.playMusic();
+      if (!channel.element) {
+        const element = channel.element = document.createElement('audio');
+        element.preload = 'none';
+        this.context.createMediaElementSource(element).connect(channel.gain);
+        element.addEventListener('ended', () => this.nextTrack(channel));
+      }
+      if (!channel.element.src) this.nextTrack(channel); else this.playTrack(channel);
+    },
+
+    stop(channel) {
+      if (channel.element) channel.element.pause();
+      if (channel.source) { channel.source.stop(); channel.source.disconnect(); channel.source = null; }
     },
 
     // Spelar låten. Vägrar webbläsaren (mobiler kräver ibland en ny användaråtgärd efter ett avbrott) görs ett nytt försök vid nästa tryck.
-    playMusic() {
-      const element = this.musicElement;
-      if (!element) return;
-      const promise = element.play();
+    playTrack(channel) {
+      const promise = channel.element.play();
       if (promise) promise.catch(() => {
         if (this.retryMusic) return;
         this.retryMusic = true;
@@ -347,20 +442,38 @@
       });
     },
 
-    // Blandad kö: alla låtar spelas i slumpad ordning innan någon upprepas, och en ny omgång börjar aldrig med låten som just spelades
-    nextTrack() {
-      if (!this.musicElement || !this.tracks.length) return;
-      if (!this.queue?.length) {
-        const queue = this.queue = [...this.tracks];
+    // Blandad kö: alla låtar spelas i slumpad ordning innan någon upprepas, och en ny omgång börjar aldrig med låten som just spelades.
+    // Efter en omladdning börjar den lugna musiken med låten och platsen som sparades.
+    nextTrack(channel) {
+      if (!channel.element || !channel.tracks.length) return;
+      if (this.resume && channel === this.channels.calm) {
+        const { track, time } = this.resume;
+        this.resume = null;
+        channel.queue = channel.tracks.filter(other => other !== track).sort(() => Math.random() - 0.5);
+        channel.current = track;
+        channel.element.src = track;
+        channel.element.addEventListener('loadedmetadata', () => { channel.element.currentTime = time; }, { once: true });
+        this.playTrack(channel);
+        return;
+      }
+      if (!channel.queue.length) {
+        const queue = channel.queue = [...channel.tracks];
         for (let i = queue.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [queue[i], queue[j]] = [queue[j], queue[i]];
         }
-        if (queue.length > 1 && queue[queue.length - 1] === this.currentTrack) [queue[0], queue[queue.length - 1]] = [queue[queue.length - 1], queue[0]];   // spelas från slutet
+        if (queue.length > 1 && queue[queue.length - 1] === channel.current) [queue[0], queue[queue.length - 1]] = [queue[queue.length - 1], queue[0]];   // spelas från slutet
       }
-      this.currentTrack = this.queue.pop();
-      this.musicElement.src = this.currentTrack;
-      this.playMusic();
+      channel.current = channel.queue.pop();
+      channel.element.src = channel.current;
+      this.playTrack(channel);
+    },
+
+    // Den lugna musikens låt och plats, för nästa sidladdning
+    saveMusic() {
+      const channel = this.channels?.calm;
+      if (!channel?.element?.src || !channel.current) return;
+      try { sessionStorage.setItem(MUSIC_KEY, JSON.stringify({ track: channel.current, time: channel.element.currentTime, at: Date.now() })); } catch (error) { /* ignorera */ }
     },
 
     /* ---------- Inställningar ---------- */
