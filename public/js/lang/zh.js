@@ -152,7 +152,7 @@
       'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.': '当瞭望塔发现敌人时，他们的建筑会在小地图上显示为红色。瞭望塔在第 3 关解锁。',
       'Fight': '战斗',
       'Defence mode guards the area. In attack mode soldiers go to your flag and fight everything near it and on the way.': '防御模式守卫区域。攻击模式下，士兵会前往你的旗帜，并与旗帜附近及沿途的一切战斗。',
-      'Place the flag with the Flag button or F: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.': '用旗帜按钮或 F 键放置旗帜：点击地图放置或移动，点击旗帜移除。没有旗帜时，所有人都防守。',
+      'Place the flag with the Flag button by the minimap or A: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.': '用小地图旁的旗帜按钮或 A 键放置旗帜：点击地图放置或移动，点击旗帜移除。没有旗帜时，所有人都防守。',
       'Rivals place flags too. You only see one where you can see the spot, and a coloured arrow on the minimap points to it.': '对手也会放置旗帜。只有能看到那个地点时你才看得到，小地图上的彩色箭头会指向它。',
       'The ground shakes: a monster horde is gathering far away': '大地震动：远处有一群怪物正在集结',
       'A monster horde is marching on your base!': '怪物大军正向你的基地进发！',

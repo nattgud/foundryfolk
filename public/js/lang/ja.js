@@ -152,7 +152,7 @@
       'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.': '塔が敵を見つけると、敵の建物がミニマップに赤く表示されます。見張り台はレベル3で解放されます。',
       'Fight': '戦闘',
       'Defence mode guards the area. In attack mode soldiers go to your flag and fight everything near it and on the way.': '防衛モードはエリアを守ります。攻撃モードでは、兵士は旗へ向かい、旗の周りと道中のすべてと戦います。',
-      'Place the flag with the Flag button or F: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.': '旗ボタンまたは F で旗を立てます。マップをタップして設置・移動、旗をタップして撤去します。旗がなければ全員が防衛します。',
+      'Place the flag with the Flag button by the minimap or A: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.': 'ミニマップ横の旗ボタンまたは A で旗を立てます。マップをタップして設置・移動、旗をタップして撤去します。旗がなければ全員が防衛します。',
       'Rivals place flags too. You only see one where you can see the spot, and a coloured arrow on the minimap points to it.': 'ライバルも旗を立てます。見えるのはその場所が見えているときだけで、ミニマップの色付きの矢印がその方向を指します。',
       'The ground shakes: a monster horde is gathering far away': '大地が揺れる：遠くでモンスターの群れが集まっている',
       'A monster horde is marching on your base!': 'モンスターの群れが基地に向かって進軍中！',

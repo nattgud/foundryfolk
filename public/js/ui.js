@@ -299,7 +299,7 @@
         { title: 'Fog of war', lines: ['Land you have not seen is hidden by fog. Your buildings and units reveal what is near them, and land you leave fades back into fog.', 'You cannot build in the fog, and enemies there are invisible.'] },
         { title: 'Find the enemy', target: ['#build_watchtower'], category: 'war', lines: ['From level 39 a rival base lies 60-90 tiles away in an unknown direction. Find it with Watchtowers: they see far.', 'Build one at the edge of what you can see, then another further out, and so on. Each tower lets you build further out.', 'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.', 'Enemies wait at least 30 minutes before they attack, and only once they have spotted you.'] },
         { title: 'Train soldiers', target: ['#build_garrison', '#build_guard_tower'], category: 'war', lines: ['Soldiers are trained in a Garrison or a Guard Tower: select the building and pick a soldier type.', 'Each soldier needs weapons and armour, which carriers deliver to the building.'] },
-        { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. In attack mode soldiers go to your flag and fight everything near it and on the way.', 'Place the flag with the Flag button or F: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.', 'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.', 'Rivals place flags too. You only see one where you can see the spot, and a coloured arrow on the minimap points to it.', 'Monsters roam the map from level 35. They attack soldiers, and carriers that come close, but never workers. Send soldiers to your flag to clear them. When a monster horde marches on your base, a siren sounds and a red arrow on the minimap points at it.', 'Enemy buildings only show their health, nothing about what they import, export or produce.', 'Soldiers walk like other units. Several soldiers on one tile spread out inside it, and soldiers who fight stand on the same tile.'] },
+        { title: 'Fight', mock: 'stance', lines: ['Defence mode guards the area. In attack mode soldiers go to your flag and fight everything near it and on the way.', 'Place the flag with the Flag button by the minimap or A: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.', 'Soldiers go for enemy soldiers first, then buildings. Destroy the enemy HQ to win.', 'When you are attacked a siren sounds, and a red arrow on the minimap points at the fight for a few seconds.', 'Rivals place flags too. You only see one where you can see the spot, and a coloured arrow on the minimap points to it.', 'Monsters roam the map from level 35. They attack soldiers, and carriers that come close, but never workers. Send soldiers to your flag to clear them. When a monster horde marches on your base, a siren sounds and a red arrow on the minimap points at it.', 'Enemy buildings only show their health, nothing about what they import, export or produce.', 'Soldiers walk like other units. Several soldiers on one tile spread out inside it, and soldiers who fight stand on the same tile.'] },
         { title: 'If something goes wrong', lines: ['If the game hits an unexpected error, a small box appears and the game keeps running. Tap Details to see what happened and copy it into a report.', 'The game saves by itself, and you are told if saving fails. If an old saved game cannot be fully restored, a copy of the original is kept.'] },
       ],
     },
@@ -1686,17 +1686,20 @@
       this.categoryToggles = new Map();
       this.categorySubmenus = new Map();
 
-      // Flaggan (systems/flags.js): visas när garnisonen är upplåst. Tangenten F, och Esc går ur läget.
+      // Flaggan (systems/flags.js): en rund knapp under minimapens zoomknappar (minimap.js placerar den), synlig när en garnison eller vakttorn är upplåst. Tangenten A, och Esc går ur läget.
       const flagButton = this.createIconButton({
         id: 'flagButton',
-        className: 'build-category-toggle flag-toggle',
+        className: 'map-flag',
         label: t('Flag'),
         icon: { image: `images/ui/categories/flag.png?v=${version}`, symbol: '⚑' },
-        tooltip: () => this.tooltipContent(t('Flag'), null, [t('Soldiers in buildings set to attack mode go to the flag and fight everything near it and on the way'), t('Tap the map to place or move it. Tap the flag to remove it'), ...this.hotkeyLines('f')]),
+        tooltip: () => this.tooltipContent(t('Flag'), null, [t('Soldiers in buildings set to attack mode go to the flag and fight everything near it and on the way'), t('Tap the map to place or move it. Tap the flag to remove it'), ...this.hotkeyLines('a')]),
         showOnTouch: true,
       });
       flagButton.onclick = () => this.toggleFlagging();
-      categoryRow.appendChild(flagButton);
+      byId('flagButton')?.remove();
+      document.body.appendChild(flagButton);
+      if (CityBuilder.Minimap?.canvas) CityBuilder.Minimap.layout();   // placerar knappen (kartan finns inte alltid än: den kallar själv layout när den startar)
+      this.updateFlagButton();
 
       for (const [categoryId, buildingIds] of this.groupBuildingsByCategory()) {
         const category = CATEGORIES[categoryId];
@@ -1837,14 +1840,14 @@
     updateFlagButton() {
       const button = byId('flagButton'), Levels = CityBuilder.Levels;
       if (!button) return;
-      button.hidden = !!Levels && !Levels.isUnlocked('garrison');
+      button.hidden = !!Levels && !Object.entries(Config.buildings).some(([id, building]) => building.job?.kind === 'garrison' && Levels.isUnlocked(id));
       button.classList.toggle('on', CityBuilder.Game.flagging);
     },
 
     // Returnerar true om tangenten användes
     handleHotkey(key) {
       const game = CityBuilder.Game, selected = game.selectedBuilding;
-      if (key === 'f' && byId('flagButton') && !byId('flagButton').hidden) { this.toggleFlagging(); return true; }
+      if (key === 'a' && byId('flagButton') && !byId('flagButton').hidden) { this.toggleFlagging(); return true; }
 
       if (key === 'Escape') { // ett steg tillbaka: placering, öppen kategori, vald byggnad
         if (game.flagging) game.setFlagging(false);
@@ -2192,6 +2195,21 @@
           pointer-events: none;
           z-index: 1;
         }
+
+        /* Flaggknappen: rund kartknapp under minimapens zoomknappar (storlek och plats sätts av Minimap.layout) */
+        .map-flag {
+          position: fixed;
+          z-index: 21;
+          display: grid;
+          place-items: center;
+          padding: 0;
+          border-radius: 50%;
+          box-shadow: 0 2px 6px rgb(0 0 0 / 55%);
+          touch-action: manipulation;
+        }
+        .map-flag[hidden] { display: none; }
+        .map-flag .icon { width: 72%; height: 72%; }
+        .map-flag.on { border-color: var(--accent); background: #2d5a36; box-shadow: 0 0 0 1px var(--accent), 0 0 10px rgb(95 181 95 / 55%); }
 
         .icon {
           position: relative;

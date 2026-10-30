@@ -153,7 +153,7 @@
       'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.': 'عندما يرصد برج العدو، تظهر مبانيه باللون الأحمر في الخريطة المصغرة. تُفتح أبراج المراقبة في المرحلة 3.',
       'Fight': 'القتال',
       'Defence mode guards the area. In attack mode soldiers go to your flag and fight everything near it and on the way.': 'وضع الدفاع يحرس المنطقة. في وضع الهجوم يذهب الجنود إلى علمك ويقاتلون كل ما حوله وفي الطريق إليه.',
-      'Place the flag with the Flag button or F: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.': 'ضع العلم بزر العلم أو بالمفتاح F: المس الخريطة لوضعه أو نقله، والمس العلم لإزالته. بدون علم يدافع الجميع.',
+      'Place the flag with the Flag button by the minimap or A: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.': 'ضع العلم بزر العلم بجانب الخريطة المصغرة أو بالمفتاح A: المس الخريطة لوضعه أو نقله، والمس العلم لإزالته. بدون علم يدافع الجميع.',
       'Rivals place flags too. You only see one where you can see the spot, and a coloured arrow on the minimap points to it.': 'الخصوم يضعون أعلامًا أيضًا. لا ترى علمًا إلا حيث ترى المكان، ويشير إليه سهم ملوّن على الخريطة المصغّرة.',
       'The ground shakes: a monster horde is gathering far away': 'الأرض تهتز: جحافل وحوش تتجمع بعيدًا',
       'A monster horde is marching on your base!': 'جحافل الوحوش تزحف نحو قاعدتك!',

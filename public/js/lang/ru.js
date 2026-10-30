@@ -153,7 +153,7 @@
       'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.': 'Когда башня замечает врага, его здания отображаются красным на миникарте. Сторожевые вышки открываются на уровне 3.',
       'Fight': 'Бой',
       'Defence mode guards the area. In attack mode soldiers go to your flag and fight everything near it and on the way.': 'Режим защиты охраняет территорию. В режиме атаки солдаты идут к вашему флагу и сражаются со всем рядом с ним и по пути.',
-      'Place the flag with the Flag button or F: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.': 'Ставьте флаг кнопкой «Флаг» или клавишей F: нажмите на карту, чтобы поставить или переместить его, нажмите на флаг, чтобы убрать. Без флага все обороняются.',
+      'Place the flag with the Flag button by the minimap or A: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.': 'Ставьте флаг кнопкой «Флаг» у миникарты или клавишей A: нажмите на карту, чтобы поставить или переместить его, нажмите на флаг, чтобы убрать. Без флага все обороняются.',
       'Rivals place flags too. You only see one where you can see the spot, and a coloured arrow on the minimap points to it.': 'Соперники тоже ставят флаги. Вы видите флаг, только если видите это место, а цветная стрелка на миникарте указывает на него.',
       'The ground shakes: a monster horde is gathering far away': 'Земля дрожит: вдали собирается орда монстров',
       'A monster horde is marching on your base!': 'Орда монстров идёт на вашу базу!',

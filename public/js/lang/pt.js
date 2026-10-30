@@ -153,7 +153,7 @@
       'When a tower spots the enemy, their buildings show up in red on the minimap. Watchtowers unlock on level 3.': 'Quando uma torre avista o inimigo, as construções dele aparecem em vermelho no minimapa. As Torres de Vigia são desbloqueadas na fase 3.',
       'Fight': 'Combate',
       'Defence mode guards the area. In attack mode soldiers go to your flag and fight everything near it and on the way.': 'O modo defesa vigia a área. No modo ataque, os soldados vão até a sua bandeira e lutam contra tudo o que estiver perto dela e pelo caminho.',
-      'Place the flag with the Flag button or F: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.': 'Coloque a bandeira com o botão Bandeira ou com F: toque no mapa para colocá-la ou movê-la e toque na bandeira para removê-la. Sem bandeira, todos defendem.',
+      'Place the flag with the Flag button by the minimap or A: tap the map to place or move it, tap the flag to remove it. Without a flag, everyone defends.': 'Coloque a bandeira com o botão Bandeira junto ao minimapa ou com A: toque no mapa para colocá-la ou movê-la e toque na bandeira para removê-la. Sem bandeira, todos defendem.',
       'Rivals place flags too. You only see one where you can see the spot, and a coloured arrow on the minimap points to it.': 'Os rivais também colocam bandeiras. Você só vê uma onde consegue ver o local, e uma seta colorida no minimapa aponta para ela.',
       'The ground shakes: a monster horde is gathering far away': 'O chão treme: uma horda de monstros se reúne ao longe',
       'A monster horde is marching on your base!': 'Uma horda de monstros marcha para a sua base!',
