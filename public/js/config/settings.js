@@ -71,6 +71,15 @@ CityBuilder.Config.settings = {
       hit: ['sounds/hit/hit1.mp3','sounds/hit/hit2.mp3','sounds/hit/hit3.mp3','sounds/hit/hit4.mp3'],              // träff (flera filer: en lista, ['sounds/hit1.mp3', 'sounds/hit2.mp3'], så slumpas en varje gång)
       died: ['sounds/died/died1.mp3','sounds/died/died2.mp3','sounds/died/died3.mp3'],            // soldat dör
       destroyed: 'sounds/destroyed.mp3',  // byggnad förstörs
+
+      // MONSTER
+      slime_attack: "sounds/monster/slime_attack.mp3",
+      spider_attack: "sounds/monster/spider_attack.mp3",
+      maneater_attack: "sounds/monster/maneater_attack.mp3",
+      golem_attack: "sounds/monster/golem_attack.mp3",
+      wolf_attack: "sounds/monster/wolf_attack.mp3",
+      troll_attack: "sounds/monster/troll_attack.mp3",
+      ogre_attack: "sounds/monster/ogre_attack.mp3",
     },
     // Byggnadernas arbete. Varje byggnad kan ha tre valfria ljud: start (arbetet börjar), loop (loopas medan det pågår) och done (arbetet är klart).
     // Det som inte anges är tyst. Ett ljud är en fil, en lista (en slumpas varje gång) eller { file, volume }. Exempel:
