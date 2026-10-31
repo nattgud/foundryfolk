@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Berries, herbs, mushrooms and apples spread a little slower, so they do not take over an area as quickly',
       'Two tornadoes that touch each other merge into a supertornado: twice as big, it tears up plants and land twice as fast, it lasts three times as long, it is drawn darker, turns the weather to supertornado and has its own sounds',
       'Animals breed about a third faster where they are few, so areas emptied by hunters recover quicker',
       'Fixed the goal counters of a custom map starting over after you had started a new game on the levels, and the autosave of one tab being written over the other when the levels and a custom map were open in two tabs at once',

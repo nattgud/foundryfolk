@@ -6,7 +6,7 @@
   const ANIMAL = {
     foodRadius: 3, 
     eatSeconds: 4,
-    eatCooldown: 30,
+    eatCooldown: 40,   // speltid i sekunder mellan två måltider: bestämmer hur fort bär, örter, svamp och äpplen sprids (varje måltid planteras om en bit bort)
     spreadChance: 0.1,
     wanderRadius: 8,
     idleCooldown: 1,
