@@ -40,6 +40,8 @@ CityBuilder.Config.settings = {
     maxTasks: 8,
     requestsPerBuilding: 4,
     baseCarriers: 30,
+    carriersGrowEvery: 18,           // ju fler byggnader desto fler bärare per byggnad: för var 18:e vanliga byggnad ger nästa en bärare mer (1, 2, 3 ...)
+    maxCarriersPerBuilding: 4,       // och aldrig fler än så här många per byggnad
     // Ett hus beställer nya insatser först när lagret (med det som är på väg) sjunkit till 'refillBelow' av kapaciteten, och fyller sedan på till full
     // kapacitet. Det ger färre och jämnare beställningar, och en buffert som tål att leveranserna dröjer en stund (så att inga extrabärare behövs).
     refillBelow: 0.5,

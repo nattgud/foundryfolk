@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'The more buildings you have, the more carriers each new building gives: every 18th building adds one more (up to 4 per building), so the carriers keep up in a big city',
       'Berries, herbs, mushrooms and apples spread a little slower, so they do not take over an area as quickly',
       'Two tornadoes that touch each other merge into a supertornado: twice as big, it tears up plants and land twice as fast, it lasts three times as long, it is drawn darker, turns the weather to supertornado and has its own sounds',
       'Animals breed about a third faster where they are few, so areas emptied by hunters recover quicker',

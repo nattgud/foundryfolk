@@ -6,7 +6,7 @@
   const { Config, World, Utils, Jobs, Economy, Behaviors, Players } = CityBuilder;
 
   // Standardvärden: saknas en inställning i cfg() används dessa (planeringen stannar annars helt)
-  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, requestsPerSite: 4, baseCarriers: 5, pileShare: 0.5, pileRecent: 10, priorityTasks: 8, carriersPerBuilding: 1, carriersPerStorage: 5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40, unreachableSeconds: 30 }, Config.settings.logistics);
+  const cfg = () => Object.assign({ planningIntervalSeconds: 1, maxTasks: 60, requestsPerBuilding: 2, requestsPerSite: 4, baseCarriers: 5, pileShare: 0.5, pileRecent: 10, priorityTasks: 8, carriersPerBuilding: 1, carriersGrowEvery: 18, maxCarriersPerBuilding: 4, carriersPerStorage: 5, maxAssignmentsPerFrame: 30, maxWaitSeconds: 40, unreachableSeconds: 30 }, Config.settings.logistics);
 
   const Logistics = {
     tasks: [],              // äldsta först
@@ -213,18 +213,20 @@
       queue.push(Math.max(this.time || 0, queue[queue.length - 1] ?? 0) + Config.settings.military.carrierRespawnSeconds);
     },
 
-    // Antalet bärare följer byggnaderna: bas + 1 per färdig byggnad + 5, 10 respektive 25 per färdigt lager, lagerhus och depå (definition.carriers, per spelare). Rivs eller förstörs något
-    // minskar antalet igen: överskott tas bort när bärarna är lediga.
+    // Antalet bärare följer byggnaderna: bas + 1 per färdig byggnad + 5, 10 respektive 25 per färdigt lager, lagerhus och depå (definition.carriers, per spelare).
+    // Ju fler byggnader, desto mer att bära: för var carriersGrowEvery:e vanliga byggnad ger nästa en bärare mer (högst maxCarriersPerBuilding per byggnad).
+    // Rivs eller förstörs något minskar antalet igen: överskott tas bort när bärarna är lediga.
     balanceCarriers() {
-      const { baseCarriers, carriersPerBuilding, carriersPerStorage } = cfg(), haulers = new Map();
+      const { baseCarriers, carriersPerBuilding, carriersGrowEvery, maxCarriersPerBuilding, carriersPerStorage } = cfg(), haulers = new Map();
       for (const unit of World.units) if (unit.definition.isHauler) { const list = haulers.get(unit.player); if (list) list.push(unit); else haulers.set(unit.player, [unit]); }
       for (const player of Players.active) {
         const hq = World.hqOf(player);
         if (!hq) continue;
-        let wanted = 0;
+        let wanted = 0, regular = 0;   // regular: vanliga byggnader hittills
         for (const building of this.buildingsOf(player)) {
           if (building.buildProgress < 1 || building === hq) continue;
-          wanted += building.definition.carriers ?? (building.definition.isStorage ? carriersPerStorage : carriersPerBuilding);
+          const own = building.definition.carriers ?? (building.definition.isStorage ? carriersPerStorage : undefined);
+          wanted += own ?? Math.min(maxCarriersPerBuilding, carriersPerBuilding + Math.floor(regular++ / carriersGrowEvery));
         }
         const waiting = (this.lost[player] = (this.lost[player] || []).filter(time => time > (this.time || 0))).length; // dödade, ännu inte ersatta
         const target = Math.max(0, baseCarriers + wanted - waiting);
