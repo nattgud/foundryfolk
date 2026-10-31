@@ -66,37 +66,35 @@
       };
     },
 
-    // Resursikoner (bild eller färgruta) för in-/utbuffert
-    drawResourceIcons(context, stock, x, y) {
-      let iconIndex = 0;
+    // Resursikoner (bild eller färgruta) för in-/utbuffert, aldrig utanför byggnaden. Få resurser: en rad, siffran under ikonen.
+    // Många (t.ex. köket): två rader med mindre ikoner och siffran nere till höger på ikonen. fromBottom: raderna läggs uppåt (inbufferten nere), annars nedåt.
+    drawResourceIcons(context, stock, x, y, fromBottom = false) {
+      const entries = Object.entries(stock).filter(([, count]) => count > 0), width = this.tileSize - 4;
+      const compact = entries.length > Math.floor(width / 8), perRow = compact ? Math.ceil(entries.length / 2) : entries.length;
+      const pitch = Math.min(10, width / perRow), size = compact ? Math.min(7, pitch - 1) : 7;
+      context.font = compact ? "6px sans-serif" : "8px sans-serif";
+      context.textAlign = compact ? "right" : "left";
+      context.textBaseline = compact ? "bottom" : "middle";
+      context.strokeStyle = "rgba(0,0,0,.8)"; context.lineWidth = 2; context.lineJoin = "round";
 
-      for (const resourceId in stock) {
-        const count = stock[resourceId];
-        if (count <= 0) continue;
-
-        const resource = Config.resources[resourceId];
-        const image = Assets.get(resource.image);
-        const iconX = x + 2 + iconIndex * 10;
+      entries.forEach(([resourceId, count], index) => {
+        const resource = Config.resources[resourceId], image = Assets.get(resource.image);
+        const row = compact ? Math.floor(index / perRow) : 0, iconX = x + 2 + (index % perRow) * pitch, iconY = compact ? y + (fromBottom ? 6 - 8 * row : 7 * row) : y;
 
         if (image) {
-          context.drawImage(image, iconX, y, 7, 7);
+          context.drawImage(image, iconX, iconY, size, size);
         } else {
           context.fillStyle = resource.color;
-          context.fillRect(iconX, y, 7, 7);
+          context.fillRect(iconX, iconY, size, size);
         }
 
         if (count > 1) {
-          context.font = "8px sans-serif";
-          context.textAlign = "left";
-          context.textBaseline = "middle";
-          context.strokeStyle = "rgba(0,0,0,.8)"; context.lineWidth = 2; context.lineJoin = "round";
-          context.strokeText(String(count), iconX, y + 10);   // mörk kontur så att siffrorna syns mot byggnadsbilden
+          const textX = compact ? iconX + size + 1 : iconX, textY = compact ? iconY + size + 1 : iconY + 10;
+          context.strokeText(String(count), textX, textY);   // mörk kontur så att siffrorna syns mot byggnadsbilden
           context.fillStyle = "#fff";
-          context.fillText(String(count), iconX, y + 10);
+          context.fillText(String(count), textX, textY);
         }
-
-        iconIndex++;
-      }
+      });
     },
 
     draw() {
