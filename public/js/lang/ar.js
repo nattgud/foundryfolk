@@ -141,6 +141,8 @@
       'The flood has gone down and left something behind': 'انحسر الفيضان وترك شيئًا خلفه',
       'Buildings and units see less far': 'ترى المباني والوحدات أقل مدى',
       'Rips up plants and drops them in piles': 'يقتلع النباتات ويُسقطها أكوامًا',
+      'Supertornado': 'إعصار عملاق',
+      'Rips up plants and terrain twice as fast, over twice the area': 'يقتلع النباتات والتضاريس بسرعة مضاعفة وعلى مساحة مضاعفة',
       'Weather': 'الطقس',
       'The weather and the time of day change on their own. Hold the pointer over the symbol to see the weather and what it does.': 'يتغيّر الطقس ووقت اليوم من تلقاء نفسيهما. ضع المؤشر على الرمز لترى الطقس وتأثيره.',
       'Rain makes plants grow thicker, storms flood the low land by the water for a while and may leave something valuable behind when it recedes, fog shortens how far your buildings see, and a tornado wanders slowly around for 15 to 30 seconds, tearing the plants it passes down bit by bit and dropping them as a few piles you can have carried home. At night the moon is up.': 'يجعل المطر النباتات أكثف، وتغمر العاصفة الأراضي المنخفضة قرب الماء لفترة وقد تترك شيئًا ثمينًا عند انحسارها، ويقصّر الضباب مدى رؤية مبانيك، ويتجول الإعصار ببطء من 15 إلى 30 ثانية فيقتلع النباتات التي يمر بها شيئاً فشيئاً ويُسقطها في بضعة أكوام يمكنك إرسال من يحملها إلى البيت. في الليل يطلع القمر.',

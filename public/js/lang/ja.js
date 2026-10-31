@@ -140,6 +140,8 @@
       'The flood has gone down and left something behind': '水が引き、何かが残された',
       'Buildings and units see less far': '建物とユニットの視界が狭まる',
       'Rips up plants and drops them in piles': '植物を巻き上げ、山にして落とす',
+      'Supertornado': 'スーパー竜巻',
+      'Rips up plants and terrain twice as fast, over twice the area': '2倍の速さ、2倍の範囲で植物と地形を巻き上げる',
       'Weather': '天気',
       'The weather and the time of day change on their own. Hold the pointer over the symbol to see the weather and what it does.': '天気と時間帯は自然に移り変わります。記号にポインターを合わせると、天気とその効果が見られます。',
       'Rain makes plants grow thicker, storms flood the low land by the water for a while and may leave something valuable behind when it recedes, fog shortens how far your buildings see, and a tornado wanders slowly around for 15 to 30 seconds, tearing the plants it passes down bit by bit and dropping them as a few piles you can have carried home. At night the moon is up.': '雨で植物が密に育ち、嵐は水辺の低地をしばらく水没させ、引くときに貴重なものを残すことがあり、霧は建物の視界を狭め、竜巻は15〜30秒ゆっくりさまよい、通り道の植物を少しずつ巻き上げ、いくつかの山にして落とします。山は運ばせて持ち帰れます。夜には月が出ます。',

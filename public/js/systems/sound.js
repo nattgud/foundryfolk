@@ -405,14 +405,13 @@
       const loops = config.loops || {}, dark = Weather.darkness();
       add('day', config.day, 1 - dark);
       add('night', config.night, dark);
-      add('weather:' + Weather.type, loops[Weather.type] && !['tornado', 'volcano'].includes(Weather.type) ? loops[Weather.type] : null, 1);
+      add('weather:' + Weather.type, loops[Weather.type] && !['tornado', 'supertornado', 'volcano'].includes(Weather.type) ? loops[Weather.type] : null, 1);
       // Tornados och vulkaner hörs där de finns: full styrka på skärmen, bleknar utanför den. De närmaste tre.
       const near = [];
       for (const [list, id] of [[Weather.tornadoes, 'tornado'], [Weather.volcanoes, 'volcano']]) {
-        if (!loops[id]) continue;
         for (const source of list) {
-          const heard = hearing(source.x, source.y);
-          if (heard) near.push({ source, id, ...heard });
+          const kind = source.super ? 'supertornado' : id, heard = loops[kind] && hearing(source.x, source.y);   // en supertornado har sitt eget ljud
+          if (heard) near.push({ source, id: kind, ...heard });
         }
       }
       for (const { source, id, level, pan, cut, wet } of near.sort((a, b) => b.level - a.level).slice(0, 3)) add(source, loops[id], level, pan, cut, wet);

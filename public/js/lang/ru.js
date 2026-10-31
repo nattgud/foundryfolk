@@ -141,6 +141,8 @@
       'The flood has gone down and left something behind': 'Наводнение спало и оставило что-то после себя',
       'Buildings and units see less far': 'Здания и юниты видят ближе',
       'Rips up plants and drops them in piles': 'Вырывает растения и сбрасывает их кучами',
+      'Supertornado': 'Супер-торнадо',
+      'Rips up plants and terrain twice as fast, over twice the area': 'Вырывает растения и землю вдвое быстрее, на вдвое большей площади',
       'Weather': 'Погода',
       'The weather and the time of day change on their own. Hold the pointer over the symbol to see the weather and what it does.': 'Погода и время суток меняются сами. Наведите указатель на значок, чтобы увидеть погоду и её действие.',
       'Rain makes plants grow thicker, storms flood the low land by the water for a while and may leave something valuable behind when it recedes, fog shortens how far your buildings see, and a tornado wanders slowly around for 15 to 30 seconds, tearing the plants it passes down bit by bit and dropping them as a few piles you can have carried home. At night the moon is up.': 'Дождь делает растения гуще, буря на время затапливает низины у воды и может оставить что-то ценное, когда вода уходит, туман сокращает обзор ваших зданий, а торнадо медленно блуждает 15–30 секунд, понемногу вырывая растения на пути и сбрасывая их несколькими кучами, которые можно отнести домой. Ночью встаёт луна.',

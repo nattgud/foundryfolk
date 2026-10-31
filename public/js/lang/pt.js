@@ -141,6 +141,8 @@
       'The flood has gone down and left something behind': 'A cheia recuou e deixou algo para trás',
       'Buildings and units see less far': 'Edifícios e unidades veem menos longe',
       'Rips up plants and drops them in piles': 'Arranca plantas e larga-as em montes',
+      'Supertornado': 'Supertornado',
+      'Rips up plants and terrain twice as fast, over twice the area': 'Arranca plantas e terreno duas vezes mais rápido, numa área duas vezes maior',
       'Weather': 'Clima',
       'The weather and the time of day change on their own. Hold the pointer over the symbol to see the weather and what it does.': 'O clima e a hora do dia mudam sozinhos. Passe o ponteiro sobre o símbolo para ver o clima e o que faz.',
       'Rain makes plants grow thicker, storms flood the low land by the water for a while and may leave something valuable behind when it recedes, fog shortens how far your buildings see, and a tornado wanders slowly around for 15 to 30 seconds, tearing the plants it passes down bit by bit and dropping them as a few piles you can have carried home. At night the moon is up.': 'A chuva faz as plantas crescerem mais densas, a tempestade inunda por um tempo as terras baixas junto à água e pode deixar algo valioso quando recua, o nevoeiro encurta o que os seus edifícios veem e um tornado vagueia devagar durante 15 a 30 segundos, arrancando aos poucos as plantas por onde passa e largando-as em alguns montes que pode mandar levar para casa. À noite a lua está no céu.',

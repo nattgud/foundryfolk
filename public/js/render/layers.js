@@ -721,7 +721,8 @@
       context.globalAlpha = Math.max(0, Math.min(1, fade));
       for (let ring = 0; ring < 7; ring++) {
         const k = ring / 6, rx = reach * (.25 + .75 * k) * grow, y = cy - (1 - k) * reach * 1.6 * grow, sway = Math.sin(now * 3 + ring) * size * .15;
-        context.fillStyle = `rgba(${95 + ring * 12},${100 + ring * 12},${108 + ring * 12},.6)`;
+        const tone = tornado.super ? -45 : 0;   // en supertornado är mörkare
+        context.fillStyle = `rgba(${95 + tone + ring * 12},${100 + tone + ring * 12},${108 + tone + ring * 12},.6)`;
         context.beginPath(); context.ellipse(cx + sway, y, rx, rx * .32, 0, 0, Math.PI * 2); context.fill();
       }
       // Det som tornadon dragit upp virvlar runt i tratten: en bild per vara (högst 28, fördelade efter mängd, minst en av varje)

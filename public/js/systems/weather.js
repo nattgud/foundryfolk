@@ -7,6 +7,7 @@
               (Trollformeln Tempest gör samma sak men lokalt och bara en stund, se spawnFlood.)
      fog      synfältet från byggnader och enheter krymper (Vision läser Weather.visionFactor)
      tornado  rycker upp växter inom några rutor och släpper dem som några högar när den dött ut
+    supertornado  uppstår när två tornados nuddar varandra: dubbelt så stor, river dubbelt så fort och varar tre gånger så länge (se merge)
      volcano  sällsynt händelse (inte en väderruta): lava över vatten mellan två landmassor (blir gräs) eller över land vid berg (blir malm)
    Rutnätet skannas bara i de chunkar spelaren ser. Ritas av lagret 'weather' (render/layers.js). Sparas med spelet. */
 (function (CityBuilder) {
@@ -217,10 +218,27 @@
         tornado.angle = (tornado.angle ?? 0) + (Utils.random() - 0.5) * 2 * settings.turn * deltaSeconds;   // slingrar sakta
         const speed = tornado.speed ?? 0.5;
         tornado.x += Math.cos(tornado.angle) * speed * deltaSeconds; tornado.y += Math.sin(tornado.angle) * speed * deltaSeconds;
-        if ((tornado.tick = (tornado.tick ?? settings.tickSeconds) - deltaSeconds) <= 0) { tornado.tick += settings.tickSeconds; this.rip(tornado); }
+        if ((tornado.tick = (tornado.tick ?? settings.tickSeconds) - deltaSeconds) <= 0) { tornado.tick += settings.tickSeconds / (tornado.rate ?? 1); this.rip(tornado); }
         if (tornado.age >= (tornado.life ?? 7)) { this.drop(tornado); tornado.done = true; }
       }
-      if (this.tornadoes.some(tornado => tornado.done)) this.tornadoes = this.tornadoes.filter(tornado => !tornado.done);
+      const list = this.tornadoes;
+      for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {   // två som nuddar varandra blir en supertornado
+        const a = list[i], b = list[j];
+        if (!a.super && !b.super && !a.merged && !b.merged && Utils.distance(a.x - b.x, a.y - b.y) <= a.radius + b.radius) this.merge(a, b);
+      }
+      if (list.some(tornado => tornado.done || tornado.merged)) this.tornadoes = list.filter(tornado => !tornado.done && !tornado.merged);
+    },
+
+    // Två tornados blir en supertornado mitt emellan dem: större, river fortare, varar längre (se settings.weather.tornado.super), tar med sig det de fångat
+    // och gör vädret till 'supertornado' så länge den virvlar
+    merge(a, b) {
+      const settings = Config.settings.weather.tornado, big = settings.super, collected = { ...a.collected }, life = big.life * Math.max(a.life ?? 7, b.life ?? 7);
+      for (const resource in b.collected) collected[resource] = (collected[resource] || 0) + b.collected[resource];
+      this.tornadoes.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, player: a.player, radius: big.radius * Math.max(a.radius, b.radius), age: 0, collected, life, speed: between(settings.speed), angle: a.angle, tick: settings.tickSeconds / big.rate, rate: big.rate, super: true });
+      a.merged = b.merged = true;
+      this.type = 'supertornado';
+      this.left = Math.max(this.left, life);
+      CityBuilder.Sound?.play('weather.supertornado');
     },
 
     /* ---------- Vulkaner ---------- */

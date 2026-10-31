@@ -135,6 +135,7 @@ CityBuilder.Config.settings = {
         // storm: 'sounds/weather/storm_start.mp3',
         // fog: 'sounds/weather/fog_start.mp3',
         // tornado: 'sounds/weather/tornado_start.mp3',
+        // supertornado: 'sounds/weather/supertornado_start.mp3',   // när två tornados blir en
         // volcano: 'sounds/weather/volcano_start.mp3',   // vid utbrottet
         thunder: 'sounds/weather/thunder_start.mp3',         // vid varje blixt
       },
@@ -143,6 +144,7 @@ CityBuilder.Config.settings = {
         storm: { file: 'sounds/weather/warning_bell.mp3', volume: 0.3 },
         // fog: 'sounds/weather/fog_loop.mp3',
         tornado: { file: 'sounds/weather/warning_bell.mp3', volume: 0.4 },
+        // supertornado: 'sounds/weather/supertornado_loop.mp3',   // loopas vid varje supertornado som syns
         volcano: { file: 'sounds/weather/warning_bell.mp3', volume: 0.3 },
       },
       day: 'sounds/day.mp3',                 // loopas dagtid
@@ -216,6 +218,7 @@ CityBuilder.Config.settings = {
       radius: [2, 2],                      // rutor runt mitten som den river i
       life: [15, 20], longChance: 0.2, longLife: 30,   // hur länge den virvlar runt (ibland längre)
       speed: [0.35, 0.65],                 // rutor per sekund (en per ca 2 s), slumpad för varje tornado
+      super: { radius: 2, rate: 2, life: 3 },   // två tornados som nuddar varandra blir en supertornado: gånger så stor radie, gånger så ofta den river, gånger så lång livslängd (av den längsta av de två)
       turn: 0.8,                           // hur mycket färdriktningen slingrar (radianer per sekund, slumpmässigt)
       tickSeconds: 1, takes: 1,            // var sekund minskar varje växtruta inom radien med 'takes'; är den tom blir rutan gräs
       also: {                              // mer än växter: sand, vatten och träsk tas också (gives = det som virvlar med och sedan landar igen), med egen fart per tick

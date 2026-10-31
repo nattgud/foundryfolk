@@ -2980,10 +2980,10 @@
       const volcano = Weather.volcanoes.length > 0, key = night + type + volcano + I18n().language;
       if (!badge || badge.dataset.key === key) return;
       badge.dataset.key = key;
-      const icons = { clear: '', rain: '🌧', storm: '⛈', fog: '🌫', tornado: '🌪' };
-      const effects = { clear: 'No effect', rain: 'Plants grow thicker', storm: 'Floods the shores for a while', fog: 'Buildings and units see less far', tornado: 'Rips up plants and drops them in piles' };
+      const icons = { clear: '', rain: '🌧', storm: '⛈', fog: '🌫', tornado: '🌪', supertornado: '🌪🌪' };
+      const effects = { clear: 'No effect', rain: 'Plants grow thicker', storm: 'Floods the shores for a while', fog: 'Buildings and units see less far', tornado: 'Rips up plants and drops them in piles', supertornado: 'Rips up plants and terrain twice as fast, over twice the area' };
       badge.textContent = (night ? '🌙' : '☀️') + icons[type] + (volcano ? '🌋' : '');
-      badge.title = `${t(night ? 'Night' : 'Day')} · ${t({ clear: 'Clear', rain: 'Rain', storm: 'Storm', fog: 'Fog', tornado: 'Tornado' }[type])}: ${t(effects[type])}${volcano ? ` · ${t('Volcano')}: ${t('Lava destroys buildings, then cools into land or ore')}` : ''}`;
+      badge.title = `${t(night ? 'Night' : 'Day')} · ${t({ clear: 'Clear', rain: 'Rain', storm: 'Storm', fog: 'Fog', tornado: 'Tornado', supertornado: 'Supertornado' }[type])}: ${t(effects[type])}${volcano ? ` · ${t('Volcano')}: ${t('Lava destroys buildings, then cools into land or ore')}` : ''}`;
     },
 
     // Vad en formel gör, i en mening (verktygstips och byggnadsbeskrivning)

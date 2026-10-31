@@ -140,6 +140,8 @@
       'The flood has gone down and left something behind': '洪水退去，留下了一些东西',
       'Buildings and units see less far': '建筑和单位的视野变小',
       'Rips up plants and drops them in piles': '卷起植物并把它们丢成几堆',
+      'Supertornado': '超级龙卷风',
+      'Rips up plants and terrain twice as fast, over twice the area': '以两倍的速度、在两倍的范围内卷起植物和地形',
       'Weather': '天气',
       'The weather and the time of day change on their own. Hold the pointer over the symbol to see the weather and what it does.': '天气和一天中的时间会自行变化。把指针放在符号上可查看天气及其作用。',
       'Rain makes plants grow thicker, storms flood the low land by the water for a while and may leave something valuable behind when it recedes, fog shortens how far your buildings see, and a tornado wanders slowly around for 15 to 30 seconds, tearing the plants it passes down bit by bit and dropping them as a few piles you can have carried home. At night the moon is up.': '下雨会让植物长得更密，风暴会让水边的低地暂时被淹，退去时可能留下珍贵的东西，雾会缩短建筑的视野，龙卷风会缓慢游荡15到30秒，一点点卷走路过的植物，并把它们丢成几堆，你可以让人搬回家。夜里月亮升起。',
