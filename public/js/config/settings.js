@@ -74,6 +74,8 @@ CityBuilder.Config.settings = {
 
       // MONSTER
       slime_attack: "sounds/monster/slime_attack.mp3",
+      slime_hit: "sounds/monster/slime_hit.mp3",
+      slime_die: "sounds/monster/slime_die.mp3",
       spider_attack: "sounds/monster/spider_attack.mp3",
       maneater_attack: "sounds/monster/maneater_attack.mp3",
       golem_attack: "sounds/monster/golem_attack.mp3",
