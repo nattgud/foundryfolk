@@ -364,7 +364,11 @@
     },
 
     // Autosparningens plats: banorna och en egen bana har var sin, så de skriver inte över varandra
-    slot() { return CityBuilder.Levels?.isCustom() ? 'autocustom' : 'autosave'; },
+    // Medan spelet körs gäller kartan som körs; en annan flik som spelar en egen karta får inte styra vart den här sparar. Före start (prepareStart) gäller det som är lagrat.
+    slot() {
+      const levels = CityBuilder.Levels;
+      return (this.ready ? levels?.current.custom : levels?.isCustom()) ? 'autocustom' : 'autosave';
+    },
 
     // Nytt spel: ta bort autosparningen (slot: den som ska tas bort, annars den som hör till spelet just nu) och starta om.
     // Manuella sparningar rörs inte.

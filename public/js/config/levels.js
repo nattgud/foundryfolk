@@ -899,7 +899,7 @@
 
   // Framstegen hör bara till en sparning (se restoreProgress): varje bana och varje nytt spel börjar med tomma mål.
   const applyProgress = saved => {
-    const same = saved && saved.run === runSeed && saved.level === state.info.key;
+    const same = saved && (state.info.custom || saved.run === runSeed) && saved.level === state.info.key;   // en egen karta hör inte till banornas körning: ett nytt spel på banorna ska inte nollställa den
     Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, casts: same ? saved.casts || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
   };
   const resetProgress = () => Object.assign(progress, { latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, destroyed: {}, rivalsDown: 0, won: false });
