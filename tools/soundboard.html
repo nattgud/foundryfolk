@@ -79,15 +79,30 @@ const master = document.getElementById('master');
 const volumeOf = row => saved[row.path] ?? row.base;
 const apply = row => { const element = players.get(row); if (element) element.volume = Math.min(1, volumeOf(row) * Number(master.value)); };
 
-const stop = row => { const element = players.get(row); if (!element) return; element.pause(); players.delete(row); row.el.classList.remove('on'); row.play.textContent = '▶'; };
-const start = (row, file) => {
+const GAP_MS = 50;   // som i spelet (LOOP_GAP_MS i sound.js): längsta slumpade paus mellan två varv av en loop
+const choose = row => (row.pick && row.pick.value) || row.files[Math.floor(Math.random() * row.files.length)];   // slump (nytt för varje varv, som spelet) eller en bestämd fil
+
+const stop = row => {
+  const element = players.get(row);
+  if (!element) return;
+  clearTimeout(row.timer);
+  element.onended = null;
+  element.pause();
+  players.delete(row);
+  row.el.classList.remove('on');
+  row.play.textContent = '▶';
+};
+// Ett varv. Är loop ibockad väntar den en slumpad stund (högst GAP_MS) och börjar om med en ny slumpad fil
+const start = row => {
   stop(row);
-  const element = new Audio(ROOT + file);
-  element.loop = row.loop.checked;
-  players.set(row, element);
-  apply(row);
-  element.onended = () => stop(row);
-  element.play().catch(() => stop(row));
+  const run = () => {
+    const element = new Audio(ROOT + choose(row));
+    players.set(row, element);
+    apply(row);
+    element.onended = () => { if (row.loop.checked) row.timer = setTimeout(run, Math.random() * GAP_MS); else stop(row); };
+    element.play().catch(() => stop(row));
+  };
+  run();
   row.el.classList.add('on');
   row.play.textContent = '■';
 };
@@ -114,8 +129,7 @@ for (const row of rows) {
   const value = Object.assign(document.createElement('div'), { className: 'value', textContent: Number(slider.value).toFixed(2) });
   row.slider = slider; row.value = value;
   slider.oninput = () => { saved[row.path] = Number(slider.value); value.textContent = Number(slider.value).toFixed(2); save(); apply(row); };
-  row.loop.onchange = () => { const element = players.get(row); if (element) element.loop = row.loop.checked; };
-  row.play.onclick = () => players.has(row) ? stop(row) : start(row, (row.pick && row.pick.value) || row.files[Math.floor(Math.random() * row.files.length)]);
+  row.play.onclick = () => players.has(row) ? stop(row) : start(row);
   el.append(row.play, name, controls, slider, value);
   board.append(el);
 }
