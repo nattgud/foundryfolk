@@ -135,10 +135,10 @@ CityBuilder.Config.settings = {
       },
       loops: {                                          // loopas så länge vädret varar (tornado och volcano bara där de finns, och hörs på skärmen)
         rain: 'sounds/weather/rain_loop.mp3',
-        storm: { file: 'sounds/weather/warning_bell.mp3', volume: 0.5 },
+        storm: { file: 'sounds/weather/warning_bell.mp3', volume: 0.3 },
         // fog: 'sounds/weather/fog_loop.mp3',
-        tornado: { file: 'sounds/weather/warning_bell.mp3', volume: 0.5 },
-        volcano: { file: 'sounds/weather/warning_bell.mp3', volume: 0.5 },
+        tornado: { file: 'sounds/weather/warning_bell.mp3', volume: 0.4 },
+        volcano: { file: 'sounds/weather/warning_bell.mp3', volume: 0.3 },
       },
       day: 'sounds/day.mp3',                 // loopas dagtid
       night: 'sounds/night.mp3',             // loopas nattetid
@@ -178,7 +178,7 @@ CityBuilder.Config.settings = {
     nightLight: { building: 2.5, unit: 1, fade: 1 },   // ljust som på dagen på så många rutor runt spelarens byggnader och människor (djur lyser inte), sedan mjuk övergång på 'fade' rutor
     dayLength: 480, startFraction: 0.12,   // ett dygn i speltid, och var i dygnet ett nytt spel börjar (0 = gryning)
     minSeconds: 30, maxSeconds: 180,
-    chances: { clear: 52, rain: 18, storm: 10, fog: 14, tornado: 4, volcano: 2 },   // volcano: ingen väderruta utan en händelse; vädret blir klart medan lavan rinner
+    chances: { clear: 52, rain: 18, storm: 4, fog: 10, tornado: 3, volcano: 2 },   // volcano: ingen väderruta utan en händelse; vädret blir klart medan lavan rinner
     growth: { tree: 'wood', apple_tree: 'apples', berry_bush: 'berries', herbs: 'herbs', mushrooms: 'mushrooms' },
     scanSeconds: 2,
     scanSpreadSeconds: 1,                  // en skanning delas på så lång speltid (några chunkar per steg), så att kostnaden blir jämn
