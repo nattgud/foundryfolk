@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Fog now muffles the sound effects too: you hear less far from the middle of the screen, and the treble fades the further away a sound is',
       'Planters work twice as fast, which helps on levels where trees are scarce',
       'New versions are fetched in the background and installed seamlessly while the tab is hidden or the main menu is open',
       'The gold, silver, gemstone, salt and sulfur mines now accept bread and fish as well as meals',

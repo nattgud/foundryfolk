@@ -182,7 +182,14 @@ CityBuilder.Config.settings = {
       amount: 0.5,                         // fyndets mängd som andel av terrängens normala
       finds: { salt_ore: 4, silver_ore: 3, gold_ore: 2, gemstone: 1, crystal: 1 },   // vilka fynd, och hur ofta (bara sådant spelaren låst upp en byggnad för)
     },
-    fog: { vision: 0.55 },                 // andel av synfältet som finns kvar
+    fog: {
+      vision: 0.55,                        // andel av synfältet som finns kvar
+      hearing: {                           // hörseln i dimma (systems/sound.js): mjuk övergång in och ut ur dimman
+        reach: 0.5,                        // andel av hörbart avstånd från skärmens mitt som finns kvar
+        muffle: 3000,                      // Hz: alla ljudeffekter dämpas till så här hög diskant
+        farMuffle: 500,                    // Hz: diskanten ljud längst bort (skärmens hörn) dämpas till, mindre och mindre ju närmare mitten
+      },
+    },
     tornado: {
       every: [15, 25],                     // sekunder mellan nya tornados medan vädret varar
       radius: [2, 2],                      // rutor runt mitten som den river i

@@ -144,6 +144,7 @@
     drop: { synth: render(0.04, (time, p) => Math.sin(TAU * 900 * time) * Math.pow(1 - p, 3) * 0.3), volume: 0.5, cooldown: 0.05, maxVoices: 4 },
   };
 
+  const OPEN = 20000;             // Hz: filter som släpper igenom allt hörbart
   const AMBIENT_MS = 100;         // hur ofta loopar anpassas efter väder, tid på dygnet och kamera
   const spec = value => typeof value === 'string' ? { file: value } : Array.isArray(value) ? { files: value } : value;   // en fil, flera filer (en slumpas varje gång) eller { file | files, volume }
   const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
@@ -158,6 +159,7 @@
     mood: 'calm',            // vilket läge musiken har just nu: calm | battle | disaster (updateMood)
     hazards: 0,              // antal pågående tornados och utbrott förra gången (ett nytt startar katastrofmusiken)
     hazardUntil: 0,
+    dull: 0,                 // 0-1: hur dämpad hörseln är (dimma), ändras mjukt i updateAmbient
 
     // Anropas en gång av UI.init
     install() {
@@ -228,7 +230,10 @@
       });
       this.sfxGain = context.createGain();
       this.musicGain = context.createGain();
-      this.sfxGain.connect(context.destination);
+      this.muffle = context.createBiquadFilter();   // dimma: alla effekter blir dova (updateAmbient)
+      this.muffle.type = 'lowpass';
+      this.muffle.frequency.value = OPEN;
+      this.sfxGain.connect(this.muffle).connect(context.destination);
       this.musicGain.connect(context.destination);
       this.applySettings();
       this.preload();
@@ -290,12 +295,16 @@
       return { x: ((x + 0.5) * renderer.tileSize - renderer.camera.x) * renderer.zoom, y: ((y + 0.5) * renderer.tileSize - renderer.camera.y) * renderer.zoom };
     },
 
-    screenPosition(x, y) {
+    // Var ett ljud hörs: pan, hur långt utanför bild det är (px) och diskanten som släpps igenom (Hz). null utan kamera.
+    // I dimma (this.dull) ligger allt längre från skärmens mitt, och diskanten dämpas mer ju längre bort ljudet är.
+    locate(x, y) {
       const point = this.screenPoint(x, y);
-      if (!point) return { pan: 0 };
-      const { x: screenX, y: screenY } = point, margin = 60;
-      if (screenX < -margin || screenY < -margin || screenX > innerWidth + margin || screenY > innerHeight + margin) return null;
-      return { pan: clamp((screenX / innerWidth - 0.5) * 1.2, -0.7, 0.7) };
+      if (!point) return null;
+      const fog = Config.settings.weather.fog.hearing, centerX = innerWidth / 2, centerY = innerHeight / 2, reach = 1 - this.dull * (1 - fog.reach);
+      const farX = centerX + (point.x - centerX) / reach, farY = centerY + (point.y - centerY) / reach;
+      const outside = Math.hypot(Math.max(0, -farX, farX - innerWidth), Math.max(0, -farY, farY - innerHeight));
+      const far = Math.min(1, Math.hypot(farX - centerX, farY - centerY) / Math.hypot(centerX, centerY));
+      return { outside, pan: clamp((point.x / innerWidth - 0.5) * 1.2, -0.7, 0.7), cut: OPEN * (fog.farMuffle / OPEN) ** (this.dull * far) };
     },
 
     // options: { volume = 1, x, y }
@@ -307,11 +316,10 @@
       const now = context.currentTime;
       if (now - definition.last < definition.cooldown) return;
 
-      let pan = 0;
+      let spot = null;
       if (options.x !== undefined) {
-        const position = this.screenPosition(options.x, options.y);
-        if (!position) return;
-        pan = position.pan;
+        spot = this.locate(options.x, options.y);
+        if (spot && spot.outside > 60) return;   // utanför bild
       }
       const buffer = this.pickBuffer(definition);
       if (!buffer) return;
@@ -322,13 +330,19 @@
       const gain = context.createGain();
       gain.gain.value = (options.volume ?? 1) * definition.volume;
       source.connect(gain);
-      if (pan && context.createStereoPanner) {
-        const panner = context.createStereoPanner();
-        panner.pan.value = pan;
-        gain.connect(panner).connect(this.sfxGain);
-      } else {
-        gain.connect(this.sfxGain);
+      let node = gain;
+      if (spot && this.dull > 0.01) {   // dimma: längre bort låter dovare
+        const filter = context.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = spot.cut;
+        node = node.connect(filter);
       }
+      if (spot && spot.pan && context.createStereoPanner) {
+        const panner = context.createStereoPanner();
+        panner.pan.value = spot.pan;
+        node = node.connect(panner);
+      }
+      node.connect(this.sfxGain);
 
       definition.last = now; definition.voices++; this.voices++;
       source.onended = () => { definition.voices--; this.voices--; };
@@ -342,13 +356,11 @@
     ambientTargets() {
       const Weather = CityBuilder.Weather, config = this.weather, targets = new Map();
       if (!Weather || !config || !this.settings.sfxOn || this.settings.sfxVolume <= 0 || !CityBuilder.World?.headquarters) return targets;
-      const add = (key, value, level, pan = 0) => { const file = value && spec(value); if (file && level > 0.01) targets.set(key, { ...file, volume: file.volume ?? 1, level, pan }); };
-      // Hur högt något på kartan hörs: full styrka på skärmen, bleknar utanför den
+      const add = (key, value, level, pan = 0, cut = OPEN) => { const file = value && spec(value); if (file && level > 0.01) targets.set(key, { ...file, volume: file.volume ?? 1, level, pan, cut }); };
+      // Hur högt något på kartan hörs: full styrka på skärmen, bleknar utanför den (i dimma krymper det, se locate)
       const hearing = (x, y) => {
-        const point = this.screenPoint(x, y);
-        if (!point) return null;
-        const outside = Math.hypot(Math.max(0, -point.x, point.x - innerWidth), Math.max(0, -point.y, point.y - innerHeight));
-        return { level: clamp(1 - outside / (Math.min(innerWidth, innerHeight) * 0.7), 0, 1), pan: clamp((point.x / innerWidth - 0.5) * 1.2, -0.7, 0.7) };
+        const spot = this.locate(x, y);
+        return spot && { level: clamp(1 - spot.outside / (Math.min(innerWidth, innerHeight) * 0.7), 0, 1), pan: spot.pan, cut: spot.cut };
       };
       const loops = config.loops || {}, dark = Weather.darkness();
       add('day', config.day, 1 - dark);
@@ -363,13 +375,13 @@
           if (heard) near.push({ source, id, ...heard });
         }
       }
-      for (const { source, id, level, pan } of near.sort((a, b) => b.level - a.level).slice(0, 3)) add(source, loops[id], level, pan);
+      for (const { source, id, level, pan, cut } of near.sort((a, b) => b.level - a.level).slice(0, 3)) add(source, loops[id], level, pan, cut);
       // Pågående ljud (LOOPING): de tre närmaste platserna
       for (const [id, looping] of Object.entries(LOOPING)) {
         const definition = this.sounds.get(id);
         if (!definition?.loop) continue;
         const heard = looping.sources().map(source => ({ source, ...hearing(source.x, source.y) })).filter(entry => entry.level > 0.01);
-        for (const { source, level, pan } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) targets.set(source.key, { definition, volume: definition.volume, level, pan, fade: looping.fade });
+        for (const { source, level, pan, cut } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) targets.set(source.key, { definition, volume: definition.volume, level, pan, cut, fade: looping.fade });
       }
       // Byggnadernas arbetsloopar (audio.buildings.<byggnad>.loop): en loop vid varje byggnad som arbetar just nu och syns, de tre närmaste
       if (this.workLoops?.size) {
@@ -379,9 +391,9 @@
           const spot = hearing(building.x, building.y);
           if (spot && spot.level > 0.01) heard.push({ building, ...spot });
         }
-        for (const { building, level, pan } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) {
+        for (const { building, level, pan, cut } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) {
           const definition = this.sounds.get('loop.' + building.type);
-          targets.set(building, { definition, volume: definition.volume, level, pan, fade: 0.3 });
+          targets.set(building, { definition, volume: definition.volume, level, pan, cut, fade: 0.3 });
         }
       }
       return targets;
@@ -402,15 +414,20 @@
       const context = this.context;
       if (!context || context.state !== 'running') return;
       this.loops ||= new Map();
-      const fade = this.weather.fade ?? 3, now = context.currentTime, targets = this.ambientTargets();
+      const fade = this.weather.fade ?? 3, now = context.currentTime;
+      this.dull += ((CityBuilder.Weather?.type === 'fog' ? 1 : 0) - this.dull) * 0.05;   // dimma: hörseln dämpas och återhämtar sig mjukt (ca 2 s)
+      this.muffle.frequency.setTargetAtTime(OPEN * (Config.settings.weather.fog.hearing.muffle / OPEN) ** this.dull, now, 0.2);
+      const targets = this.ambientTargets();
       for (const [key, target] of targets) {
         let loop = this.loops.get(key);
         const buffer = loop ? null : target.definition ? this.pickBuffer(target.definition) : this.loopBuffer(target.file);   // en ny loop med flera filer slumpar en av dem
         if (!loop && buffer) {
-          const gain = context.createGain(), panner = context.createStereoPanner ? context.createStereoPanner() : null;
+          const gain = context.createGain(), panner = context.createStereoPanner ? context.createStereoPanner() : null, filter = context.createBiquadFilter();
           gain.gain.value = 0;   // börjar tyst och tonas in
-          (panner ? gain.connect(panner) && panner : gain).connect(this.sfxGain);
-          loop = { source: null, timer: 0, stopped: false, gain, panner, silentSince: null, fade: target.fade ?? fade, pick: () => target.definition ? this.pickBuffer(target.definition) : buffer };   // flera filer: en ny slumpas varje varv
+          filter.type = 'lowpass';
+          filter.frequency.value = target.cut;
+          (panner ? gain.connect(panner) && panner : gain).connect(filter).connect(this.sfxGain);
+          loop = { source: null, timer: 0, stopped: false, gain, panner, filter, silentSince: null, fade: target.fade ?? fade, pick: () => target.definition ? this.pickBuffer(target.definition) : buffer };   // flera filer: en ny slumpas varje varv
           this.runLoop(loop, buffer, Math.random());
           this.loops.set(key, loop);
         }
@@ -419,6 +436,7 @@
         loop.fade = target.fade ?? fade;
         loop.gain.gain.setTargetAtTime(target.level * target.volume, now, loop.fade / 3);
         if (loop.panner) loop.panner.pan.setTargetAtTime(target.pan, now, 0.2);
+        loop.filter.frequency.setTargetAtTime(target.cut, now, 0.3);
       }
       // Det som inte längre ska höras tonas ut och stoppas när det blivit tyst
       for (const [key, loop] of this.loops) {
