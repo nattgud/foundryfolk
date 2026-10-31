@@ -11,7 +11,7 @@ CityBuilder.Config.settings = {
   animalPerChunk: 5,
   // Förökning: ju färre andra djur inom radius rutor, desto oftare får ett djur ungar (upp till 1 + boost gånger oftare, inga alls
   // när capacity djur finns i närheten). Ungen föds högst dispersal rutor bort.
-  animalBreeding: { radius: 12, capacity: 6, boost: 6, dispersal: 6 },
+  animalBreeding: { radius: 12, capacity: 6, boost: 8, dispersal: 6 },
   animalTreeSpreadChance: 0.005,
   // Verktyg går inte åt (de följer med huset och kommer tillbaka vid rivning), men varje hus som kräver ett behöver ett eget. Antalen räcker till
   // de första banornas byggnader, innan smederna öppnar; hammare går åt som byggkostnad.

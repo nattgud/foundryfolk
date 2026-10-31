@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Animals breed about a third faster where they are few, so areas emptied by hunters recover quicker',
       'Fixed the goal counters of a custom map starting over after you had started a new game on the levels, and the autosave of one tab being written over the other when the levels and a custom map were open in two tabs at once',
       'Each monster species can have its own sounds for being hurt and for dying',
       'Many more monsters from level 35 (and on custom maps): some roam alone, others live in small flocks that are best avoided early on and cleared out later; flocks grow on later levels',
