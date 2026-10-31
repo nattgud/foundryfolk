@@ -122,14 +122,14 @@ CityBuilder.Config.settings = {
         // fog: 'sounds/weather/fog_start.mp3',
         // tornado: 'sounds/weather/tornado_start.mp3',
         // volcano: 'sounds/weather/volcano_start.mp3',   // vid utbrottet
-        // thunder: 'sounds/weather/thunder.mp3',         // vid varje blixt
+        thunder: 'sounds/weather/thunder_start.mp3',         // vid varje blixt
       },
       loops: {                                          // loopas så länge vädret varar (tornado och volcano bara där de finns, och hörs på skärmen)
-        // rain: 'sounds/weather/rain_loop.mp3',
-        // storm: 'sounds/weather/storm_loop.mp3',
+        rain: 'sounds/weather/rain_loop.mp3',
+        storm: 'sounds/weather/warning_bell.mp3',
         // fog: 'sounds/weather/fog_loop.mp3',
-        // tornado: { file: 'sounds/weather/tornado_loop.mp3', volume: 0.9 },
-        // volcano: 'sounds/weather/volcano_loop.mp3',
+        tornado: "sounds/weather/warning_bell.mp3",
+        volcano: 'sounds/weather/warning_bell.mp3',
       },
       day: 'sounds/day.mp3',                 // loopas dagtid
       night: 'sounds/night.mp3',             // loopas nattetid
