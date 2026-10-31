@@ -50,6 +50,7 @@
       },
     },
   };
+  const LOOP_GAP_MS = 50;   // längsta slumpade paus mellan två varv av en loop (samma ljud): gör att loopar låter lite mer levande
   const MAX_VOICES = 24; // samtidiga effekter totalt (mobilvänligt)
   const TAU = Math.PI * 2;
 
@@ -406,13 +407,11 @@
         let loop = this.loops.get(key);
         const buffer = loop ? null : target.definition ? this.pickBuffer(target.definition) : this.loopBuffer(target.file);   // en ny loop med flera filer slumpar en av dem
         if (!loop && buffer) {
-          const source = context.createBufferSource(), gain = context.createGain(), panner = context.createStereoPanner ? context.createStereoPanner() : null;
-          source.buffer = buffer; source.loop = true;
+          const gain = context.createGain(), panner = context.createStereoPanner ? context.createStereoPanner() : null;
           gain.gain.value = 0;   // börjar tyst och tonas in
-          source.connect(gain);
           (panner ? gain.connect(panner) && panner : gain).connect(this.sfxGain);
-          source.start(0, Math.random() * buffer.duration);
-          loop = { source, gain, panner, silentSince: null, fade: target.fade ?? fade };
+          loop = { source: null, timer: 0, stopped: false, gain, panner, silentSince: null, fade: target.fade ?? fade, pick: () => target.definition ? this.pickBuffer(target.definition) : buffer };   // flera filer: en ny slumpas varje varv
+          this.runLoop(loop, buffer, Math.random());
           this.loops.set(key, loop);
         }
         if (!loop) continue;
@@ -426,8 +425,26 @@
         if (targets.has(key)) continue;
         loop.gain.gain.setTargetAtTime(0, now, loop.fade / 3);
         loop.silentSince ??= now;
-        if (now - loop.silentSince > loop.fade * 1.5) { loop.source.stop(); loop.gain.disconnect(); this.loops.delete(key); }
+        if (now - loop.silentSince > loop.fade * 1.5) { this.stopLoop(loop); this.loops.delete(key); }
       }
+    },
+
+    // Ett varv av en loop (börjar på 'offset' av ljudet). När varvet är slut väntar loopen en slumpad stund (högst LOOP_GAP_MS) och börjar om.
+    runLoop(loop, buffer = loop.pick(), offset = 0) {
+      if (!buffer) return;
+      const source = this.context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(loop.gain);
+      source.start(0, offset * buffer.duration);
+      source.onended = () => { if (!loop.stopped) loop.timer = setTimeout(() => this.runLoop(loop), Math.random() * LOOP_GAP_MS); };
+      loop.source = source;
+    },
+
+    stopLoop(loop) {
+      loop.stopped = true;
+      clearTimeout(loop.timer);
+      loop.source?.stop();
+      loop.gain.disconnect();
     },
 
     /* ---------- Musik ---------- */
