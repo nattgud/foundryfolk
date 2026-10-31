@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Sounds far from the middle of the screen now get an echo, so they sound distant and mysterious; strongest in fog',
       'Fog now muffles the sound effects too: you hear less far from the middle of the screen, and the treble fades the further away a sound is',
       'Planters work twice as fast, which helps on levels where trees are scarce',
       'New versions are fetched in the background and installed seamlessly while the tab is hidden or the main menu is open',

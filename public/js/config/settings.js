@@ -187,7 +187,14 @@ CityBuilder.Config.settings = {
       hearing: {                           // hörseln i dimma (systems/sound.js): mjuk övergång in och ut ur dimman
         reach: 0.5,                        // andel av hörbart avstånd från skärmens mitt som finns kvar
         muffle: 3000,                      // Hz: alla ljudeffekter dämpas till så här hög diskant
+        center: 0.25,                      // andel av dämpning och eko som redan finns mitt på skärmen i dimma (resten växer med avståndet)
         farMuffle: 500,                    // Hz: diskanten ljud längst bort (skärmens hörn) dämpas till, mindre och mindre ju närmare mitten
+        echo: {                            // eko (efterklang) som gör avlägsna ljud mystiska: ju längre från mitten, desto mer eko och mindre direktljud
+          seconds: 3,                      // efterklangens längd (mörk: diskanten klingar av först)
+          predelay: 0.06,                  // s innan ekot hörs: ger känsla av avstånd
+          clear: 0.15,                     // andel eko längst bort i klart väder (0 = inget)
+          fog: 0.7,                        // och i dimma
+        },
       },
     },
     tornado: {

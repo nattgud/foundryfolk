@@ -144,6 +144,7 @@
     drop: { synth: render(0.04, (time, p) => Math.sin(TAU * 900 * time) * Math.pow(1 - p, 3) * 0.3), volume: 0.5, cooldown: 0.05, maxVoices: 4 },
   };
 
+  const DRY_LOSS = 0.5;           // hur mycket direktljudet minskar när ekot är som störst (1 = helt borta)
   const OPEN = 20000;             // Hz: filter som släpper igenom allt hörbart
   const AMBIENT_MS = 100;         // hur ofta loopar anpassas efter väder, tid på dygnet och kamera
   const spec = value => typeof value === 'string' ? { file: value } : Array.isArray(value) ? { files: value } : value;   // en fil, flera filer (en slumpas varje gång) eller { file | files, volume }
@@ -234,6 +235,7 @@
       this.muffle.type = 'lowpass';
       this.muffle.frequency.value = OPEN;
       this.sfxGain.connect(this.muffle).connect(context.destination);
+      this.echo = this.createEcho();
       this.musicGain.connect(context.destination);
       this.applySettings();
       this.preload();
@@ -295,16 +297,45 @@
       return { x: ((x + 0.5) * renderer.tileSize - renderer.camera.x) * renderer.zoom, y: ((y + 0.5) * renderer.tileSize - renderer.camera.y) * renderer.zoom };
     },
 
-    // Var ett ljud hörs: pan, hur långt utanför bild det är (px) och diskanten som släpps igenom (Hz). null utan kamera.
-    // I dimma (this.dull) ligger allt längre från skärmens mitt, och diskanten dämpas mer ju längre bort ljudet är.
+    // Gemensam efterklang för avlägsna ljud: förfördröjning -> faltning med en genererad, mörk impuls -> samma filter som övriga effekter.
+    // Ljud skickar en andel dit (send) som växer med avståndet. Returnerar ingången.
+    createEcho() {
+      const context = this.context, { seconds, predelay } = Config.settings.weather.fog.hearing.echo;
+      const length = Math.floor(context.sampleRate * seconds), impulse = context.createBuffer(2, length, context.sampleRate);
+      for (let channel = 0; channel < 2; channel++) {
+        const data = impulse.getChannelData(channel);
+        let low = 0;
+        for (let i = 0; i < length; i++) {
+          const t = i / length;
+          low += (Math.random() * 2 - 1 - low) * (0.6 - 0.55 * t);   // diskanten klingar av före basen
+          data[i] = low * Math.exp(-6.9 * t);                          // -60 dB vid slutet
+        }
+      }
+      const input = context.createDelay(1), convolver = context.createConvolver();
+      input.delayTime.value = predelay;
+      convolver.buffer = impulse;
+      input.connect(convolver).connect(this.muffle);
+      return input;
+    },
+
+    // En skickning till ekot med given andel
+    send(amount) {
+      const send = this.context.createGain();
+      send.gain.value = amount;
+      send.connect(this.echo);
+      return send;
+    },
+
+    // Var ett ljud hörs: pan, hur långt utanför bild det är (px), diskanten som släpps igenom (Hz) och andelen eko (0-1). null utan kamera.
+    // I dimma (this.dull) ligger allt längre från skärmens mitt, och diskanten dämpas och ekot ökar ju längre bort ljudet är.
     locate(x, y) {
       const point = this.screenPoint(x, y);
       if (!point) return null;
-      const fog = Config.settings.weather.fog.hearing, centerX = innerWidth / 2, centerY = innerHeight / 2, reach = 1 - this.dull * (1 - fog.reach);
+      const fog = Config.settings.weather.fog.hearing, echo = fog.echo, centerX = innerWidth / 2, centerY = innerHeight / 2, reach = 1 - this.dull * (1 - fog.reach);
       const farX = centerX + (point.x - centerX) / reach, farY = centerY + (point.y - centerY) / reach;
       const outside = Math.hypot(Math.max(0, -farX, farX - innerWidth), Math.max(0, -farY, farY - innerHeight));
-      const far = Math.min(1, Math.hypot(farX - centerX, farY - centerY) / Math.hypot(centerX, centerY));
-      return { outside, pan: clamp((point.x / innerWidth - 0.5) * 1.2, -0.7, 0.7), cut: OPEN * (fog.farMuffle / OPEN) ** (this.dull * far) };
+      const far = Math.min(1, Math.hypot(farX - centerX, farY - centerY) / Math.hypot(centerX, centerY)), amount = far + (1 - far) * fog.center * this.dull;   // i dimma finns lite dämpning och eko även i mitten
+      return { outside, pan: clamp((point.x / innerWidth - 0.5) * 1.2, -0.7, 0.7), cut: OPEN * (fog.farMuffle / OPEN) ** (this.dull * amount), wet: (echo.clear + (echo.fog - echo.clear) * this.dull) * amount };
     },
 
     // options: { volume = 1, x, y }
@@ -328,7 +359,7 @@
       source.buffer = buffer;
       source.playbackRate.value = 1 + (Math.random() * 2 - 1) * definition.pitch;
       const gain = context.createGain();
-      gain.gain.value = (options.volume ?? 1) * definition.volume;
+      gain.gain.value = (options.volume ?? 1) * definition.volume * (spot ? 1 - DRY_LOSS * spot.wet : 1);   // längre bort: mindre direktljud, mer eko
       source.connect(gain);
       let node = gain;
       if (spot && this.dull > 0.01) {   // dimma: längre bort låter dovare
@@ -343,6 +374,7 @@
         node = node.connect(panner);
       }
       node.connect(this.sfxGain);
+      if (spot && spot.wet > 0.01) node.connect(this.send(spot.wet));
 
       definition.last = now; definition.voices++; this.voices++;
       source.onended = () => { definition.voices--; this.voices--; };
@@ -356,11 +388,11 @@
     ambientTargets() {
       const Weather = CityBuilder.Weather, config = this.weather, targets = new Map();
       if (!Weather || !config || !this.settings.sfxOn || this.settings.sfxVolume <= 0 || !CityBuilder.World?.headquarters) return targets;
-      const add = (key, value, level, pan = 0, cut = OPEN) => { const file = value && spec(value); if (file && level > 0.01) targets.set(key, { ...file, volume: file.volume ?? 1, level, pan, cut }); };
+      const add = (key, value, level, pan = 0, cut = OPEN, wet = 0) => { const file = value && spec(value); if (file && level > 0.01) targets.set(key, { ...file, volume: file.volume ?? 1, level, pan, cut, wet }); };
       // Hur högt något på kartan hörs: full styrka på skärmen, bleknar utanför den (i dimma krymper det, se locate)
       const hearing = (x, y) => {
         const spot = this.locate(x, y);
-        return spot && { level: clamp(1 - spot.outside / (Math.min(innerWidth, innerHeight) * 0.7), 0, 1), pan: spot.pan, cut: spot.cut };
+        return spot && { level: clamp(1 - spot.outside / (Math.min(innerWidth, innerHeight) * 0.7), 0, 1) * (1 - DRY_LOSS * spot.wet), pan: spot.pan, cut: spot.cut, wet: spot.wet };
       };
       const loops = config.loops || {}, dark = Weather.darkness();
       add('day', config.day, 1 - dark);
@@ -375,13 +407,13 @@
           if (heard) near.push({ source, id, ...heard });
         }
       }
-      for (const { source, id, level, pan, cut } of near.sort((a, b) => b.level - a.level).slice(0, 3)) add(source, loops[id], level, pan, cut);
+      for (const { source, id, level, pan, cut, wet } of near.sort((a, b) => b.level - a.level).slice(0, 3)) add(source, loops[id], level, pan, cut, wet);
       // Pågående ljud (LOOPING): de tre närmaste platserna
       for (const [id, looping] of Object.entries(LOOPING)) {
         const definition = this.sounds.get(id);
         if (!definition?.loop) continue;
         const heard = looping.sources().map(source => ({ source, ...hearing(source.x, source.y) })).filter(entry => entry.level > 0.01);
-        for (const { source, level, pan, cut } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) targets.set(source.key, { definition, volume: definition.volume, level, pan, cut, fade: looping.fade });
+        for (const { source, level, pan, cut, wet } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) targets.set(source.key, { definition, volume: definition.volume, level, pan, cut, wet, fade: looping.fade });
       }
       // Byggnadernas arbetsloopar (audio.buildings.<byggnad>.loop): en loop vid varje byggnad som arbetar just nu och syns, de tre närmaste
       if (this.workLoops?.size) {
@@ -391,9 +423,9 @@
           const spot = hearing(building.x, building.y);
           if (spot && spot.level > 0.01) heard.push({ building, ...spot });
         }
-        for (const { building, level, pan, cut } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) {
+        for (const { building, level, pan, cut, wet } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) {
           const definition = this.sounds.get('loop.' + building.type);
-          targets.set(building, { definition, volume: definition.volume, level, pan, cut, fade: 0.3 });
+          targets.set(building, { definition, volume: definition.volume, level, pan, cut, wet, fade: 0.3 });
         }
       }
       return targets;
@@ -426,8 +458,10 @@
           gain.gain.value = 0;   // börjar tyst och tonas in
           filter.type = 'lowpass';
           filter.frequency.value = target.cut;
+          const send = this.send(target.wet);
           (panner ? gain.connect(panner) && panner : gain).connect(filter).connect(this.sfxGain);
-          loop = { source: null, timer: 0, stopped: false, gain, panner, filter, silentSince: null, fade: target.fade ?? fade, pick: () => target.definition ? this.pickBuffer(target.definition) : buffer };   // flera filer: en ny slumpas varje varv
+          filter.connect(send);
+          loop = { source: null, timer: 0, stopped: false, gain, panner, filter, send, silentSince: null, fade: target.fade ?? fade, pick: () => target.definition ? this.pickBuffer(target.definition) : buffer };   // flera filer: en ny slumpas varje varv
           this.runLoop(loop, buffer, Math.random());
           this.loops.set(key, loop);
         }
@@ -437,6 +471,7 @@
         loop.gain.gain.setTargetAtTime(target.level * target.volume, now, loop.fade / 3);
         if (loop.panner) loop.panner.pan.setTargetAtTime(target.pan, now, 0.2);
         loop.filter.frequency.setTargetAtTime(target.cut, now, 0.3);
+        loop.send.gain.setTargetAtTime(target.wet, now, 0.3);
       }
       // Det som inte längre ska höras tonas ut och stoppas när det blivit tyst
       for (const [key, loop] of this.loops) {
