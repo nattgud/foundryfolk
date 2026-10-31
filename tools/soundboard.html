@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Foundryfolk soundboard</title>
+<style>
+  :root { color-scheme: dark; --bg: #14110f; --panel: #1d1914; --line: #2e2820; --text: #e8dcc8; --muted: #9a8e7c; --accent: #e0a53a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0 8px 0 0; font-size: 16px; }
+  main { max-width: 980px; margin: 0 auto; padding: 8px 16px 48px; }
+  h2 { margin: 24px 0 6px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+  .row { display: grid; grid-template-columns: 34px minmax(120px, 1.2fr) 230px minmax(140px, 2fr) 44px; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .row.on { background: #2a2216; }
+  .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .name small { display: block; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+  button, select { background: #2b251d; color: var(--text); border: 1px solid #40372b; border-radius: 6px; padding: 5px 8px; font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  .play { width: 34px; padding: 5px 0; }
+  .row.on .play { background: var(--accent); color: #1a1409; border-color: var(--accent); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .value { text-align: right; font-variant-numeric: tabular-nums; }
+  label.loop { display: flex; align-items: center; gap: 4px; color: var(--muted); white-space: nowrap; }
+  select { max-width: 150px; }
+  textarea { width: 100%; height: 220px; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px; font: 12px/1.45 ui-monospace, monospace; }
+  #export { display: none; margin-top: 24px; }
+  .note { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+  @media (max-width: 640px) { .row { grid-template-columns: 34px 1fr 44px; } .row .controls, .row input[type=range] { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Soundboard</h1>
+  <label>Master <input id="master" type="range" min="0" max="1" step="0.01" value="1"></label>
+  <button id="stopAll">Stoppa alla</button>
+  <button id="reset">Återställ volymer</button>
+  <button id="exportBtn">Visa inställningar</button>
+</header>
+<main>
+  <p class="note">Läser alla ljud ur <code>public/js/config/settings.js</code>. Spela flera samtidigt (och loopa dem) och dra i reglagen så att inget ljud tar över. Volymerna sparas i webbläsaren.
+    Spelet har egna standardvolymer för vissa ljud (t.ex. hit 0,6) som gäller tills <code>volume</code> sätts i settings.js, så exportera alla rader och klistra in dem.</p>
+  <div id="board"></div>
+  <section id="export">
+    <h2>Inställningar att klistra in i settings.js</h2>
+    <textarea id="out" readonly></textarea>
+    <p><button id="copy">Kopiera</button></p>
+  </section>
+</main>
+
+<script>window.CityBuilder = { Config: {} };</script>
+<script src="../public/js/config/settings.js"></script>
+<script>
+'use strict';
+const ROOT = '../public/';   // ljudfilerna ligger relativt public/ (som i settings.js)
+const STORE = 'foundryfolk.soundboard';
+const audio = (window.CityBuilder.Config.settings || {}).audio || {};
+const saved = (() => { try { return JSON.parse(localStorage.getItem(STORE) || '{}'); } catch { return {}; } })();
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify(saved)); } catch { /* utan lagring fungerar det ändå */ } };
+
+// Ett värde i settings.js: en fil, en lista med filer eller { file | files, volume }
+const parse = value => typeof value === 'string' ? { files: [value] } : Array.isArray(value) ? { files: value } : { files: value.files || [value.file], volume: value.volume };
+
+// Alla rader: { section, path, label, files, base (volym i settings.js) }
+const rows = [];
+const add = (section, path, label, value) => { if (!value) return; const { files, volume } = parse(value); rows.push({ section, path, label, files, base: volume ?? 1 }); };
+for (const [id, value] of Object.entries(audio.sounds || {})) add('Ljudeffekter', `sounds.${id}`, id, value);
+for (const [type, phases] of Object.entries(audio.buildings || {})) for (const phase of ['start', 'loop', 'done']) add('Byggnader', `buildings.${type}.${phase}`, `${type} · ${phase}`, phases[phase]);
+const weather = audio.weather || {};
+for (const [id, value] of Object.entries(weather.start || {})) add('Väder', `weather.start.${id}`, `start · ${id}`, value);
+for (const [id, value] of Object.entries(weather.loops || {})) add('Väder', `weather.loops.${id}`, `loop · ${id}`, value);
+add('Väder', 'weather.day', 'dag', weather.day);
+add('Väder', 'weather.night', 'natt', weather.night);
+for (const key of ['music', 'battleMusic', 'disasterMusic']) for (const file of audio[key] || []) add('Musik (spelet har en gemensam musikvolym; reglaget är bara för att lyssna)', `${key}.${file}`, `${key} · ${file.split('/').pop()}`, file);
+
+const players = new Map();   // rad -> pågående Audio
+const master = document.getElementById('master');
+const volumeOf = row => saved[row.path] ?? row.base;
+const apply = row => { const element = players.get(row); if (element) element.volume = Math.min(1, volumeOf(row) * Number(master.value)); };
+
+const stop = row => { const element = players.get(row); if (!element) return; element.pause(); players.delete(row); row.el.classList.remove('on'); row.play.textContent = '▶'; };
+const start = (row, file) => {
+  stop(row);
+  const element = new Audio(ROOT + file);
+  element.loop = row.loop.checked;
+  players.set(row, element);
+  apply(row);
+  element.onended = () => stop(row);
+  element.play().catch(() => stop(row));
+  row.el.classList.add('on');
+  row.play.textContent = '■';
+};
+
+const board = document.getElementById('board');
+let section = null;
+if (!rows.length) board.textContent = 'Hittade inga ljud i settings.js (audio.sounds, audio.buildings, audio.weather, audio.music).';
+for (const row of rows) {
+  if (row.section !== section) { section = row.section; const heading = document.createElement('h2'); heading.textContent = section; board.append(heading); }
+  const el = document.createElement('div'); el.className = 'row'; row.el = el;
+  row.play = Object.assign(document.createElement('button'), { className: 'play', textContent: '▶', title: 'Spela / stoppa' });
+  const name = document.createElement('div'); name.className = 'name';
+  name.innerHTML = `${row.label}<small>${row.files.length > 1 ? row.files.length + ' filer' : row.files[0]}</small>`;
+  const controls = document.createElement('div'); controls.className = 'controls'; controls.style.cssText = "display:flex;gap:8px;align-items:center;justify-content:flex-end";
+  row.loop = Object.assign(document.createElement('input'), { type: 'checkbox' });
+  const loopLabel = document.createElement('label'); loopLabel.className = 'loop'; loopLabel.append(row.loop, 'loop');
+  controls.append(loopLabel);
+  if (row.files.length > 1) {   // flera filer: slump (som spelet) eller en bestämd
+    row.pick = document.createElement('select');
+    row.pick.append(new Option('slump', ''), ...row.files.map((file, i) => new Option(`${i + 1}. ${file.split('/').pop()}`, file)));
+    controls.append(row.pick);
+  }
+  const slider = Object.assign(document.createElement('input'), { type: 'range', min: 0, max: 1, step: 0.01, value: volumeOf(row) });
+  const value = Object.assign(document.createElement('div'), { className: 'value', textContent: Number(slider.value).toFixed(2) });
+  row.slider = slider; row.value = value;
+  slider.oninput = () => { saved[row.path] = Number(slider.value); value.textContent = Number(slider.value).toFixed(2); save(); apply(row); };
+  row.loop.onchange = () => { const element = players.get(row); if (element) element.loop = row.loop.checked; };
+  row.play.onclick = () => players.has(row) ? stop(row) : start(row, (row.pick && row.pick.value) || row.files[Math.floor(Math.random() * row.files.length)]);
+  el.append(row.play, name, controls, slider, value);
+  board.append(el);
+}
+
+master.oninput = () => rows.forEach(apply);
+document.getElementById('stopAll').onclick = () => rows.forEach(stop);
+document.getElementById('reset').onclick = () => { for (const key in saved) delete saved[key]; save(); for (const row of rows) { row.slider.value = row.base; row.value.textContent = Number(row.base).toFixed(2); apply(row); } };
+
+// Exporterar alla rader med sin volym, grupperade som i settings.js
+const quote = file => `'${file}'`;
+const spec = row => `{ ${row.files.length > 1 ? `files: [${row.files.map(quote).join(', ')}]` : `file: ${quote(row.files[0])}`}, volume: ${Number(volumeOf(row)).toFixed(2)} }`;
+document.getElementById('exportBtn').onclick = () => {
+  const out = [], buildings = new Map();
+  const lines = (title, list, line) => { if (list.length) out.push(`// ${title}`, ...list.map(line), ''); };
+  lines('audio.sounds', rows.filter(row => row.path.startsWith('sounds.')), row => `${row.label}: ${spec(row)},`);
+  for (const row of rows.filter(row => row.path.startsWith('buildings.'))) { const [, type, phase] = row.path.split('.'); (buildings.get(type) || buildings.set(type, []).get(type)).push(`${phase}: ${spec(row)}`); }
+  if (buildings.size) out.push('// audio.buildings', ...[...buildings].map(([type, parts]) => `${type}: { ${parts.join(', ')} },`), '');
+  lines('audio.weather.start', rows.filter(row => row.path.startsWith('weather.start.')), row => `${row.path.split('.')[2]}: ${spec(row)},`);
+  lines('audio.weather.loops', rows.filter(row => row.path.startsWith('weather.loops.')), row => `${row.path.split('.')[2]}: ${spec(row)},`);
+  lines('audio.weather', rows.filter(row => row.path === 'weather.day' || row.path === 'weather.night'), row => `${row.path.split('.')[1]}: ${spec(row)},`);
+  document.getElementById('out').value = out.join('\n').trim();
+  document.getElementById('export').style.display = 'block';
+  document.getElementById('export').scrollIntoView({ behavior: 'smooth' });
+};
+document.getElementById('copy').onclick = () => { const area = document.getElementById('out'); area.select(); navigator.clipboard?.writeText(area.value).catch(() => document.execCommand('copy')); };
+</script>
+</body>
+</html>
