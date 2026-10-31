@@ -43,7 +43,7 @@
     populate(key, random, candidates, start) {
       const monsters = info(), records = [];
       if (!monsters) return records;
-      const { chance, perStrength, maxChance, packChance, safeRadius } = settings(), kinds = this.kinds(monsters.level);
+      const { chance, perStrength, maxChance, packChance, safeRadius, cluster } = settings(), kinds = this.kinds(monsters.level);
       if (random() >= Math.min(maxChance, chance + perStrength * monsters.strength) || !kinds.length) return records;
       const weights = kinds.map(kind => Config.units[kind].spawnWeight);
       for (let i = random() < packChance ? 2 : 1; i > 0 && candidates.length; i--) {
@@ -51,8 +51,13 @@
         let left = random() * weights.reduce((sum, weight) => sum + weight, 0), index = 0;
         while (index < kinds.length - 1 && (left -= weights[index]) >= 0) index++;
         if (Object.values(World.hqs).some(hq => Utils.distance(hq.x - spot.x, hq.y - spot.y) < safeRadius)) continue;
-        const x = spot.x + .5, y = spot.y + .5;
-        records.push({ id: `${key}:${start + records.length}`, kind: kinds[index], x, y, homeX: x, homeY: y, dead: false });
+        const add = at => { const x = at.x + .5, y = at.y + .5; records.push({ id: `${key}:${start + records.length}`, kind: kinds[index], x, y, homeX: x, homeY: y, dead: false }); };
+        add(spot);
+        if (random() >= cluster.chance) continue;   // en flock av samma art tätt intill: antalet slumpas och växer med banan
+        const most = cluster.size[1] + Math.floor(monsters.strength / cluster.growEvery);
+        let members = cluster.size[0] + Math.floor(random() * (most - cluster.size[0] + 1)) - 1;
+        const near = candidates.filter(other => Utils.distance(other.x - spot.x, other.y - spot.y) <= cluster.spread);
+        while (members-- > 0 && near.length) add(candidates.splice(candidates.indexOf(near.splice(Math.floor(random() * near.length), 1)[0]), 1)[0]);
       }
       return records;
     },

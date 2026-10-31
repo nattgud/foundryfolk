@@ -241,10 +241,16 @@ CityBuilder.Config.settings = {
   },
   // Monster (systems/monsters.js). På banor med monster (Levels.current.monsters) får varje chunk monster med en chans som växer med banan.
   monsters: {
-    chance: 0.18,                          // chans per chunk att få monster på första banan med monster
-    perStrength: 0.006,                    // och så mycket mer per bana därefter
-    maxChance: 0.4,
+    chance: 0.3,                           // chans per chunk att få monster på första banan med monster
+    perStrength: 0.008,                    // och så mycket mer per bana därefter
+    maxChance: 0.6,
     packChance: 0.25,                      // chans att ett monster har sällskap av ett till (annan plats, annan art) i samma chunk
+    cluster: {                             // ett monster kan ha en flock av samma art tätt intill sig: något att undvika i början och rensa ut senare
+      chance: 0.25,                        // chans att ett monster har en flock
+      size: [2, 3],                        // antal monster i flocken (inklusive det första) på första banan med monster
+      growEvery: 25,                       // högsta antalet ökar med 1 för var så många banor därefter
+      spread: 3,                           // flockens monster bor högst så här många rutor från varandra
+    },
     safeRadius: 40,                        // inga monster närmare än så (i rutor) någon spelares huvudlager
     carrierRange: 5,                       // monster anfaller bärare som kommer så nära (arbetare anfaller de aldrig)
     wanderSeconds: [4, 12],                // paus mellan två promenader inom området
