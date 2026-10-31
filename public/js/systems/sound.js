@@ -342,6 +342,9 @@
       return { outside, pan: clamp((point.x / innerWidth - 0.5) * 1.2, -0.7, 0.7), cut: OPEN * (fog.farMuffle / OPEN) ** (this.dull * amount), wet: (echo.clear + (echo.fog - echo.clear) * this.dull) * amount };
     },
 
+    // Ljudet med id:t om det finns, annars reservljudet (t.ex. ett eget skadeljud för en art som annars delar ett)
+    known(id, fallback) { return id && this.sounds.has(id) ? id : fallback; },
+
     // options: { volume = 1, x, y }
     play(id, options = {}) {
       const context = this.context;

@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Each monster species can have its own sounds for being hurt and for dying',
       'Many more monsters from level 35 (and on custom maps): some roam alone, others live in small flocks that are best avoided early on and cleared out later; flocks grow on later levels',
       'Pausing the game now pauses all sound effects and loops too; only the music keeps playing',
       'Buildings holding many different resources (like the kitchen) now draw them in two rows of smaller icons, so they no longer spill out over neighbouring buildings',

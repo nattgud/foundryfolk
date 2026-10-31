@@ -11,7 +11,8 @@
 
    Monster (isMonster, se systems/monsters.js) är soldater som tillhör Players.MONSTER och har dessutom:
    roam (rutor de rör sig från sin startplats, 0 = står helt still), aggro (hur långt utanför det de upptäcker fiender),
-   from (första banan arten finns på), spawnWeight (hur vanlig arten är), raider (anfaller basen, och byggnader), attackSound/idleSound. */
+   from (första banan arten finns på), spawnWeight (hur vanlig arten är), raider (anfaller basen, och byggnader), attackSound/idleSound,
+   hitSound/dieSound (ljud när arten skadas och dör: används bara om ljudet finns i audio.sounds, annars hit och monster_die). */
 
   // SPRITE SHEETS (frame: 64 on a unit = sheet; without frame the whole image is drawn as one picture)
   // Cells are frame x frame px. Rows = state/direction, columns = animation frames.
@@ -208,6 +209,8 @@ Object.assign(CityBuilder.Config.units, {
 		fallbackSize: 6,
 		imageSize: 18,
 		attackSound: "slime_attack",
+		hitSound: "slime_hit",
+		dieSound: "slime_die",
 	},
 	spider: {
 		...MONSTER_DEFAULTS,
@@ -224,6 +227,8 @@ Object.assign(CityBuilder.Config.units, {
 		fallbackSize: 6,
 		imageSize: 20,
 		attackSound: "spider_attack",
+		hitSound: "spider_hit",
+		dieSound: "spider_die",
 	},
 	maneater: {
 		...MONSTER_DEFAULTS,
@@ -239,6 +244,8 @@ Object.assign(CityBuilder.Config.units, {
 		fallbackSize: 7,
 		imageSize: 22,
 		attackSound: "maneater_attack",
+		hitSound: "maneater_hit",
+		dieSound: "maneater_die",
 	},
 	golem: {
 		...MONSTER_DEFAULTS,
@@ -255,6 +262,8 @@ Object.assign(CityBuilder.Config.units, {
 		fallbackSize: 8,
 		imageSize: 26,
 		attackSound: "golem_attack",
+		hitSound: "golem_hit",
+		dieSound: "golem_die",
 	},
 	wolf: {
 		...MONSTER_DEFAULTS,
@@ -271,6 +280,8 @@ Object.assign(CityBuilder.Config.units, {
 		fallbackSize: 6,
 		imageSize: 20,
 		attackSound: "wolf_attack",
+		hitSound: "wolf_hit",
+		dieSound: "wolf_die",
 	},
 	troll: {
 		...MONSTER_DEFAULTS,
@@ -288,6 +299,8 @@ Object.assign(CityBuilder.Config.units, {
 		fallbackSize: 8,
 		imageSize: 28,
 		attackSound: "troll_attack",
+		hitSound: "troll_hit",
+		dieSound: "troll_die",
 	},
 	ogre: {
 		...MONSTER_DEFAULTS,
@@ -304,5 +317,7 @@ Object.assign(CityBuilder.Config.units, {
 		fallbackSize: 9,
 		imageSize: 48,
 		attackSound: "ogre_attack",
+		hitSound: "ogre_hit",
+		dieSound: "ogre_die",
 	},
 });

@@ -153,7 +153,8 @@
       if (target.hp == null || target.removed) return;
       if (attacker && (target.player === Players.HUMAN || attacker.player === Players.HUMAN) && Players.isHostile(target.player, attacker.player)) this.fightAt = this.time;
       this.raiseAlarm(target, attacker);
-      CityBuilder.Sound?.play('hit', { x: centreX(target), y: centreY(target) });
+      const Sound = CityBuilder.Sound;
+      Sound?.play(Sound.known(target.definition?.hitSound, 'hit'), { x: centreX(target), y: centreY(target) });   // monster kan ha ett eget skadeljud
       target.hp -= amount;
       if (target.hp <= 0) this.kill(target, attacker);
     },
@@ -164,7 +165,8 @@
       if (attacker?.player === Players.HUMAN && Players.isPlayer(target.player) && Players.isHostile(Players.HUMAN, target.player)) Levels?.onDefeated?.(target);   // monster räknas inte mot banans mål
       if (isBuilding(target)) return this.destroyBuilding(target);
       const unit = target;
-      if (unit.definition.isSoldier) CityBuilder.Sound?.play(unit.definition.isMonster ? 'monster_die' : 'died', { x: unit.x, y: unit.y });
+      const Sound = CityBuilder.Sound;
+      if (unit.definition.isSoldier) Sound?.play(unit.definition.isMonster ? Sound.known(unit.definition.dieSound, 'monster_die') : 'died', { x: unit.x, y: unit.y });
       if (unit.animalRecordId) CityBuilder.Animals.markDead(unit);   // ett dödat monster kommer inte tillbaka
       CityBuilder.Logistics.abortTask(unit); // en bärare som dör släpper sina reservationer
       if (unit.definition.isHauler) CityBuilder.Logistics.carrierLost(unit);

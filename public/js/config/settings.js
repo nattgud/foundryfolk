@@ -80,6 +80,9 @@ CityBuilder.Config.settings = {
       wolf_attack: "sounds/monster/wolf_attack.mp3",
       troll_attack: "sounds/monster/troll_attack.mp3",
       ogre_attack: "sounds/monster/ogre_attack.mp3",
+      // Valfria: när arten skadas (<art>_hit) och dör (<art>_die). Utan en rad används hit och monster_die. Samma för alla arter: slime spider maneater golem wolf troll ogre
+      // slime_hit: "sounds/monster/slime_hit.mp3",
+      // slime_die: "sounds/monster/slime_die.mp3",
     },
     // Byggnadernas arbete. Varje byggnad kan ha tre valfria ljud: start (arbetet börjar), loop (loopas medan det pågår) och done (arbetet är klart).
     // Det som inte anges är tyst. Ett ljud är en fil, en lista (en slumpas varje gång) eller { file, volume }. Exempel:
