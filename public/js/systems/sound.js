@@ -160,6 +160,10 @@
     mood: 'calm',            // vilket läge musiken har just nu: calm | battle | disaster (updateMood)
     hazards: 0,              // antal pågående tornados och utbrott förra gången (ett nytt startar katastrofmusiken)
     hazardUntil: 0,
+    paused: false,           // spelet står stilla (huvudmeny, fönster): effekter och loopar är frysta, se syncPause
+    playing: new Set(),      // pågående enstaka effekter (källor)
+    frozen: new Map(),       // frysta källor -> deras uppspelningshastighet
+    waiting: new Set(),      // loopar som skulle börja ett nytt varv medan spelet stod stilla
     dull: 0,                 // 0-1: hur dämpad hörseln är (dimma), ändras mjukt i updateAmbient
 
     // Anropas en gång av UI.init
@@ -187,7 +191,7 @@
       for (const type of ['pagehide', 'beforeunload']) addEventListener(type, () => this.saveMusic());
       this.weather = custom.weather || {};
       for (const [id, value] of Object.entries(this.weather.start || {})) this.define('weather.' + id, { ...spec(value), quiet: true, pitch: 0, maxVoices: 1, cooldown: 0 });
-      setInterval(() => { this.updateMood(); this.updateAmbient(); }, AMBIENT_MS);
+      setInterval(() => { this.syncPause(); this.updateMood(); if (!this.paused) this.updateAmbient(); }, AMBIENT_MS);
       this.injectStyles();
 
       // Ljud får starta först efter en användaråtgärd
@@ -377,7 +381,8 @@
       if (spot && spot.wet > 0.01) node.connect(this.send(spot.wet));
 
       definition.last = now; definition.voices++; this.voices++;
-      source.onended = () => { definition.voices--; this.voices--; };
+      this.playing.add(source);
+      source.onended = () => { this.playing.delete(source); definition.voices--; this.voices--; };
       source.start();
     },
 
@@ -442,6 +447,26 @@
       return entry.buffer;
     },
 
+    // Står spelet stilla fryser alla pågående effekter och loopar där de är (hastighet 0) och fortsätter när spelet går igen. Musiken påverkas inte.
+    // Nya ljud under tiden (t.ex. klick i menyn) spelas som vanligt: de startar efter att de andra frysts.
+    syncPause() {
+      const paused = !!CityBuilder.Game?.paused;
+      if (paused === this.paused) return;
+      this.paused = paused;
+      if (paused) {
+        for (const source of [...this.playing, ...[...(this.loops?.values() || [])].map(loop => loop.source)]) {
+          if (!source || this.frozen.has(source)) continue;
+          this.frozen.set(source, source.playbackRate.value);
+          source.playbackRate.value = 0;
+        }
+      } else {
+        for (const [source, rate] of this.frozen) source.playbackRate.value = rate;
+        this.frozen.clear();
+        for (const loop of this.waiting) if (!loop.stopped) this.runLoop(loop);
+        this.waiting.clear();
+      }
+    },
+
     updateAmbient() {
       const context = this.context;
       if (!context || context.state !== 'running') return;
@@ -489,7 +514,7 @@
       source.buffer = buffer;
       source.connect(loop.gain);
       source.start(0, offset * buffer.duration);
-      source.onended = () => { if (!loop.stopped) loop.timer = setTimeout(() => this.runLoop(loop), Math.random() * LOOP_GAP_MS); };
+      source.onended = () => { if (!loop.stopped) loop.timer = setTimeout(() => this.paused ? this.waiting.add(loop) : this.runLoop(loop), Math.random() * LOOP_GAP_MS); };
       loop.source = source;
     },
 

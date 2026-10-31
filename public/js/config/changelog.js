@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Pausing the game now pauses all sound effects and loops too; only the music keeps playing',
       'Buildings holding many different resources (like the kitchen) now draw them in two rows of smaller icons, so they no longer spill out over neighbouring buildings',
       'Sounds far from the middle of the screen now get an echo, so they sound distant and mysterious; strongest in fog',
       'Fog now muffles the sound effects too: you hear less far from the middle of the screen, and the treble fades the further away a sound is',
