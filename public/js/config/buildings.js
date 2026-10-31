@@ -487,7 +487,7 @@ CityBuilder.Config.buildings = {
     requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meal'], every: 3 },
+      eats: { any: ['meal', 'bread', 'fish'], every: 3 },
       sourceTerrain: 'gold_ore',
       searchRadius: 10,
       outputResource: 'gold_ore',
@@ -508,7 +508,7 @@ CityBuilder.Config.buildings = {
     requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meal'], every: 3 },
+      eats: { any: ['meal', 'bread', 'fish'], every: 3 },
       sourceTerrain: 'silver_ore',
       searchRadius: 10,
       outputResource: 'silver_ore',
@@ -529,7 +529,7 @@ CityBuilder.Config.buildings = {
     requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meal'], every: 3 },
+      eats: { any: ['meal', 'bread', 'fish'], every: 3 },
       sourceTerrain: 'gemstone',
       searchRadius: 10,
       outputResource: 'gemstone',
@@ -550,7 +550,7 @@ CityBuilder.Config.buildings = {
     requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meal'], every: 3 },
+      eats: { any: ['meal', 'bread', 'fish'], every: 3 },
       sourceTerrain: 'salt_ore',
       searchRadius: 10,
       outputResource: 'salt_ore',
@@ -571,7 +571,7 @@ CityBuilder.Config.buildings = {
     requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meal'], every: 3 },
+      eats: { any: ['meal', 'bread', 'fish'], every: 3 },
       sourceTerrain: 'sulfur',
       searchRadius: 10,
       outputResource: 'sulfur',
