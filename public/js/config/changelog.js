@@ -7,11 +7,13 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Planters work twice as fast, which helps on levels where trees are scarce',
+      'New versions are fetched in the background and installed seamlessly while the tab is hidden or the main menu is open',
       'The gold, silver, gemstone, salt and sulfur mines now accept bread and fish as well as meals',
       'Every working building can have its own sounds when it starts working, while it works (looping) and when it is done. The built-in work sounds are gone: a building only makes a sound if one is set up for it',
       'A player who is eliminated now gives a message, and the top bar shows how many players are left of the total (👥 3/4)',
       'The building sound now loops at every construction site you can see, from when the work starts until the building is finished',
-      'The music no longer stops when a new level starts; it carries on where it was',
+      'The music no longer stops when a new level starts or the game updates; it carries on where it was',
       'Different music plays during fights and when a tornado or lava disaster begins',
       'Storms now flood the low land next to water for a short while. When the water goes down again it may leave something valuable behind. The Tempest spell does the same in a small area instead of blowing plants around',
       'Tooltips now work on touch screens: tap a resource or other labelled item to read its name or hint',

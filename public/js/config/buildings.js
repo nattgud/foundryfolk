@@ -114,7 +114,7 @@ CityBuilder.Config.buildings = {
       amount: [5, 10],
       minRadius: 0,
       maxRadius: 10,
-      workSeconds: 6
+      workSeconds: 3
     },
     buildDuration: 30
   },

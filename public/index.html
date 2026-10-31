@@ -35,6 +35,22 @@
 
   <script>
     var version = "0.9.2056";
+    // Musiken fortsätter över en omladdning (ny bana, uppdatering). Systems/sound.js sparar låten och platsen (sessionStorage) när sidan stängs;
+    // den startas här, direkt i ett <audio>-element och långt före spelets skript (som laddas först när sidan laddat klart). Sound tar över
+    // elementet (window.resumedMusic) när ljudet är igång. Platsen räknas upp med tiden som gått, så att musiken inte hoppar bakåt.
+    // Nycklar och gränser som i Sound (MUSIC_KEY, KEY, MUSIC_RESUME_MS).
+    (function () {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem('citybuilder.music') || 'null'), audio = JSON.parse(localStorage.getItem('citybuilder.audio') || '{}');
+        if (!saved || Date.now() - saved.at > 60000 || !(audio.musicOn ?? !matchMedia('(pointer: coarse)').matches)) return;
+        const element = new Audio(saved.track), early = window.resumedMusic = { element, track: saved.track, time: saved.time, at: saved.at, ended: false };
+        element.volume = Math.pow(audio.musicVolume ?? 0.5, 2);   // som Sound: volymreglaget är kvadratiskt
+        element.addEventListener('loadedmetadata', () => { element.currentTime = Math.min(saved.time + (Date.now() - saved.at) / 1000, element.duration - 0.5); }, { once: true });
+        element.addEventListener('ended', () => { early.ended = true; });
+        element.play().catch(() => {});   // vägrar webbläsaren (ingen användaråtgärd än) tar Sound över vid första tryck
+      } catch (error) { /* ingen musik att återuppta */ }
+    })();
+
     // Service workern får versionen i adressen: en ny version ger en ny cache som förladdas, och den gamla rensas
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=' + version).catch(() => {});
     document.write('<script src="js/files.js?v=' + version + '"><\/script>');   // skriptlistan (GAME_SCRIPTS), ihop med service workern

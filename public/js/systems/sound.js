@@ -491,12 +491,27 @@
         return;
       }
       if (!channel.element) {
-        const element = channel.element = document.createElement('audio');
+        const element = channel.element = (channel === this.channels.calm && this.takeEarlyMusic(channel)) || document.createElement('audio');
         element.preload = 'none';
         this.context.createMediaElementSource(element).connect(channel.gain);
         element.addEventListener('ended', () => this.nextTrack(channel));
       }
       if (!channel.element.src) this.nextTrack(channel); else this.playTrack(channel);
+    },
+
+    // Musiken som redan startats när sidan började laddas (se index.html) tas över och kopplas in i ljudgrafen: låten fortsätter utan avbrott.
+    // Har webbläsaren inte tillåtit uppspelning förrän nu börjar den på platsen den skulle ha nått.
+    takeEarlyMusic(channel) {
+      const early = window.resumedMusic;
+      delete window.resumedMusic;
+      if (!early || early.ended || !channel.tracks.includes(early.track)) return null;
+      const { element } = early;
+      if (element.paused && element.duration) element.currentTime = Math.min(early.time + (Date.now() - early.at) / 1000, element.duration - 0.5);
+      element.volume = 1;   // volymen sköts av ljudgrafen nu
+      this.resume = null;
+      channel.current = early.track;
+      channel.queue = channel.tracks.filter(other => other !== early.track).sort(() => Math.random() - 0.5);
+      return element;
     },
 
     stop(channel) {

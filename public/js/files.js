@@ -61,5 +61,6 @@ self.GAME_SCRIPTS = [
   'js/ui.js',
   'js/minimap.js',
   // 7. Spelloop (Sista steg innan init)
-  'js/game.js'
+  'js/game.js',
+  'js/update.js'
 ];
