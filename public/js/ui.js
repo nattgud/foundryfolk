@@ -2976,8 +2976,8 @@
     },
 
     updateWeatherBadge() {
-      const Weather = CityBuilder.Weather, night = Weather.isNight(), type = Weather.type, badge = byId('weatherBadge');
-      const volcano = Weather.volcanoes.length > 0, key = night + type + volcano + I18n().language;
+      const Weather = CityBuilder.Weather, night = Weather.isNight(), type = Weather.shown(), badge = byId('weatherBadge');
+      const volcano = Weather.volcanoes.some(spot => Weather.seen(spot)), key = night + type + volcano + I18n().language;
       if (!badge || badge.dataset.key === key) return;
       badge.dataset.key = key;
       const icons = { clear: '', rain: '🌧', storm: '⛈', fog: '🌫', tornado: '🌪', supertornado: '🌪🌪', meteorstorm: '☄️' };

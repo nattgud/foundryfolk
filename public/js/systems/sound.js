@@ -405,12 +405,13 @@
       const loops = config.loops || {}, dark = Weather.darkness();
       add('day', config.day, 1 - dark);
       add('night', config.night, dark);
-      add('weather:' + Weather.type, loops[Weather.type] && !['tornado', 'supertornado', 'volcano'].includes(Weather.type) ? loops[Weather.type] : null, 1);
+      const weather = Weather.shown();   // en meteorstorm utanför synhåll hörs inte
+      add('weather:' + weather, loops[weather] && !['tornado', 'supertornado', 'volcano'].includes(weather) ? loops[weather] : null, 1);
       // Tornados och vulkaner hörs där de finns: full styrka på skärmen, bleknar utanför den. De närmaste tre.
       const near = [];
       for (const [list, id] of [[Weather.tornadoes, 'tornado'], [Weather.volcanoes, 'volcano']]) {
         for (const source of list) {
-          const kind = source.super ? 'supertornado' : id, heard = loops[kind] && hearing(source.x, source.y);   // en supertornado har sitt eget ljud
+          const kind = source.super ? 'supertornado' : id, heard = loops[kind] && (id !== 'volcano' || Weather.seen(source)) && hearing(source.x, source.y);   // en supertornado har sitt eget ljud, ett utbrott utanför synhåll hörs inte
           if (heard) near.push({ source, id: kind, ...heard });
         }
       }
@@ -535,7 +536,7 @@
     // Strid så länge något av spelarens slåss (Combat.fightAt) och en stund efter, katastrof en stund efter att en tornado eller ett utbrott börjar
     updateMood() {
       const now = performance.now() / 1000, { Weather, Combat } = CityBuilder;
-      const hazards = Weather ? Weather.tornadoes.length + Weather.volcanoes.length + (Weather.storm ? 1 : 0) : 0;
+      const hazards = Weather ? Weather.tornadoes.length + Weather.volcanoes.filter(volcano => Weather.seen(volcano)).length + (Weather.storm && Weather.seen(Weather.storm) ? 1 : 0) : 0;   // bara det som syns
       if (hazards > this.hazards) this.hazardUntil = now + MOOD.disasterSeconds;
       this.hazards = hazards;
       const mood = hazards && now < this.hazardUntil ? 'disaster' : Combat && Combat.time - Combat.fightAt < MOOD.battleSeconds ? 'battle' : 'calm';

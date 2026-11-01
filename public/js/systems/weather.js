@@ -364,9 +364,11 @@
         volcano.life = volcano.plan.length * volcano.pace + between(settings.lifeSeconds);   // spridningen tar plan.length * pace, sedan ligger lavan het
         this.volcanoes.push(volcano);
         this.updateVolcano(volcano, 0);
-        CityBuilder.Sound?.play('weather.volcano');
-        CityBuilder.Sound?.play('alarm');
-        CityBuilder.UI?.showToast(CityBuilder.t('A volcano is erupting! Lava destroys buildings until it cools'));
+        if (this.seen(volcano)) {   // ett utbrott utanför synhåll kan inte drabba spelaren: ingen varning
+          CityBuilder.Sound?.play('weather.volcano');
+          CityBuilder.Sound?.play('alarm');
+          CityBuilder.UI?.showToast(CityBuilder.t('A volcano is erupting! Lava destroys buildings until it cools'));
+        }
         return volcano;
       }
       return null;
@@ -549,15 +551,34 @@
 
     // ---- Meteorstorm -------------------------------------------------------------------------------------------------
 
-    // Stormens mitt: nära en byggnad hos en slumpad spelare (false om ingen har något att drabba). Varningen: larm, notis och en markering på minimapen.
+    // Kan det drabba människan? Bara det som ligger inom hens synhåll (utanför dimman) ger larm, notis och markering. Meteorstorm: någon ruta inom
+    // radien syns. Vulkan: starten eller någon tänd ruta syns.
+    seen(thing) {
+      const player = Players.HUMAN;
+      if (thing.plan) return Vision.visible(player, thing.x, thing.y) || thing.plan.some(([x, y], index) => index < thing.lit && Vision.visible(player, x, y));
+      return Vision.anyVisible(player, thing.x - thing.radius, thing.y - thing.radius, thing.x + thing.radius, thing.y + thing.radius);
+    },
+
+    // Vädret som spelaren får veta om: en meteorstorm som ligger i dimman syns inte (varken på brickan eller i ljudet)
+    shown() { return this.type === 'meteorstorm' && !(this.storm && this.seen(this.storm)) ? 'clear' : this.type; },
+
+    // Stormens mitt: nära en byggnad hos en slumpad spelare, på en ruta som den spelaren ser (false om ingen har något att drabba). Varningen (larm och notis) ges
+    // bara om stormen syns för människan, och markeringen på minimapen följer samma regel.
     startMeteors() {
       const settings = Config.settings.weather.meteor, homes = this.homesByPlayer(false);
       if (!homes.size) return false;
-      const home = this.pickHome(homes), angle = Utils.random() * Math.PI * 2, distance = between(settings.near);
-      this.storm = { x: Math.round(home.x + Math.cos(angle) * distance), y: Math.round(home.y + Math.sin(angle) * distance), radius: between(settings.radius), wait: settings.warning, next: 0 };
-      CityBuilder.Sound?.play('alarm');
-      CityBuilder.UI?.showToast(CityBuilder.t('A meteor storm is coming! Meteors will fall around the marked spot'));
-      return true;
+      for (let attempt = 0; attempt < 40; attempt++) {
+        const home = this.pickHome(homes), angle = Utils.random() * Math.PI * 2, distance = between(settings.near);
+        const x = Math.round(home.x + Math.cos(angle) * distance), y = Math.round(home.y + Math.sin(angle) * distance);
+        if (!Vision.visible(home.player, x, y)) continue;   // inte i dimman för den som drabbas
+        this.storm = { x, y, radius: between(settings.radius), wait: settings.warning, next: 0 };
+        if (this.seen(this.storm)) {
+          CityBuilder.Sound?.play('alarm');
+          CityBuilder.UI?.showToast(CityBuilder.t('A meteor storm is coming! Meteors will fall around the marked spot'));
+        }
+        return true;
+      }
+      return false;
     },
 
     // Skada från en meteor eller eld. HQ och enheter med definition.meteorProof skonas. Som lavan: inget larm, bara livet som minskar.

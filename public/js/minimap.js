@@ -44,6 +44,7 @@
     salt_ore: '#F6C9D0', sulfur: '#C6E21E', gemstone: '#D43CFF', crystal: '#19D98B', moonstone: '#9FB4FF', fallen_star: '#FFF3A0', ruins: '#B8A58C',
   };
   const SELECT_SAME = '#0f0', SELECT_OTHER = '#fa0', SELECT_RESOURCE = '#f00';   // vald byggnad: samma inriktning, annan inriktning, det den hämtar
+  const OWN_COLOR = '#00f0ff', ENEMY_COLOR = '#ff2d2d', STORM_COLOR = '#ff4fd8';   // egna byggnader (ingen annan markering är turkos), fiender (alltid röda), meteorstormens mitt
   const LEGEND_MAX = 10;         // högst så många rader i teckenförklaringen
   const CHUNK = 16;              // rutor per bricka
   const BUILD_BUDGET_MS = 4;     // högst så här lång tid per bildruta åt att bygga brickor
@@ -423,14 +424,15 @@
       return this.filter;
     },
 
-    // Vald egen byggnad -> hur den visas på kartan: bara byggnader av samma slag (grön = samma inriktning, orange = annan inriktning av samma
-    // byggnad) och, för en samlare eller gruva, de fyndigheter den hämtar från (röda). Annars null.
+    // Vald egen byggnad, eller en byggnad som ska placeras -> hur den visas på kartan: bara byggnader av samma slag (grön = samma inriktning, orange =
+    // annan inriktning av samma byggnad) och, för en vald samlare eller gruva, de fyndigheter den hämtar från (röda). Annars null.
     selectionInfo() {
-      const selected = CityBuilder.Game && CityBuilder.Game.selectedBuilding;
-      if (!selected || selected.removed || selected.player !== Players.HUMAN) return null;
-      const definition = selected.definition, job = definition.job;
-      const terrains = job && job.kind === 'gather' && job.sourceTerrain ? [].concat(job.sourceTerrain).filter(type => isNode(Config.terrain[type])) : [];
-      return { selected, group: definition.group || null, terrains: new Set(terrains) };
+      const Game = CityBuilder.Game, selected = Game && Game.selectedBuilding, own = selected && !selected.removed && selected.player === Players.HUMAN;
+      const type = own ? selected.type : Game && Game.placingType, definition = type && Config.buildings[type];
+      if (!definition) return null;
+      const job = definition.job;
+      const terrains = own && job && job.kind === 'gather' && job.sourceTerrain ? [].concat(job.sourceTerrain).filter(node => isNode(Config.terrain[node])) : [];
+      return { type, group: definition.group || null, terrains: new Set(terrains) };
     },
 
     // ---- Ritning ----
@@ -448,7 +450,7 @@
       const size = this.size, scale = this.scale, radius = size / 2, context = this.context;
       this.filter = this.placingFilter();
       this.legend = [];
-      const selection = this.filter ? null : this.selectionInfo();
+      const selection = this.selectionInfo();
       this.selection = selection;
       // Byggnad som ska placeras går först, sedan vald byggnad, sedan vanligt läge
       const mode = this.filter ? 'filter' : selection ? 'select' : this.mode.id;
@@ -584,22 +586,21 @@
       // (samma typ) och orange om det är en annan inriktning av samma byggnad (samma group)
       const matchOf = building => {
         if (building.player !== Players.HUMAN) return null;
-        if (building.type === selection.selected.type) return SELECT_SAME;
+        if (building.type === selection.type) return SELECT_SAME;
         return selection.group && building.definition.group === selection.group ? SELECT_OTHER : null;
       };
-      const marker = Math.max(4, Math.round(scale * 2));
-      const rivalColor = '#e5534b';  // andra spelares byggnader och soldater: röda
+      const marker = Math.max(4, Math.round(scale * 2));   // ringar, flaggor och huvudlagret
+      const block = Math.max(2, Math.round(scale));         // en byggnad tar en ruta på kartan, som i verkligheten
       for (const building of World.buildings) {
-        if (building === World.headquarters || building.definition.pile || (building.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, building))) continue;
-        const match = selection && matchOf(building);
-        if (selection && !match) continue;   // vald byggnad: bara samma slag visas
+        const own = building.player === Players.HUMAN;
+        if (building === World.headquarters || building.definition.pile || (!own && !Vision.sees(Players.HUMAN, building))) continue;
+        const match = own && selection && matchOf(building);
+        if (own && selection && !match) continue;   // vald eller vald-att-bygga byggnad: bara egna av samma slag lyser upp. Fiender syns alltid.
         const x = toX(building.x + 0.5), y = toY(building.y + 0.5);
         if (Math.hypot(x - radius, y - radius) > radius + marker) continue;
         context.globalAlpha = building.buildProgress >= 1 ? 1 : 0.55;
-        context.fillStyle = '#05080a';
-        context.fillRect(Math.round(x - marker / 2) - 1, Math.round(y - marker / 2) - 1, marker + 2, marker + 2);
-        context.fillStyle = match || (building.player !== Players.HUMAN ? rivalColor : (building.definition && building.definition.color) || '#e8e8e8');
-        context.fillRect(Math.round(x - marker / 2), Math.round(y - marker / 2), marker, marker);
+        context.fillStyle = !own ? ENEMY_COLOR : match || OWN_COLOR;
+        context.fillRect(Math.round(x - block / 2), Math.round(y - block / 2), block, block);
       }
       context.globalAlpha = 1;
 
@@ -647,16 +648,18 @@
       }
       context.globalAlpha = 1;
 
-      // Soldater: små cirklar (röda för andra spelare, lila för monster, blå för dina egna)
+      // Dina soldater: små blå cirklar (inte när en byggnad är vald)
       const dot = Math.max(2, Math.round(scale * 1.2));
-      for (const unit of World.units) {
-        if (selection || !unit.definition.isSoldier || (unit.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, unit))) continue;
-        const x = toX(unit.x), y = toY(unit.y);
-        if (Math.hypot(x - radius, y - radius) > radius) continue;
-        context.fillStyle = unit.player === Players.HUMAN ? '#4aa3ff' : unit.player === Players.MONSTER ? Config.settings.playerColors[Players.MONSTER] : rivalColor;
-        context.beginPath();
-        context.arc(x, y, dot, 0, Math.PI * 2);
-        context.fill();
+      if (!selection) {
+        context.fillStyle = '#4aa3ff';
+        for (const unit of World.units) {
+          if (!unit.definition.isSoldier || unit.player !== Players.HUMAN) continue;
+          const x = toX(unit.x), y = toY(unit.y);
+          if (Math.hypot(x - radius, y - radius) > radius) continue;
+          context.beginPath();
+          context.arc(x, y, dot, 0, Math.PI * 2);
+          context.fill();
+        }
       }
 
       // Flaggor: en liten flagga i spelarens färg (din alltid, fiendens när platsen är utforskad); utanför kartan en pil i kanten
@@ -672,6 +675,18 @@
         context.fillStyle = color; context.strokeStyle = color; context.lineWidth = 1;
         context.beginPath(); context.moveTo(px, py + 2); context.lineTo(px, py - h); context.stroke();
         context.beginPath(); context.moveTo(px, py - h); context.lineTo(px + h, py - h / 2); context.lineTo(px, py); context.closePath(); context.fill();
+      }
+
+      // Fiender (andra spelares soldater och monster) som syns: alltid lite större röda prickar med mörk kant, överst och i alla lägen
+      context.fillStyle = ENEMY_COLOR; context.strokeStyle = '#05080a'; context.lineWidth = 1;
+      for (const unit of World.units) {
+        if (!unit.definition.isSoldier || unit.player === Players.HUMAN || !Vision.sees(Players.HUMAN, unit)) continue;
+        const x = toX(unit.x), y = toY(unit.y);
+        if (Math.hypot(x - radius, y - radius) > radius) continue;
+        context.beginPath();
+        context.arc(x, y, dot + 1, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
       }
 
       // Huvudlagret: större, guld med vit ring
@@ -701,9 +716,9 @@
 
       this.updateLegend();
 
-      // Vulkaner (orange) och meteorstormens mitt (röd): en pulserande ring (en pil i kanten när den ligger utanför kartan), så de syns även långt bort
+      // Vulkaner (orange) och meteorstormens mitt (rosa): en pulserande ring (en pil i kanten när den ligger utanför kartan). Bara det som syns för spelaren.
       const Weather = CityBuilder.Weather;
-      for (const [spot, color] of [...Weather.volcanoes.map(volcano => [volcano, '#ff6a00']), ...(Weather.storm ? [[Weather.storm, '#ff3b30']] : [])]) {
+      for (const [spot, color] of [...Weather.volcanoes.filter(volcano => Weather.seen(volcano)).map(volcano => [volcano, '#ff6a00']), ...(Weather.storm && Weather.seen(Weather.storm) ? [[Weather.storm, STORM_COLOR]] : [])]) {
         const x = toX(spot.x + 0.5), y = toY(spot.y + 0.5);
         if (Math.hypot(x - radius, y - radius) <= radius) {
           context.strokeStyle = color; context.lineWidth = 2;

@@ -33,6 +33,8 @@
       'The building sound now loops at every construction site you can see, from when the work starts until the building is finished',
       'The music no longer stops when a new level starts or the game updates; it carries on where it was',
       'Different music plays during fights and when a tornado or lava disaster begins',
+      'Meteor storms and volcano eruptions only warn you (alarm, message, minimap marker, weather symbol and music) when they happen within your sight, and a meteor storm always starts where the one it hits can see',
+      'On the minimap enemies are always larger red dots, also while a building is selected, buildings take up one tile in a clear cyan, and all buildings of the same kind light up when you select one or pick one to build',
       'Storms now flood the low land next to water for a short while. When the water goes down again it may leave something valuable behind. The Tempest spell does the same in a small area instead of blowing plants around',
       'Tooltips now work on touch screens: tap a resource or other labelled item to read its name or hint',
       'New: monsters roam the map from level 35. Some stand still, others wander near where they live; they attack soldiers and carriers that come close, but never workers. Defeating them does not count towards the goals',
