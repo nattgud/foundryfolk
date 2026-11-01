@@ -601,6 +601,7 @@
 
     updateMeteors(deltaSeconds) {
       const settings = Config.settings.weather.meteor, storm = this.storm;
+      if (this.type === 'meteorstorm' && !storm && !this.startMeteors()) this.type = 'clear';   // väder som sattes utan att stormen startade (t.ex. för hand) startar den nu
       if (storm && this.type !== 'meteorstorm') this.storm = null;   // ett klart väder (trollformeln) eller en supertornado avbryter stormen
       else if (storm && (storm.wait -= deltaSeconds) <= 0 && (storm.next -= deltaSeconds) <= 0) {
         storm.next = between(settings.every);
