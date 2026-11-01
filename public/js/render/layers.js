@@ -743,8 +743,67 @@
         context.fillRect(cx + Math.cos(a) * r * grow, cy - lift * reach * 1.5 * grow + Math.sin(a) * r * .25, 2 / zoom + 1, 2 / zoom + 1);
       }
     }
+    context.globalAlpha = 1;
+    drawMeteors(context, view, size, now);
     context.restore();
   });
+
+  // En eldtunga: spetsig droppform som slingrar (bw = halv bredd vid foten, h = höjd, sway = sidoförskjutning av toppen)
+  const tongue = (context, x, baseY, bw, h, sway) => {
+    context.beginPath();
+    context.moveTo(x - bw, baseY);
+    context.quadraticCurveTo(x - bw * .6 + sway, baseY - h * .55, x + sway * 1.5, baseY - h);
+    context.quadraticCurveTo(x + bw * .6 + sway, baseY - h * .55, x + bw, baseY);
+    context.closePath();
+  };
+  // Eld: ett varmt sken och tre flackande tungor, orange utanpå och gul i mitten. 'phase' skiljer eldarna åt, 'alpha' tonar in och ut.
+  const drawFlames = (context, x, baseY, width, height, phase, now, alpha) => {
+    const glow = context.createRadialGradient(x, baseY - height * .4, 0, x, baseY - height * .4, width * .9);
+    glow.addColorStop(0, `rgba(255,150,40,${.35 * alpha})`); glow.addColorStop(1, 'rgba(255,120,20,0)');
+    context.fillStyle = glow; context.fillRect(x - width, baseY - height * 1.4, width * 2, height * 1.8);
+    for (let i = 0; i < 3; i++) {
+      const offset = (i - 1) * width * .28, h = height * (i === 1 ? 1 : .7) * (.75 + .25 * Math.sin(now * 9 + phase + i * 2.1)), sway = Math.sin(now * 7 + phase * 1.7 + i) * width * .08;
+      context.fillStyle = `rgba(255,105,20,${.85 * alpha})`; tongue(context, x + offset, baseY, width * .22, h, sway); context.fill();
+      context.fillStyle = `rgba(255,215,90,${.9 * alpha})`; tongue(context, x + offset, baseY, width * .11, h * .6, sway * .6); context.fill();
+    }
+  };
+
+  // Meteorstorm: eldklotet faller diagonalt från precis ovanför skärmens överkant till nedslaget, med en skugga på marken som växer. Nedslag blixtrar till,
+  // eldar brinner på rutor och på enheter som brinner (Weather.fires, unit.burning).
+  const drawMeteors = (context, view, size, now) => {
+    const Weather = CityBuilder.Weather, settings = Config.settings.weather.meteor;
+    for (const meteor of Weather.meteors) {
+      const tx = (meteor.x + .5) * size, ty = (meteor.y + .5) * size, p = Math.min(1, meteor.age / settings.fall), radius = size * (meteor.big ? .4 : .22);
+      if (tx < view.left - size * 4 || tx > view.right + size * 4 || ty < view.top - size || ty > view.bottom + size) continue;
+      context.fillStyle = `rgba(0,0,0,${.28 * p})`;
+      context.beginPath(); context.ellipse(tx, ty + radius * .5, radius * (.6 + p), radius * (.3 + .5 * p), 0, 0, Math.PI * 2); context.fill();
+      const startY = view.top - size * 2, startX = tx - (ty - startY) * .3, x = startX + (tx - startX) * p, y = startY + (ty - startY) * p;
+      const length = Math.hypot(tx - startX, ty - startY) || 1, ux = (tx - startX) / length, uy = (ty - startY) / length, tail = radius * 7;
+      const trail = context.createLinearGradient(x, y, x - ux * tail, y - uy * tail);
+      trail.addColorStop(0, 'rgba(255,190,70,.9)'); trail.addColorStop(1, 'rgba(255,90,20,0)');
+      context.strokeStyle = trail; context.lineWidth = radius * 1.5; context.lineCap = 'round';
+      context.beginPath(); context.moveTo(x, y); context.lineTo(x - ux * tail, y - uy * tail); context.stroke();
+      context.lineCap = 'butt';
+      const head = context.createRadialGradient(x, y, 0, x, y, radius * 1.6);
+      head.addColorStop(0, 'rgba(255,255,230,1)'); head.addColorStop(.4, 'rgba(255,200,80,.95)'); head.addColorStop(.75, 'rgba(255,100,20,.6)'); head.addColorStop(1, 'rgba(255,60,10,0)');
+      context.fillStyle = head; context.beginPath(); context.arc(x, y, radius * 1.6, 0, Math.PI * 2); context.fill();
+    }
+    for (const blast of Weather.blasts) {
+      const k = blast.age / .7, cx = (blast.x + .5) * size, cy = (blast.y + .5) * size, reach = size * (blast.big ? 2.4 : 1.4) * (.4 + .6 * k);
+      if (cx < view.left - reach || cx > view.right + reach || cy < view.top - reach || cy > view.bottom + reach) continue;
+      const flash = context.createRadialGradient(cx, cy, 0, cx, cy, reach);
+      flash.addColorStop(0, `rgba(255,240,190,${.9 * (1 - k)})`); flash.addColorStop(.5, `rgba(255,130,40,${.5 * (1 - k)})`); flash.addColorStop(1, 'rgba(255,80,20,0)');
+      context.fillStyle = flash; context.fillRect(cx - reach, cy - reach, reach * 2, reach * 2);
+    }
+    for (const fire of Weather.fires) {
+      if (fire.left <= 0 || fire.x * size < view.left - size || fire.x * size > view.right || fire.y * size < view.top - size || fire.y * size > view.bottom + size) continue;
+      drawFlames(context, (fire.x + .5) * size, (fire.y + .9) * size, size * .9, size * .95, fire.x * 12.9898 + fire.y * 78.233, now, Math.min(1, fire.left, .2 + fire.age * 2));
+    }
+    for (const unit of CityBuilder.World.units) {
+      if (!(unit.burning > Weather.time) || !Vision.visible(Players.HUMAN, Math.floor(unit.x), Math.floor(unit.y))) continue;
+      drawFlames(context, shownX(unit) * size, shownY(unit) * size + size * .35, size * .6, size * .7, unit.x * 3.7 + unit.y * 5.1, now, 1);
+    }
+  };
 
   Renderer.addLayer('fog', (context, renderer) => {
     const unit = renderer.tileSize * Vision.cellSize(), view = renderer.viewBounds(0), now = performance.now();

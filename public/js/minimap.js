@@ -701,13 +701,14 @@
 
       this.updateLegend();
 
-      // Vulkaner: en pulserande orange ring (en pil i kanten när den ligger utanför kartan), så de syns även långt bort
-      for (const volcano of CityBuilder.Weather.volcanoes) {
-        const x = toX(volcano.x + 0.5), y = toY(volcano.y + 0.5);
+      // Vulkaner (orange) och meteorstormens mitt (röd): en pulserande ring (en pil i kanten när den ligger utanför kartan), så de syns även långt bort
+      const Weather = CityBuilder.Weather;
+      for (const [spot, color] of [...Weather.volcanoes.map(volcano => [volcano, '#ff6a00']), ...(Weather.storm ? [[Weather.storm, '#ff3b30']] : [])]) {
+        const x = toX(spot.x + 0.5), y = toY(spot.y + 0.5);
         if (Math.hypot(x - radius, y - radius) <= radius) {
-          context.strokeStyle = '#ff6a00'; context.lineWidth = 2;
+          context.strokeStyle = color; context.lineWidth = 2;
           context.beginPath(); context.arc(x, y, marker + 2 + Math.abs(Math.sin(performance.now() / 300)) * 2, 0, Math.PI * 2); context.stroke();
-        } else this.drawArrow(context, Math.atan2(volcano.y + 0.5 - centerY, volcano.x + 0.5 - centerX), radius, '#ff6a00');
+        } else this.drawArrow(context, Math.atan2(spot.y + 0.5 - centerY, spot.x + 0.5 - centerX), radius, color);
       }
 
       // Röd pil mot platsen där fienden senast attackerade (10 sekunder, se Combat.raiseAlarm), på samma sätt

@@ -8,6 +8,9 @@
      fog      synfältet från byggnader och enheter krymper (Vision läser Weather.visionFactor)
      tornado  rycker upp växter inom några rutor och släpper dem som några högar när den dött ut
     supertornado  uppstår när två tornados nuddar varandra: dubbelt så stor, river dubbelt så fort och varar tre gånger så länge (se merge)
+     meteorstorm  mycket sällsynt: eldklot faller runt en plats som markeras på minimapen. Små nedslag skadar det de träffar, stora gör ett nedslag
+              (meteor crater, ibland en fallen star), river högar och tänder eldar som bränner byggnader, enheter och växter (se strike, updateFires).
+              HQ och enheter med definition.meteorProof skonas (harm)
      volcano  sällsynt händelse (inte en väderruta): lava över vatten mellan två landmassor (blir gräs) eller över land vid berg (blir malm)
    Rutnätet skannas bara i de chunkar spelaren ser. Ritas av lagret 'weather' (render/layers.js). Sparas med spelet. */
 (function (CityBuilder) {
@@ -21,6 +24,7 @@
   const smooth = x => x * x * (3 - 2 * x);
   const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const AROUND = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+  const NO_FIRE = new Set(['water', 'lava', 'mountain']);   // här varken brinner det eller blir det något nedslag
 
   const Weather = {
     time: 0, type: 'clear', left: 60, scanIn: 0, tornadoIn: 0, flash: 0, flashIn: 8,
@@ -28,20 +32,25 @@
     volcanoes: [],   // { kind: 'link' | 'peak', x, y, age, pace, life, plan: [[x, y], ...], lit, tick, ores }
     flood: { rings: null, level: 0, timer: 0, found: 0, tiles: {} },   // stormens översvämning (rings null = ingen), se newFlood
     floods: [],      // Tempest: { x, y, radius, left, rings, level, timer, found, tiles }
+    storm: null,     // meteorstormen: { x, y, radius, wait, next } (mitten, radie, sekunder kvar av varningen, sekunder till nästa meteor)
+    meteors: [],     // eldklot på väg ner: { x, y, age, big }
+    blasts: [],      // nedslag som ritas en kort stund: { x, y, age, big }
+    fires: [],       // eldar: { x, y, age, left }
+    fireTick: 1, burnUntil: 0,
 
     reset() {
       const settings = Config.settings.weather;
-      Object.assign(this, { time: settings.dayLength * settings.startFraction, type: 'clear', left: between([settings.minSeconds, settings.maxSeconds]), scanIn: 0, scan: null, tornadoIn: 0, flash: 0, flashIn: 8, flood: { rings: null, level: 0, timer: 0, found: 0, tiles: {} }, floods: [], tornadoes: [], volcanoes: [] });
+      Object.assign(this, { time: settings.dayLength * settings.startFraction, type: 'clear', left: between([settings.minSeconds, settings.maxSeconds]), scanIn: 0, scan: null, tornadoIn: 0, flash: 0, flashIn: 8, flood: { rings: null, level: 0, timer: 0, found: 0, tiles: {} }, floods: [], tornadoes: [], volcanoes: [], storm: null, meteors: [], blasts: [], fires: [], fireTick: 1, burnUntil: 0 });
     },
 
     snapshot() {
       const flood = this.flood;
-      return { time: this.time, type: this.type, left: this.left, tornadoes: this.tornadoes, volcanoes: this.volcanoes, flood: { level: flood.level, found: flood.found, tiles: Object.values(flood.tiles).map(tile => [tile.x, tile.y, tile.type, tile.amount, tile.ring]) }, floods: this.floods };
+      return { time: this.time, type: this.type, left: this.left, tornadoes: this.tornadoes, volcanoes: this.volcanoes, storm: this.storm, fires: this.fires, flood: { level: flood.level, found: flood.found, tiles: Object.values(flood.tiles).map(tile => [tile.x, tile.y, tile.type, tile.amount, tile.ring]) }, floods: this.floods };
     },
     restore(data) {
       this.reset();
       if (!data) return;
-      Object.assign(this, { time: data.time, type: data.type, left: data.left, tornadoes: data.tornadoes || [], volcanoes: data.volcanoes || [], floods: data.floods || [] });
+      Object.assign(this, { time: data.time, type: data.type, left: data.left, tornadoes: data.tornadoes || [], volcanoes: data.volcanoes || [], floods: data.floods || [], storm: data.storm || null, fires: data.fires || [] });
       const saved = data.flood?.tiles || [];   // en pågående översvämning står kvar på sin högsta nivå tills stormen är över (rings: [] = ingen mer stigning)
       if (saved.length) this.flood = { rings: [], level: data.flood.level, timer: 0, found: data.flood.found || 0, tiles: Object.fromEntries(saved.map(([x, y, type, amount, ring]) => [Utils.tileKey(x, y), { x, y, type, amount, ring }])) };
     },
@@ -58,9 +67,14 @@
       const settings = Config.settings.weather, options = Object.entries(settings.chances).filter(([type]) => type !== this.type);
       let roll = Utils.random() * options.reduce((sum, [, weight]) => sum + weight, 0);
       this.type = options.find(([, weight]) => (roll -= weight) < 0)?.[0] || 'clear';
+      this.storm = null;
       if (this.type === 'volcano') { this.type = 'clear'; this.erupt(); }   // en händelse, inget väder: himlen är klar medan lavan rinner
-      else CityBuilder.Sound?.play('weather.' + this.type);
-      this.left = this.type === 'tornado' ? between([30, 60]) : between([settings.minSeconds, settings.maxSeconds]);
+      else {
+        if (this.type === 'meteorstorm' && !this.startMeteors()) this.type = 'clear';
+        CityBuilder.Sound?.play('weather.' + this.type);
+      }
+      const meteor = settings.meteor;
+      this.left = this.type === 'tornado' ? between([30, 60]) : this.type === 'meteorstorm' ? meteor.warning + between(meteor.seconds) : between([settings.minSeconds, settings.maxSeconds]);
       this.tornadoIn = 2;
     },
 
@@ -532,6 +546,103 @@
       if (done) this.floods = this.floods.filter(flood => !flood.done);
     },
 
+    // ---- Meteorstorm -------------------------------------------------------------------------------------------------
+
+    // Stormens mitt: nära en byggnad hos en slumpad spelare (false om ingen har något att drabba). Varningen: larm, notis och en markering på minimapen.
+    startMeteors() {
+      const settings = Config.settings.weather.meteor, homes = this.homesByPlayer(false);
+      if (!homes.size) return false;
+      const home = this.pickHome(homes), angle = Utils.random() * Math.PI * 2, distance = between(settings.near);
+      this.storm = { x: Math.round(home.x + Math.cos(angle) * distance), y: Math.round(home.y + Math.sin(angle) * distance), radius: between(settings.radius), wait: settings.warning, next: 0 };
+      CityBuilder.Sound?.play('alarm');
+      CityBuilder.UI?.showToast(CityBuilder.t('A meteor storm is coming! Meteors will fall around the marked spot'));
+      return true;
+    },
+
+    // Skada från en meteor eller eld. HQ och enheter med definition.meteorProof skonas. Som lavan: inget larm, bara livet som minskar.
+    harm(target, amount) {
+      if (target.hp == null || target.removed || target.type === 'hq' || target.definition?.meteorProof) return;
+      target.hp -= amount;
+      if (target.hp <= 0) CityBuilder.Combat.kill(target);
+    },
+
+    // En eld på rutan (en som redan brinner förnyas). Vatten, lava och berg brinner inte.
+    setFire(x, y) {
+      const type = World.getTile(x, y)?.terrainType;
+      if (!type || NO_FIRE.has(type)) return;
+      const left = between(Config.settings.weather.meteor.fire.seconds), fire = this.fires.find(other => other.x === x && other.y === y);
+      if (fire) fire.left = Math.max(fire.left, left); else this.fires.push({ x, y, age: 0, left });
+    },
+
+    // Meteoren landar: skada inom radien, för ett stort nedslag också ett nedslag i marken, högar som försvinner och eldar
+    strike({ x, y, big }) {
+      const settings = Config.settings.weather.meteor, hit = big ? settings.big : settings.small, tile = World.getTile(x, y), Sound = CityBuilder.Sound, seen = new Set();
+      if (!tile) return;
+      for (let dy = -hit.radius; dy <= hit.radius; dy++) for (let dx = -hit.radius; dx <= hit.radius; dx++) {
+        const building = Utils.distance(dx, dy) <= hit.radius && World.buildingAt(x + dx, y + dy);
+        if (!building || seen.has(building)) continue;
+        seen.add(building);
+        if (!building.definition.pile) this.harm(building, hit.building);
+        else if (big) CityBuilder.Combat.kill(building);   // högar går inte att skada, men ett stort nedslag tar dem
+      }
+      for (const unit of [...World.units]) if (Utils.distance(unit.x - x - 0.5, unit.y - y - 0.5) <= hit.radius + 0.5) this.harm(unit, hit.unit);
+      if (big) {
+        if (!NO_FIRE.has(tile.terrainType) && !World.buildingAt(x, y)) {   // en byggnad som klarade sig står kvar
+          const type = Utils.random() < settings.starChance ? 'fallen_star' : 'meteor_crater';
+          Utils.assign(tile, Config.terrain[type], { terrainType: type, remainingAmount: Config.terrain[type].resourceAmount, ground: 'dirt', wear: 0 });
+          CityBuilder.Pathfinder.clearCache();
+        }
+        for (let n = rand(hit.fires); n > 0; n--) this.setFire(x + rand([-hit.radius, hit.radius]), y + rand([-hit.radius, hit.radius]));
+      } else if (Utils.random() < hit.fire) this.setFire(x, y);
+      this.blasts.push({ x, y, age: 0, big });
+      Sound?.play(big ? Sound.known('meteor', 'destroyed') : Sound.known('meteor_small', 'hit'), { x, y });
+    },
+
+    updateMeteors(deltaSeconds) {
+      const settings = Config.settings.weather.meteor, storm = this.storm;
+      if (storm && this.type !== 'meteorstorm') this.storm = null;   // ett klart väder (trollformeln) eller en supertornado avbryter stormen
+      else if (storm && (storm.wait -= deltaSeconds) <= 0 && (storm.next -= deltaSeconds) <= 0) {
+        storm.next = between(settings.every);
+        const angle = Utils.random() * Math.PI * 2, reach = storm.radius * Math.sqrt(Utils.random());
+        this.meteors.push({ x: Math.round(storm.x + Math.cos(angle) * reach), y: Math.round(storm.y + Math.sin(angle) * reach), age: 0, big: Utils.random() < settings.bigChance });
+      }
+      for (const meteor of this.meteors) if ((meteor.age += deltaSeconds) >= settings.fall) { meteor.done = true; this.strike(meteor); }
+      if (this.meteors.some(meteor => meteor.done)) this.meteors = this.meteors.filter(meteor => !meteor.done);
+      for (const blast of this.blasts) blast.age += deltaSeconds;
+      if (this.blasts.length) this.blasts = this.blasts.filter(blast => blast.age < 0.7);
+      this.updateFires(deltaSeconds);
+    },
+
+    // Eldarna brinner ut av sig själva (regn och storm släcker fortare). Varje sekund: byggnaden på rutan tar skada, en växt minskar, elden kan hoppa
+    // till en granne med växter eller byggnad, och enheter som står i eld börjar brinna en stund.
+    updateFires(deltaSeconds) {
+      const settings = Config.settings.weather.meteor.fire, growth = Config.settings.weather.growth, wet = this.type === 'rain' || this.type === 'storm';
+      for (const fire of this.fires) { fire.age += deltaSeconds; fire.left -= deltaSeconds * (wet ? settings.rain : 1); }
+      if ((this.fireTick -= deltaSeconds) > 0) return;
+      this.fireTick = 1;
+      if (!this.fires.length && this.time >= this.burnUntil) return;
+      const burning = new Set(), hurt = new Set();
+      let cleared = false;
+      for (const fire of this.fires) {
+        if (fire.left <= 0) continue;
+        burning.add(Utils.tileKey(fire.x, fire.y));
+        const tile = World.getTile(fire.x, fire.y), building = World.buildingAt(fire.x, fire.y), plant = !!tile && !!growth[tile.terrainType];
+        if (building && !hurt.has(building)) { hurt.add(building); this.harm(building, settings.building); }
+        if (plant && (tile.remainingAmount -= settings.plants) <= 0) { Utils.assign(tile, Config.terrain.grass, { terrainType: 'grass', remainingAmount: 0 }); cleared = true; }
+        if (!building && !plant) continue;
+        for (const [dx, dy] of DIRECTIONS) {
+          const nx = fire.x + dx, ny = fire.y + dy;
+          if (Utils.random() < settings.spread && (World.buildingAt(nx, ny) || growth[World.getTile(nx, ny)?.terrainType])) this.setFire(nx, ny);
+        }
+      }
+      for (const unit of [...World.units]) {
+        if (burning.has(Utils.tileKey(Math.floor(unit.x), Math.floor(unit.y)))) { unit.burning = this.time + settings.burn; this.burnUntil = Math.max(this.burnUntil, unit.burning); }
+        if (unit.burning > this.time) this.harm(unit, settings.unit);
+      }
+      if (cleared) CityBuilder.Pathfinder.clearCache();
+      this.fires = this.fires.filter(fire => fire.left > 0);
+    },
+
     updateVolcanoes(deltaSeconds) {
       for (const volcano of this.volcanoes) this.updateVolcano(volcano, deltaSeconds);
       if (this.volcanoes.some(volcano => volcano.done)) this.volcanoes = this.volcanoes.filter(volcano => !volcano.done);
@@ -557,6 +668,7 @@
       Weather.updateFloods(deltaSeconds);
       Weather.updateTornadoes(deltaSeconds);
       Weather.updateVolcanoes(deltaSeconds);
+      Weather.updateMeteors(deltaSeconds);
       if (Weather.type === 'storm' && (Weather.flashIn -= deltaSeconds) <= 0) { Weather.flash = 1; Weather.flashIn = 6 + Math.random() * 9; CityBuilder.Sound?.play('weather.thunder'); }   // blixt
       Weather.flash = Math.max(0, Weather.flash - deltaSeconds * 2.5);
     },

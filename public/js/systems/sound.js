@@ -158,7 +158,7 @@
     voices: 0,
     channels: null,          // musikkanaler per läge: { calm, battle, disaster }, se channel()
     mood: 'calm',            // vilket läge musiken har just nu: calm | battle | disaster (updateMood)
-    hazards: 0,              // antal pågående tornados och utbrott förra gången (ett nytt startar katastrofmusiken)
+    hazards: 0,              // antal pågående tornados, utbrott och meteorstormar förra gången (ett nytt startar katastrofmusiken)
     hazardUntil: 0,
     paused: false,           // spelet står stilla (huvudmeny, fönster): effekter och loopar är frysta, se syncPause
     playing: new Set(),      // pågående enstaka effekter (källor)
@@ -535,7 +535,7 @@
     // Strid så länge något av spelarens slåss (Combat.fightAt) och en stund efter, katastrof en stund efter att en tornado eller ett utbrott börjar
     updateMood() {
       const now = performance.now() / 1000, { Weather, Combat } = CityBuilder;
-      const hazards = Weather ? Weather.tornadoes.length + Weather.volcanoes.length : 0;
+      const hazards = Weather ? Weather.tornadoes.length + Weather.volcanoes.length + (Weather.storm ? 1 : 0) : 0;
       if (hazards > this.hazards) this.hazardUntil = now + MOOD.disasterSeconds;
       this.hazards = hazards;
       const mood = hazards && now < this.hazardUntil ? 'disaster' : Combat && Combat.time - Combat.fightAt < MOOD.battleSeconds ? 'battle' : 'calm';

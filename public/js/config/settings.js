@@ -139,6 +139,7 @@ CityBuilder.Config.settings = {
         // tornado: 'sounds/weather/tornado_start.mp3',
         // supertornado: 'sounds/weather/supertornado_start.mp3',   // när två tornados blir en
         // volcano: 'sounds/weather/volcano_start.mp3',   // vid utbrottet
+        // meteorstorm: 'sounds/weather/meteorstorm_start.mp3',   // varningen när en meteorstorm börjar (ihop med larmet)
         thunder: 'sounds/weather/thunder_start.mp3',         // vid varje blixt
       },
       loops: {                                          // loopas så länge vädret varar (tornado och volcano bara där de finns, och hörs på skärmen)
@@ -148,6 +149,7 @@ CityBuilder.Config.settings = {
         tornado: { file: 'sounds/weather/warning_bell.mp3', volume: 0.4 },
         // supertornado: 'sounds/weather/supertornado_loop.mp3',   // loopas vid varje supertornado som syns
         volcano: { file: 'sounds/weather/warning_bell.mp3', volume: 0.3 },
+        meteorstorm: { file: 'sounds/weather/warning_bell.mp3', volume: 0.4 },
       },
       day: 'sounds/day.mp3',                 // loopas dagtid
       night: 'sounds/night.mp3',             // loopas nattetid
@@ -187,7 +189,7 @@ CityBuilder.Config.settings = {
     nightLight: { building: 2.5, unit: 1, fade: 1 },   // ljust som på dagen på så många rutor runt spelarens byggnader och människor (djur lyser inte), sedan mjuk övergång på 'fade' rutor
     dayLength: 480, startFraction: 0.12,   // ett dygn i speltid, och var i dygnet ett nytt spel börjar (0 = gryning)
     minSeconds: 30, maxSeconds: 180,
-    chances: { clear: 52, rain: 18, storm: 4, fog: 10, tornado: 3, volcano: 2 },   // volcano: ingen väderruta utan en händelse; vädret blir klart medan lavan rinner
+    chances: { clear: 52, rain: 18, storm: 4, fog: 10, tornado: 3, meteorstorm: 0.15, volcano: 2 },   // volcano: ingen väderruta utan en händelse; vädret blir klart medan lavan rinner. meteorstorm: ca 5 % av hur ofta en tornado kommer
     growth: { tree: 'wood', apple_tree: 'apples', berry_bush: 'berries', herbs: 'herbs', mushrooms: 'mushrooms' },
     scanSeconds: 2,
     scanSpreadSeconds: 1,                  // en skanning delas på så lång speltid (några chunkar per steg), så att kostnaden blir jämn
@@ -232,6 +234,28 @@ CityBuilder.Config.settings = {
       shoreOnly: ['sand'],                 // sand landar bara på lediga rutor som rör vatten (annars blockeras brunnar och fiskare av breda stränder); finns ingen sådan ruta försvinner sanden
       land: { water: 50, sand: 25, bog: 10 },       // hur mycket varje ny ruta vatten/sand rymmer när tornadon släpper det (vatten först, på lediga rutor inom 2 rutor)
       piles: [1, 4],                       // hur många högar den släpper i slutet
+    },
+    // Meteorstorm (se systems/weather.js): eldklot faller från skärmens överkant runt en markerad plats. HQ och enheter med meteorProof skonas alltid.
+    meteor: {
+      seconds: [30, 50],                   // hur länge det regnar meteorer, efter varningen
+      warning: 6,                          // sekunder med varning (ljud och markering på minimapen) innan första nedslaget
+      near: [0, 14],                       // stormens mitt ligger så här långt (rutor) från en byggnad hos en slumpad spelare
+      radius: [12, 18],                    // stormens radie runt mitten (rutor)
+      every: [0.3, 0.8],                   // sekunder mellan nedslag
+      fall: 0.9,                           // sekunder ett eldklot faller
+      bigChance: 0.2,                      // andel stora nedslag
+      small: { radius: 1, building: 30, unit: 12, fire: 0.3 },   // skadar bara det de träffar (rutor, skada på byggnad, skada på enhet) och tänder ibland en eld
+      big: { radius: 2, building: 120, unit: 40, fires: [2, 5] },   // river högar, gör ett nedslag på mitten och tänder flera eldar
+      starChance: 0.12,                    // chans att ett stort nedslag blir en fallen star (annars en meteor crater på bar jord)
+      fire: {
+        seconds: [8, 14],                  // hur länge en eld brinner
+        rain: 3,                           // regn och storm släcker så många gånger fortare
+        building: 8,                       // skada per sekund på en byggnad på rutan
+        unit: 4,                           // skada per sekund på en enhet som brinner
+        burn: 3,                           // sekunder en enhet fortsätter brinna efter att ha stått i eld
+        plants: 2,                         // en växt på rutan minskar så mycket per sekund (tom = gräs)
+        spread: 0.015,                     // chans per sekund att elden hoppar till en granne med växter eller byggnad
+      },
     },
     // Vulkaner (en sällsynt händelse, se chances). 'link' bygger en 1-3 rutor bred lavaled över vatten mellan två landmassor som stelnar till gräs
     // (en ny bro); 'peak' sprider lava över land vid berg som stelnar till malm. Lavan bryter ner byggnader på sina rutor och skadar grannbyggnader.
