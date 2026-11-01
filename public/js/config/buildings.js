@@ -1003,6 +1003,9 @@ CityBuilder.Config.buildings = {
       amountExponent: 0.6,                 // dubbel mängd ger inte dubbel kraft
       shift: 0.3,                          // andel av nästa ingrediens som vrids ett steg på hjulet
       echoShare: 0.2,                      // andra essensen måste ha så stor andel för att ge en bieffekt
+      cycloneShare: 0.1,                   // ... men för vatten med död (tornado) räcker en mindre andel
+      superStrength: 2.9,                  // en tornado med minst så stor styrka (max 3) blir en supertornado, om blandningen också har superIngredient: kräver nästan största mängden, mest vatten och en liten del död
+      superIngredient: 'ancient_relic',
       reference: 10,                       // essenssumma som motsvarar normal kraft
       essences: {
         growth: { name: 'Growth', color: '#6fbf5a' },

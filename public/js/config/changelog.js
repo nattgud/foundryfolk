@@ -8,6 +8,8 @@
   CityBuilder.Changelog = {
     '0.9.2': [
       'The music now keeps the volume you set in the settings when a level loads, instead of briefly playing at full volume',
+      'A spell of a great deal of water with a little death and an ancient relic raises a supertornado. It is very hard to make',
+      'Tornado spells are a little easier to find: water with just a small share of death is now enough',
       'The more buildings you have, the more carriers each new building gives: every 18th building adds one more (up to 4 per building), so the carriers keep up in a big city',
       'Berries, herbs, mushrooms and apples spread a little slower, so they do not take over an area as quickly',
       'Two tornadoes that touch each other merge into a supertornado: twice as big, it tears up plants and land twice as fast, it lasts three times as long, it is drawn darker, turns the weather to supertornado and has its own sounds',

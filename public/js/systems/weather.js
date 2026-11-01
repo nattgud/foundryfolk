@@ -232,12 +232,19 @@
     // Två tornados blir en supertornado mitt emellan dem: större, river fortare, varar längre (se settings.weather.tornado.super), tar med sig det de fångat
     // och gör vädret till 'supertornado' så länge den virvlar
     merge(a, b) {
-      const settings = Config.settings.weather.tornado, big = settings.super, collected = { ...a.collected }, life = big.life * Math.max(a.life ?? 7, b.life ?? 7);
+      const collected = { ...a.collected };
       for (const resource in b.collected) collected[resource] = (collected[resource] || 0) + b.collected[resource];
-      this.tornadoes.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, player: a.player, radius: big.radius * Math.max(a.radius, b.radius), age: 0, collected, life, speed: between(settings.speed), angle: a.angle, tick: settings.tickSeconds / big.rate, rate: big.rate, super: true });
+      this.spawnSuper((a.x + b.x) / 2, (a.y + b.y) / 2, Math.max(a.radius, b.radius), Math.max(a.life ?? 7, b.life ?? 7), a.player, collected, a.angle);
       a.merged = b.merged = true;
+    },
+
+    // En supertornado av en vanlig tornados mått (radie, livslängd): större, river fortare och varar längre (settings.weather.tornado.super).
+    // Vädret blir 'supertornado' så länge den virvlar
+    spawnSuper(x, y, radius, life, player, collected = {}, angle = Utils.random() * Math.PI * 2) {
+      const settings = Config.settings.weather.tornado, big = settings.super;
+      this.tornadoes.push({ x, y, player, radius: big.radius * radius, age: 0, collected, life: big.life * life, speed: between(settings.speed), angle, tick: settings.tickSeconds / big.rate, rate: big.rate, super: true });
       this.type = 'supertornado';
-      this.left = Math.max(this.left, life);
+      this.left = Math.max(this.left, big.life * life);
       CityBuilder.Sound?.play('weather.supertornado');
     },
 

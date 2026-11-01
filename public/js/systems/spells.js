@@ -13,7 +13,7 @@
      rain     växter i området ökar i mängd (factor = hur ofta mot vanligt regn) i 'seconds' sekunder
      storm    lågt land vid vattnet i området översvämmas i 'seconds' sekunder (Weather.spawnFlood) och torkar sedan upp
      clear    vädret över hela kartan blir klart i 'seconds' sekunder: ingen dimma, storm eller tornado (pågående tornados släpper sitt byte)
-     tornado  en tornado med radien 'radius' och livslängden 'seconds' uppstår på platsen
+     tornado  en tornado med radien 'radius' och livslängden 'seconds' uppstår på platsen; är formeln starkare än mixing.superStrength och innehåller mixing.superIngredient blir det en supertornado (super)
    Tidsbegränsade effekter är zoner (Spells.zones, sparas) som övriga system frågar efter med Spells.factor och Spells.bonus. */
 (function (CityBuilder) {
   'use strict';
@@ -70,7 +70,8 @@
       if (!found || !Object.keys(cost).length) return null;
       const { totals, sum, names } = found, order = totals.map((value, i) => i).sort((a, b) => totals[b] - totals[a]);
       const first = names[order[0]], share = totals[order[0]] / sum, secondShare = totals[order[1]] / sum;
-      const second = secondShare >= config.echoShare ? names[order[1]] : null;
+      const cyclone = first === 'water' && names[order[1]] === 'death';   // en liten del död räcker för en tornado (cycloneShare)
+      const second = secondShare >= (cyclone ? config.cycloneShare : config.echoShare) ? names[order[1]] : null;
       const power = Math.min(2.5, Math.max(0.4, sum / config.reference)), strength = Math.min(3, power * (0.5 + share));
       const sky = mix.map(slot => config.ingredients[slot.id]?.sky).find(Boolean);
       const spell = { id: mix.filter(slot => config.ingredients[slot.id] && slot.amount > 0).map(slot => slot.id + ':' + slot.amount).join(','), cost, first, second, sky, power };
@@ -97,7 +98,10 @@
       const kinds = { growth: 'yield', fire: 'pace', air: 'carriers', spirit: 'surge' };
       if (first === 'death') Object.assign(spell, { kind: 'smite', radius: Math.round(5 + 2 * power), health: Math.min(0.5, Math.max(0.05, Math.round((0.55 - 0.2 * strength) * 100) / 100)), noun: 'Blight' });
       else if (first === 'water' && second === 'spirit') Object.assign(spell, { kind: 'clear', radius: 0, seconds: Math.round(40 + 30 * strength), noun: 'Clearing' });
-      else if (first === 'water' && second === 'death') Object.assign(spell, { kind: 'tornado', radius: strength > 1.6 ? 3 : 2, seconds: Math.min(30, Math.round(12 + 8 * strength)), noun: 'Cyclone' });
+      else if (first === 'water' && second === 'death') {
+        const huge = strength >= config.superStrength && mix.slice(0, config.slots).some(slot => slot.id === config.superIngredient && slot.amount > 0);   // nästan allt måste vara rätt: störst mängd, mest vatten och en uråldrig relik
+        Object.assign(spell, { kind: 'tornado', super: huge, radius: strength > 1.6 ? 3 : 2, seconds: Math.min(30, Math.round(12 + 8 * strength)), noun: huge ? 'Supercyclone' : 'Cyclone' });
+      }
       else if (first === 'water') Object.assign(spell, timed(second === 'air' || second === 'fire' ? 'storm' : 'rain', strength, second), { noun: second === 'air' || second === 'fire' ? 'Tempest' : 'Rain' });
       else Object.assign(spell, timed(kinds[first], strength, second), { noun: { yield: 'Bloom', pace: 'Blaze', carriers: 'Gust', surge: 'Surge' }[kinds[first]] });
       spell.adjective = second;
@@ -238,7 +242,7 @@
       };
       if (spell.kind === 'create') this.create(spell, x, y, building.player);
       else if (spell.kind === 'clear') CityBuilder.Weather.clearSky(spell.seconds);
-      else if (spell.kind === 'tornado') CityBuilder.Weather.spawnTornado(x, y, spell.radius, spell.seconds, building.player);
+      else if (spell.kind === 'tornado') CityBuilder.Weather[spell.super ? 'spawnSuper' : 'spawnTornado'](x, y, spell.radius, spell.seconds, building.player);
       else if (spell.kind === 'storm') { CityBuilder.Weather.spawnFlood(x, y, spell.radius, spell.seconds); zone(spell); }
       else { if (spell.kind === 'smite') this.smite(spell, x, y, building.player); zone(spell); }
       if (spell.echo) zone(spell.echo);
