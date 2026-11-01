@@ -24,6 +24,7 @@
       'Sounds far from the middle of the screen now get an echo, so they sound distant and mysterious; strongest in fog',
       'Fog now muffles the sound effects too: you hear less far from the middle of the screen, and the treble fades the further away a sound is',
       'Planters work twice as fast, which helps on levels where trees are scarce',
+      'A storm now starts with lightning and thunder right away, and the Tempest spell rumbles with thunder when you cast it',
       'New versions are fetched in the background and installed seamlessly while the tab is hidden or the main menu is open',
       'The gold, silver, gemstone, salt and sulfur mines now accept bread and fish as well as meals',
       'Every working building can have its own sounds when it starts working, while it works (looping) and when it is done. The built-in work sounds are gone: a building only makes a sound if one is set up for it',

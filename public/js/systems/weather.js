@@ -72,6 +72,7 @@
       else {
         if (this.type === 'meteorstorm' && !this.startMeteors()) this.type = 'clear';
         CityBuilder.Sound?.play('weather.' + this.type);
+        if (this.type === 'storm') this.flashIn = 1;   // första blixten och åskan kommer direkt, inte först efter en lång stund
       }
       const meteor = settings.meteor;
       this.left = this.type === 'tornado' ? between([30, 60]) : this.type === 'meteorstorm' ? meteor.warning + between(meteor.seconds) : between([settings.minSeconds, settings.maxSeconds]);

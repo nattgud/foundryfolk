@@ -243,7 +243,7 @@
       if (spell.kind === 'create') this.create(spell, x, y, building.player);
       else if (spell.kind === 'clear') CityBuilder.Weather.clearSky(spell.seconds);
       else if (spell.kind === 'tornado') CityBuilder.Weather[spell.super ? 'spawnSuper' : 'spawnTornado'](x, y, spell.radius, spell.seconds, building.player);
-      else if (spell.kind === 'storm') { CityBuilder.Weather.spawnFlood(x, y, spell.radius, spell.seconds); zone(spell); }
+      else if (spell.kind === 'storm') { CityBuilder.Weather.spawnFlood(x, y, spell.radius, spell.seconds); CityBuilder.Sound?.play('weather.thunder'); zone(spell); }
       else { if (spell.kind === 'smite') this.smite(spell, x, y, building.player); zone(spell); }
       if (spell.echo) zone(spell.echo);
       building.spellCooldown = building.spellTotal = this.recharge(spell);
