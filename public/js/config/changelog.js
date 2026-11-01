@@ -29,6 +29,7 @@
       'The gold, silver, gemstone, salt and sulfur mines now accept bread and fish as well as meals',
       'Every working building can have its own sounds when it starts working, while it works (looping) and when it is done. The built-in work sounds are gone: a building only makes a sound if one is set up for it',
       'A player who is eliminated now gives a message, and the top bar shows how many players are left of the total (👥 3/4)',
+      'Lightning in a storm is now much less frequent, and every flash starts its own thunder, even while the last one is still rumbling',
       'The building sound now loops at every construction site you can see, from when the work starts until the building is finished',
       'The music no longer stops when a new level starts or the game updates; it carries on where it was',
       'Different music plays during fights and when a tornado or lava disaster begins',

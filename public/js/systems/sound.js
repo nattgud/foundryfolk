@@ -147,7 +147,7 @@
   const DRY_LOSS = 0.5;           // hur mycket direktljudet minskar när ekot är som störst (1 = helt borta)
   const OPEN = 20000;             // Hz: filter som släpper igenom allt hörbart
   const AMBIENT_MS = 100;         // hur ofta loopar anpassas efter väder, tid på dygnet och kamera
-  const spec = value => typeof value === 'string' ? { file: value } : Array.isArray(value) ? { files: value } : value;   // en fil, flera filer (en slumpas varje gång) eller { file | files, volume }
+  const spec = value => typeof value === 'string' ? { file: value } : Array.isArray(value) ? { files: value } : value;   // en fil, flera filer (en slumpas varje gång) eller { file | files, volume, maxVoices }
   const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
   const perceived = volume => volume * volume; // gain som känns jämn mot reglaget
 
@@ -190,7 +190,7 @@
       } catch (error) { /* ingen sparad musik */ }
       for (const type of ['pagehide', 'beforeunload']) addEventListener(type, () => this.saveMusic());
       this.weather = custom.weather || {};
-      for (const [id, value] of Object.entries(this.weather.start || {})) this.define('weather.' + id, { ...spec(value), quiet: true, pitch: 0, maxVoices: 1, cooldown: 0 });
+      for (const [id, value] of Object.entries(this.weather.start || {})) this.define('weather.' + id, { quiet: true, pitch: 0, maxVoices: 1, cooldown: 0, ...spec(value) });
       setInterval(() => { this.syncPause(); this.updateMood(); if (!this.paused) this.updateAmbient(); }, AMBIENT_MS);
       this.injectStyles();
 

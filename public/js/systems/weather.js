@@ -670,7 +670,11 @@
       Weather.updateTornadoes(deltaSeconds);
       Weather.updateVolcanoes(deltaSeconds);
       Weather.updateMeteors(deltaSeconds);
-      if (Weather.type === 'storm' && (Weather.flashIn -= deltaSeconds) <= 0) { Weather.flash = 1; Weather.flashIn = 6 + Math.random() * 9; CityBuilder.Sound?.play('weather.thunder'); }   // blixt
+      if (Weather.type === 'storm' && (Weather.flashIn -= deltaSeconds) <= 0) {   // blixt
+        const [low, high] = Config.settings.weather.lightning;
+        Weather.flash = 1; Weather.flashIn = low + Math.random() * (high - low);
+        CityBuilder.Sound?.play('weather.thunder');
+      }
       Weather.flash = Math.max(0, Weather.flash - deltaSeconds * 2.5);
     },
   };

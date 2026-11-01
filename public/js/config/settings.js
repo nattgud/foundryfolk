@@ -140,7 +140,7 @@ CityBuilder.Config.settings = {
         // supertornado: 'sounds/weather/supertornado_start.mp3',   // när två tornados blir en
         // volcano: 'sounds/weather/volcano_start.mp3',   // vid utbrottet
         // meteorstorm: 'sounds/weather/meteorstorm_start.mp3',   // varningen när en meteorstorm börjar (ihop med larmet)
-        thunder: 'sounds/weather/thunder_start.mp3',         // vid varje blixt
+        thunder: { file: 'sounds/weather/thunder_start.mp3', maxVoices: 3 },   // vid varje blixt: ett nytt åskslag börjar direkt, även om det förra fortfarande hörs
       },
       loops: {                                          // loopas så länge vädret varar (tornado och volcano bara där de finns, och hörs på skärmen)
         rain: 'sounds/weather/rain_loop.mp3',
@@ -189,6 +189,7 @@ CityBuilder.Config.settings = {
     nightLight: { building: 2.5, unit: 1, fade: 1 },   // ljust som på dagen på så många rutor runt spelarens byggnader och människor (djur lyser inte), sedan mjuk övergång på 'fade' rutor
     dayLength: 480, startFraction: 0.12,   // ett dygn i speltid, och var i dygnet ett nytt spel börjar (0 = gryning)
     minSeconds: 30, maxSeconds: 180,
+    lightning: [15, 35],                   // sekunder mellan blixtarna i en storm
     chances: { clear: 52, rain: 18, storm: 4, fog: 10, tornado: 3, meteorstorm: 0.15, volcano: 2 },   // volcano: ingen väderruta utan en händelse; vädret blir klart medan lavan rinner. meteorstorm: ca 5 % av hur ofta en tornado kommer
     growth: { tree: 'wood', apple_tree: 'apples', berry_bush: 'berries', herbs: 'herbs', mushrooms: 'mushrooms' },
     scanSeconds: 2,
