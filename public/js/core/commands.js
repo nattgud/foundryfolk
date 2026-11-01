@@ -20,6 +20,9 @@
     return target ? action(target, args, player) : 'missing';
   };
 
+  // Handlare för det en byggnad bara kan göra när den är färdig: byta inriktning och recept, träna, trollformler ...
+  const onFinished = action => onBuilding((target, args, player) => target.buildProgress < 1 ? 'unbuilt' : action(target, args, player));
+
   const handlers = {
     build: (player, { type, x, y }) => CityBuilder.Construction.build(type, x, y, player),
     demolish: onBuilding(target => { CityBuilder.Construction.dismantle(target, true); return null; }),
@@ -27,15 +30,15 @@
       const formula = CityBuilder.Spells.fromId(spell);
       return formula ? CityBuilder.Spells.cast(target, formula, x, y) : 'nothing';
     }),
-    pause: onBuilding((target, { on }) => { target.paused = !!on; return null; }),
+    pause: onFinished((target, { on }) => { target.paused = !!on; return null; }),
     priority: onBuilding((target, { on }) => { target.prioritized = !!on; return null; }),
-    boost: onBuilding((target, { on }) => { target.boostOn = !!on; return null; }),
-    choice: onBuilding((target, { index }) => { target.choice = index; return null; }),
-    focus: onBuilding((target, { type }) => { CityBuilder.Behaviors.setFocus(target, type); return null; }),
-    recipe: onBuilding((target, { index }) => { CityBuilder.Behaviors.toggleRecipe(target, index); return null; }),
+    boost: onFinished((target, { on }) => { target.boostOn = !!on; return null; }),
+    choice: onFinished((target, { index }) => { target.choice = index; return null; }),
+    focus: onFinished((target, { type }) => { CityBuilder.Behaviors.setFocus(target, type); return null; }),
+    recipe: onFinished((target, { index }) => { CityBuilder.Behaviors.toggleRecipe(target, index); return null; }),
     flag: (player, { x, y, clear }) => CityBuilder.Flags.set(player, x, y, clear),
-    stance: onBuilding((target, { stance }) => { CityBuilder.Garrison.setStance(target, stance); return null; }),
-    train: onBuilding((target, { kind }) => { CityBuilder.Garrison.setTrainingType(target, kind); return null; }),
+    stance: onFinished((target, { stance }) => { CityBuilder.Garrison.setStance(target, stance); return null; }),
+    train: onFinished((target, { kind }) => { CityBuilder.Garrison.setTrainingType(target, kind); return null; }),
     trade: (player, { mode, resource, amount }) => (mode === 'buy' || mode === 'sell') ? CityBuilder.Economy[mode](resource, amount, player) : 0,
   };
 

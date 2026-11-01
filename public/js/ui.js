@@ -3258,44 +3258,45 @@
     },
 
     renderBuildingInfo(panel, building) {
-      const key = 'b' + building.id;
+      const ready = building.buildProgress >= 1;
+      const key = 'b' + building.id + (ready ? '' : 'u');   // en färdig byggnad får sina knappar: panelen byggs om när bygget är klart
       panel.style.display = 'flex';
 
       if (panel.dataset.buildingId !== key) {
         panel.dataset.buildingId = key;
 
         // Andra spelares byggnader går bara att titta på
-        const own = building.player === CityBuilder.Players.HUMAN;
+        const own = building.player === CityBuilder.Players.HUMAN, active = own && ready;   // active: knappar för det byggnaden gör, och det kräver en färdig byggnad
         const priorityButton = own && !building.definition.pile ? '<button id="priorityButton"></button>' : '';
-        const pauseButton = own && building.definition.job
+        const pauseButton = active && building.definition.job
           ? '<button id="pauseButton"></button>'
           : '';
 
-        const spellButtons = own && building.definition.mixing
+        const spellButtons = active && building.definition.mixing
           ? `<button id="bookButton">${t('Spellbook')} (${CityBuilder.Spells.book.length})</button><button id="mixButton">${t('Mix a spell')}</button>`
           : '';
-        const choices = own && building.definition.job?.choices;
+        const choices = active && building.definition.job?.choices;
         // Toolsmith: en av/på-knapp per verktyg. Övriga med val (kök, kvarn ...): en alternativknapp per recept, där bara ett är valt.
         // Gruppen tar emot snabbtangenten R (nästa recept).
-        const focuses = own ? CityBuilder.Behaviors.focusesOf(building) : [];   // byggnad med inriktning (gruva, samlare): en alternativknapp per upplåst inriktning
+        const focuses = active ? CityBuilder.Behaviors.focusesOf(building) : [];   // byggnad med inriktning (gruva, samlare): en alternativknapp per upplåst inriktning
         const choiceButton = focuses.length > 1
           ? `<div id="choiceButton" class="choice-group">${focuses.map(type => `<button class="choice-radio" data-type="${type}"></button>`).join('')}</div>`
           : !choices ? '' : building.definition.job.auto
           ? building.definition.job.choices.map((choice, index) => `<button class="tool-toggle" data-index="${index}"></button>`).join('')
           : `<div id="choiceButton" class="choice-group">${building.definition.job.choices.map((choice, index) => `<button class="choice-radio" data-index="${index}"></button>`).join('')}</div>`;
-        const marketButton = own && building.definition.isMarket && building.buildProgress >= 1 ? `<button id="marketButton">${t('Trade')}</button>` : '';
-        const boostButton = own && this.boostAvailable(building.definition) ? '<button id="boostButton"></button>' : '';
+        const marketButton = active && building.definition.isMarket ? `<button id="marketButton">${t('Trade')}</button>` : '';
+        const boostButton = active && this.boostAvailable(building.definition) ? '<button id="boostButton"></button>' : '';
 
         const demolishButton = own && building !== World.headquarters && !building.definition.pile
           ? `<button id="demolishButton">${t('Demolish')}</button>`
           : '';
 
         // Garnisoner: en knapp per soldattyp som byggnaden kan träna
-        const trainButtons = own && CityBuilder.Garrison.isGarrison(building)
+        const trainButtons = active && CityBuilder.Garrison.isGarrison(building)
           ? building.definition.job.trains.map(kind => `<button class="train-button" data-kind="${kind}">${this.unitName(kind)}</button>`).join('')
           : '';
 
-        const stanceButton = own && CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton"></button>' : '';
+        const stanceButton = active && CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton"></button>' : '';
 
         panel.innerHTML =
           `<div><b id="infoName">${this.buildingName(building.definition)}</b><span id="infoTools"></span><br><span id="infoStatus"></span></div>` +

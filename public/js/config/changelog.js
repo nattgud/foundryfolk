@@ -19,6 +19,7 @@
       'Each monster species can have its own sounds for being hurt and for dying',
       'Many more monsters from level 35 (and on custom maps): some roam alone, others live in small flocks that are best avoided early on and cleared out later; flocks grow on later levels',
       'Pausing the game now pauses all sound effects and loops too; only the music keeps playing',
+      'A building that is still under construction can no longer be used: the Enchanter, Market, workshops, barracks and the rest get their buttons only once they are finished',
       'Buildings holding many different resources (like the kitchen) now draw them in two rows of smaller icons, so they no longer spill out over neighbouring buildings',
       'Sounds far from the middle of the screen now get an echo, so they sound distant and mysterious; strongest in fog',
       'Fog now muffles the sound effects too: you hear less far from the middle of the screen, and the treble fades the further away a sound is',
