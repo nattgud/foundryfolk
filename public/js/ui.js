@@ -1550,15 +1550,23 @@
       if (view === 'main') {
         if (level) body.append(make('div', 'main-menu-level', level.custom ? level.name : `${t('Free Realm')} · ${t('Level {level}: {name}', { level: level.level, name: level.name })}`));
         const gap = () => make('div', 'main-menu-gap');
-        const restart = button(level?.custom ? t('Restart map') : t('Restart level'), () => this.renderMainMenu('confirm', {
-          text: level?.custom ? t('Restart this map? Progress on this map is lost. Manual saves are unchanged.') : t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
-          confirmLabel: level?.custom ? t('Restart map') : t('Restart level'),
+        const heading = text => make('div', 'main-menu-heading', text);
+        // En knapp med en liten förklaring till höger
+        const described = (text, onclick, icon, note) => {
+          const element = button(text, onclick, 'main-menu-slot', icon);
+          element.append(make('span', 'main-menu-slot-meta', note));
+          return element;
+        };
+        const custom = !!level?.custom;
+        const restart = button(custom ? t('Restart map') : t('Restart level'), () => this.renderMainMenu('confirm', {
+          text: custom ? t('Restart this map? Progress on this map is lost. Manual saves are unchanged.') : t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
+          confirmLabel: custom ? t('Restart map') : t('Restart level'),
           danger: true,
           back: 'main',
           onConfirm: () => CityBuilder.Levels.restart(),
         }), '', '🔄');
-        const newGame = button(t('New game'), () => this.renderMainMenu('confirm', {
-          text: t('New game resets the game and autosave, and generates new maps. Manual saves are unchanged.'),
+        const newGame = described(t('New game'), () => this.renderMainMenu('confirm', {
+          text: t('Start a new Free Realm game from level 1? The Free Realm autosave is reset and new maps are generated. Story mode and manual saves are unchanged.'),
           confirmLabel: t('Start a new game'),
           danger: true,
           back: 'main',
@@ -1568,32 +1576,34 @@
             saveSystem.newGame();
             this.toggleMainMenu(false);
           },
-        }), '', '✨');
-        // Storymode kommer senare: knappen är avstängd tills dess
-        const story = button(t('Story mode'), null, 'main-menu-slot', '🏰');
-        story.append(make('span', 'main-menu-slot-meta', t('Coming soon')));
-        // Grupper: spela vidare - spara och ladda - ny omgång och banor - information och inställningar
+        }), '✨', t('From level 1'));
+        // On a custom map: back to the Free Realm game, at the level you had reached
+        const backToFreeRealm = button(t('Continue Free Realm'), () => this.renderMainMenu('confirm', {
+          text: t('Leave this custom map and continue your Free Realm game at level {level}? The custom map is kept in its autosave and in your manual saves.', { level: CityBuilder.Levels?.campaignLevel }),
+          confirmLabel: t('Continue Free Realm'),
+          back: 'main',
+          onConfirm: () => CityBuilder.Levels.leaveCustom(),
+        }), '', '↩️');
         const row = make('div', 'main-menu-row');
         row.append(
           button(t('Continue'), () => this.toggleMainMenu(false), '', '▶'),
           button(t('Save game'), () => this.renderMainMenu('save'), '', '💾'),
           button(t('Load game'), entries.size ? () => this.renderMainMenu('load') : null, '', '📂')
         );
+        // Grupper: spela vidare - spara och ladda - lägena (Story mode, Free Realm, egen karta) - information och inställningar.
+        // Free Realm och en egen karta har rubrik och egna knappar, så det syns vad "Restart" och "New game" gäller.
         body.append(
           row,
-          ...(CityBuilder.Levels?.completed && !level?.custom ? [button(t('Next level'), () => CityBuilder.Levels.advance(), '', '⏭')] : []),
-          // On a custom map: back to the singleplayer game, at the level you had reached
-          ...(level?.custom ? [button(t('Continue Free Realm'), () => this.renderMainMenu('confirm', {
-            text: t('Leave this custom map and continue your Free Realm game at level {level}? The custom map is kept in its autosave and in your manual saves.', { level: CityBuilder.Levels.campaignLevel }),
-            confirmLabel: t('Continue Free Realm'),
-            back: 'main',
-            onConfirm: () => CityBuilder.Levels.leaveCustom(),
-          }), '', '↩️')] : []),
+          ...(CityBuilder.Levels?.completed && !custom ? [button(t('Next level'), () => CityBuilder.Levels.advance(), '', '⏭')] : []),
           gap(),
-          restart,
+          described(t('Story mode'), null, '🏰', t('Coming soon')),   // huvudläget, kommer senare: avstängd tills dess
+          gap(),
+          heading('Free Realm'),
+          ...(custom ? [backToFreeRealm] : [restart]),
           newGame,
+          gap(),
+          ...(custom ? [heading(t('Custom map')), restart] : []),
           button(t('Custom map'), () => this.renderMainMenu('custom'), '', '🗺️'),
-          story,
           gap(),
           button(t('Settings'), () => this.renderMainMenu('options'), '', '⚙️'),
           button(t('Statistics'), () => this.renderMainMenu('stats'), '', '📊'),
@@ -2758,7 +2768,16 @@
           gap: 12px;
         }
 
+        .main-menu-slot .main-menu-icon { margin-right: -6px; }   /* raden har redan mellanrum, så texten står där den gör på knappar utan förklaring */
         .main-menu-slot .main-menu-icon + span { flex: 1; }
+
+        .main-menu-heading {
+          margin: 2px 2px -2px;
+          color: var(--dim);
+          font-size: 11px;
+          letter-spacing: .08em;
+          text-transform: uppercase;
+        }
 
         .main-menu-slot-meta {
           color: var(--dim);

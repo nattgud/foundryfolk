@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'The main menu is clearer about the game modes: Story mode (coming soon) comes first, then Free Realm with its own Restart level and New game (which starts over from level 1), then Custom map',
       'The normal game is now called Free Realm, and the main menu has a place for Story mode, a handwritten campaign that is coming soon',
       'The music now keeps the volume you set in the settings when a level loads, instead of briefly playing at full volume',
       'The magic system is new: the first ingredient decides what a spell does (create deposits, upheave mountains, water or bog, make workers, carriers or buildings faster, make animals breed, rain, a tornado, an eruption or a meteor rain, summon monsters, weaken enemies or heal your soldiers), and every ingredient adds strength, duration and reach. The amount changes duration and reach, mixed kinds make the spell impure, and silver, moonstone, glass and the Moon invert it. In Creation the ingredients after the first choose which deposits appear, and Upheaval always clears everything around the target (1 to 4 tiles). Hunters now also leave blood, which can be used to summon monsters. Disasters are no longer random, and the spellbook lists the strongest first',
