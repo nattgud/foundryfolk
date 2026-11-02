@@ -48,6 +48,7 @@
       'A carrier whose destination is destroyed on the way turns around and takes the goods to the nearest store or building that needs them',
       'The resource bar at the top now shows what is free to use: stock that carriers are already fetching or that construction sites are waiting for is left out, and the full stock is shown dimmed after a slash, like 7/12',
       'The Kitchen\'s recipe lists are shorter: ✱ stands for any one of the base ingredients, listed once above the recipes and in the tooltips',
+      'Gatherers and mines now look different for each focus (berries, herbs, mushrooms and apples; iron, copper, tin, coal, gold, silver, gemstones, salt and sulfur), so you can tell them apart on the map',
     ],
     '0.9.1': [
       'Graves are rare now: a few single graves here and there on grass, sand and dirt, instead of whole graveyards in rows. They are only scenery',

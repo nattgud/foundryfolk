@@ -14,7 +14,6 @@
   applyDefaultImages('terrain', 'terrain');
   applyDefaultImages('buildings', 'buildings');
   applyDefaultImages('units', 'units');
-  for (const definition of Object.values(Config.buildings)) if (definition.group) definition.image = Config.buildings[definition.group].image;   // varianter av en byggnad med inriktning ser likadana ut
 
   // Recept med `any` (köket): `inputs` är tillbehören och `any` en lista av alternativa grundingredienser, av vilka en räcker.
   // takesOf = allt receptet kan ta emot (leveranser, ikoner), firstInputs = ett fullständigt exempel (banor och AI räknar på det).
