@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'The normal game is now called Free Realm, and the main menu has a place for Story mode, a handwritten campaign that is coming soon',
       'The music now keeps the volume you set in the settings when a level loads, instead of briefly playing at full volume',
       'A spell of a great deal of water with a little death and an ancient relic raises a supertornado. It is very hard to make',
       'Tornado spells are a little easier to find: water with just a small share of death is now enough',

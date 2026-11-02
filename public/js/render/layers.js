@@ -445,7 +445,7 @@
     for (const building of World.buildings) {
       const x = building.x * tileSize, y = building.y * tileSize;
       if (outside(view, x, y) || hidden(building)) continue;
-      const isFinished = building.buildProgress >= 1, image = Assets.get(building.definition.image);
+      const isFinished = building.buildProgress >= 1, image = Assets.get(building.definition.image, Players.raceOf(building.player));
       context.globalAlpha = isFinished ? (building.paused ? .5 : 1) : .7;
 
       if (building.definition.pile) { // hög på marken: en jordhög, varorna ritas som ikoner nedan
@@ -500,9 +500,9 @@
   // Fält som saknas, eller filer som inte laddas, hoppas över. Slutar det med null ritas reservgrafik.
     // Väljer bild (kan vara ett ark, se definition.frame): byggnadsspecifik (med last) -> byggnadsspecifik -> enhetens lastbild -> enhetens bild.
   // Fält som saknas, eller filer som inte laddas, hoppas över. Slutar det med null ritas reservgrafik.
-  const getImage = source => source ? Assets.get(source) : null;
   const findUnitImage = unit => {
-    const definition = unit.definition, isCarrying = !!unit.carriedResource;
+    const definition = unit.definition, isCarrying = !!unit.carriedResource, race = Players.raceOf(unit.player);
+    const getImage = source => source ? Assets.get(source, race) : null;
     const forBuilding = unit.homeBuilding && definition.imagesByBuilding && definition.imagesByBuilding[unit.homeBuilding.type];
     return (forBuilding && ((isCarrying && getImage(forBuilding.imageCarrying)) || getImage(forBuilding.image)))
       || (isCarrying && getImage(definition.imageCarrying))

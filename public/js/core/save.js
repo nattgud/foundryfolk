@@ -14,7 +14,7 @@
 
   const PREFIX = 'citybuilder.save.';
   const PENDING_KEY = 'citybuilder.pendingLoad';
-  const SLOT_IDS = ['autosave', 'autocustom', 'slot1', 'slot2', 'slot3', 'slot4', 'slot5'];
+  const SLOT_IDS = ['autosave', 'autocustom', 'autostory', 'slot1', 'slot2', 'slot3', 'slot4', 'slot5'];
   const AUTOSAVE_MS = 30000;
   const FORMAT = 2;
   const BUILDING_SKIP = new Set(['x', 'y', 'id', 'type', 'removed']); // sätts av World när byggnaden skapas
@@ -72,6 +72,7 @@
 
   const Save = {
     startData: null,            // sparning som ska återställas vid start
+    mode: 'free',               // spelläget: 'free' (Free Realm) eller 'story'. Sparas med varje sparning; äldre sparningar är 'free'
     ready: false,               // true när spelet är uppstartat (autosparning före det vore farlig)
     suspended: false,           // true när sidan håller på att laddas om (då får inget skrivas)
     lastError: null,
@@ -174,6 +175,7 @@
       return {
         format: FORMAT,
         savedAt: Date.now(),
+        mode: this.mode,
         level: levels ? levels.current.level : 1,
         runSeed: levels ? levels.runSeed : null,
         custom: levels ? levels.custom || undefined : undefined,   // inställningarna om det är en egen bana
@@ -363,11 +365,12 @@
       return true;
     },
 
-    // Autosparningens plats: banorna och en egen bana har var sin, så de skriver inte över varandra
+    // Autosparningens plats: banorna, en egen bana och storyn har var sin, så de skriver inte över varandra
     // Medan spelet körs gäller kartan som körs; en annan flik som spelar en egen karta får inte styra vart den här sparar. Före start (prepareStart) gäller det som är lagrat.
     slot() {
       const levels = CityBuilder.Levels;
-      return (this.ready ? levels?.current.custom : levels?.isCustom()) ? 'autocustom' : 'autosave';
+      if (this.ready ? levels?.current.custom : levels?.isCustom()) return 'autocustom';
+      return this.mode === 'story' ? 'autostory' : 'autosave';
     },
 
     // Nytt spel: ta bort autosparningen (slot: den som ska tas bort, annars den som hör till spelet just nu) och starta om.
@@ -386,6 +389,7 @@
       this.startSlot = pending || this.slot();
       this.startData = readSlot(this.startSlot);
       const data = this.startData, levels = CityBuilder.Levels;
+      this.mode = data?.mode || 'free';
       if (levels) levels.hold(true);   // inga mål får klaras av förrän sparningen är återställd (se Levels.hold)
       if (data && levels) {
         if (data.custom) levels.restoreCustom(data.custom); else levels.restore(data.level, data.runSeed);

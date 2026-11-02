@@ -61,6 +61,7 @@
       CityBuilder.Spells.reset();
       CityBuilder.Weather.reset();
       Players.team = { ...CityBuilder.Levels?.current?.teams };
+      Players.race = { ...CityBuilder.Levels?.current?.races };
       this.addPlayer(Players.HUMAN, 0, 0);
       const rivals = CityBuilder.Levels?.current?.rivals ?? 1, total = rivals * RIVAL_STEPS + warmCount(Players.HUMAN) + rivals * warmCount(Players.ENEMY);
       let done = 0, last = performance.now();

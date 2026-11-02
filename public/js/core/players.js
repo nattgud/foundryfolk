@@ -22,6 +22,10 @@
     team: {},
     teamOf: player => Players.team[player] ?? player,
 
+    // Raser: spelare -> ras (t.ex. 2: 'demon'), satt av banan som lagen. Utan ras används de vanliga bilderna (se Assets.get).
+    race: {},
+    raceOf: player => Players.race[player],
+
     isHostile: (a, b) => a !== b && a !== Players.NEUTRAL && b !== Players.NEUTRAL && Players.teamOf(a) !== Players.teamOf(b),
 
     // Datorspelare som måste slås ut för att vinna (de som inte är i spelarens lag)

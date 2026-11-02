@@ -19,6 +19,7 @@ self.GAME_SCRIPTS = [
   'js/config/world.js',
   'js/config/ai.js',
   'js/config/levels.js',
+  'js/config/story.js',
   'js/config/changelog.js',
   'js/config/finalize.js',
   // 3. Language and options

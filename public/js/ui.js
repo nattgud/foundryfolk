@@ -1535,7 +1535,7 @@
       };
 
       if (view === 'main') {
-        if (level) body.append(make('div', 'main-menu-level', level.custom ? level.name : t('Level {level}: {name}', { level: level.level, name: level.name })));
+        if (level) body.append(make('div', 'main-menu-level', level.custom ? level.name : `${t('Free Realm')} · ${t('Level {level}: {name}', { level: level.level, name: level.name })}`));
         const gap = () => make('div', 'main-menu-gap');
         const restart = button(level?.custom ? t('Restart map') : t('Restart level'), () => this.renderMainMenu('confirm', {
           text: level?.custom ? t('Restart this map? Progress on this map is lost. Manual saves are unchanged.') : t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
@@ -1556,6 +1556,9 @@
             this.toggleMainMenu(false);
           },
         }), '', '✨');
+        // Storymode kommer senare: knappen är avstängd tills dess
+        const story = button(t('Story mode'), null, 'main-menu-slot', '🏰');
+        story.append(make('span', 'main-menu-slot-meta', t('Coming soon')));
         // Grupper: spela vidare - spara och ladda - ny omgång och banor - information och inställningar
         const row = make('div', 'main-menu-row');
         row.append(
@@ -1567,9 +1570,9 @@
           row,
           ...(CityBuilder.Levels?.completed && !level?.custom ? [button(t('Next level'), () => CityBuilder.Levels.advance(), '', '⏭')] : []),
           // On a custom map: back to the singleplayer game, at the level you had reached
-          ...(level?.custom ? [button(t('Continue singleplayer'), () => this.renderMainMenu('confirm', {
-            text: t('Leave this custom map and continue your singleplayer game at level {level}? The custom map is kept in its autosave and in your manual saves.', { level: CityBuilder.Levels.campaignLevel }),
-            confirmLabel: t('Continue singleplayer'),
+          ...(level?.custom ? [button(t('Continue Free Realm'), () => this.renderMainMenu('confirm', {
+            text: t('Leave this custom map and continue your Free Realm game at level {level}? The custom map is kept in its autosave and in your manual saves.', { level: CityBuilder.Levels.campaignLevel }),
+            confirmLabel: t('Continue Free Realm'),
             back: 'main',
             onConfirm: () => CityBuilder.Levels.leaveCustom(),
           }), '', '↩️')] : []),
@@ -1577,6 +1580,7 @@
           restart,
           newGame,
           button(t('Custom map'), () => this.renderMainMenu('custom'), '', '🗺️'),
+          story,
           gap(),
           button(t('Settings'), () => this.renderMainMenu('options'), '', '⚙️'),
           button(t('Statistics'), () => this.renderMainMenu('stats'), '', '📊'),
@@ -2740,6 +2744,8 @@
           justify-content: space-between;
           gap: 12px;
         }
+
+        .main-menu-slot .main-menu-icon + span { flex: 1; }
 
         .main-menu-slot-meta {
           color: var(--dim);
