@@ -40,21 +40,50 @@
       return building;
     },
 
-    // Kapitlets start: byggnaderna från föregående mål står redo (på olika platser runt HQ) och Eye of Shades står mot fienden
+    // Placerar en byggnad på exakt plats (dx, dy rutor från HQ). Går det inte (vatten, berg, upptaget) skrivs en varning och den närmaste lediga rutan används.
+    placeAt(type, dx, dy) {
+      const hq = World.headquarters, x = hq.x + dx, y = hq.y + dy;
+      if (!World.canPlace(type, x, y)) {
+        console.warn(`Story: ${type} cannot stand at dx ${dx}, dy ${dy} in chapter ${this.chapter.number}; using the nearest free spot`);
+        return this.place(type, x, y);
+      }
+      const building = World.placeBuilding(type, x, y, true, Players.HUMAN);
+      if (building.definition.job) CityBuilder.Behaviors.forBuilding(building)?.onBuilt?.(building);
+      return building;
+    },
+
+    // Kapitlets start: byggnaderna från föregående mål står redo och Eye of Shades står mot fienden.
+    // En byggnad i start.buildings är antingen { type, dx, dy } (exakt plats, mätt i rutor från HQ) eller bara ett id (automatisk plats runt HQ).
+    // eye: true placerar Eye of Shades automatiskt mot fienden, eye: { dx, dy } på en bestämd plats.
     begin() {
       const chapter = this.chapter, hq = World.headquarters;
       if (!chapter || !hq) return;
-      (chapter.start?.buildings || []).forEach((type, i) => {
+      (chapter.start?.buildings || []).forEach((entry, i) => {
+        if (entry.type) return this.placeAt(entry.type, entry.dx, entry.dy);
         const angle = i * 2.4 + chapter.number, distance = 6 + (i % 4) * 2;
-        this.place(type, hq.x + Math.cos(angle) * distance, hq.y + Math.sin(angle) * distance);
+        this.place(entry, hq.x + Math.cos(angle) * distance, hq.y + Math.sin(angle) * distance);
       });
-      if (chapter.eye) {
+      if (chapter.eye?.dx !== undefined) this.placeAt('eye_of_shades', chapter.eye.dx, chapter.eye.dy);
+      else if (chapter.eye) {
         const rival = World.hqOf(Players.ENEMY);
         const angle = rival ? Math.atan2(rival.y - hq.y, rival.x - hq.x) : chapter.number * 2.1;
         const distance = rival ? Math.min(EYE_MAX, Math.hypot(rival.x - hq.x, rival.y - hq.y) * EYE_REACH) : EYE_ALONE;
         this.place('eye_of_shades', hq.x + Math.cos(angle) * distance, hq.y + Math.sin(angle) * distance);
       }
       if (chapter.fog) CityBuilder.Levels.markTold('fog:on');
+    },
+
+    // Utvecklarverktyg: placera byggnaderna som du vill ha dem i kapitlet (starta det från menyn, bygg eller flytta i spelet) och kör
+    // CityBuilder.Story.layout() i webbläsarens konsol. Det skrivs ut färdiga rader att klistra in i start.buildings (och eye) i config/story.js.
+    layout() {
+      const hq = World.headquarters;
+      const rows = World.buildings.filter(building => building.player === Players.HUMAN && building.type !== 'hq' && !building.removed && building.buildProgress >= 1).sort((a, b) => a.y - b.y || a.x - b.x);
+      const row = building => `{ type: '${building.type}', dx: ${building.x - hq.x}, dy: ${building.y - hq.y} }`;
+      const eye = rows.find(building => building.type === 'eye_of_shades');
+      const text = `start: { buildings: [\n${rows.filter(building => building !== eye).map(building => '  ' + row(building) + ',').join('\n')}\n] }` + (eye ? `\neye: { dx: ${eye.x - hq.x}, dy: ${eye.y - hq.y} }` : '');
+      console.log(`Chapter ${this.chapter?.number}:\n${text}`);
+      navigator.clipboard?.writeText(text).catch(() => {});
+      return text;
     },
 
     eyeStands() { return World.buildings.some(building => building.type === 'eye_of_shades' && !building.removed); },

@@ -21,8 +21,9 @@
      goals        målen som på banorna ({ type, resource | id, amount }), men { resource, more: n } betyder n fler än man börjar med.
                   Utan goals räknas målen fram som på en vanlig bana. Med end: 'hq' är fiendens HQ det enda målet.
      rivals, ai   antal fiender (0 om inget anges) och deras styrka som en banas nummer; races: { spelare: ras } (se Players.race)
-     start        { buildings: [id] }: färdiga byggnader runt HQ vid starten (inga bärare)
-     eye, fog     eye: Eye of Shades står närmare fienden än något annat; fog: konstant dimma tills den förstörs
+     start        { buildings: [...] }: färdiga byggnader vid starten (inga bärare). Varje post är { type, dx, dy } (exakt plats, rutor från HQ)
+                  eller bara ett id (automatisk plats runt HQ). Placera dem i spelet och kör CityBuilder.Story.layout() i konsolen för färdiga rader.
+     eye, fog     eye: true = Eye of Shades står närmare fienden än något annat, eye: { dx, dy } = på en bestämd plats; fog: konstant dimma tills den förstörs
      end          'hq': kapitlet är klart när fiendens HQ förstörs
      events       [{ at (sekunder), tell: dialog | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]
      meteorProof  enhetstyper som meteorer inte skadar */
