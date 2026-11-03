@@ -251,7 +251,7 @@ CityBuilder.Config.buildings = {
       searchRadius: 20,
       workLabel: "Hunting",
       outputs: { meat: 1, leather: 1 },
-      byproducts: { bone: 1 },
+      byproducts: { bone: 1, blood: 1 },
       craftSeconds: 1
     },
     buildDuration: 15
@@ -990,67 +990,104 @@ CityBuilder.Config.buildings = {
     symbol: 'EN',
     color: '#3f8f6a',
     buildCost: { plank: 12, stone: 10, brick: 6, hammer: 1 },
-    // Trollformler blandas av upp till 'slots' ingredienser (se systems/spells.js för hur blandningen blir en formel). Varje ingredient bär
-    // essenser; essensernas ordning här är också 'hjulet' som en ingrediens vrider nästa ingrediens längs. Himlen (moon/sun) är gratis
-    // ingredienser som bara finns på natten respektive dagen. Formeln läses på en plats högst spellRange rutor från förtrollaren och
-    // varje förtrollare vilar efteråt, och slaget formeln hör till (Spells.group) laddas om för alla spelarens förtrollare lika länge. Vilan växer med
-    // formelns styrka (Spells.recharge): spellRecharge.min sekunder för den svagaste formeln, .max för den starkaste. 'book' är trollboken man börjar med.
+    // Trollformler blandas av upp till 'slots' ingredienser (se systems/spells.js för hur blandningen blir en formel). Den FÖRSTA ingrediensen väljer
+    // vad formeln gör (kategorin); varje ingrediens bidrar sedan med styrka, varaktighet och räckvidd, och en vändare vänder formeln. Formeln läses på en plats
+    // högst spellRange rutor från förtrollaren och varje förtrollare vilar efteråt, och slaget formeln hör till (Spells.group) laddas om för alla spelarens
+    // förtrollare lika länge. Vilan växer med formelns styrka (Spells.recharge): spellRecharge.min sekunder för den svagaste, .max för den starkaste.
     spellRange: 30,
     spellRecharge: { min: 30, max: 180 },
     mixing: {
       slots: 5, maxAmount: 6, maxBook: 20,
       weights: [1.5, 1, 0.8, 0.6, 0.45],   // första ingrediensen väger mest
-      amountExponent: 0.6,                 // dubbel mängd ger inte dubbel kraft
-      shift: 0.3,                          // andel av nästa ingrediens som vrids ett steg på hjulet
-      echoShare: 0.2,                      // andra essensen måste ha så stor andel för att ge en bieffekt
-      cycloneShare: 0.1,                   // ... men för vatten med död (tornado) räcker en mindre andel
-      superStrength: 2.9,                  // en tornado med minst så stor styrka (max 3) blir en supertornado, om blandningen också har superIngredient: kräver nästan största mängden, mest vatten och en liten del död
+      strengthScale: 0.5,                  // styrka = summan av ingrediensernas styrka (viktad efter plats) gånger detta, högst 3
+      impurity: 0.3,                       // en formel utan ingredienser av andra slag är ren. Är alla andra blir den så här mycket svagare (andel av styrkan)
+      dose: 2,                             // mängden delat med detta ger hur mycket ingrediensens varaktighet och räckvidd räknas (2 = normalt, 1 = hälften, 4 = dubbelt). Styrkan påverkas inte
+      superStrength: 2.9,                  // en tornado med minst så stor styrka (max 3) blir en supertornado, om blandningen också har superIngredient
       superIngredient: 'ancient_relic',
-      reference: 10,                       // essenssumma som motsvarar normal kraft
-      essences: {
-        growth: { name: 'Growth', color: '#6fbf5a' },
-        fire:   { name: 'Fire',   color: '#ee7a2f' },
-        earth:  { name: 'Earth',  color: '#a07c4c' },
-        air:    { name: 'Air',    color: '#a9dcea' },
-        water:  { name: 'Water',  color: '#4a86d8' },
-        spirit: { name: 'Spirit', color: '#b88cf0' },
-        death:  { name: 'Death',  color: '#8a8f99' },
+      // Himlen: gratis ingredienser som bara finns på natten respektive dagen
+      sky: { moon: 'night', sun: 'day' },
+      // Kategorier. Namnet före punkten är slaget (kind), efter punkten vad det gäller. inverse = vad en vändare gör av den. Samma ingrediens ger alltid samma kategori:
+      // en katastrof blir därför alltid samma katastrof. terrains: vad 'create' ger (relativ chans).
+      // Creation (kind create): den första ingrediensen väljer slaget, de efterföljande väljer vilka fyndigheter som skapas (en familj var, se terrains:
+      // sten, malm, ädelsten och lund; står en ensam väljer den själv). En blandning ger lite av varje familj. rarity: en ren formel jämnar ut chanserna
+      // (chans upphöjt till 1 - rarity * renhet), så att de sällsynta fyndigheterna blir vanligare.
+      // Upheaval (kind break) tar alltid bort allt på rutorna inom radien (berg, vatten, sumpmark, träd, fyndigheter; byggnader står kvar). Radien är liten
+      // (1-4 rutor, se kinds) och styrkan gör att förtrollaren vilar kortare.
+      rarity: 0.5,
+      categories: {
+        'create.stone': { kind: 'create', name: 'Creation', terrains: { rock: 3, clay: 2, sand: 2, limestone: 1 } },
+        'create.ore': { kind: 'create', name: 'Creation', terrains: { coal: 3, iron_ore: 2, copper_ore: 1, tin_ore: 1 } },
+        'create.grove': { kind: 'create', name: 'Creation', terrains: { tree: 3, berry_bush: 1, apple_tree: 1, herbs: 1, mushrooms: 1 } },
+        'create.gem': { kind: 'create', name: 'Creation', terrains: { silver_ore: 2, gold_ore: 1, gemstone: 1, crystal: 1 } },
+        clear: { kind: 'break', name: 'Upheaval' },
+        yield: { kind: 'yield', name: 'Bloom' },
+        surge: { kind: 'surge', name: 'Surge' },
+        workers: { kind: 'pace', name: 'Blaze' },
+        carriers: { kind: 'carriers', name: 'Gust' },
+        rain: { kind: 'rain', name: 'Rain', inverse: 'rain.sky' },
+        'rain.sky': { kind: 'sky', name: 'Clearing' },
+        'rain.flood': { kind: 'storm', name: 'Tempest' },
+        'disaster.tornado': { kind: 'tornado', name: 'Cyclone' },
+        'disaster.lava': { kind: 'lava', name: 'Eruption' },
+        'disaster.meteors': { kind: 'meteors', name: 'Meteor Rain' },
+        combat: { kind: 'smite', name: 'Blight', inverse: 'combat.mend' },
+        summon: { kind: 'summon', name: 'Summoning' },
+        'combat.mend': { kind: 'mend', name: 'Mending' },
       },
+      // Slagen: slagets flik i trollboken (group) och radien [grund, lägst, högst] i rutor
+      kinds: {
+        create: { group: 'shaping', radius: [2, 1, 5] },
+        break: { group: 'shaping', radius: [1, 1, 4] },
+        yield: { group: 'boost', radius: [5, 3, 12] },
+        surge: { group: 'boost', radius: [5, 3, 12] },
+        pace: { group: 'boost', radius: [5, 3, 12] },
+        carriers: { group: 'boost', radius: [5, 3, 12] },
+        rain: { group: 'weather', radius: [5, 3, 12] },
+        storm: { group: 'weather', radius: [5, 3, 12] },
+        sky: { group: 'weather', radius: [0, 0, 0] },
+        tornado: { group: 'weather', radius: [2, 2, 3] },
+        lava: { group: 'weather', radius: [2, 2, 4] },
+        meteors: { group: 'weather', radius: [4, 3, 8] },
+        smite: { group: 'combat', radius: [5, 3, 12] },
+        mend: { group: 'combat', radius: [5, 3, 12] },
+        summon: { group: 'combat', radius: [3, 1, 6] },
+      },
+      // Ingrediensens fem delar: [kategori, styrka, varaktighet, räckvidd, vändare]
+      //   styrka      läggs till formelns styrka (viktad efter platsen)
+      //   varaktighet läggs till hur länge den varar (och hur många rutor den ger eller tar bort); mängden räknas in
+      //   räckvidd    läggs till radien i rutor; mängden räknas in
+      //   vändare     1 = vänder formeln (gift blir läkedom, regn blir klar himmel) om kategorin har en motsats
       ingredients: {
-        wood: { growth: 2, earth: 1 }, plank: { growth: 1, earth: 1 }, stone: { earth: 3 }, clay: { earth: 2, water: 1 },
-        sand: { earth: 2, air: 1 }, limestone: { earth: 2, spirit: 1 }, tar: { fire: 2, death: 1 }, charcoal: { fire: 3 },
-        ash: { fire: 1, death: 1, air: 1 }, grain: { growth: 3 }, seeds: { growth: 3, spirit: 1 }, flour: { air: 2, growth: 1 },
-        straw: { air: 2, growth: 1 }, apples: { growth: 2, water: 1 }, berries: { growth: 2, water: 1 }, mushrooms: { growth: 1, death: 2 },
-        herbs: { growth: 2, spirit: 1 }, water: { water: 3 }, fish: { water: 2, growth: 1 }, salt: { water: 1, earth: 1, spirit: 1 },
-        bone: { death: 3, earth: 1 }, leather: { death: 1, earth: 1 }, coal: { fire: 3, earth: 1 }, sulfur: { fire: 3, death: 1 },
-        iron_ore: { earth: 2, fire: 1 }, copper_ore: { earth: 2, water: 1 }, tin_ore: { earth: 2, air: 1 }, gold_ore: { earth: 1, spirit: 2 },
-        silver_ore: { earth: 1, spirit: 1, air: 1 }, gemstone: { earth: 1, spirit: 2 }, glass: { air: 1, earth: 1, spirit: 1 },
-        gold: { spirit: 2, fire: 1 }, silver: { spirit: 2, air: 1 }, crystal: { air: 1, spirit: 3 }, moonstone: { spirit: 3, water: 1 },
-        cursed_ash: { death: 3, spirit: 1 }, ancient_relic: { spirit: 2, death: 2 }, fallen_star: { fire: 2, air: 2, spirit: 3 },
-        enchanted_wood: { growth: 2, spirit: 3 }, talisman: { spirit: 4 },
-        moon: { spirit: 3, water: 1, sky: 'night' }, sun: { fire: 1, growth: 2, spirit: 1, sky: 'day' },
-      },
-      // Nya deposits för 'create', efter den andra essensen i blandningen (none = bara jord)
-      terrains: {
-        none: { rock: 3, clay: 2, sand: 2, limestone: 1 },
-        fire: { coal: 3, iron_ore: 2, copper_ore: 1, tin_ore: 1 },
-        growth: { tree: 3, berry_bush: 1, apple_tree: 1, herbs: 1, mushrooms: 1 },
-        water: { clay: 3, sand: 3, limestone: 1 },
-        air: { sand: 3, limestone: 2, rock: 1 },
-        death: { coal: 2, iron_ore: 2, mushrooms: 1, rock: 1 },
-        spirit: { silver_ore: 2, gold_ore: 1, gemstone: 1, crystal: 1 },
+        wood: ['create.grove', 0.8, 0.2, 0, 0], plank: ['create.grove', 0.6, 0.3, 0, 0], berries: ['create.grove', 0.8, 0, 0.5, 0],
+        stone: ['create.stone', 1, 0.3, -0.5, 0], clay: ['create.stone', 0.7, 0.2, 0, 0], sand: ['create.stone', 0.6, 0, 1, 0], limestone: ['create.stone', 0.8, 0.3, 0, 0],
+        coal: ['create.ore', 1, 0.2, -0.5, 0], iron_ore: ['create.ore', 1.3, 0.3, -0.5, 0], copper_ore: ['create.ore', 1.2, 0.2, -0.5, 0], tin_ore: ['create.ore', 1.1, 0.2, 0, 0],
+        gold_ore: ['create.gem', 1.4, 0.3, -0.5, 0], silver_ore: ['create.gem', 1.3, 0.2, 0, 0], gemstone: ['create.gem', 1.6, 0.4, 0, 0], crystal: ['create.gem', 1.8, 0.2, 1, 0],
+        sulfur: ['clear', 1, -0.3, 0, 0], salt: ['clear', 0.8, 0.2, 0.3, 0], enchanted_wood: ['clear', 1.2, 0.2, 0.5, 0], talisman: ['clear', 1.5, 0.3, 1, 0],
+        herbs: ['yield', 1, 0.2, 0, 0], mushrooms: ['yield', 0.9, 0.2, 0, 0], grain: ['yield', 0.7, 0.1, 0.5, 0],
+        seeds: ['surge', 1, 0, 1, 0], apples: ['surge', 0.8, 0.1, 0.5, 0],
+        charcoal: ['workers', 0.9, 0.2, 0, 0], gold: ['workers', 1.5, -0.2, 0, 0], sun: ['workers', 1, 0.3, 1, 0],
+        leather: ['carriers', 0.9, 0.3, 0, 0], potion: ['carriers', 1.2, 0.2, 0.5, 0], coins: ['carriers', 0.8, 0, 1, 0],
+        water: ['rain', 1, 0.2, 1, 0], fish: ['rain.flood', 0.9, 0.3, 0, 0], glass: ['rain', 0.5, 0, 0, 1], moon: ['rain', 0.8, 0.3, 0, 1],
+        straw: ['disaster.tornado', 1, -0.2, 1, 0], ancient_relic: ['disaster.tornado', 2, 0.3, 0, 0], tar: ['disaster.lava', 1.2, 0.2, 0, 0], ash: ['disaster.lava', 0.8, -0.2, 1, 0],
+        fallen_star: ['disaster.meteors', 2, 0.3, 1, 0],
+        bone: ['combat', 1, 0, 0, 0], blood: ['summon', 1.2, 0.1, 0, 0], cursed_ash: ['summon', 1.5, -0.2, 0, 0], silver: ['combat', 0.8, 0, 0, 1], moonstone: ['combat', 0.7, 0.2, 0, 1],
       },
       // Trollboken man börjar med: [ingrediens, mängd] i ordning
       book: [
-        [['wood', 2], ['seeds', 1], ['stone', 1]],
-        [['stone', 3], ['clay', 1]],
-        [['stone', 2], ['charcoal', 2]],
-        [['charcoal', 2], ['tar', 1], ['ash', 1]],
-        [['grain', 3], ['seeds', 2]],
-        [['flour', 2], ['straw', 2]],
-        [['moon', 1], ['herbs', 2]],
-        [['cursed_ash', 2], ['bone', 1]],
-        [['water', 3], ['seeds', 1]],
+        [['wood', 2], ['berries', 1]],
+        [['stone', 2], ['clay', 2]],
+        [['coal', 2], ['iron_ore', 1]],
+        [['herbs', 2], ['mushrooms', 1]],
+        [['seeds', 2], ['apples', 1]],
+        [['charcoal', 2]],
+        [['leather', 2]],
+        [['sulfur', 1]],
+        [['water', 2]],
+        [['fish', 2], ['water', 1]],
+        [['bone', 2]],
+        [['blood', 2]],
+        [['silver', 1]],
+        [['straw', 2]],
       ],
     },
     job: {

@@ -1,19 +1,28 @@
 /* Trollformler. Förtrollaren blandar upp till Config.buildings.enchanter.mixing.slots ingredienser till en formel (Spells.evaluate):
-     - varje ingrediens bär essenser; mängden ger kraft med exponent (a^0.6) och platsen en vikt (första väger mest)
-     - en ingrediens vrider en del av nästa ingrediens essenser några steg på hjulet, så ordningen ändrar resultatet
-     - den starkaste essensen väljer formelns slag, den näst starkaste ger en bieffekt eller ändrar den (vatten förlänger, jord vidgar ...)
-   En formel kostar ingredienserna ur lagret och läses på en plats inom spellRange rutor från förtrollaren; varje förtrollare vilar
-   en stund efteråt (building.spellCooldown, sparas med byggnaden), och slaget formeln hör till är låst för alla spelarens förtrollare lika länge (Spells.locks). Slag (spell.kind):
-     create   förvandlar lediga gräsrutor runt målet till nya fyndigheter (träd, bär, sten, malm ...)
-     pace     arbetare och verkstäder i området arbetar 'factor' gånger så fort i 'seconds' sekunder
+     - den FÖRSTA ingrediensen väljer kategorin, alltså vad formeln gör. En katastrof blir därför alltid samma katastrof, aldrig slumpad
+     - varje ingrediens har fem delar (kategori, styrka, varaktighet, räckvidd och vändare, se settings i buildings.js). Platsen ger en vikt (första väger mest)
+     - styrkan är summan av ingrediensernas styrka. Mängden räknas inte in i styrkan: den ändrar bara varaktighet och räckvidd (hälften eller dubbelt)
+     - ingredienser av ett annat slag än den första gör formeln oren och svagare. En ren formel har bara ingredienser av första slaget. Slag = formelns
+       grupp, utom för Creation och Upheaval där varje familj (sten, malm, ädelsten, lund, och berg, vatten, sumpmark) är ett eget slag: en ren Creation
+       ger bara en familj fyndigheter, och oftare de sällsynta, en blandad lite av varje, och en ren Upheaval tar bara bort en sorts hinder
+     - en vändare vänder formeln när kategorin har en motsats (gift blir läkedom, regn blir klar himmel)
+   En formel kostar ingredienserna ur lagret och läses på en plats inom spellRange rutor från förtrollaren; varje förtrollare vilar en
+   stund efteråt (building.spellCooldown, sparas med byggnaden), och slaget formeln hör till är låst för alla spelarens förtrollare lika länge (Spells.locks). Slag (spell.kind):
+     create   förvandlar lediga gräsrutor runt målet till nya fyndigheter (träd, bär, sten, malm, ädelstenar ...)
+     break    tar bort hinder runt målet: berg och klippor, vatten eller sumpmark blir gräs
      yield    byggnader i området ger 'bonus' extra utdata (1 = dubbelt) i 'seconds' sekunder
-     carriers bärare i området går 'factor' gånger så fort i 'seconds' sekunder
      surge    djuren i området får ungar 'factor' gånger så ofta i 'seconds' sekunder
+     summon   'count' monster av arten 'monster' dyker upp runt målet. De hör till monstren: de anfaller alla, också dig
+     pace     arbetare och verkstäder i området arbetar 'factor' gånger så fort i 'seconds' sekunder
+     carriers bärare i området går 'factor' gånger så fort i 'seconds' sekunder
      smite    fiendens soldater i området får högst 'health' (0-1) av sitt liv kvar
+     mend     egna soldater i området får tillbaka 'heal' (0-1) av sitt liv
      rain     växter i området ökar i mängd (factor = hur ofta mot vanligt regn) i 'seconds' sekunder
      storm    lågt land vid vattnet i området översvämmas i 'seconds' sekunder (Weather.spawnFlood) och torkar sedan upp
-     clear    vädret över hela kartan blir klart i 'seconds' sekunder: ingen dimma, storm eller tornado (pågående tornados släpper sitt byte)
+     sky      vädret över hela kartan blir klart i 'seconds' sekunder: ingen dimma, storm eller tornado (pågående tornados släpper sitt byte)
      tornado  en tornado med radien 'radius' och livslängden 'seconds' uppstår på platsen; är formeln starkare än mixing.superStrength och innehåller mixing.superIngredient blir det en supertornado (super)
+     lava     lava sprider sig ut från platsen och ligger het i 'seconds' sekunder innan den stelnar (Weather.spawnLava)
+     meteors  ett meteorregn faller i 'seconds' sekunder över området (Weather.spawnMeteors)
    Tidsbegränsade effekter är zoner (Spells.zones, sparas) som övriga system frågar efter med Spells.factor och Spells.bonus. */
 (function (CityBuilder) {
   'use strict';
@@ -41,76 +50,62 @@
 
     // Ingredienserna som går att välja just nu: det spelaren har i lagret samt himlen som är uppe
     ingredients() {
-      const night = CityBuilder.Weather.isNight();
-      return Object.entries(Config.buildings.enchanter.mixing.ingredients)
-        .filter(([id, essences]) => essences.sky ? (essences.sky === 'night') === night : Economy.freeAmount(id) > 0)
-        .map(([id]) => id);
+      const config = Config.buildings.enchanter.mixing, night = CityBuilder.Weather.isNight();
+      return Object.keys(config.ingredients).filter(id => config.sky[id] ? (config.sky[id] === 'night') === night : Economy.freeAmount(id) > 0);
     },
 
-    // Essenserna (i hjulets ordning) för en blandning [{ id, amount }]: { totals, sum } eller null om den är tom
-    essences(mix) {
-      const config = Config.buildings.enchanter.mixing, names = Object.keys(config.essences), n = names.length, totals = new Array(n).fill(0);
-      let push = 0;
-      mix.filter(slot => config.ingredients[slot.id] && slot.amount > 0).slice(0, config.slots).forEach((slot, index) => {
-        const base = config.ingredients[slot.id], weight = Math.pow(slot.amount, config.amountExponent) * config.weights[index];
-        const own = names.map(name => (base[name] || 0) * weight), vector = own.map((value, i) => value * (1 - (push ? config.shift : 0)));
-        if (push) own.forEach((value, i) => { vector[(i + push) % n] += value * config.shift; });   // föregående ingrediens vrider denna
-        push = 1 + vector.indexOf(Math.max(...vector)) % 3;
-        vector.forEach((value, i) => { totals[i] += value; });
+    // Blandningen [{ id, amount }] som ingrediensernas delar, i platsernas ordning: tomma platser och okända ingredienser hoppas över
+    parts(mix) {
+      const config = Config.buildings.enchanter.mixing;
+      return mix.slice(0, config.slots).filter(slot => config.ingredients[slot.id] && slot.amount > 0).map((slot, index) => {
+        const [category, strength, lasting, area, flip] = config.ingredients[slot.id], weight = config.weights[index], dose = config.sky[slot.id] ? 1 : slot.amount / config.dose;
+        const group = category.split('.')[0];
+        return { id: slot.id, amount: slot.amount, category, group, weight, strength: strength * weight, lasting: lasting * weight * dose, area: area * weight * dose, flip: !!flip };
       });
-      const sum = totals.reduce((a, b) => a + b, 0);
-      return sum > 0 ? { totals, sum, names } : null;
     },
 
     // Blandningen som formel, eller null om den är tom. Samma blandning ger alltid samma formel.
     evaluate(mix) {
-      const config = Config.buildings.enchanter.mixing, found = this.essences(mix);
-      const cost = {};
-      for (const slot of mix.slice(0, config.slots)) if (config.ingredients[slot.id] && !config.ingredients[slot.id].sky && slot.amount > 0) cost[slot.id] = (cost[slot.id] || 0) + slot.amount;
-      if (!found || !Object.keys(cost).length) return null;
-      const { totals, sum, names } = found, order = totals.map((value, i) => i).sort((a, b) => totals[b] - totals[a]);
-      const first = names[order[0]], share = totals[order[0]] / sum, secondShare = totals[order[1]] / sum;
-      const cyclone = first === 'water' && names[order[1]] === 'death';   // en liten del död räcker för en tornado (cycloneShare)
-      const second = secondShare >= (cyclone ? config.cycloneShare : config.echoShare) ? names[order[1]] : null;
-      const power = Math.min(2.5, Math.max(0.4, sum / config.reference)), strength = Math.min(3, power * (0.5 + share));
-      const sky = mix.map(slot => config.ingredients[slot.id]?.sky).find(Boolean);
-      const spell = { id: mix.filter(slot => config.ingredients[slot.id] && slot.amount > 0).map(slot => slot.id + ':' + slot.amount).join(','), cost, first, second, sky, power };
-
-      // Jord (eller växt/ande tillsammans med jord) formar marken; den andra essensen väljer vad som växer fram
-      const table = first === 'earth' ? second || 'none' : second === 'earth' && (first === 'growth' || first === 'spirit') ? first : null;
-      if (table) {
-        const count = Math.max(1, Math.round((2 + 3 * strength) * (table === 'spirit' ? 0.5 : 1)));
-        return Object.assign(spell, { kind: 'create', radius: strength > 1.6 ? 3 : 2, count, terrains: config.terrains[table], table, noun: 'Shaping', adjective: table === 'none' ? null : table });
-      }
-      // Övriga slag är tidsbegränsade (eller en blixt). Vatten som andra essens förlänger, jord vidgar, död stärker men förkortar.
-      const timed = (kind, s, extra) => {
-        const mod = extra === 'water' ? { seconds: 1.4 } : extra === 'earth' ? { radius: 1.3 } : extra === 'death' ? { strength: 1.25, seconds: 0.7 } : {};
-        s *= mod.strength || 1;
-        const base = { kind, radius: Math.round((5 + 3 * power) * (mod.radius || 1)), seconds: Math.round((15 + 15 * s) * (mod.seconds || 1)) };
-        switch (kind) {
-          case 'pace': case 'carriers': base.factor = Math.min(3.5, Math.round((1 + 0.8 * s) * 10) / 10); break;
-          case 'yield': base.bonus = Math.min(1.5, Math.round(0.6 * s * 10) / 10); break;
-          case 'surge': base.factor = Math.min(30, Math.round(2 + 8 * s)); break;
-          default: base.factor = Math.round(2 + 2 * s);   // rain, storm
+      const config = Config.buildings.enchanter.mixing, parts = this.parts(mix), cost = {};
+      for (const part of parts) if (!config.sky[part.id]) cost[part.id] = (cost[part.id] || 0) + part.amount;
+      if (!Object.keys(cost).length) return null;
+      const sum = key => parts.reduce((total, part) => total + part[key], 0), clamp = (low, high, value) => Math.min(high, Math.max(low, value));
+      const first = parts[0], purity = parts.filter(part => part.group === first.group).reduce((total, part) => total + part.weight, 0) / sum('weight');
+      const strength = clamp(0.3, 3, sum('strength') * config.strengthScale * (1 - config.impurity * (1 - purity)));
+      const lasting = clamp(0.5, 2.5, 1 + sum('lasting')), seconds = base => Math.round(base * lasting);
+      let category = first.category;
+      if (parts.some(part => part.flip) && config.categories[category].inverse) category = config.categories[category].inverse;   // en vändare vänder formeln
+      const { kind, name } = config.categories[category], [radius, least, most] = config.kinds[kind].radius;
+      const ids = mix.slice(0, config.slots).filter(slot => config.ingredients[slot.id] && slot.amount > 0).map(slot => slot.id + ':' + slot.amount).join(',');
+      const spell = { id: ids, cost, kind, category, noun: name, strength, power: strength, lasting, purity, pure: purity === 1, radius: clamp(least, most, radius + Math.round(sum('area'))), sky: parts.map(part => config.sky[part.id]).find(Boolean) };
+      switch (kind) {
+        case 'create': {   // den första ingrediensen väljer slaget, de följande väljer vilka fyndigheter som skapas (en ensam ingrediens väljer själv). Ju renare formel, desto jämnare chanser inom en familj: de sällsynta blir vanligare
+          const terrains = {}, flatten = 1 - config.rarity * purity, rest = parts.slice(1).filter(part => part.group === first.group), chosen = rest.length ? rest : [first];
+          for (const part of chosen) {
+            const table = Object.fromEntries(Object.entries(config.categories[part.category].terrains).map(([terrain, chance]) => [terrain, chance ** flatten])), total = Object.values(table).reduce((a, b) => a + b, 0);
+            for (const [terrain, chance] of Object.entries(table)) terrains[terrain] = (terrains[terrain] || 0) + chance / total * part.weight;
+          }
+          return Object.assign(spell, { terrains, count: Math.max(1, Math.round((2 + 3 * strength) * lasting)) });
         }
-        return base;
-      };
-      const kinds = { growth: 'yield', fire: 'pace', air: 'carriers', spirit: 'surge' };
-      if (first === 'death') Object.assign(spell, { kind: 'smite', radius: Math.round(5 + 2 * power), health: Math.min(0.5, Math.max(0.05, Math.round((0.55 - 0.2 * strength) * 100) / 100)), noun: 'Blight' });
-      else if (first === 'water' && second === 'spirit') Object.assign(spell, { kind: 'clear', radius: 0, seconds: Math.round(40 + 30 * strength), noun: 'Clearing' });
-      else if (first === 'water' && second === 'death') {
-        const huge = strength >= config.superStrength && mix.slice(0, config.slots).some(slot => slot.id === config.superIngredient && slot.amount > 0);   // nästan allt måste vara rätt: störst mängd, mest vatten och en uråldrig relik
-        Object.assign(spell, { kind: 'tornado', super: huge, radius: strength > 1.6 ? 3 : 2, seconds: Math.min(30, Math.round(12 + 8 * strength)), noun: huge ? 'Supercyclone' : 'Cyclone' });
+        case 'break': return Object.assign(spell, { power: 3.3 - strength });   // tar alltid bort allt inom radien; ett starkare förtrollat jordskalv vilar kortare
+        case 'yield': return Object.assign(spell, { bonus: Math.min(1.5, Math.round(0.6 * strength * 10) / 10), seconds: seconds(15 + 15 * strength) });
+        case 'surge': return Object.assign(spell, { factor: Math.min(30, Math.round(2 + 8 * strength)), seconds: seconds(15 + 15 * strength) });
+        case 'summon': {   // arten växer med styrkan (svagast först), antalet med styrkan och varaktigheten
+          const kinds = CityBuilder.Monsters.kinds(Infinity).sort((a, b) => Config.units[a].maxHp - Config.units[b].maxHp);
+          return Object.assign(spell, { monster: kinds[Math.min(kinds.length - 1, Math.floor(strength / 3 * kinds.length))], count: clamp(2, 10, Math.round((2 + 2 * strength) * lasting)) });
+        }
+        case 'pace': case 'carriers': return Object.assign(spell, { factor: Math.min(3.5, Math.round((1 + 0.8 * strength) * 10) / 10), seconds: seconds(15 + 15 * strength) });
+        case 'rain': case 'storm': return Object.assign(spell, { factor: Math.round(2 + 2 * strength), seconds: seconds(15 + 15 * strength) });
+        case 'sky': return Object.assign(spell, { seconds: seconds(40 + 30 * strength) });
+        case 'tornado': {   // nästan allt måste vara rätt för en supertornado: stor styrka och en uråldrig relik
+          const huge = strength >= config.superStrength && parts.some(part => part.id === config.superIngredient);
+          return Object.assign(spell, { super: huge, seconds: Math.min(30, seconds(12 + 8 * strength)), noun: huge ? 'Supercyclone' : name });
+        }
+        case 'lava': return Object.assign(spell, { seconds: seconds(15 + 15 * strength) });
+        case 'meteors': return Object.assign(spell, { seconds: seconds(10 + 8 * strength) });
+        case 'smite': return Object.assign(spell, { health: clamp(0.05, 0.5, Math.round((0.55 - 0.2 * strength) * 100) / 100) });
+        default: return Object.assign(spell, { heal: Math.min(1, Math.round((0.3 + 0.25 * strength) * 100) / 100) });   // mend
       }
-      else if (first === 'water') Object.assign(spell, timed(second === 'air' || second === 'fire' ? 'storm' : 'rain', strength, second), { noun: second === 'air' || second === 'fire' ? 'Tempest' : 'Rain' });
-      else Object.assign(spell, timed(kinds[first], strength, second), { noun: { yield: 'Bloom', pace: 'Blaze', carriers: 'Gust', surge: 'Surge' }[kinds[first]] });
-      spell.adjective = second;
-      // Den näst starkaste essensen ger en svagare bieffekt när den har ett eget timat slag
-      if (second && kinds[second] && spell.kind !== 'clear' && spell.kind !== 'tornado') {
-        const echo = timed(kinds[second], power * (0.5 + secondShare) * 0.6, null);
-        spell.echo = echo;
-      }
-      return spell;
     },
 
     // Formeln för en id-sträng ("earth:2,fire:1"), så att ett kommando kan bära formeln som text
@@ -135,10 +130,8 @@
       return tiles;
     },
 
-    // Slaget en formel hör till: skapa mark, förstärkning, väder eller strid
-    group(spell) {
-      return { create: 'shaping', smite: 'combat', rain: 'weather', storm: 'weather', clear: 'weather', tornado: 'weather' }[spell.kind] || 'boost';
-    },
+    // Slaget en formel hör till: forma marken, förstärkning, väder eller strid
+    group(spell) { return Config.buildings.enchanter.mixing.kinds[spell.kind].group; },
 
     // Hur länge förtrollaren vilar och slaget är låst efter formeln: växer med styrkan (essensmängden, spell.power)
     recharge(spell) {
@@ -168,13 +161,17 @@
     hasTargets(spell, x, y, player) {
       const inside = thing => Utils.distance(thing.x - x, thing.y - y) <= spell.radius;
       switch (spell.kind) {
-        case 'smite': return World.units.some(unit => unit.definition.isSoldier && Players.isHostile(player, unit.player) && inside(unit));
         case 'surge': return World.units.some(unit => unit.definition.isAnimal && inside(unit));
+        case 'summon': return CityBuilder.Monsters.summonSpots(x, y, spell.radius, player).length > 0;
+        case 'smite': return World.units.some(unit => unit.definition.isSoldier && Players.isHostile(player, unit.player) && inside(unit));
+        case 'mend': return World.units.some(unit => unit.definition.isSoldier && unit.player === player && unit.hp < unit.definition.maxHp && inside(unit));
         case 'carriers': return World.units.some(unit => unit.definition.isHauler && unit.player === player && inside(unit));
+        case 'break': return this.obstacles(spell, x, y, player).length > 0;
         case 'rain': return CityBuilder.Weather.hasPlants({ x, y, radius: spell.radius });
         case 'storm': return CityBuilder.Weather.canFlood(x, y, spell.radius);
-        case 'clear': return CityBuilder.Weather.type !== 'clear' || CityBuilder.Weather.tornadoes.length > 0;
-        case 'tornado': return true;
+        case 'sky': return CityBuilder.Weather.type !== 'clear' || CityBuilder.Weather.tornadoes.length > 0;
+        case 'lava': return CityBuilder.Weather.lavaPlan(x, y, spell.radius).length > 0;
+        case 'tornado': case 'meteors': return true;
         default: return World.buildings.some(other => other.player === player && other.buildProgress >= 1 && other.definition.job && inside(other));
       }
     },
@@ -218,6 +215,30 @@
       }
     },
 
+    // Läker: egna soldater i området får tillbaka en del av sitt liv
+    mend(spell, x, y, player) {
+      for (const unit of World.units) {
+        if (!unit.definition.isSoldier || unit.player !== player || Utils.distance(unit.x - x, unit.y - y) > spell.radius) continue;
+        unit.hp = Math.min(unit.definition.maxHp, unit.hp + Math.ceil(unit.definition.maxHp * spell.heal));
+      }
+    },
+
+    // Rutorna inom radien som inte är gräs (berg, vatten, sumpmark, skog, fyndigheter) och inte ligger i dimman
+    obstacles(spell, x, y, player) {
+      const tiles = [];
+      for (let dy = -spell.radius; dy <= spell.radius; dy++) for (let dx = -spell.radius; dx <= spell.radius; dx++) {
+        const tile = Utils.distance(dx, dy) <= spell.radius && World.getTile(x + dx, y + dy);
+        if (tile && tile.terrainType !== 'grass' && !Construction.isHidden(x + dx, y + dy, player)) tiles.push(tile);
+      }
+      return tiles;
+    },
+
+    // Allt inom radien blir gräs
+    breakObstacles(spell, x, y, player) {
+      for (const tile of this.obstacles(spell, x, y, player)) Utils.assign(tile, Config.terrain.grass, { terrainType: 'grass', remainingAmount: 0, wear: 0 });
+      CityBuilder.Pathfinder.clearCache();
+    },
+
     // Förvandlar lediga gräsrutor runt målet till nya fyndigheter
     create(spell, x, y, player) {
       const tiles = this.freeTiles(x, y, spell.radius, player);
@@ -237,15 +258,19 @@
       if (problem) return problem;
       Economy.spend(spell.cost, building.player);
       const zone = effect => {
-        const seconds = effect.seconds || 1.5;   // smiter har ingen varaktighet, bara en blixt
+        const seconds = effect.seconds || 1.5;   // smiter och läkning har ingen varaktighet, bara en blixt
         this.addZone({ kind: effect.kind, x, y, radius: effect.radius, player: building.player, left: seconds, total: seconds, factor: effect.factor, bonus: effect.bonus });
       };
+      const Weather = CityBuilder.Weather;
       if (spell.kind === 'create') this.create(spell, x, y, building.player);
-      else if (spell.kind === 'clear') CityBuilder.Weather.clearSky(spell.seconds);
-      else if (spell.kind === 'tornado') CityBuilder.Weather[spell.super ? 'spawnSuper' : 'spawnTornado'](x, y, spell.radius, spell.seconds, building.player);
-      else if (spell.kind === 'storm') { CityBuilder.Weather.spawnFlood(x, y, spell.radius, spell.seconds); CityBuilder.Sound?.play('weather.thunder'); zone(spell); }
-      else { if (spell.kind === 'smite') this.smite(spell, x, y, building.player); zone(spell); }
-      if (spell.echo) zone(spell.echo);
+      else if (spell.kind === 'break') this.breakObstacles(spell, x, y, building.player);
+      else if (spell.kind === 'sky') Weather.clearSky(spell.seconds);
+      else if (spell.kind === 'tornado') Weather[spell.super ? 'spawnSuper' : 'spawnTornado'](x, y, spell.radius, spell.seconds, building.player);
+      else if (spell.kind === 'lava') Weather.spawnLava(x, y, spell.radius, spell.seconds);
+      else if (spell.kind === 'meteors') Weather.spawnMeteors(x, y, spell.radius, spell.seconds);
+      else if (spell.kind === 'summon') CityBuilder.Monsters.summon(spell.monster, spell.count, x, y, spell.radius, building.player);
+      else if (spell.kind === 'storm') { Weather.spawnFlood(x, y, spell.radius, spell.seconds); CityBuilder.Sound?.play('weather.thunder'); zone(spell); }
+      else { if (spell.kind === 'smite') this.smite(spell, x, y, building.player); else if (spell.kind === 'mend') this.mend(spell, x, y, building.player); zone(spell); }
       building.spellCooldown = building.spellTotal = this.recharge(spell);
       this.locks[this.lockKey(building.player, this.group(spell))] = building.spellCooldown;
       CityBuilder.Levels?.onCast(building.player);

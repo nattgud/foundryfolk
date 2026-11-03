@@ -38,6 +38,7 @@ CityBuilder.Config.resources = {
   animal:           { name: 'Animal',         color: '#9a8065' },
   leather:          { name: 'Leather',           color: '#8a5f3a' },
   bone:             { name: 'Bone',               color: '#d8d0b8' },
+  blood:            { name: 'Blood',              color: '#8b1a1a' },
 
   // Malmer och mineraler
   iron_ore:         { name: 'Iron Ore',           color: '#7b6f6a' },

@@ -31,8 +31,9 @@
     spawned: false,      // hordens har startat
     over: false,         // och är besegrad
     raiders: [],         // hordens levande enheter
+    summoned: [],        // monster som en trollformel kallat fram (de sparas med spelet, till skillnad från kartans, som sparas som djuren)
 
-    reset() { Object.assign(this, { plan: undefined, warned: false, spawned: false, over: false, raiders: [] }); },
+    reset() { Object.assign(this, { plan: undefined, warned: false, spawned: false, over: false, raiders: [], summoned: [] }); },
 
     // ---- Skapa ----------------------------------------------------------------------------------
 
@@ -68,6 +69,33 @@
       unit.animalRecordId = record.id;
       unit.animalChunkKey = key;
       unit.post = { x: record.homeX, y: record.homeY };
+      return unit;
+    },
+
+    // Gångbara rutor inom radien där monster kan kallas fram, som inte ligger i dimman för spelaren
+    summonSpots(x, y, radius, player) {
+      const spots = [];
+      for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+        if (Utils.distance(dx, dy) <= radius && walkable(x + dx, y + dy) && !CityBuilder.Construction.isHidden(x + dx, y + dy, player)) spots.push({ x: x + dx, y: y + dy });
+      }
+      return spots;
+    },
+
+    // Kallar fram 'count' monster av arten på slumpade lediga rutor runt (x, y). De är som kartans monster (fiender till alla) och står kvar där de dök upp.
+    summon(kind, count, x, y, radius, player) {
+      const spots = this.summonSpots(x, y, radius, player);
+      for (let n = Math.min(count, spots.length); n > 0; n--) {
+        const spot = spots.splice(Math.floor(Utils.random() * spots.length), 1)[0];
+        this.addSummoned(kind, spot.x, spot.y, null);
+      }
+      CityBuilder.Sound?.play('monster_roar');
+    },
+
+    addSummoned(kind, x, y, hp, post) {
+      const unit = CityBuilder.Combat.spawnSoldier(kind, x, y, Players.MONSTER);
+      unit.post = post || { x: x + .5, y: y + .5 };
+      if (hp != null) unit.hp = hp;
+      this.summoned.push(unit);
       return unit;
     },
 
@@ -197,13 +225,14 @@
 
     // Sparning: hordens tillstånd och levande raiders (monstren på kartan sparas som djuren, se Animals.pack)
     pack() {
-      return { warned: this.warned, spawned: this.spawned, over: this.over, raiders: this.raiders.filter(unit => !unit.removed).map(unit => [unit.kind, unit.x, unit.y, unit.hp]) };
+      return { warned: this.warned, spawned: this.spawned, over: this.over, raiders: this.raiders.filter(unit => !unit.removed).map(unit => [unit.kind, unit.x, unit.y, unit.hp]), summoned: this.summoned.filter(unit => !unit.removed).map(unit => [unit.kind, unit.x, unit.y, unit.hp, unit.post.x, unit.post.y]) };
     },
 
     restore(data) {
       this.reset();
       if (!data) return;
       Object.assign(this, { warned: !!data.warned, spawned: !!data.spawned, over: !!data.over });
+      for (const [kind, x, y, hp, postX, postY] of data.summoned || []) if (Config.units[kind]?.isMonster) this.addSummoned(kind, x - .5, y - .5, hp, { x: postX, y: postY });
       if (!World.headquarters) return;
       for (const [kind, x, y, hp] of data.raiders || []) if (Config.units[kind]?.raider) this.addRaider(kind, x - .5, y - .5, hp);
     },

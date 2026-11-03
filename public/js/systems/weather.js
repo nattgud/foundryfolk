@@ -33,6 +33,7 @@
     flood: { rings: null, level: 0, timer: 0, found: 0, tiles: {} },   // stormens översvämning (rings null = ingen), se newFlood
     floods: [],      // Tempest: { x, y, radius, left, rings, level, timer, found, tiles }
     storm: null,     // meteorstormen: { x, y, radius, wait, next } (mitten, radie, sekunder kvar av varningen, sekunder till nästa meteor)
+    conjured: [],    // meteorregn som en trollformel kallat: som storm, plus left (sekunder kvar)
     meteors: [],     // eldklot på väg ner: { x, y, age, big }
     blasts: [],      // nedslag som ritas en kort stund: { x, y, age, big }
     fires: [],       // eldar: { x, y, age, left }
@@ -40,17 +41,17 @@
 
     reset() {
       const settings = Config.settings.weather;
-      Object.assign(this, { time: settings.dayLength * settings.startFraction, type: 'clear', left: between([settings.minSeconds, settings.maxSeconds]), scanIn: 0, scan: null, tornadoIn: 0, flash: 0, flashIn: 8, flood: { rings: null, level: 0, timer: 0, found: 0, tiles: {} }, floods: [], tornadoes: [], volcanoes: [], storm: null, meteors: [], blasts: [], fires: [], fireTick: 1, burnUntil: 0 });
+      Object.assign(this, { time: settings.dayLength * settings.startFraction, type: 'clear', left: between([settings.minSeconds, settings.maxSeconds]), scanIn: 0, scan: null, tornadoIn: 0, flash: 0, flashIn: 8, flood: { rings: null, level: 0, timer: 0, found: 0, tiles: {} }, floods: [], tornadoes: [], volcanoes: [], storm: null, conjured: [], meteors: [], blasts: [], fires: [], fireTick: 1, burnUntil: 0 });
     },
 
     snapshot() {
       const flood = this.flood;
-      return { time: this.time, type: this.type, left: this.left, tornadoes: this.tornadoes, volcanoes: this.volcanoes, storm: this.storm, fires: this.fires, flood: { level: flood.level, found: flood.found, tiles: Object.values(flood.tiles).map(tile => [tile.x, tile.y, tile.type, tile.amount, tile.ring]) }, floods: this.floods };
+      return { time: this.time, type: this.type, left: this.left, tornadoes: this.tornadoes, volcanoes: this.volcanoes, storm: this.storm, conjured: this.conjured, fires: this.fires, flood: { level: flood.level, found: flood.found, tiles: Object.values(flood.tiles).map(tile => [tile.x, tile.y, tile.type, tile.amount, tile.ring]) }, floods: this.floods };
     },
     restore(data) {
       this.reset();
       if (!data) return;
-      Object.assign(this, { time: data.time, type: data.type, left: data.left, tornadoes: data.tornadoes || [], volcanoes: data.volcanoes || [], floods: data.floods || [], storm: data.storm || null, fires: data.fires || [] });
+      Object.assign(this, { time: data.time, type: data.type, left: data.left, tornadoes: data.tornadoes || [], volcanoes: data.volcanoes || [], floods: data.floods || [], storm: data.storm || null, conjured: data.conjured || [], fires: data.fires || [] });
       const saved = data.flood?.tiles || [];   // en pågående översvämning står kvar på sin högsta nivå tills stormen är över (rings: [] = ingen mer stigning)
       if (saved.length) this.flood = { rings: [], level: data.flood.level, timer: 0, found: data.flood.found || 0, tiles: Object.fromEntries(saved.map(([x, y, type, amount, ring]) => [Utils.tileKey(x, y), { x, y, type, amount, ring }])) };
     },
@@ -266,7 +267,7 @@
     /* ---------- Vulkaner ---------- */
 
     // Ingen lavaruta får ligga i närheten av någon spelares huvudlager
-    farFromHq(x, y) { return Object.values(World.hqs).every(hq => Utils.distance(hq.x - x, hq.y - y) >= Config.settings.weather.volcano.minHq); },
+    farFromHq(x, y, least = Config.settings.weather.volcano.minHq) { return Object.values(World.hqs).every(hq => Utils.distance(hq.x - x, hq.y - y) >= least); },
 
     isLand(x, y) { const type = World.getTile(x, y)?.terrainType; return !!type && type !== 'water' && type !== 'lava'; },
 
@@ -372,6 +373,28 @@
         return volcano;
       }
       return null;
+    },
+
+    // Lavarutorna för trollformeln Eruption: land inom radien, närmast mitten först. Inget närmare än spellMinHq från någon spelares huvudlager.
+    lavaPlan(x, y, radius) {
+      const tiles = [];
+      for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+        const distance = Utils.distance(dx, dy);
+        if (distance <= radius && this.isLand(x + dx, y + dy) && World.getTile(x + dx, y + dy).terrainType !== 'mountain' && this.farFromHq(x + dx, y + dy, Config.settings.weather.volcano.spellMinHq)) tiles.push([x + dx, y + dy, distance]);
+      }
+      return tiles.sort((a, b) => a[2] - b[2]).map(([tx, ty]) => [tx, ty]);
+    },
+
+    // Trollformeln Eruption: lava som sprider sig ut från platsen (snabbare än en vulkans) och ligger het i 'seconds' sekunder innan den stelnar till gräs
+    spawnLava(x, y, radius, seconds) {
+      const settings = Config.settings.weather.volcano, plan = this.lavaPlan(x, y, radius);
+      if (!plan.length) return null;
+      const volcano = { kind: 'spell', x, y, age: 0, pace: between(settings.spellPace), life: 0, plan, lit: 0, tick: 1, ores: null };
+      volcano.life = plan.length * volcano.pace + seconds;
+      this.volcanoes.push(volcano);
+      this.updateVolcano(volcano, 0);
+      CityBuilder.Sound?.play('weather.volcano');
+      return volcano;
     },
 
     // Två malmsorter slumpade efter vikt bland dem spelaren låst upp (en gruva för dem finns); ovanliga väger tyngre
@@ -620,15 +643,29 @@
       Sound?.play(big ? Sound.known('meteor', 'destroyed') : Sound.known('meteor_small', 'hit'), { x, y });
     },
 
+    // Trollformeln Meteor Rain: ett meteorregn över platsen i 'seconds' sekunder, efter en kort varning
+    spawnMeteors(x, y, radius, seconds) {
+      const settings = Config.settings.weather.meteor;
+      this.conjured.push({ x, y, radius, wait: settings.conjureWarning, next: 0, left: settings.conjureWarning + seconds });
+      CityBuilder.Sound?.play('alarm');
+    },
+
+    // En storm släpper nästa meteor när varningen är över och det är dags: slumpad plats inom radien
+    dropMeteor(storm, deltaSeconds) {
+      const settings = Config.settings.weather.meteor;
+      if ((storm.wait -= deltaSeconds) > 0 || (storm.next -= deltaSeconds) > 0) return;
+      storm.next = between(settings.every);
+      const angle = Utils.random() * Math.PI * 2, reach = storm.radius * Math.sqrt(Utils.random());
+      this.meteors.push({ x: Math.round(storm.x + Math.cos(angle) * reach), y: Math.round(storm.y + Math.sin(angle) * reach), age: 0, big: Utils.random() < settings.bigChance });
+    },
+
     updateMeteors(deltaSeconds) {
       const settings = Config.settings.weather.meteor, storm = this.storm;
       if (this.type === 'meteorstorm' && !storm && !this.startMeteors()) this.type = 'clear';   // väder som sattes utan att stormen startade (t.ex. för hand) startar den nu
       if (storm && this.type !== 'meteorstorm') this.storm = null;   // ett klart väder (trollformeln) eller en supertornado avbryter stormen
-      else if (storm && (storm.wait -= deltaSeconds) <= 0 && (storm.next -= deltaSeconds) <= 0) {
-        storm.next = between(settings.every);
-        const angle = Utils.random() * Math.PI * 2, reach = storm.radius * Math.sqrt(Utils.random());
-        this.meteors.push({ x: Math.round(storm.x + Math.cos(angle) * reach), y: Math.round(storm.y + Math.sin(angle) * reach), age: 0, big: Utils.random() < settings.bigChance });
-      }
+      else if (storm) this.dropMeteor(storm, deltaSeconds);
+      for (const conjured of this.conjured) this.dropMeteor(conjured, deltaSeconds);
+      if (this.conjured.length) this.conjured = this.conjured.filter(conjured => (conjured.left -= deltaSeconds) > 0);
       for (const meteor of this.meteors) if ((meteor.age += deltaSeconds) >= settings.fall) { meteor.done = true; this.strike(meteor); }
       if (this.meteors.some(meteor => meteor.done)) this.meteors = this.meteors.filter(meteor => !meteor.done);
       for (const blast of this.blasts) blast.age += deltaSeconds;

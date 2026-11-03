@@ -240,6 +240,7 @@ CityBuilder.Config.settings = {
     meteor: {
       seconds: [30, 50],                   // hur länge det regnar meteorer, efter varningen
       warning: 6,                          // sekunder med varning (ljud och markering på minimapen) innan första nedslaget
+      conjureWarning: 3,                   // samma för ett meteorregn som trollformeln Meteor Rain kallar (bara ett larmljud)
       near: [0, 14],                       // stormens mitt ligger så här långt (rutor) från en byggnad hos en slumpad spelare
       radius: [12, 18],                    // stormens radie runt mitten (rutor)
       every: [0.3, 0.8],                   // sekunder mellan nedslag
@@ -265,6 +266,8 @@ CityBuilder.Config.settings = {
       minHq: 28,                           // ingen lavaruta kan någonsin ligga närmare än så (i rutor) någon spelares huvudlager
       near: [18, 55],                      // avstånd från en av spelarens byggnader där den bryter ut
       paceSeconds: [2, 4],                 // sekunder per ny lavaruta (slumpad för varje vulkan)
+      spellPace: [0.4, 0.8],               // sekunder per ny lavaruta för trollformeln Eruption
+      spellMinHq: 6,                       // ... som aldrig lägger lava närmare än så (i rutor) någon spelares huvudlager
       lifeSeconds: [60, 90],               // hur länge lavan ligger het efter att den spridit sig klart, sedan stelnar den
       width: [1, 3],                       // lavaledens bredd (link)
       crossing: 10,                        // längsta sträcka över vatten (rutor) som kan bli en led (link)

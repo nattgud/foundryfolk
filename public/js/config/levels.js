@@ -330,7 +330,7 @@
 
   /* ---------- Goals ---------- */
   // Militära resurser (vapen, rustningar, hästar) går åt till soldater och ingår inte i banmålen
-  const SKIP_GOAL_RESOURCES = new Set(['water', 'seeds', 'straw', 'bone', 'animal', 'ash', 'tar', 'cursed_ash', 'coins',
+  const SKIP_GOAL_RESOURCES = new Set(['water', 'seeds', 'straw', 'bone', 'blood', 'animal', 'ash', 'tar', 'cursed_ash', 'coins',
     'sword', 'bow', 'leather_armor', 'iron_armor', 'horse']);
 
   // A building makes one of its recipes at a time (choices); by-products count as outputs too

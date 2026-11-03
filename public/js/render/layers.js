@@ -933,11 +933,11 @@
 
   // Väntande trollformel: ringen visar vad formeln träffar (grön om målet går att välja, annars röd) och en svag ring förtrollarens räckvidd
   // Pågående trollformler: en ring över området som bleknar när tiden går ut (smiter blixtrar till)
-  const ZONE_COLORS = { pace: '255,210,63', yield: '120,200,255', carriers: '170,255,230', surge: '120,230,120', smite: '200,90,255', rain: '90,150,255', storm: '170,140,255' };
+  const ZONE_COLORS = { pace: '255,210,63', yield: '120,200,255', surge: '230,200,120', carriers: '170,255,230', smite: '200,90,255', mend: '120,230,120', rain: '90,150,255', storm: '170,140,255' };
   Renderer.addLayer('spellZones', (context, renderer) => {
     const size = renderer.tileSize, now = performance.now() / 1000;
     for (const zone of CityBuilder.Spells.zones) {
-      const fade = Math.min(1, zone.left / Math.min(3, zone.total)), pulse = zone.kind === 'smite' ? 1 : .75 + .25 * Math.sin(now * 3);
+      const fade = Math.min(1, zone.left / Math.min(3, zone.total)), pulse = zone.kind === 'smite' || zone.kind === 'mend' ? 1 : .75 + .25 * Math.sin(now * 3);
       const color = ZONE_COLORS[zone.kind] || '255,255,255', x = (zone.x + .5) * size, y = (zone.y + .5) * size;
       context.fillStyle = `rgba(${color},${.12 * fade * pulse})`;
       context.strokeStyle = `rgba(${color},${.7 * fade * pulse})`;

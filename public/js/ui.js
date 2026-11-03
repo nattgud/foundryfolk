@@ -288,8 +288,8 @@
         { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'Imports are on the left of the arrow and exports on the right. Tools the building needs are shown next to its name. They are delivered once and never used up.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
         { title: 'Tools', lines: ['Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.', 'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and the Toolsmith makes more once it unlocks. It makes the tool you have least of, and you can switch tools on or off in its panel.', 'Hammers are different: they are used up when you build larger buildings. Fine buildings also use limestone, bronze and steel.'] },
         { title: 'Food and meals', lines: ['Miners get hungry. Meat, fish or bread keeps a basic mine going, but the deep mines (gold, silver, gemstones, salt and sulfur) want proper meals from a Kitchen.', 'A Kitchen cooks meals from meat, fish, flour, apples, berries and mushrooms. Tap it to change the recipe.'] },
-        { title: 'Mixing spells', lines: ['Select the Enchanter and tap Mix a spell. Put up to five ingredients in the slots, with the amount of each. Every ingredient carries essences (growth, fire, earth, air, water, spirit, death), and the strongest essence decides what the spell does while the second adds a twist or a side effect. The first slot counts most and each ingredient bends the next, so the same ingredients in another order make another spell. The Moon and the Sun are free ingredients that are only there at night and by day.', 'The mixer shows the essences, the effect and the cost as you go. Save a mix to the grimoire, then open the Spellbook, pick it from the list and tap Cast, and tap the map within reach of the Enchanter. Rain spells only affect plants, so they need some in the area, and storm spells need water.', 'Water on its own makes local rain, with fire or air a storm, with spirit it clears the whole sky of fog, storm and tornadoes for a while, and with death it raises a tornado on the spot.', 'A great deal of water with a little death and an ancient relic raises a supertornado, which is very hard to make.'] },
-        { title: 'Leftovers and spells', lines: ['Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones. They are only kept when there is room, so they never hold up the main product.', 'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach. Some spells create new trees, berries, rocks or ore on free grass around the spot. Others speed up workers, carriers or workshops for a while, double the output of buildings, make animals breed wildly, or leave enemy soldiers with a quarter of their health. A spell costs goods from your store, and each enchanter rests a short while after casting.'] },
+        { title: 'Mixing spells', lines: ['Select the Enchanter and tap Mix a spell. Put up to five ingredients in the slots, with the amount of each. The first ingredient decides what the spell does: stone, ore, gems and wood create deposits; sulfur, salt, enchanted wood and talismans upheave the land; herbs, mushrooms and grain make buildings produce more; seeds and apples make animals breed; charcoal and gold speed up workers; leather, potions and coins speed up carriers; water brings rain and fish a flood; bone weakens enemies; blood and cursed ash summon monsters; straw, tar, ash and fallen stars call a tornado, lava or meteors.', 'Every ingredient also adds strength, duration and reach. The amount does not change the strength, only how long and how far the spell reaches: half with one, normal with two and more with more. An ingredient of another kind than the first makes the spell impure and a little weaker. In Creation the ingredients after the first choose which deposits appear (stone, ore, gems or trees and food): a mix gives a bit of each, and a purer spell favours the rarer ones. Upheaval always clears everything on the tiles around the target, but only a small area (1 to 4 tiles), and the stronger it is the sooner the Enchanter can cast again.', 'Some ingredients invert a spell: silver and moonstone turn Blight into Mending, which heals your soldiers, and glass and the Moon turn Rain into a clear sky. The Moon and the Sun are free ingredients that are only there at night and by day.', 'The mixer shows the strength, duration, reach and purity as you go. Save a mix to the grimoire, then open the Spellbook, pick it from the list (the strongest first) and tap Cast, and tap the map within reach of the Enchanter. Rain spells only affect plants, so they need some in the area, and storm spells need water. A disaster is never random: the same mix always gives the same tornado, eruption or meteor rain, and a supertornado needs a very strong mix with an ancient relic.'] },
+        { title: 'Leftovers and spells', lines: ['Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones and blood. They are only kept when there is room, so they never hold up the main product.', 'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach. Some spells create new trees, berries, rocks, ore or gems on free grass around the spot, or clear everything in a small area into grass. Others speed up workers or carriers for a while, make buildings produce more or animals breed, bring rain or a flood, raise a tornado, lava or meteors, summon monsters, weaken enemy soldiers or heal your own. A spell costs goods from your store, and each enchanter rests a short while after casting.'] },
         { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
         { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25. Coins are made at the Mint from silver and gold, and are only good for trading.'] },
         { title: 'Wild animals', lines: ['Deer, moose, foxes and rabbits roam the land and spread berries, herbs and mushrooms. A Hunters Cottage sends a hunter after the nearest animal in range. Every kind of animal gives the same meat and leather.', 'Animals have young faster the fewer there are nearby. You can hunt an area empty for a while, but never a whole region. Animals only live on land you can see.'] },
@@ -1104,7 +1104,7 @@
     },
 
     // Ingrediensens namn: himlen har egna namn, resten är resurser
-    ingredientName(id) { return Config.buildings.enchanter.mixing.ingredients[id].sky ? t(id === 'moon' ? 'Moon' : 'Sun') : this.resourceName(id); },
+    ingredientName(id) { return Config.buildings.enchanter.mixing.sky[id] ? t(id === 'moon' ? 'Moon' : 'Sun') : this.resourceName(id); },
 
     createWorkshop() {
       const make = (tag, className, text) => Object.assign(document.createElement(tag), { className, ...(text !== undefined ? { textContent: text } : {}) });
@@ -1139,7 +1139,7 @@
         state.rows.push({ select, amount, minus, plus, up, down, clear });
         slots.appendChild(row);
       }
-      state.hint = make('div', 'workshop-note', t('The first ingredient counts most, and each ingredient bends the next one: the order changes the spell.'));
+      state.hint = make('div', 'workshop-note', t('The first ingredient decides what the spell does and counts most. The amount changes how long and how far it reaches, not how strong it is.'));
       state.preview = make('div', 'workshop-preview');
       body.append(slots, state.hint, state.preview);
 
@@ -1167,7 +1167,7 @@
       document.body.appendChild(overlay);
     },
 
-    ingredientMax(id) { const config = Config.buildings.enchanter.mixing; return config.ingredients[id]?.sky ? 1 : config.maxAmount; },
+    ingredientMax(id) { const config = Config.buildings.enchanter.mixing; return config.sky[id] ? 1 : config.maxAmount; },
 
     // Skriver om fönstret efter varje ändring (spelet står stilla medan det är öppet)
     updateWorkshop() {
@@ -1176,14 +1176,15 @@
       const available = Spells.ingredients(), mix = state.mix;
       state.rows.forEach((row, index) => {
         const slot = mix[index], options = ['', ...new Set([...available, ...(slot.id ? [slot.id] : [])])];
-        const signature = options.join() + '|' + options.map(id => id && !config.ingredients[id].sky ? Economy.freeAmount(id) : '').join();
+        const signature = options.join() + '|' + options.map(id => id && !config.sky[id] ? Economy.freeAmount(id) : '').join();
         if (row.select.dataset.signature !== signature) {
           row.select.dataset.signature = signature;
           row.select.replaceChildren(...options.map(id => Object.assign(document.createElement('option'), {
-            value: id, textContent: !id ? '—' : config.ingredients[id].sky ? `${id === 'moon' ? '🌙' : '☀️'} ${this.ingredientName(id)}` : `${this.ingredientName(id)} (${Economy.freeAmount(id)})`,
+            value: id, textContent: !id ? '—' : `${config.sky[id] ? (id === 'moon' ? '🌙' : '☀️') : this.slotIcon(id)} ${this.ingredientName(id)}${config.sky[id] ? '' : ` (${Economy.freeAmount(id)})`}`, title: id ? this.ingredientInfo(id) : '',
           })));
         }
         row.select.value = slot.id;
+        row.select.title = slot.id ? this.ingredientInfo(slot.id) : '';
         row.amount.textContent = slot.id ? '×' + slot.amount : '';
         row.minus.disabled = !slot.id || slot.amount <= 1;
         row.plus.disabled = !slot.id || slot.amount >= this.ingredientMax(slot.id);
@@ -1193,9 +1194,9 @@
       });
 
       const spell = Spells.evaluate(mix);
-      const lines = [this.essenceBarsHtml(mix)];
+      const lines = [];
       if (spell) {
-        lines.push(`<div class="workshop-name">${this.spellName(spell)}</div>`, `<div>${this.spellEffect(spell)}</div>`,
+        lines.push(`<div class="workshop-name">${this.spellName(spell)}</div>`, `<div>${this.spellEffect(spell)}</div>`, this.spellBarsHtml(spell),
           `<div>${this.resourceIconsHtml(spell.cost, true)}${spell.sky ? ` <span class="info-dim">${spell.sky === 'night' ? '🌙 ' + t('Night only') : '☀️ ' + t('Day only')}</span>` : ''}</div>`);
       } else lines.push(`<div class="info-dim">${t('Add an ingredient to see what it makes')}</div>`);
       const html = lines.join('');
@@ -1319,7 +1320,8 @@
       const state = this.spellbook;
       return CityBuilder.Spells.book
         .map((recipe, index) => ({ index, spell: CityBuilder.Spells.evaluate(recipe.mix) }))
-        .filter(({ spell }) => spell && (state.group === 'all' || this.spellGroup(spell) === state.group) && (!state.onlyAffordable || this.canAfford(spell)));
+        .filter(({ spell }) => spell && (state.group === 'all' || this.spellGroup(spell) === state.group) && (!state.onlyAffordable || this.canAfford(spell)))
+        .sort((a, b) => b.spell.strength - a.spell.strength || a.index - b.index);   // starkast först
     },
 
     updateSpellbook() {
@@ -1359,13 +1361,13 @@
       const details = [t(this.spellGroupNames[this.spellGroup(spell)]), spell.radius ? t('Radius: {n} tiles', { n: spell.radius }) : '', spell.seconds ? t('Lasts {n} s', { n: spell.seconds }) : '', t('Recharge: {n} s', { n: Spells.recharge(spell) })].filter(Boolean).join(' · ');
       const sky = spell.sky ? `<span class="info-dim">${spell.sky === 'night' ? '🌙 ' + t('Night only') : '☀️ ' + t('Day only')}</span>` : '';
       // Ingredienserna i blandningens ordning: ordningen ändrar formeln
-      const ingredients = recipe.mix.filter(slot => config.ingredients[slot.id]).map(slot => config.ingredients[slot.id].sky
+      const ingredients = recipe.mix.filter(slot => config.ingredients[slot.id]).map(slot => config.sky[slot.id]
         ? `<span class="info-dim">${slot.id === 'moon' ? '🌙' : '☀️'} ${this.ingredientName(slot.id)}</span>`
         : this.resourceIconsHtml({ [slot.id]: slot.amount }, true)).join('');
       state.page.innerHTML = `<div class="workshop-name spellbook-name">${this.spellGroupIcon(this.spellGroup(spell))} ${this.spellName(spell)}</div>` +
         `<div>${this.spellEffect(spell)}</div>` +
         (details ? `<div class="info-dim">${details}</div>` : '') + sky +
-        this.essenceBarsHtml(recipe.mix) +
+        this.spellBarsHtml(spell) +
         `<div class="spellbook-ingredients">${ingredients}</div>`;
     },
 
@@ -1373,21 +1375,32 @@
 
     spellGroupIcon(group) { return { all: '📖', shaping: '⛰️', boost: '⚡', weather: '🌧️', combat: '☠️' }[group]; },
 
-    // Essensernas fördelning i en blandning som staplar
-    essenceBarsHtml(mix) {
-      const config = Config.buildings.enchanter.mixing, found = CityBuilder.Spells.essences(mix);
-      if (!found) return '';
-      return '<div class="workshop-bars">' + Object.keys(config.essences).map((name, i) => {
-        const essence = config.essences[name], percent = Math.round(found.totals[i] / found.sum * 100);
-        return `<div class="workshop-bar" title="${t(essence.name)} ${percent}%"><span>${t(essence.name)}</span><i><b style="width:${percent}%;background:${essence.color}"></b></i></div>`;
-      }).join('') + '</div>';
+    // Formelns styrka, varaktighet, räckvidd och renhet som staplar
+    spellBarsHtml(spell) {
+      const config = Config.buildings.enchanter.mixing, [, least, most] = config.kinds[spell.kind].radius;
+      const rows = [
+        ['Strength', spell.strength / 3, spell.strength.toFixed(1), '#ee7a2f'],
+        ['Duration', (spell.lasting - 0.5) / 2, '×' + spell.lasting.toFixed(1), '#4a86d8'],
+        ['Reach', most > least ? (spell.radius - least) / (most - least) : 0, String(spell.radius), '#6fbf5a'],
+        ['Purity', spell.purity, Math.round(spell.purity * 100) + '%', '#b88cf0'],
+      ];
+      return '<div class="workshop-bars">' + rows.map(([name, share, value, color]) =>
+        `<div class="workshop-bar" title="${t(name)} ${value}"><span>${t(name)}</span><i><b style="width:${Math.round(share * 100)}%;background:${color}"></b></i></div>`).join('') + '</div>';
     },
 
-    // Vad formeln heter: bieffektens essens som tillägg före slaget
-    spellName(spell) {
-      const noun = t(spell.noun), adjective = spell.adjective && Config.buildings.enchanter.mixing.essences[spell.adjective];
-      return adjective ? `${t(adjective.name)} ${noun}` : noun;
+    // Ikonen för vad en ingrediens gör (första ingrediensens kategori väljer slaget)
+    slotIcon(id) {
+      return { create: '⛰️', clear: '💥', yield: '🌱', surge: '🐾', workers: '⚒️', carriers: '🎒', rain: '🌧️', disaster: '🌪️', combat: '☠️', summon: '👹' }[Config.buildings.enchanter.mixing.ingredients[id][0].split('.')[0]];
     },
+
+    // Ingrediensens fem delar som en rad: kategori, styrka, varaktighet, räckvidd och om den vänder formeln
+    ingredientInfo(id) {
+      const config = Config.buildings.enchanter.mixing, [category, strength, lasting, area, flip] = config.ingredients[id], signed = value => (value > 0 ? '+' : '') + value;
+      return [t(config.categories[category].name), `${t('Strength')} ${strength}`, `${t('Duration')} ${signed(lasting)}`, `${t('Reach')} ${signed(area)}`, flip ? t('Inverts') : ''].filter(Boolean).join(' · ');
+    },
+
+    // Vad formeln heter
+    spellName(spell) { return t(spell.noun); },
 
     toggleResourceFavorite(resourceId) {
       if (this.resourceFavorites.has(resourceId)) {
@@ -2994,19 +3007,20 @@
 
     // Vad en formel gör, i en mening (verktygstips och byggnadsbeskrivning)
     spellEffect(spell) {
-      return [this.effectText(spell), spell.echo && this.effectText(spell.echo)].filter(Boolean).join('; ');
-    },
-
-    effectText(spell) {
-      const n = spell.factor || 1 + (spell.bonus || 0), s = spell.seconds;
+      const n = spell.factor, s = spell.seconds;
       switch (spell.kind) {
-        case 'clear': return t('Clears the sky of fog, storm and tornadoes for {s} s', { s });
+        case 'sky': return t('Clears the sky of fog, storm and tornadoes for {s} s', { s });
         case 'tornado': return spell.super ? t('Raises a supertornado here that tears plants and land down for {s} s', { s: s * Config.settings.weather.tornado.super.life }) : t('Raises a tornado here that tears plants down for {s} s', { s });
         case 'rain': return t('Plants here grow more plentiful for {s} s', { s });
         case 'storm': return t('Floods the low land by the water here for {s} s', { s });
+        case 'break': return t('Clears everything within {n} tiles of here into grass: mountains, water, bog, trees and deposits', { n: spell.radius });
+        case 'lava': return t('Lava spreads out from here, destroys what it covers and cools to grass after about {s} s', { s });
+        case 'meteors': return t('Meteors fall around here for {s} s, damaging buildings and people', { s });
+        case 'mend': return t('Your soldiers here regain {p}% of their health', { p: Math.round(spell.heal * 100) });
+        case 'yield': return t('Buildings here make {n} times the output for {s} s', { n: 1 + spell.bonus, s });
         case 'surge': return t('Animals here breed {n} times as fast for {s} s', { n, s });
+        case 'summon': return t('Summons {n} {name} here. Monsters attack everyone, you included', { n: spell.count, name: this.unitName(spell.monster) });
         case 'pace': return t('Workers and workshops here work {n} times as fast for {s} s', { n, s });
-        case 'yield': return t('Buildings here make {n} times the output for {s} s', { n, s });
         case 'carriers': return t('Carriers here walk {n} times as fast for {s} s', { n, s });
         case 'smite': return t('Enemy soldiers here drop to {p}% health', { p: Math.round(spell.health * 100) });
         default: return t('Creates about {n} new deposits on free grass: {list}', { n: spell.count, list: Object.keys(spell.terrains).map(type => this.terrainName(type)).join(', ') });
@@ -3110,7 +3124,7 @@
 
       if (job?.byproducts) lines.push(t('Also leaves: {list}', { list: this.resourceIconsHtml(job.byproducts) }));
       if (definition.mixing) {
-        lines.push(t('Mixes spells from up to {slots} ingredients; their order and amounts shape the result. New deposits on free grass, faster work, weather, more wildlife and weaker enemies, up to {n} tiles away. After a cast the enchanter rests longer the stronger the spell is ({min}-{max} s), and that kind of spell then recharges for all your enchanters.', { slots: definition.mixing.slots, n: definition.spellRange, min: definition.spellRecharge.min, max: definition.spellRecharge.max }));
+        lines.push(t('Mixes spells from up to {slots} ingredients: the first decides what the spell does and the rest shape it. New deposits, an upheaval that clears a small area, faster work, bigger yields, more wildlife, rain, disasters, monsters and stronger or weaker soldiers, up to {n} tiles away. After a cast the enchanter rests longer the stronger the spell is ({min}-{max} s), and that kind of spell then recharges for all your enchanters.', { slots: definition.mixing.slots, n: definition.spellRange, min: definition.spellRecharge.min, max: definition.spellRecharge.max }));
       }
 
       if (definition.placeOnTerrain && !definition.variants) {

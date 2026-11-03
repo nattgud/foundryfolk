@@ -9,8 +9,7 @@
     '0.9.2': [
       'The normal game is now called Free Realm, and the main menu has a place for Story mode, a handwritten campaign that is coming soon',
       'The music now keeps the volume you set in the settings when a level loads, instead of briefly playing at full volume',
-      'A spell of a great deal of water with a little death and an ancient relic raises a supertornado. It is very hard to make',
-      'Tornado spells are a little easier to find: water with just a small share of death is now enough',
+      'The magic system is new: the first ingredient decides what a spell does (create deposits, upheave mountains, water or bog, make workers, carriers or buildings faster, make animals breed, rain, a tornado, an eruption or a meteor rain, summon monsters, weaken enemies or heal your soldiers), and every ingredient adds strength, duration and reach. The amount changes duration and reach, mixed kinds make the spell impure, and silver, moonstone, glass and the Moon invert it. In Creation the ingredients after the first choose which deposits appear, and Upheaval always clears everything around the target (1 to 4 tiles). Hunters now also leave blood, which can be used to summon monsters. Disasters are no longer random, and the spellbook lists the strongest first',
       'The more buildings you have, the more carriers each new building gives: every 18th building adds one more (up to 4 per building), so the carriers keep up in a big city',
       'Berries, herbs, mushrooms and apples spread a little slower, so they do not take over an area as quickly',
       'Two tornadoes that touch each other merge into a supertornado: twice as big, it tears up plants and land twice as fast, it lasts three times as long, it is drawn darker, turns the weather to supertornado and has its own sounds',
