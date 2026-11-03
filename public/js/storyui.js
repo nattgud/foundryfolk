@@ -33,9 +33,9 @@
       overlay.append(dialog);
       document.body.append(overlay);
       Game.paused = true;
-      let page = 0, typing = null;
+      let page = 0, typing = null, scened = false;
 
-      const close = () => { overlay.remove(); Game.paused = !!UI.mainMenuOpen; done?.(); };
+      const close = () => { overlay.remove(); Game.paused = !!UI.mainMenuOpen; if (scened) CityBuilder.Sound?.scene(CityBuilder.Levels.story?.music); done?.(); };
       const next = () => { page++; show(); };
 
       // Trycker upp en text tecken för tecken; ett klick eller finish() visar resten
@@ -51,6 +51,8 @@
         dialog.replaceChildren();
         if (page >= pages.length) return close();
         const current = pages[page], last = page === pages.length - 1;
+        if (current.music) { scened = true; CityBuilder.Sound?.scene(current.music); }   // sidans egen musik (prolog, epilog) tills läsvyn stängs
+        if (current.type !== 'dialogue') CityBuilder.Sound?.play('message');   // ett ljud per sida (dialog: ett per replik, se advance)
         const text = make('div', 'story-text');
         const action = button(last ? t('Continue') : t('Next'), null, 'story-next');
         action.disabled = false;
@@ -69,6 +71,7 @@
           const advance = () => {
             if (typing) return typing();
             if (line >= current.lines.length) return next();
+            CityBuilder.Sound?.play('message');
             const { who, text: spoken } = current.lines[line++], speaker = story.speakers[who] || { name: who, color: '' };
             const row = make('p', 'story-line'), name = make('b', '', t(speaker.name) + ': '), words = make('span');
             name.style.color = speaker.color;
@@ -132,7 +135,7 @@
         body.append(
           make('div', 'main-menu-level', t('Time: {time}', { time: UI.formatTime(Levels.seconds) })),
           ...(fresh.length ? [make('div', 'main-menu-note', t('Next chapter unlocks: {list}', { list: fresh.join(', ') }))] : []),
-          last ? button(t('Epilogue'), () => { overlay.remove(); this.read([{ type: 'prose', lines: story.epilogue }]); }) : button(t('Next chapter'), () => Levels.advance()),
+          last ? button(t('Epilogue'), () => { overlay.remove(); this.read([{ type: 'prose', lines: story.epilogue, music: story.music?.epilogue }]); }) : button(t('Next chapter'), () => Levels.advance()),
           button(t('Keep playing'), () => overlay.remove()));
         dialog.append(header, body);
         overlay.append(dialog);

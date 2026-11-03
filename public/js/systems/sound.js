@@ -125,6 +125,8 @@
     // Larm: en siren som växlar mellan två toner, två varv
     alarm: { synth: render(1.2, (time, p) => (Math.sign(Math.sin(TAU * (Math.floor(time * 3.3) % 2 ? 640 : 880) * time)) * 0.5 + Math.sin(TAU * (Math.floor(time * 3.3) % 2 ? 640 : 880) * time) * 0.5) * 0.35 * Math.min(1, (1 - p) * 4)), volume: 0.9, pitch: 0, maxVoices: 1, cooldown: 5 },
     // Flaggor: en kort ton när spelaren sätter sin flagga, och en varning när en fiendes flagga syns (egna filer: settings.audio.sounds.flag och flag_enemy)
+    // Meddelanden i storyn (brev, dialog): en mjuk klocka (egen fil: settings.audio.sounds.message)
+    message: { synth: render(0.6, time => (note(880, time, 0, 0.4) + note(1319, time, 0.08, 0.5)) * 0.25), volume: 0.7, maxVoices: 1, cooldown: 0.1 },
     flag: { synth: render(0.3, time => (note(659, time, 0, 0.2) + note(988, time, 0.1, 0.25)) * 0.35), maxVoices: 1, cooldown: 0.1 },
     flag_enemy: { synth: render(0.7, time => (note(330, time, 0, 0.3) + note(247, time, 0.25, 0.4)) * 0.4), volume: 0.8, maxVoices: 1, cooldown: 1 },
     // Monster (egna filer: settings.audio.sounds.<id>). Varje art har ett eget läte (units.js: attackSound), alla dör med monster_die
@@ -183,7 +185,7 @@
         this.define(`${phase}.${type}`, spec(phases[phase]));
         if (phase === 'loop') this.workLoops.add(type);
       }
-      this.channels = { calm: this.channel(custom.music), battle: this.channel(custom.battleMusic), disaster: this.channel(custom.disasterMusic) };
+      this.channels = { calm: this.channel(custom.music), battle: this.channel(custom.battleMusic), disaster: this.channel(custom.disasterMusic), scene: this.channel([]) };
       try {   // sidan har just laddats om (t.ex. en ny bana): den lugna musiken fortsätter där den slutade
         const saved = JSON.parse(sessionStorage.getItem(MUSIC_KEY) || 'null');
         if (saved && Date.now() - saved.at < MUSIC_RESUME_MS && this.channels.calm.tracks.includes(saved.track)) { this.resume = saved; this.ensureContext(); }
@@ -539,8 +541,23 @@
       const hazards = Weather ? Weather.tornadoes.length + Weather.volcanoes.filter(volcano => Weather.seen(volcano)).length + (Weather.storm && Weather.seen(Weather.storm) ? 1 : 0) : 0;   // bara det som syns
       if (hazards > this.hazards) this.hazardUntil = now + MOOD.disasterSeconds;
       this.hazards = hazards;
-      const mood = hazards && now < this.hazardUntil ? 'disaster' : Combat && Combat.time - Combat.fightAt < MOOD.battleSeconds ? 'battle' : 'calm';
+      const mood = this.sceneOn ? 'scene' : hazards && now < this.hazardUntil ? 'disaster' : Combat && Combat.time - Combat.fightAt < MOOD.battleSeconds ? 'battle' : 'calm';
       if (mood !== this.mood) { this.mood = mood; this.updateMusic(); }
+    },
+
+    // Egen musik för en scen (prolog, epilog, ett kapitel): en fil eller en lista som ersätter all annan musik tills scenen är slut (null). Spelas i loop.
+    scene(files) {
+      const tracks = files ? [].concat(files) : [], key = tracks.join('|');
+      if (key === this.sceneKey) return;
+      this.sceneKey = key;
+      const channel = this.channels?.scene;
+      if (channel) {
+        this.stop(channel);
+        channel.element?.removeAttribute('src');
+        Object.assign(channel, { tracks, queue: [], current: null });
+      }
+      this.sceneOn = tracks.length > 0;
+      if (channel) this.updateMood();
     },
 
     updateMusic() {

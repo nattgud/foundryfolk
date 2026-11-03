@@ -9,8 +9,11 @@
    speakers:  vem som talar i en dialog: { id: { name, color } }
    unlock:    byggnad -> kapitlet den blir byggbar i (byggnader som inte står här finns från kapitel 1). Storyn har egen tabell.
    prologue, epilogue: stycken som visas i läsvyn.
+   music:     egen musik i stället för den vanliga: { prologue, epilogue } är en fil eller en lista (null = den vanliga musiken)
+               och spelas medan prologen och epilogen läses. Ett kapitel kan ha eget music-fält på samma sätt, som spelas hela kapitlet.
    chapters:  ett per bana, i ordning. Alla fält utom name är valfria:
      name         kapitlets namn
+     music        egen musik hela kapitlet (en fil eller en lista), t.ex. 'music/chapter9.mp3'
      letter       { lines: [stycken], throne } från kungen, visas före banan (throne: signaturen är "In service of the throne")
      dialogue     [{ who, text }] tryckt dialog som visas efter brevet
      lifted       dialog som visas när dimman lyfter (Eye of Shades förstörd)
@@ -35,6 +38,7 @@
     title: 'The Gentle Turning',
     village: 'Thunebrook',
     seed: 1861,
+    music: { prologue: null, epilogue: null },   // t.ex. prologue: 'music/prologue.mp3'
     speakers: {
       thordram: { name: 'Thordram', color: '#c9a45c' },
       albertha: { name: 'Albertha', color: '#b78bd6' },

@@ -66,6 +66,7 @@ CityBuilder.Config.settings = {
       demolish: 'sounds/demolish.mp3',
       error: 'sounds/error.mp3',
       levelComplete: 'sounds/level_complete.mp3',
+      // message: 'sounds/message.mp3',   // brev och dialog i storyn (utan fil används ett inbyggt klockljud)
       drop: 'sounds/drop.mp3',
       alarm: 'sounds/alarm.mp3',
       arrow: 'sounds/arrow.mp3',          // pil avfyras

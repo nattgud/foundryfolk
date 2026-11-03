@@ -95,9 +95,10 @@
     update() {
       const chapter = this.chapter, Levels = CityBuilder.Levels, Weather = CityBuilder.Weather;
       if (!chapter) return;
+      if (!this.reading) CityBuilder.Sound?.scene(chapter.music);   // kapitlets egen musik (läsvyn sköter sin egen)
       // Berättelsen i ordning: prolog (bara i kapitel 1), brev, dialog
       this.tell([
-        ...(chapter.number === 1 ? this.once('prologue', [{ type: 'prose', lines: Config.story.prologue }]) : []),
+        ...(chapter.number === 1 ? this.once('prologue', [{ type: 'prose', lines: Config.story.prologue, music: Config.story.music?.prologue }]) : []),
         ...(chapter.letter ? this.once('letter', [{ type: 'letter', letter: chapter.letter }]) : []),
         ...(chapter.dialogue ? this.once('dialogue', [{ type: 'dialogue', lines: chapter.dialogue }]) : []),
       ]);
