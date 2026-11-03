@@ -199,8 +199,9 @@
       // Ljud får starta först efter en användaråtgärd
       const unlock = () => {
         this.ensureContext();
-        if (this.context && this.context.state === 'suspended') this.context.resume();
+        if (this.context && this.context.state === 'suspended') this.context.resume().then(() => this.playDeferred(), () => {});
         if (this.context && this.context.state === 'running') {
+          this.playDeferred();
           for (const type of ['pointerdown', 'touchend', 'keydown']) removeEventListener(type, unlock, true);
           this.applySettings();
         }
@@ -223,6 +224,13 @@
       document.addEventListener('click', event => {
         if (event.target.closest && event.target.closest('button:not(:disabled), select, input[type=range]')) this.play('click');
       }, true);
+    },
+
+    // Ljudet som väntade på att ljudet skulle låsas upp (play(id, { defer: true })), t.ex. det första meddelandet i ett kapitel som startar direkt vid sidladdningen
+    playDeferred() {
+      const id = this.deferred;
+      this.deferred = null;
+      if (id) this.play(id);
     },
 
     ensureContext() {
@@ -350,7 +358,8 @@
     // options: { volume = 1, x, y }
     play(id, options = {}) {
       const context = this.context;
-      if (!context || context.state !== 'running' || !this.settings.sfxOn || this.settings.sfxVolume <= 0) return;
+      if (!context || context.state !== 'running') { if (options.defer) this.deferred = id; return; }   // defer: spelas så fort ljudet har låsts upp (första klicket efter att sidan laddats)
+      if (!this.settings.sfxOn || this.settings.sfxVolume <= 0) return;
       const definition = this.sounds.get(id);
       if (!definition || (definition.loop && LOOPING[id]) || definition.voices >= definition.maxVoices || this.voices >= MAX_VOICES) return;   // loopande ljud sköts av updateAmbient
       const now = context.currentTime;

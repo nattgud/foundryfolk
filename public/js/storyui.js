@@ -53,7 +53,7 @@
         if (page >= pages.length) return close();
         const current = pages[page], last = page === pages.length - 1;
         if (current.music) { scened = true; CityBuilder.Sound?.scene(current.music); }   // sidans egen musik (prolog, epilog) tills läsvyn stängs
-        if (current.type !== 'dialogue') CityBuilder.Sound?.play('message');   // ett ljud per sida (dialog: ett per replik, se advance)
+        if (current.type !== 'dialogue') CityBuilder.Sound?.play('message', { defer: true });   // ett ljud per sida (dialog: ett per replik, se advance)
         const text = make('div', 'story-text');
         const action = button(last ? t('Continue') : t('Next'), null, 'story-next');
         action.disabled = false;
@@ -72,7 +72,7 @@
           const advance = () => {
             if (typing) return typing();
             if (line >= current.lines.length) return next();
-            CityBuilder.Sound?.play('message');
+            CityBuilder.Sound?.play('message', { defer: true });
             const { who, text: spoken } = current.lines[line++], speaker = story.speakers[who] || { name: who, color: '' };
             const row = make('p', 'story-line'), name = make('b', '', t(speaker.name) + ': '), words = make('span');
             name.style.color = speaker.color;
