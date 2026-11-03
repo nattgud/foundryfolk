@@ -12,6 +12,7 @@
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font: 13px system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
 canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
+* { scrollbar-width: thin; scrollbar-color: #3a444d transparent; }   /* smala, mörka rullningslister som passar panelerna */
 button { background: #252d34; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
 button:active { background: #313b44; }
 button.on { border-color: var(--accent); background: #26402b; }

@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'The main menu is a little lower, so it fits on a desktop screen without a scrollbar, and scrollbars everywhere are now thin and dark to match the game',
       'The main menu is clearer about the game modes: Story mode (coming soon) comes first, then Free Realm with its own Restart level and New game (which starts over from level 1), then Custom map',
       'The normal game is now called Free Realm, and the main menu has a place for Story mode, a handwritten campaign that is coming soon',
       'The music now keeps the volume you set in the settings when a level loads, instead of briefly playing at full volume',

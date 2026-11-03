@@ -2709,7 +2709,7 @@
 
         .main-menu {
           width: min(360px, 100%);
-          max-height: min(92vh, 720px);
+          max-height: min(92vh, 680px);
         }
 
         .main-menu.is-wide {
@@ -2720,8 +2720,8 @@
         .main-menu-body {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          padding: 12px;
+          gap: 6px;
+          padding: 10px 12px;
           overflow-y: auto;
         }
 
@@ -2737,7 +2737,7 @@
         }
 
         .main-menu-button {
-          padding: 10px 12px;
+          padding: 8px 12px;
           font-size: 14px;
           text-align: left;
         }
