@@ -82,7 +82,11 @@
     chapters: [
       { name: 'The Summons', goals: [more('wood', 30), more('stone', 30)],
         letter: letter(['Demons are attacking Farael and burning our border villages. I cannot ask you to take up a sword, only an axe. Send me thirty timber and thirty stone, quickly.']) },
-      { name: 'Meals for many', start: { buildings: own }, goals: [more('berries', 25), more('fish', 25)],
+      { name: 'Meals for many', start: { buildings: [
+          { type: 'woodcutter', dx: -2, dy: -3 },
+          { type: 'sawmill', dx: -1, dy: -2 },
+          { type: 'quarry', dx: 3, dy: 4 },
+        ] }, goals: [more('berries', 25), more('fish', 25)],
         letter: letter(['My thanks, Reeve. Your wagons have reached the camps, and the men speak your name. Now they need food. Send berries and fish, as much as you can find.']) },
       { name: 'Walls of Brick', start: { buildings: [...own, 'berry_gatherer', 'fishing_hut'] }, goals: [more('brick', 25), more('plank', 25)],
         letter: letter(['Reeve, the camps are fed, thanks to you. The passes must now be walled before the demons return. Could you send brick and planks? I know how much I ask.']) },
