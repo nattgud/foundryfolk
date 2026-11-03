@@ -33,6 +33,7 @@
       overlay.append(dialog);
       document.body.append(overlay);
       Game.paused = true;
+      CityBuilder.Sound?.syncPause();   // fryser det som låter nu innan läsvyns egna ljud startar, annars fryses också de (och hörs inte)
       let page = 0, typing = null, scened = false;
 
       const close = () => { overlay.remove(); Game.paused = !!UI.mainMenuOpen; if (scened) CityBuilder.Sound?.scene(CityBuilder.Levels.story?.music); done?.(); };
