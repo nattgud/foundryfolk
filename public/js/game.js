@@ -4,6 +4,32 @@
   const { Config, World, Pathfinder, Economy, UI, Errors, byId } = CityBuilder;
   const t = (text, variables) => CityBuilder.t(text, variables);
 
+  // Det som hör till en värld och nollställs när en ny bana, sparning eller karta laddas (utan att sidan laddas om). Värdena vid start sparas
+  // av capture() och läggs tillbaka på plats av resetWorld(). Det som hör till spelaren och sidan (grafik, ljud, inställningar, gränssnittets
+  // knappar) rörs inte. Moduler med egen reset() (Vision, Weather ...) nollställs av World.init.
+  const WORLD_STATE = {
+    World: ['chunks', 'buildingsByTile', 'buildings', 'units', 'headquarters', 'hqs', 'nextBuildingId', 'animalsByChunk'],
+    Players: ['active', 'team', 'race'],
+    Economy: ['playerStats', 'flows'],
+    Logistics: ['tasks', 'planningTimer', 'cursor', 'pileLoad', 'load', 'lost', 'busyAt', 'unreachable', 'round', 'orders', 'soft', 'time'],
+    Combat: ['effects', 'projectiles', 'time', 'fightAt', 'targetCache', 'gridTime', 'alarm'],
+    AI: ['players', 'time'],
+    Story: ['queue', 'reading'],
+    Commands: ['log'],
+    'Config.world': ['features'],   // World.endow lägger till garanterade fyndigheter runt baserna
+  };
+  const moduleOf = name => name.split('.').reduce((object, key) => object[key], CityBuilder);
+
+  // Lägger tillbaka ett startvärde i samma objekt (listor, Map och Set töms och fylls på): andra moduler kan hålla referenser till dem
+  const restore = (target, key, initial) => {
+    const value = structuredClone(initial), now = target[key];
+    if (Array.isArray(now)) now.splice(0, now.length, ...value);
+    else if (now instanceof Map) { now.clear(); value.forEach((item, name) => now.set(name, item)); }
+    else if (now instanceof Set) { now.clear(); value.forEach(item => now.add(item)); }
+    else if (now && typeof now === 'object' && value && typeof value === 'object') { for (const name of Object.keys(now)) delete now[name]; Object.assign(now, value); }
+    else target[key] = value;
+  };
+
   const Game = {
     selectedBuilding: null,
     placingType: null,      // byggnadstyp som spelaren håller på att placera
@@ -17,40 +43,86 @@
     alpha: 0,               // hur långt vi kommit mot nästa steg (0-1), för jämn ritning mellan stegen
     tick: 0,                // antal simuleringssteg som körts (kommandon loggas med detta)
     focusPaused: false,     // true när fönstret/fliken inte har fokus. Spelet står ALLTID stilla då (ingen inställning)
+    loading: false,         // en värld byggs (första gången eller vid en ny bana): ingen simulering och ingen ritning
+    pristine: null,         // värdena i WORLD_STATE vid start
 
     get systems() { return Config.settings.systemOrder.map(name => CityBuilder.Systems[name]); },
 
     // Start i steg med laddningsstapel (GameLoading finns i index.html). Mellan stegen får webbläsaren rita om.
     async init() {
-      const L = window.GameLoading || { set() {}, paint: () => Promise.resolve(), done() {}, fail() {} };
-      const step = async (fraction, text) => { L.set(fraction, text); await L.paint(); };
+      const L = window.GameLoading || { set() {}, paint: () => Promise.resolve(), show() {}, done() {}, fail() {} };
       try {
-        // Välj bana innan världen genereras: sparad bana, annars bana 1.
-        // (Levels.start() sätter världens seed, så World.init() bygger rätt värld.)
-        const Save = CityBuilder.Save;
-        await step(.40, t('Choosing level'));
-        if (Save) Save.prepareStart();
-        const level = CityBuilder.Levels ? CityBuilder.Levels.start() : null;
-        await step(.45, t('Creating world'));
-        // World.init får en rapportfunktion (fraction 0-1, valfri text) och får returnera ett löfte om den delar upp arbetet
-        await World.init((fraction, text) => { L.set(.45 + .35 * fraction, text || t('Creating world')); return L.paint(); });
-        await step(.82, t('Preparing graphics'));
-        CityBuilder.Renderer.init();
-        CityBuilder.Input.init();
-        await step(.90, t('Building interface'));
-        UI.init();
-        if (CityBuilder.Minimap) CityBuilder.Minimap.init();
-        await step(.96, t('Almost ready'));
-        for (let i = 0; i < Config.settings.startingCarriers; i++) World.spawnUnit('carrier', 0, 0);
-        const restored = Save ? Save.applyStart() : false;
-        if (!restored) CityBuilder.Story?.begin();      // ett kapitel som börjar om: färdiga byggnader och Eye of Shades (en sparning har dem redan)
-        CityBuilder.Vision.refresh();                    // synfältet och djuren finns från första bildrutan
-        CityBuilder.Animals.updateActivation();
-        if (level) UI.showToast((restored ? t('Game loaded.') + ' ' : '') + (level.custom ? level.name : level.story ? t('Chapter {n}: {name}', { n: level.level, name: level.name }) : t('Level {level}: {name}', { level: level.level, name: level.name })));
+        this.capture();
+        await this.build(L, true);
         this.installFocusPause();
         L.set(1, t('Almost ready'));
+        this.loading = false;
         requestAnimationFrame(time => { this.lastFrameTime = time; this.frame(time); L.done(); });
       } catch (error) { Errors.report(error, 'start'); L.fail(error); throw error; }
+    },
+
+    // Bygger världen för banan som är vald: första gången (first) sätts också sådant som bara görs en gång (grafik, indata, gränssnitt)
+    async build(L, first) {
+      const step = async (fraction, text) => { L.set(fraction, text); await L.paint(); };
+      this.loading = true;
+      // Välj bana innan världen genereras: sparad bana, annars bana 1.
+      // (Levels.start() sätter världens seed, så World.init() bygger rätt värld.)
+      const Save = CityBuilder.Save;
+      await step(.40, t('Choosing level'));
+      if (Save) Save.prepareStart();
+      const level = CityBuilder.Levels ? CityBuilder.Levels.start() : null;
+      await step(.45, t('Creating world'));
+      // World.init får en rapportfunktion (fraction 0-1, valfri text) och får returnera ett löfte om den delar upp arbetet
+      await World.init((fraction, text) => { L.set(.45 + .35 * fraction, text || t('Creating world')); return L.paint(); });
+      await step(.82, t('Preparing graphics'));
+      if (first) { CityBuilder.Renderer.init(); CityBuilder.Input.init(); } else CityBuilder.Renderer.reset();
+      await step(.90, t('Building interface'));
+      if (first) { UI.init(); if (CityBuilder.Minimap) CityBuilder.Minimap.init(); } else { UI.reset(); CityBuilder.Minimap?.reset(); }
+      await step(.96, t('Almost ready'));
+      for (let i = 0; i < Config.settings.startingCarriers; i++) World.spawnUnit('carrier', 0, 0);
+      const restored = Save ? Save.applyStart() : false;
+      if (!restored) CityBuilder.Story?.begin();      // ett kapitel som börjar om: färdiga byggnader och Eye of Shades (en sparning har dem redan)
+      CityBuilder.Vision.refresh();                    // synfältet och djuren finns från första bildrutan
+      CityBuilder.Animals.updateActivation();
+      if (level) UI.showToast((restored ? t('Game loaded.') + ' ' : '') + (level.custom ? level.name : level.story ? t('Chapter {n}: {name}', { n: level.level, name: level.name }) : t('Level {level}: {name}', { level: level.level, name: level.name })));
+    },
+
+    // Sparar värdena i WORLD_STATE som de är vid start (anropas en gång, före allt annat)
+    capture() {
+      this.pristine = Object.fromEntries(Object.entries(WORLD_STATE).map(([name, keys]) => [name, Object.fromEntries(keys.map(key => [key, structuredClone(moduleOf(name)[key])]))]));
+    },
+
+    // Bygger en ny värld utan att sidan laddas om (ny bana, ladda en sparning, ny karta, nytt spel). Allt som hör till världen nollställs;
+    // sidan, grafiken, ljudet och inställningarna behålls. Går något fel laddas sidan om, som förr.
+    async restart() {
+      if (this.loading) return;
+      const L = window.GameLoading;
+      try {
+        this.loading = true;
+        L.show();
+        await L.paint();
+        this.resetWorld();
+        await this.build(L, false);
+        this.loading = false;
+        this.lastFrameTime = performance.now();
+        L.done();
+      } catch (error) {
+        Errors.report(error, 'start');
+        location.reload();
+      }
+    },
+
+    // Stänger av den gamla världen och lägger tillbaka alla startvärden
+    resetWorld() {
+      const { Save, Levels, Sound, Pathfinder: pathfinder, Generator } = CityBuilder;
+      if (Save) Save.stop();
+      for (const [name, keys] of Object.entries(WORLD_STATE)) for (const key of keys) restore(moduleOf(name), key, this.pristine[name][key]);
+      Levels?.forget();
+      Generator.reset();
+      pathfinder.reset();
+      CityBuilder.Systems.pathDecay.reset();
+      Sound?.reset();
+      Object.assign(this, { selectedBuilding: null, placingType: null, casting: null, flagging: false, pending: 0, alpha: 0, tick: 0, paused: false });
     },
 
     // Spelet pausas alltid när fönstret förlorar fokus eller fliken göms
@@ -195,6 +267,12 @@
 
     frame(time) {
       const next = () => requestAnimationFrame(following => this.frame(following));
+
+      // En värld byggs: ingen simulering och ingen ritning, och ingen tid som hoppar fram efteråt
+      if (this.loading) {
+        this.lastFrameTime = time;
+        return next();
+      }
 
       // Fönstret har inte fokus: ingen simulering, ingen ritning, och ingen tid som hoppar fram när fokus kommer tillbaka
       if (this.focusPaused) {

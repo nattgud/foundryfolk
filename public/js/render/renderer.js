@@ -30,6 +30,14 @@
       this.camera.y = -innerHeight / 2 + this.tileSize / 2;
     },
 
+    // Ny värld (Game.restart): kameran tillbaka till basen och de cachade bilderna av den gamla världen släpps
+    reset() {
+      this.camera.x = -innerWidth / 2 + this.tileSize / 2;
+      this.camera.y = -innerHeight / 2 + this.tileSize / 2;
+      this.hoverTile = null;
+      for (const clear of this.caches) clear();
+    },
+
     resize() {
       this.pixelRatio = CityBuilder.Options ? CityBuilder.Options.gfx.pixelRatio : devicePixelRatio || 1;
       this.canvas.width = innerWidth * this.pixelRatio;
@@ -37,6 +45,9 @@
     },
 
     addLayer(name, draw) { this.layers.push({ name, draw }); },
+
+    // Lager med cachar av världen anmäler hur de töms (Renderer.reset)
+    caches: [],
 
     // Rutintervall som syns på skärmen
     visibleTileRange() {

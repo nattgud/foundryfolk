@@ -116,6 +116,16 @@
       body.firstChild.focus();
     },
 
+    // Ny värld (Game.restart): rutor och paneler från den gamla världen stängs och det som visar världen byggs om
+    reset() {
+      for (const overlay of document.querySelectorAll('.resource-window-overlay')) if (overlay.id !== 'mainMenuOverlay' && overlay.id !== 'resourceWindowOverlay') overlay.remove();
+      if (this.mainMenuOpen) this.toggleMainMenu(false);
+      if (this.resourceWindowOpen) this.toggleResourceWindow(false);
+      this.takesCache.clear();
+      this.goalCheckedAt = 0;
+      this.applyLanguage();
+    },
+
     // Anropas när språket byts (I18n.onChange)
     applyLanguage() {
       const toggle = byId('resourceWindowToggle');

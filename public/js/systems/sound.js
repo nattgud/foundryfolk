@@ -461,6 +461,15 @@
       return entry.buffer;
     },
 
+    // Ny värld (Game.restart): loopar vid de gamla byggnaderna tystnar, och stämningen och scenmusiken börjar om. Musiken fortsätter.
+    reset() {
+      for (const loop of this.loops?.values() || []) this.stopLoop(loop);
+      this.loops?.clear();
+      this.waiting.clear();
+      Object.assign(this, { hazards: 0, hazardUntil: 0, mood: 'calm' });
+      this.scene(null);
+    },
+
     // Står spelet stilla fryser alla pågående effekter och loopar där de är (hastighet 0) och fortsätter när spelet går igen. Musiken påverkas inte.
     // Nya ljud under tiden (t.ex. klick i menyn) spelas som vanligt: de startar efter att de andra frysts.
     syncPause() {

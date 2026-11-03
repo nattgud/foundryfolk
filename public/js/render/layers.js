@@ -651,6 +651,7 @@
   const FOG_FADE_MS = 100;         // hur ofta blekande celler uppdateras
   const FOG_STEP = 6;              // ungefär så många skärmpixlar per steg i den uppskalade masken
   const fog = { cells: document.createElement('canvas'), mask: document.createElement('canvas'), key: '', state: 0, at: 0, version: -1 };
+  Renderer.caches.push(() => { terrainChunks.clear(); pathChunks.clear(); fog.version = -1; });   // ny värld (Renderer.reset)
 
   // En bild som täcker skärmen sträcks över den, en mindre läggs som mönster
   {

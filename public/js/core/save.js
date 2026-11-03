@@ -360,7 +360,7 @@
       if (!readSlot(id)) return false;
       this.suspended = true; // sidan stängs, så den gamla världen får inte autosparas över
       write(PENDING_KEY, id);
-      location.reload();
+      CityBuilder.Game.restart();
       return true;
     },
 
@@ -378,11 +378,18 @@
       this.suspended = true;
       remove(PREFIX + slot);
       remove(PENDING_KEY);
-      location.reload();
+      CityBuilder.Game.restart();
+    },
+
+    // Den gamla världen stängs av innan en ny byggs: ingen sparning får skriva över något medan den byggs (Game.restart)
+    stop() {
+      this.ready = false;
+      clearInterval(this.timer);
     },
 
     // Anropas först i Game.init: bestämmer vad som ska återställas och ställer in banan före världsgenereringen
     prepareStart() {
+      this.suspended = false;
       const pending = read(PENDING_KEY);
       remove(PENDING_KEY);
       this.startSlot = pending || this.slot();
@@ -414,8 +421,11 @@
       CityBuilder.Levels?.hold(false);
       clearInterval(this.timer);
       this.timer = setInterval(() => this.autosave(), this.autosaveMs);
-      addEventListener('pagehide', () => this.save('autosave'));
-      document.addEventListener('visibilitychange', () => { if (document.hidden) this.autosave(); });
+      if (!this.listening) {   // en gång per sida, inte per värld
+        this.listening = true;
+        addEventListener('pagehide', () => this.save('autosave'));
+        document.addEventListener('visibilitychange', () => { if (document.hidden) this.autosave(); });
+      }
       return restored;
     },
   };

@@ -1108,6 +1108,8 @@
     snapshot: () => JSON.parse(JSON.stringify(progress)),
     restoreProgress(saved) { applyProgress(saved || null); },
     hold(value) { held = !!value; },
+    // Glömmer framstegen i den gamla världen, som vid en ny sidladdning (Game.restart); en sparning ger dem tillbaka via Save.prepareStart
+    forget() { resetProgress(); Object.assign(progress, { run: null, level: null }); },
 
     // Goals
     progress: evaluate,                                   // [{ key, type, id|resource, amount, have, done }]
@@ -1122,41 +1124,41 @@
     // ---- Custom map ----
     CUSTOM: { maxEnemies: MAX_CUSTOM_ENEMIES, difficulties: DIFFICULTIES.length, teams: TEAM_CHOICES, steps: 5 },
     get custom() { return state.info.custom || null; },           // settings of the current custom map, or null on a level
-    isStory: () => !!(state.info.story || readStory()),             // också före Levels.start()
+    isStory: () => !!readStory(),                                   // nyckeln sätts när kapitlet startar, så det gäller också före Levels.start() och efter en omstart
     get mode() { return state.info.custom ? 'custom' : state.info.story ? 'story' : 'free'; },
     get story() { return state.info.story || null; },              // { ...kapitlets data, number, count } eller null
     storyReached: reached,
-    isCustom: () => !!(state.info.custom || readCustom()),         // also true before Levels.start() when a custom map is stored
+    isCustom: () => !!readCustom(),                                 // the key is set when the map starts: valid before Levels.start() and after a restart
     defaultCustom: seed => normalizeCustom({ seed: seed ?? Math.floor(Math.random() * 999999) + 1 }),
     normalizeCustom,
     storedCustom: readCustom,
-    // Plays a custom map: the current game is saved first, then the page reloads into the new map
+    // Plays a custom map: the current game is saved first, then a new world is built for the new map
     startCustom(raw) {
       const settings = normalizeCustom(raw), save = CityBuilder.Save;
       if (save && save.ready) save.save(save.slot());
       store.set(CUSTOM_KEY, JSON.stringify(settings));
-      if (save && save.newGame) save.newGame('autocustom'); else location.reload();
+      if (save && save.newGame) save.newGame('autocustom'); else CityBuilder.Game.restart();
     },
-    // Plays a story chapter: the current game is saved first, then the page reloads into it. fresh: from the start of the chapter
+    // Plays a story chapter: the current game is saved first, then a new world is built for it. fresh: from the start of the chapter
     // (the autosave of the story is removed), otherwise the story continues from its autosave.
     playStory(chapter, fresh) {
       const save = CityBuilder.Save;
       if (save && save.ready) save.save(save.slot());
       store.set(STORY_KEY, clampChapter(chapter));
       store.remove(CUSTOM_KEY);
-      if (fresh && save && save.newGame) save.newGame('autostory'); else location.reload();
+      if (fresh && save && save.newGame) save.newGame('autostory'); else CityBuilder.Game.restart();
     },
-    // Back to Free Realm (the page reloads and continues from the autosave of the levels)
+    // Back to Free Realm (a new world is built and continues from the autosave of the levels)
     leaveStory() {
       const save = CityBuilder.Save;
       if (save && save.ready) save.save(save.slot());
       store.remove(STORY_KEY);
-      location.reload();
+      CityBuilder.Game.restart();
     },
-    // Back to the levels (the page reloads and continues from the autosave of the levels)
+    // Back to the levels (a new world is built and continues from the autosave of the levels)
     leaveCustom() {
       store.remove(CUSTOM_KEY);
-      location.reload();
+      CityBuilder.Game.restart();
     },
     // A map of the custom settings, without changing the game: { size, cells: Uint8Array of class numbers, bases: [{ x, y, player }] }
     // Class numbers: 0 grass, 1 water, 2 mountain, 3 forest, 4 sand, 5 ore. The bases are where the layout wants
@@ -1194,13 +1196,13 @@
     restart() {
       resetProgress();
       const save = CityBuilder.Save;
-      if (save && save.newGame) save.newGame(); else location.reload();
+      if (save && save.newGame) save.newGame(); else CityBuilder.Game.restart();
     },
-    // Goes to the next level: the world is rebuilt by reloading the page (the autosave is removed)
+    // Goes to the next level: a new world is built (the autosave is removed)
     advance() {
       const save = CityBuilder.Save;
       if (state.info.story) setStory(state.info.story.number + 1); else setLevel(state.info.level + 1, true);
-      if (save && save.newGame) save.newGame(); else location.reload();
+      if (save && save.newGame) save.newGame(); else CityBuilder.Game.restart();
     },
   };
 

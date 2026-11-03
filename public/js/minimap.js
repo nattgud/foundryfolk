@@ -103,8 +103,7 @@
       this.started = true;
 
       // Zoomen gäller bara banan den ställdes in på ("bana:zoom"): ny bana börjar alltid på standardzoomen
-      const [storedLevel, storedZoom] = String(safe(() => localStorage.getItem(ZOOM_KEY))).split(':').map(Number);
-      this.scale = storedLevel === currentLevel() && ZOOM_STEPS.includes(storedZoom) ? storedZoom : config.pixelsPerTile;
+      this.loadZoom();
       const storedMode = MODES.findIndex(mode => mode.id === safe(() => localStorage.getItem(MODE_KEY)));
       this.modeIndex = storedMode >= 0 ? storedMode : 0;
 
@@ -185,6 +184,21 @@
     },
 
     get mode() { return MODES[this.modeIndex]; },
+
+    // Zoomen gäller bara banan den ställdes in på ("bana:zoom"): ny bana börjar alltid på standardzoomen
+    loadZoom() {
+      const [storedLevel, storedZoom] = String(safe(() => localStorage.getItem(ZOOM_KEY))).split(':').map(Number);
+      this.scale = storedLevel === currentLevel() && ZOOM_STEPS.includes(storedZoom) ? storedZoom : settings().pixelsPerTile;
+    },
+
+    // Ny värld (Game.restart): de ritade kartbitarna av den gamla världen släpps
+    reset() {
+      if (!this.started) return;
+      this.chunks.clear();
+      this.selection = null;
+      this.lastDraw = 0;
+      this.loadZoom();
+    },
 
     cycleMode() {
       this.modeIndex = (this.modeIndex + 1) % MODES.length;

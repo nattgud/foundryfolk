@@ -74,7 +74,16 @@
       done() {
         const box = document.getElementById('loading');
         box.classList.add('hide');
-        setTimeout(() => box.remove(), 500);
+        setTimeout(() => { if (box.classList.contains('hide')) box.style.display = 'none'; }, 500);
+      },
+      // Visas igen när en ny bana byggs (Game.restart)
+      show() {
+        const box = document.getElementById('loading');
+        box.style.display = '';
+        box.offsetWidth;   // så att tonandet startar från det dolda läget
+        box.classList.remove('hide');
+        this.shown = 0;
+        this.set(0, 'Loading');
       },
       fail(error) {
         document.getElementById('loading').classList.add('error');

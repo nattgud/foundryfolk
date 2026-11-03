@@ -13,6 +13,8 @@
   CityBuilder.Systems = CityBuilder.Systems || {};
 
   CityBuilder.Systems.pathDecay = {
+    reset() { lastTouched.clear(); },
+
     touch(tile) {
       lastTouched.set(tile, 0);
     },

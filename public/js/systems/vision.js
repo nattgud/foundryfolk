@@ -34,7 +34,7 @@
 
     // Nollställer allt (ny värld)
     reset() {
-      this.time = 0; this.nextRefresh = 0; this.phase = -1;
+      this.time = 0; this.nextRefresh = 0; this.phase = -1; this.version++;   // version: ritningen cachar dimman
       this.grids.clear(); this.activeChunks = []; this.memory.clear();
     },
 
