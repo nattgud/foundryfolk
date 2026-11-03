@@ -23,6 +23,7 @@
       'Pausing the game now pauses all sound effects and loops too; only the music keeps playing',
       'A building that is still under construction can no longer be used: the Enchanter, Market, workshops, barracks and the rest get their buttons only once they are finished',
       'Buildings holding many different resources (like the kitchen) now draw them in two rows of smaller icons, so they no longer spill out over neighbouring buildings',
+      'Story mode is here: a handwritten campaign in 21 chapters, "The Gentle Turning", with a prologue, letters from the king, printed dialogue, its own autosave and chapters you can replay. The first chapters are placeholders for now. Chapters have fixed maps, their own unlock order, buildings that stand ready, an enemy race, a chapter in constant fog until the Eye of Shades is destroyed, and scripted weather',
       'Sounds far from the middle of the screen now get an echo, so they sound distant and mysterious; strongest in fog',
       'Fog now muffles the sound effects too: you hear less far from the middle of the screen, and the treble fades the further away a sound is',
       'Planters work twice as fast, which helps on levels where trees are scarce',

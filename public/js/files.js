@@ -31,6 +31,7 @@ self.GAME_SCRIPTS = [
   'js/lang/lang.js',
   'js/options.js',
   'js/custommap.js',
+  'js/storyui.js',
   // 4. Värld
   'js/world/generator.js',
   'js/world/world.js',
@@ -52,6 +53,7 @@ self.GAME_SCRIPTS = [
   'js/systems/monsters.js',
   'js/systems/weather.js',
   'js/systems/combat.js',
+  'js/systems/story.js',
   'js/systems/ai.js',
   // 6. Rendering, indata, UI
   'js/render/shapes.js',

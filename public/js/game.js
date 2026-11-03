@@ -43,9 +43,10 @@
         await step(.96, t('Almost ready'));
         for (let i = 0; i < Config.settings.startingCarriers; i++) World.spawnUnit('carrier', 0, 0);
         const restored = Save ? Save.applyStart() : false;
+        if (!restored) CityBuilder.Story?.begin();      // ett kapitel som börjar om: färdiga byggnader och Eye of Shades (en sparning har dem redan)
         CityBuilder.Vision.refresh();                    // synfältet och djuren finns från första bildrutan
         CityBuilder.Animals.updateActivation();
-        if (level) UI.showToast((restored ? t('Game loaded.') + ' ' : '') + (level.custom ? level.name : t('Level {level}: {name}', { level: level.level, name: level.name })));
+        if (level) UI.showToast((restored ? t('Game loaded.') + ' ' : '') + (level.custom ? level.name : level.story ? t('Chapter {n}: {name}', { n: level.level, name: level.name }) : t('Level {level}: {name}', { level: level.level, name: level.name })));
         this.installFocusPause();
         L.set(1, t('Almost ready'));
         requestAnimationFrame(time => { this.lastFrameTime = time; this.frame(time); L.done(); });

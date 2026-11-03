@@ -72,7 +72,6 @@
 
   const Save = {
     startData: null,            // sparning som ska återställas vid start
-    mode: 'free',               // spelläget: 'free' (Free Realm) eller 'story'. Sparas med varje sparning; äldre sparningar är 'free'
     ready: false,               // true när spelet är uppstartat (autosparning före det vore farlig)
     suspended: false,           // true när sidan håller på att laddas om (då får inget skrivas)
     lastError: null,
@@ -102,7 +101,7 @@
     list() {
       return SLOT_IDS.map(id => ({ id, data: readSlot(id) }))
         .filter(entry => entry.data)
-        .map(({ id, data }) => ({ id, savedAt: data.savedAt, level: data.level, custom: !!data.custom }));
+        .map(({ id, data }) => ({ id, savedAt: data.savedAt, level: data.level, custom: !!data.custom, story: data.mode === 'story' }));
     },
 
     capture() {
@@ -175,7 +174,7 @@
       return {
         format: FORMAT,
         savedAt: Date.now(),
-        mode: this.mode,
+        mode: levels ? levels.mode : 'free',   // 'free' (Free Realm), 'story' eller 'custom'; äldre sparningar saknar det och är 'free'
         level: levels ? levels.current.level : 1,
         runSeed: levels ? levels.runSeed : null,
         custom: levels ? levels.custom || undefined : undefined,   // inställningarna om det är en egen bana
@@ -370,7 +369,7 @@
     slot() {
       const levels = CityBuilder.Levels;
       if (this.ready ? levels?.current.custom : levels?.isCustom()) return 'autocustom';
-      return this.mode === 'story' ? 'autostory' : 'autosave';
+      return (this.ready ? levels?.current.story : levels?.isStory()) ? 'autostory' : 'autosave';
     },
 
     // Nytt spel: ta bort autosparningen (slot: den som ska tas bort, annars den som hör till spelet just nu) och starta om.
@@ -389,10 +388,9 @@
       this.startSlot = pending || this.slot();
       this.startData = readSlot(this.startSlot);
       const data = this.startData, levels = CityBuilder.Levels;
-      this.mode = data?.mode || 'free';
       if (levels) levels.hold(true);   // inga mål får klaras av förrän sparningen är återställd (se Levels.hold)
       if (data && levels) {
-        if (data.custom) levels.restoreCustom(data.custom); else levels.restore(data.level, data.runSeed);
+        if (data.custom) levels.restoreCustom(data.custom); else if (data.mode === 'story') levels.restoreStory(data.level); else levels.restore(data.level, data.runSeed);
         levels.restoreProgress(data.progress);   // äldre sparningar saknar framsteg: målen börjar då om och klaras av igen utifrån det som finns
       }
     },

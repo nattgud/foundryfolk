@@ -229,6 +229,8 @@
       const unlocks = level.unlocks.map(id => this.buildingName(id)).join(', ');
       const header = level.custom
         ? (Levels.completed ? `<b>${t('Victory!')}</b>` : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })}`)
+        : level.story
+        ? (Levels.completed ? `<b>${t('Chapter complete!')}</b>${level.story.number < level.story.count ? ` <button type="button" data-next class="goal-next">${t('Next chapter')}</button>` : ''}` : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })}`)
         : Levels.completed
           ? `<b>${t('Level complete!')}</b> ${'★'.repeat(Levels.stars)}${'☆'.repeat(3 - Levels.stars)} <button type="button" data-next class="goal-next">${t('Next level')}</button>`
           : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })}<div class="goal-stars">${this.starTimesHtml(level.goal.par, Levels.seconds)}</div>`;
@@ -537,6 +539,7 @@
 
     showLevelComplete(result) {
       const Levels = CityBuilder.Levels;
+      if (result.story) { this.hideTooltip(); return CityBuilder.StoryUI.complete(); }
       this.hideTooltip();
       CityBuilder.Sound?.play('levelComplete');
       let overlay = byId('levelCompleteOverlay');
@@ -1520,7 +1523,7 @@
         row.append(
           make('span', 'main-menu-slot-name', label),
           make('span', 'main-menu-slot-meta', entry
-            ? `${entry.custom ? t('Custom map') : t('Level {level}', { level: entry.level })} · ${this.formatSaveTime(entry.savedAt)}`
+            ? `${entry.custom ? t('Custom map') : entry.story ? t('Chapter {n}', { n: entry.level }) : t('Level {level}', { level: entry.level })} · ${this.formatSaveTime(entry.savedAt)}`
             : t('Empty'))
         );
         return row;
@@ -1528,7 +1531,7 @@
 
       const titles = {
         main: t('Main menu'), save: t('Save game'), load: t('Load game'), confirm: t('Are you sure?'),
-        options: t('Settings'), stats: t('Statistics'), custom: t('Custom map'),
+        options: t('Settings'), stats: t('Statistics'), custom: t('Custom map'), story: t('Story mode'),
       };
       const header = make('header', 'resource-window-header');
       const close = make('button', 'resource-window-close', '×');
@@ -1548,7 +1551,7 @@
       };
 
       if (view === 'main') {
-        if (level) body.append(make('div', 'main-menu-level', level.custom ? level.name : `${t('Free Realm')} · ${t('Level {level}: {name}', { level: level.level, name: level.name })}`));
+        if (level) body.append(make('div', 'main-menu-level', level.custom ? level.name : level.story ? `${t('Story mode')} · ${t('Chapter {n}: {name}', { n: level.level, name: level.name })}` : `${t('Free Realm')} · ${t('Level {level}: {name}', { level: level.level, name: level.name })}`));
         const gap = () => make('div', 'main-menu-gap');
         const heading = text => make('div', 'main-menu-heading', text);
         // En knapp med en liten förklaring till höger
@@ -1557,10 +1560,11 @@
           element.append(make('span', 'main-menu-slot-meta', note));
           return element;
         };
-        const custom = !!level?.custom;
-        const restart = button(custom ? t('Restart map') : t('Restart level'), () => this.renderMainMenu('confirm', {
-          text: custom ? t('Restart this map? Progress on this map is lost. Manual saves are unchanged.') : t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
-          confirmLabel: custom ? t('Restart map') : t('Restart level'),
+        const custom = !!level?.custom, story = !!level?.story, Levels = CityBuilder.Levels;
+        const restartName = custom ? t('Restart map') : story ? t('Restart chapter') : t('Restart level');
+        const restart = button(restartName, () => this.renderMainMenu('confirm', {
+          text: custom ? t('Restart this map? Progress on this map is lost. Manual saves are unchanged.') : story ? t('Restart this chapter? Progress in this chapter is lost. Manual saves are unchanged.') : t('Restart this level? Progress on this level is lost. Manual saves are unchanged.'),
+          confirmLabel: restartName,
           danger: true,
           back: 'main',
           onConfirm: () => CityBuilder.Levels.restart(),
@@ -1577,12 +1581,15 @@
             this.toggleMainMenu(false);
           },
         }), '✨', t('From level 1'));
-        // On a custom map: back to the Free Realm game, at the level you had reached
-        const backToFreeRealm = button(t('Continue Free Realm'), () => this.renderMainMenu('confirm', {
-          text: t('Leave this custom map and continue your Free Realm game at level {level}? The custom map is kept in its autosave and in your manual saves.', { level: CityBuilder.Levels?.campaignLevel }),
-          confirmLabel: t('Continue Free Realm'),
+        // In the story or on a custom map: back to the Free Realm game, at the level you had reached (from a custom map during the story: back to the story)
+        const toStory = custom && Levels.isStory();
+        const backToFreeRealm = button(toStory ? t('Continue the story') : t('Continue Free Realm'), () => this.renderMainMenu('confirm', {
+          text: toStory ? t('Leave this custom map and continue the story? The custom map is kept in its autosave and in your manual saves.')
+            : custom ? t('Leave this custom map and continue your Free Realm game at level {level}? The custom map is kept in its autosave and in your manual saves.', { level: Levels.campaignLevel })
+            : t('Leave the story and continue your Free Realm game at level {level}? The story is kept in its autosave and in your manual saves.', { level: Levels.campaignLevel }),
+          confirmLabel: toStory ? t('Continue the story') : t('Continue Free Realm'),
           back: 'main',
-          onConfirm: () => CityBuilder.Levels.leaveCustom(),
+          onConfirm: () => (custom ? Levels.leaveCustom() : Levels.leaveStory()),
         }), '', '↩️');
         const row = make('div', 'main-menu-row');
         row.append(
@@ -1594,12 +1601,14 @@
         // Free Realm och en egen karta har rubrik och egna knappar, så det syns vad "Restart" och "New game" gäller.
         body.append(
           row,
-          ...(CityBuilder.Levels?.completed && !custom ? [button(t('Next level'), () => CityBuilder.Levels.advance(), '', '⏭')] : []),
+          ...(Levels?.completed && !custom && !(story && level.story.number >= level.story.count) ? [button(story ? t('Next chapter') : t('Next level'), () => Levels.advance(), '', '⏭')] : []),
           gap(),
-          described(t('Story mode'), null, '🏰', t('Coming soon')),   // huvudläget, kommer senare: avstängd tills dess
+          ...(story
+            ? [heading(t('Story mode')), restart, button(t('Chapters'), () => this.renderMainMenu('story'), '', '📖')]
+            : [described(t('Story mode'), () => this.renderMainMenu('story'), '🏰', CityBuilder.Config.story.title)]),   // huvudläget
           gap(),
           heading('Free Realm'),
-          ...(custom ? [backToFreeRealm] : [restart]),
+          ...(custom || story ? [backToFreeRealm] : [restart]),
           newGame,
           gap(),
           ...(custom ? [heading(t('Custom map')), restart] : []),
@@ -1646,8 +1655,12 @@
         });
 
         body.append(slotRow('autosave', t('Autosave'), () => doLoad('autosave', t('Autosave'))));
+        if (entries.has('autostory')) body.append(slotRow('autostory', t('Autosave (story)'), () => doLoad('autostory', t('Autosave (story)'))));
         if (entries.has('autocustom')) body.append(slotRow('autocustom', t('Autosave (custom map)'), () => doLoad('autocustom', t('Autosave (custom map)'))));
         for (const [id, label] of slotLabels) body.append(slotRow(id, label, () => doLoad(id, label)));
+        body.append(button(t('Back'), () => this.renderMainMenu('main')));
+      } else if (view === 'story') {
+        CityBuilder.StoryUI.fillMenu(body, { button, confirm: options => this.renderMainMenu('confirm', { ...options, back: 'story' }) });
         body.append(button(t('Back'), () => this.renderMainMenu('main')));
       } else if (view === 'confirm') {
         body.append(

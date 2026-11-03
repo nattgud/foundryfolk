@@ -1144,6 +1144,19 @@ CityBuilder.Config.buildings = {
     buildDuration: 8
   },
 
+  // Storymode: rådgivarna sätter ut den. Den står inte i byggmenyn och kan inte byggas; i kapitlet med konstant dimma lyfter dimman när den förstörs
+  eye_of_shades: {
+    name: 'Eye of Shades',
+    category: 'war',
+    symbol: 'EY',
+    color: '#7b4fa3',
+    buildCost: {},
+    hiddenInMenu: true,
+    vision: 14,
+    maxHp: 400,
+    buildDuration: 1
+  },
+
   garrison: {
     name: 'Garrison',
     category: 'war',

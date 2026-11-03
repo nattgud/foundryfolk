@@ -34,6 +34,8 @@
   const alliedAt = level => rivalsAt(level) > 1 && level >= ALLIED_FROM;
   const LEVEL_KEY = 'citybuilder.level';
   const RUN_KEY = 'citybuilder.runSeed';
+  const STORY_KEY = 'citybuilder.story';                    // finns nyckeln spelas storyn: kapitlet som spelas (en egen bana går före)
+  const REACHED_KEY = 'citybuilder.storyReached';          // högsta kapitlet spelaren nått (kapitlen upp till det kan spelas om)
   const CUSTOM_KEY = 'citybuilder.custom';                  // inställningarna för en egen bana: finns nyckeln startar spelet den banan
 
   /* ---------- Helpers ---------- */
@@ -92,7 +94,8 @@
     // War comes last: the economy and the magic are learned first, then the army (training starts six levels before the first rival)
     wall: 33, bowyer: 34, guard_tower: 34, stables: 35, swordsmith: 38, garrison: 39, armorsmith: 41,
   };
-  const unlockLevelOf = id => UNLOCK[id] ?? 1;
+  let storyUnlock = null;   // storyns egen upplåsningstabell medan ett kapitel spelas (se enter), annars banornas
+  const unlockLevelOf = id => (storyUnlock || UNLOCK)[id] ?? 1;
 
   /* ---------- Starting stock ---------- */
   // What you start with grows with the level, so a later level does not begin with a long wait after the first woodcutter, sawmill and quarry.
@@ -789,6 +792,46 @@
     };
   };
 
+  /* ---------- Story mode ----------
+     A chapter is a level with a fixed run-seed (Config.story.seed, so the same chapter is always the same map) and what the story
+     data adds: its own unlock table, goals, enemies and their race, and the rules the story system carries out (systems/story.js).
+     The chapter is stored under STORY_KEY while the story is played. */
+  const withRun = (seed, make) => { const kept = runSeed; runSeed = seed; try { return make(); } finally { runSeed = kept; } };
+  const chapterCount = () => CityBuilder.Config.story.chapters.length;
+  const clampChapter = n => Math.min(chapterCount(), clampLevel(n));
+  const reached = () => Math.min(chapterCount(), Math.max(1, Math.floor(Number(store.get(REACHED_KEY))) || 1));
+
+  const storyInfo = rawChapter => {
+    const story = CityBuilder.Config.story, number = clampChapter(rawChapter), data = story.chapters[number - 1];
+    const base = withRun(story.seed, () => levelInfo(number)), enemy = CityBuilder.Players.ENEMY;
+    let goals = null;
+    const goal = () => {
+      if (data.end === 'hq') return { items: [{ key: 'm:eliminate', type: 'eliminate', amount: 1 }], par: 0 };
+      if (!data.goals) return { ...base.goal, par: 0 };
+      const start = startingResourcesAt(number);
+      return {
+        par: 0,
+        items: data.goals.map(item => item.more === undefined
+          ? { key: item.key || `${item.type}:${item.id || item.resource}`, ...item }
+          : { key: 's:' + item.resource, type: 'stock', resource: item.resource, amount: (start[item.resource] || 0) + item.more }),
+      };
+    };
+    return Object.defineProperties(Object.create(base), {
+      key: { value: 'story:' + number },
+      story: { value: { ...data, number, count: chapterCount() } },
+      name: { get: () => t(data.name) },
+      tags: { value: [] },
+      trial: { value: false }, bounty: { value: false }, guardian: { value: false },
+      rivals: { value: data.rivals || 0 },
+      aiLevels: { value: data.rivals ? { [enemy]: data.ai ?? number } : {} },
+      races: { value: data.races || {} },
+      teams: { value: {} },
+      monsters: { value: null },
+      goal: { get: () => goals || (goals = goal()) },
+    });
+  };
+
+  const readStory = () => { const n = Math.floor(Number(store.get(STORY_KEY))); return n >= 1 ? clampChapter(n) : 0; };   // 0: storyn spelas inte
   const readCustom = () => { try { const saved = JSON.parse(store.get(CUSTOM_KEY)); return saved ? normalizeCustom(saved) : null; } catch (e) { return null; } };
 
   /* ---------- Coupling to World Generation ---------- */
@@ -893,16 +936,16 @@
 
   /* ---------- Goal progress ---------- */
   const Economy = () => CityBuilder.Economy;
-  const progress = { run: null, level: null, latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, destroyed: {}, rivalsDown: 0, won: false };
+  const progress = { run: null, level: null, latched: {}, told: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, destroyed: {}, rivalsDown: 0, won: false };
   const completeListeners = [];
   let checkTimer = 0;
 
   // Framstegen hör bara till en sparning (se restoreProgress): varje bana och varje nytt spel börjar med tomma mål.
   const applyProgress = saved => {
-    const same = saved && (state.info.custom || saved.run === runSeed) && saved.level === state.info.key;   // en egen karta hör inte till banornas körning: ett nytt spel på banorna ska inte nollställa den
-    Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, casts: same ? saved.casts || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
+    const same = saved && (state.info.custom || state.info.story || saved.run === runSeed) && saved.level === state.info.key;   // en egen karta hör inte till banornas körning: ett nytt spel på banorna ska inte nollställa den
+    Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, told: same ? saved.told || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, casts: same ? saved.casts || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
   };
-  const resetProgress = () => Object.assign(progress, { latched: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, destroyed: {}, rivalsDown: 0, won: false });
+  const resetProgress = () => Object.assign(progress, { latched: {}, told: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, destroyed: {}, rivalsDown: 0, won: false });
 
   // Finished buildings of the player: of one kind (id), or all of them except the headquarters
   const countBuilt = id => {
@@ -954,7 +997,7 @@
         checkTimer = 0;
         if (!progress.complete && (progress.won || evaluate().every(item => item.done))) {
           progress.complete = true;
-          progress.stars = state.info.custom ? 0 : starsFor(progress.seconds);
+          progress.stars = state.info.custom || state.info.story ? 0 : starsFor(progress.seconds);
           completeListeners.forEach(fn => { try { fn(Levels.result()); } catch (e) { console.error(e); } });
         }
       }
@@ -966,6 +1009,7 @@
   // Makes a level or a custom map the current one: seed, noise offset and landscape tuning
   const enter = info => {
     state.info = info;
+    storyUnlock = info.story ? CityBuilder.Config.story.unlock : null;
     world.seed = info.seed;
     offset.x = frac(info.seed, 1) * 4000;
     offset.y = frac(info.seed, 2) * 4000;
@@ -973,6 +1017,14 @@
     return info;
   };
   const setCustom = raw => { const info = enter(customInfo(raw)); applyProgress(null); return info; };
+  const setStory = n => {
+    const info = enter(storyInfo(n));
+    store.set(STORY_KEY, info.story.number);
+    store.set(REACHED_KEY, Math.max(reached(), info.story.number));
+    store.remove(CUSTOM_KEY);
+    applyProgress(null);
+    return info;
+  };
   const setLevel = (n, silent) => {
     const info = enter(levelInfo(n));
     store.set(LEVEL_KEY, info.level);
@@ -1002,7 +1054,7 @@
       registerSystem();
       const restored = progress.run === null ? null : { ...progress };   // Save.prepareStart har redan återställt tid och mål: setLevel/setCustom nollar dem
       const custom = readCustom();
-      const info = custom ? setCustom(custom) : setLevel(clampLevel(store.get(LEVEL_KEY)), true);
+      const info = custom ? setCustom(custom) : readStory() ? setStory(readStory()) : setLevel(clampLevel(store.get(LEVEL_KEY)), true);
       applyProgress(restored);   // behålls bara om den hör till samma körning och bana
       return info;
     },
@@ -1013,8 +1065,10 @@
     restore: (level, seed) => {
       if (Number.isFinite(seed) && seed > 0) { runSeed = seed; store.set(RUN_KEY, runSeed); }
       store.remove(CUSTOM_KEY);
+      store.remove(STORY_KEY);
       return setLevel(level, true);
     },
+    restoreStory: chapter => setStory(chapter),
     restoreCustom: settings => { store.set(CUSTOM_KEY, JSON.stringify(normalizeCustom(settings))); return setCustom(settings); },
     set: n => setLevel(n),
     next: () => setLevel(state.info.level + 1),
@@ -1024,6 +1078,7 @@
       runSeed = Number.isFinite(seed) ? seed : Math.floor(Math.random() * 1000000) + 1;
       store.set(RUN_KEY, runSeed);
       store.remove(CUSTOM_KEY);
+      store.remove(STORY_KEY);
       resetProgress();
       return setLevel(1);
     },
@@ -1059,11 +1114,18 @@
     get seconds() { return progress.seconds; },
     get completed() { return progress.complete; },
     get stars() { return progress.stars; },
-    result: () => ({ level: state.info.level, seconds: progress.seconds, par: state.info.goal.par, stars: progress.stars, custom: !!state.info.custom }),
+    result: () => ({ level: state.info.level, seconds: progress.seconds, par: state.info.goal.par, stars: progress.stars, custom: !!state.info.custom, story: !!state.info.story }),
+    // Berättelsen som visats i det här kapitlet (följer med sparningen): brev, dialoger och händelser berättas en gång
+    told: key => !!progress.told[key],
+    markTold: key => { progress.told[key] = true; },
     onComplete: fn => { completeListeners.push(fn); },
     // ---- Custom map ----
     CUSTOM: { maxEnemies: MAX_CUSTOM_ENEMIES, difficulties: DIFFICULTIES.length, teams: TEAM_CHOICES, steps: 5 },
     get custom() { return state.info.custom || null; },           // settings of the current custom map, or null on a level
+    isStory: () => !!(state.info.story || readStory()),             // också före Levels.start()
+    get mode() { return state.info.custom ? 'custom' : state.info.story ? 'story' : 'free'; },
+    get story() { return state.info.story || null; },              // { ...kapitlets data, number, count } eller null
+    storyReached: reached,
     isCustom: () => !!(state.info.custom || readCustom()),         // also true before Levels.start() when a custom map is stored
     defaultCustom: seed => normalizeCustom({ seed: seed ?? Math.floor(Math.random() * 999999) + 1 }),
     normalizeCustom,
@@ -1074,6 +1136,22 @@
       if (save && save.ready) save.save(save.slot());
       store.set(CUSTOM_KEY, JSON.stringify(settings));
       if (save && save.newGame) save.newGame('autocustom'); else location.reload();
+    },
+    // Plays a story chapter: the current game is saved first, then the page reloads into it. fresh: from the start of the chapter
+    // (the autosave of the story is removed), otherwise the story continues from its autosave.
+    playStory(chapter, fresh) {
+      const save = CityBuilder.Save;
+      if (save && save.ready) save.save(save.slot());
+      store.set(STORY_KEY, clampChapter(chapter));
+      store.remove(CUSTOM_KEY);
+      if (fresh && save && save.newGame) save.newGame('autostory'); else location.reload();
+    },
+    // Back to Free Realm (the page reloads and continues from the autosave of the levels)
+    leaveStory() {
+      const save = CityBuilder.Save;
+      if (save && save.ready) save.save(save.slot());
+      store.remove(STORY_KEY);
+      location.reload();
     },
     // Back to the levels (the page reloads and continues from the autosave of the levels)
     leaveCustom() {
@@ -1121,7 +1199,7 @@
     // Goes to the next level: the world is rebuilt by reloading the page (the autosave is removed)
     advance() {
       const save = CityBuilder.Save;
-      setLevel(state.info.level + 1, true);
+      if (state.info.story) setStory(state.info.story.number + 1); else setLevel(state.info.level + 1, true);
       if (save && save.newGame) save.newGame(); else location.reload();
     },
   };
