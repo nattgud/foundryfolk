@@ -74,10 +74,10 @@
     },
 
     // Utvecklarverktyg: placera byggnaderna som du vill ha dem i kapitlet (starta det från menyn, bygg eller flytta i spelet) och kör
-    // CityBuilder.Story.layout() i webbläsarens konsol. Det skrivs ut färdiga rader att klistra in i start.buildings (och eye) i config/story.js.
+    // CityBuilder.Story.layout() i webbläsarens konsol (högar med varor och oavslutade byggen tas inte med). Det skrivs ut färdiga rader att klistra in i start.buildings (och eye) i config/story.js.
     layout() {
       const hq = World.headquarters;
-      const rows = World.buildings.filter(building => building.player === Players.HUMAN && building.type !== 'hq' && !building.removed && building.buildProgress >= 1).sort((a, b) => a.y - b.y || a.x - b.x);
+      const rows = World.buildings.filter(building => building.player === Players.HUMAN && building.type !== 'hq' && !building.definition.pile && !building.removed && building.buildProgress >= 1).sort((a, b) => a.y - b.y || a.x - b.x);
       const row = building => `{ type: '${building.type}', dx: ${building.x - hq.x}, dy: ${building.y - hq.y} }`;
       const eye = rows.find(building => building.type === 'eye_of_shades');
       const text = `start: { buildings: [\n${rows.filter(building => building !== eye).map(building => '  ' + row(building) + ',').join('\n')}\n] }` + (eye ? `\neye: { dx: ${eye.x - hq.x}, dy: ${eye.y - hq.y} }` : '');
