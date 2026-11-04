@@ -1087,6 +1087,7 @@
 
     // Unlocks
     unlockLevel: unlockLevelOf,
+    baseUnlockLevel: id => UNLOCK[id] ?? 1,   // banornas upplåsning, oberoende av läge (storyn har en egen tabell): ger byggmenyn samma ordning i alla lägen
     isUnlocked: id => !!state.info.custom || unlockLevelOf(id) <= state.info.level,
     // Syns byggnaden i byggmenyn? Låsta byggnader visas bara de närmaste nivåerna (en glimt av vad som kommer), resten döljs tills det är dags
     isVisible: id => !!state.info.custom || unlockLevelOf(id) <= state.info.level + PREVIEW_LEVELS,

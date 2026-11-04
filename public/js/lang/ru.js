@@ -289,6 +289,8 @@
       'Next level': 'Следующий уровень',
       'Keep playing': 'Продолжить игру',
       'Unlocks at level {n}': 'Открывается на уровне {n}',
+      'Unlocks in chapter {n}': 'Открывается в главе {n}',
+      'Not available in the story': 'Недоступно в сюжете',
       'Time: {time}': 'Время: {time}',
       'Target time: {time}': 'Целевое время: {time}',
       'Next level unlocks: {list}': 'Следующий уровень открывает: {list}',

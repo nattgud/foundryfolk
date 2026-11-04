@@ -288,6 +288,8 @@
       'Next level': '次のステージ',
       'Keep playing': 'プレイを続ける',
       'Unlocks at level {n}': 'レベル {n} で解放',
+      'Unlocks in chapter {n}': '第{n}章で解放',
+      'Not available in the story': 'ストーリーでは使えません',
       'Time: {time}': '時間：{time}',
       'Target time: {time}': '目標時間：{time}',
       'Next level unlocks: {list}': '次のステージで解放：{list}',

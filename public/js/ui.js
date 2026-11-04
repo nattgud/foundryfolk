@@ -1745,7 +1745,6 @@
 
       for (const [buildingId, building] of Object.entries(Config.buildings)) {
         if (building.hiddenInMenu) continue;
-        if (CityBuilder.Levels && !CityBuilder.Levels.isVisible(buildingId)) continue;
 
         const categoryId = groups.has(building.category)
           ? building.category
@@ -1754,8 +1753,10 @@
         groups.get(categoryId).push(buildingId);
       }
 
-      // Inom en kategori i den ordning de låses upp (lika: som i konfigurationen), så att en kedja läses från råvara till färdig vara
-      const unlockLevel = id => CityBuilder.Levels?.unlockLevel(id) ?? 1;
+      // Alla byggnader finns alltid i menyn, och inom en kategori i den ordning banorna låser upp dem (lika: som i konfigurationen), så att en kedja läses från
+      // råvara till färdig vara. Ordningen är densamma i storyn, i Free Realm och på egna kartor: varje byggnad och snabbknapp har alltid samma plats.
+      // De som inte går att bygga just nu är grå (se locked nedan).
+      const unlockLevel = id => CityBuilder.Levels?.baseUnlockLevel(id) ?? 1;
       for (const buildingIds of groups.values()) buildingIds.sort((a, b) => unlockLevel(a) - unlockLevel(b));
 
       for (const [categoryId, buildingIds] of groups) {
@@ -1844,7 +1845,8 @@
 
           const Levels = CityBuilder.Levels;
           const locked = Levels && !Levels.isUnlocked(buildingId);
-          const lockedLine = locked ? t('Unlocks at level {n}', { n: Levels.unlockLevel(buildingId) }) : null;
+          const unlockAt = locked ? Levels.unlockLevel(buildingId) : 0;   // storyn har egna kapitel, och 999 betyder att byggnaden inte finns där (monumentet)
+          const lockedLine = !locked ? null : unlockAt >= 999 ? t('Not available in the story') : t(Levels.mode === 'story' ? 'Unlocks in chapter {n}' : 'Unlocks at level {n}', { n: unlockAt });
 
           const button = this.createIconButton({
             id: 'build_' + buildingId,
@@ -1863,6 +1865,7 @@
           });
 
           button.setAttribute('aria-pressed', 'false');
+          if (locked) button.setAttribute('aria-disabled', 'true');   // grå och utan funktion, men tooltippen och ett tryck säger varför
 
           button.onclick = () => {
             const game = CityBuilder.Game;

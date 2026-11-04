@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'The build menu now always shows every building, in the same place and with the same hotkey in the story, in Free Realm and on custom maps: buildings you cannot build yet are greyed out and say when they unlock',
       'Ruins are now found almost everywhere: single ruins are scattered across the whole land (rare, but never far away), and ruined villages and altar rings are about three times as common',
       'Far from your buildings, plants hardly spread or grow any more and the animals breed more slowly, so you have to expand your base to keep finding berries, herbs, mushrooms, apples and game',
       'The order of the ingredients in a mix no longer matters, only which ingredients and how much of each, which makes new recipes much easier to find',

@@ -289,6 +289,8 @@
       'Next level': 'Próxima fase',
       'Keep playing': 'Continuar jogando',
       'Unlocks at level {n}': 'Desbloqueia na fase {n}',
+      'Unlocks in chapter {n}': 'Desbloqueia no capítulo {n}',
+      'Not available in the story': 'Não disponível na história',
       'Time: {time}': 'Tempo: {time}',
       'Target time: {time}': 'Tempo-meta: {time}',
       'Next level unlocks: {list}': 'A próxima fase desbloqueia: {list}',

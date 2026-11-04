@@ -288,6 +288,8 @@
       'Next level': '下一关',
       'Keep playing': '继续游玩',
       'Unlocks at level {n}': '第 {n} 关解锁',
+      'Unlocks in chapter {n}': '第 {n} 章解锁',
+      'Not available in the story': '剧情模式中不可用',
       'Time: {time}': '时间：{time}',
       'Target time: {time}': '目标时间：{time}',
       'Next level unlocks: {list}': '下一关解锁：{list}',

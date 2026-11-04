@@ -289,6 +289,8 @@
       'Next level': 'المرحلة التالية',
       'Keep playing': 'واصل اللعب',
       'Unlocks at level {n}': 'تُفتح في المرحلة {n}',
+      'Unlocks in chapter {n}': 'تُفتح في الفصل {n}',
+      'Not available in the story': 'غير متاح في القصة',
       'Time: {time}': 'الوقت: {time}',
       'Target time: {time}': 'الوقت المستهدف: {time}',
       'Next level unlocks: {list}': 'المرحلة التالية تفتح: {list}',
