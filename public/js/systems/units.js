@@ -403,6 +403,17 @@
       unit.status = 'Wandering';
     },
     
+    // Hur många växtrutor som finns runt en ruta: djuren sprider inget dit det redan växer tätt, så skogar och ängar fyller aldrig hela kartan
+    isCrowded(x, y) {
+      const { radius, max } = Config.settings.animalSpreadDensity, growth = Config.settings.weather.growth;
+      let count = 0;
+      for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+        const near = World.getTile(x + dx, y + dy);
+        if (near && growth[near.terrainType] && ++count >= max) return true;
+      }
+      return false;
+    },
+
     tryAnimalSpread(unit) {
       if (unit.animalMustMoveAfterMeal) return;
 
@@ -418,8 +429,8 @@
         const eaten = unit.animalLastEaten;
         const meal = unit.animalMealTile, home = meal && World.getTile(meal.x, meal.y);
 
-        if (Utils.random() >= World.homeFactor(x, y, Config.settings.wild.plantMin) && home && (home.terrainType === 'grass' || home.terrainType === eaten.type)) {
-          // Långt från alla byggnader sprider sig växten inte: det som åts läggs tillbaka där djuret åt (ingen ny ruta, ingen ökning)
+        if ((Utils.random() >= World.homeFactor(x, y, Config.settings.wild.plantMin) || this.isCrowded(x, y)) && home && (home.terrainType === 'grass' || home.terrainType === eaten.type)) {
+          // Långt från alla byggnader, eller där det redan växer tätt, sprider sig växten inte: det som åts läggs tillbaka där djuret åt (ingen ny ruta, ingen ökning)
           Utils.assign(home, Config.terrain[eaten.type], {
             terrainType: eaten.type,
             remainingAmount: (home.terrainType === eaten.type ? home.remainingAmount : 0) + eaten.amount
@@ -443,7 +454,7 @@
       }
 
       // 2. Träd får spridas separat, även när ingen växtåterföring väntar.
-      if (Utils.random() < Config.settings.animalTreeSpreadChance * World.homeFactor(x, y, Config.settings.wild.plantMin)) {
+      if (Utils.random() < Config.settings.animalTreeSpreadChance * World.homeFactor(x, y, Config.settings.wild.plantMin) && !this.isCrowded(x, y)) {
         Utils.assign(tile, Config.terrain.tree, {
           terrainType: 'tree',
           remainingAmount: Math.ceil(Utils.random() * 2)

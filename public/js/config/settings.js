@@ -12,7 +12,9 @@ CityBuilder.Config.settings = {
   // Förökning: ju färre andra djur inom radius rutor, desto oftare får ett djur ungar (upp till 1 + boost gånger oftare, inga alls
   // när capacity djur finns i närheten). Ungen föds högst dispersal rutor bort.
   animalBreeding: { radius: 12, capacity: 6, boost: 8, dispersal: 6 },
-  animalTreeSpreadChance: 0.005,
+  animalTreeSpreadChance: 0.002,
+  // Djuren sprider inga växter där det redan växer tätt: högst 'max' växtrutor (träd, bär, örter, svamp, äpplen) inom 'radius' rutor (ca en fjärdedel av ytan)
+  animalSpreadDensity: { radius: 3, max: 12 },
   // Vildmarken långt från spelarnas byggnader: inom 'near' rutor från närmaste byggnad är allt som vanligt, sedan avtar det jämnt till 'far' rutor, där
   // växterna bara sprider sig och växer (regn) 'plantMin' gånger så ofta (nästan inte alls) och djuren föröker sig 'animalMin' gånger så ofta (se World.homeFactor)
   wild: { near: 15, far: 50, plantMin: 0.03, animalMin: 0.2 },
