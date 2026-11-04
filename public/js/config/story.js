@@ -24,7 +24,7 @@
                   eller bara ett id (automatisk plats runt HQ). Placera dem i spelet och kör CityBuilder.Story.layout() i konsolen för färdiga rader.
      eye, fog     eye: true = Eye of Shades står närmare fienden än något annat, eye: { dx, dy } = på en bestämd plats; fog: konstant dimma tills den förstörs
      end          'hq': kapitlet är klart när fiendens HQ förstörs
-     waves        { from, every (sekunder), size: [första, +1 var N:e våg, högst], kinds: [soldattyper i turordning], maxAlive, until: 'fog' }: kapitlets egna anfallsvågor från
+     waves        { from, every (sekunder), size: [första, +1 var N:e våg, högst (utelämnas: ingen gräns)], kinds: [soldattyper i turordning], maxAlive (valfritt), until: 'fog' }: kapitlets egna anfallsvågor från
                   fiendens HQ mot spelarens, oberoende av datorns vanliga anfallsregler (ai.js). until: 'fog' = tills dimman lyft, annars tills kapitlet är klart
      events       [{ at (sekunder), goal, when, tell: dialog | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]. En händelse sker en gång, när alla
                   villkor den har slår till. at: sekunder in i kapitlet. goal: målet med det numret (1 = första målet) är klart. whileFog: true = bara så länge dimman ligger (en händelse som kommer för sent hoppas över). when: { resource, amount } (har så mycket av en vara)
@@ -277,12 +277,12 @@
       { name: 'The Roads Are Not Safe',
         start: { buildings: [] },
         eye: true,
-        goals: [{ key: 'x:carriers', type: 'carriers', amount: 60 }, { key: 's:steel', type: 'stock', resource: 'steel', amount: 10 }],
+        goals: [{ key: 'x:carriers', type: 'carriers', amount: 80 }, { key: 's:steel', type: 'stock', resource: 'steel', amount: 10 }],
         letter: letter(['The roads are not safe and the wagons do not arrive.',
         'Build yours, and build them well. I must have steel for the smiths before the cold sets in.',
         'The crown cannot afford further delays.'], true),
         dialogue: [
-          say('thordram', '[calm]Sixty carriers. A road is only as long as the legs on it.'),
+          say('thordram', '[calm]Eighty carriers. A road is only as long as the legs on it.'),
           say('albertha', '[happy]And a village is only as strong as its roads! The more wagons, the better.'),
           say('reeve', '[question]Why does the crown need so many of mine?'),
           say('albertha', '[calm]To carry what must be carried, Reeve.'),
@@ -291,7 +291,7 @@
           say('thordram', 'Then we are making progress.'),
         ],
         events: [
-          { when: { type: 'carriers', amount: 45 }, tell: [
+          { when: { type: 'carriers', amount: 55 }, tell: [
             say('albertha', '[happy]Look at them! So many little wagons!'),
             say('reeve', 'They are not little.'),
             say('albertha', '[happy]Everything is little when you look at it from far away.'),
@@ -394,7 +394,7 @@
         ai: 20,
         races: { 2: 'demon' },
         end: 'hq',
-        waves: { from: 150, every: 75, size: [2, 3, 6], kinds: ['swordsman'], maxAlive: 10, until: 'fog' },
+        waves: { from: 150, every: 60, size: [2, 1], kinds: ['swordsman'], until: 'fog' },
         letter: letter(['A fog has risen around the Eye, and my counsellors say the fog is the demons.',
         'The Eye must remain intact. Hold your village. Hold it until the fog lifts, whatever you hear.',
         'Do not leave your position. Do not question the Eye.',

@@ -124,7 +124,7 @@
     },
 
     // Anfallsvågor: kapitlets egna fiender, oberoende av datorns vanliga anfallsregler (ai.js). chapter.waves:
-    //   { from, every (sekunder), size: [första, växer 1 var N:e våg, högst], kinds: [soldattyper i turordning], maxAlive, until: 'fog' }
+    //   { from, every (sekunder), size: [första, växer 1 var N:e våg, högst (valfritt: utan tak växer vågorna hela tiden)], kinds: [soldattyper i turordning], maxAlive (valfritt), until: 'fog' }
     // Soldaterna tillhör första datorspelaren, skapas vid dess HQ och går mot spelarens huvudlager, där de slår det de ser. until: 'fog' avslutar vågorna
     // när dimman lyft (Eye of Shades förstörd), annars fortsätter de tills kapitlet är klart.
     waves(chapter) {
@@ -139,8 +139,8 @@
     launchWave(wave, n) {
       const home = World.headquarters, rival = World.hqOf(Players.ENEMY);
       if (!home || !rival) return;
-      const alive = World.units.filter(unit => unit.wave && !unit.removed).length, [first, every, cap] = wave.size;
-      const count = Math.min(cap, first + Math.floor(n / every), wave.maxAlive - alive);
+      const alive = World.units.filter(unit => unit.wave && !unit.removed).length, [first, every, cap = Infinity] = wave.size;
+      const count = Math.min(cap, first + Math.floor(n / every), (wave.maxAlive ?? Infinity) - alive);
       if (count <= 0) return;
       const spots = [];
       for (let dy = -9; dy <= 9; dy++) for (let dx = -9; dx <= 9; dx++) {
