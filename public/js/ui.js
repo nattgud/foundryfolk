@@ -201,6 +201,7 @@
       panel.id = 'goalPanel';
       panel.addEventListener('click', event => {
         if (event.target.closest('[data-next]')) CityBuilder.Levels.advance(); // "Nästa bana" när banan är klar
+        else if (event.target.closest('[data-reread]')) CityBuilder.StoryUI.reread();   // kapitlets brev och dialog igen
         else panel.classList.toggle('collapsed');
       });
       document.body.appendChild(panel);
@@ -236,7 +237,7 @@
         const text = this.goalText(item);
         return `<div class="goal-item${item.done ? ' done' : ''}">${item.done ? '✔' : '☐'} ${text}</div>`;
       });
-      const unlocks = level.unlocks.map(id => this.buildingName(id)).join(', ');
+      const unlocks = level.story ? '' : level.unlocks.map(id => this.buildingName(id)).join(', ');   // i storyn märker spelaren det själv
       const header = level.custom
         ? (Levels.completed ? `<b>${t('Victory!')}</b>` : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })}`)
         : level.story
@@ -244,8 +245,9 @@
         : Levels.completed
           ? `<b>${t('Level complete!')}</b> ${'★'.repeat(Levels.stars)}${'☆'.repeat(3 - Levels.stars)} <button type="button" data-next class="goal-next">${t('Next level')}</button>`
           : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })}<div class="goal-stars">${this.starTimesHtml(level.goal.par, Levels.seconds)}</div>`;
+      const story = level.story, again = story && (story.letter || story.dialogue) ? `<div class="goal-new"><button type="button" data-reread class="goal-next">${t('Read the letter again')}</button></div>` : '';
       const title = level.name ? `<div class="goal-title">${String(level.name).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])}</div>` : '';
-      const html = `${title}<div class="goal-header">${header}</div>${lines.join('')}` + (unlocks ? `<div class="goal-new">${t('New: {list}', { list: unlocks })}</div>` : '');
+      const html = `${title}<div class="goal-header">${header}</div>${lines.join('')}` + (unlocks ? `<div class="goal-new">${t('New: {list}', { list: unlocks })}</div>` : '') + again;
 
       if (panel.dataset.html !== html) {
         panel.dataset.html = html;
@@ -3123,8 +3125,13 @@
       const amountsOf = amounts => factor === 1 ? amounts : Object.fromEntries(Object.entries(amounts).map(([id, amount]) => [id, Math.round(amount * factor * 10) / 10]));
 
       if (definition.variants) {   // byggnad med inriktning: vilka som är upplåsta, och hur den väljs
-        const open = [].concat(Array.isArray(definition.variants) ? definition.variants : Object.values(definition.variants)).filter(id => !CityBuilder.Levels || CityBuilder.Levels.isUnlocked(id));
+        const all = [].concat(Array.isArray(definition.variants) ? definition.variants : Object.values(definition.variants)), Levels = CityBuilder.Levels;
+        const open = all.filter(id => !Levels || Levels.isUnlocked(id));
         lines.push(t('Focus: {list}', { list: open.map(id => this.resourceChip(Config.buildings[id].job.outputResource)).join('') }));
+        for (const id of all) if (Levels && !Levels.isUnlocked(id) && Levels.isVisible(id)) {   // låsta inriktningar syns också, med när de öppnas
+          const output = Config.buildings[id].job.outputResource;
+          lines.push('🔒 ' + this.resourceChip(output) + this.resourceName(output) + ': ' + t('Unlocks at level {n}', { n: Levels.unlockLevel(id) }));
+        }
         lines.push(t(definition.hint));
       }
       if (definition.isStorage) lines.push(t('Stores resources'));
@@ -3341,8 +3348,9 @@
         // Toolsmith: en av/på-knapp per verktyg. Övriga med val (kök, kvarn ...): en alternativknapp per recept, där bara ett är valt.
         // Gruppen tar emot snabbtangenten R (nästa recept).
         const focuses = active ? CityBuilder.Behaviors.focusesOf(building) : [];   // byggnad med inriktning (gruva, samlare): en alternativknapp per upplåst inriktning
-        const choiceButton = focuses.length > 1
-          ? `<div id="choiceButton" class="choice-group">${focuses.map(type => `<button class="choice-radio" data-type="${type}"></button>`).join('')}</div>`
+        const lockedFocuses = active ? CityBuilder.Behaviors.lockedFocusesOf(building) : [];   // låsta inriktningar visas också, grå med lås
+        const choiceButton = focuses.length + lockedFocuses.length > 1
+          ? `<div id="choiceButton" class="choice-group">${[...focuses, ...lockedFocuses].map(type => `<button class="choice-radio${focuses.includes(type) ? '' : ' locked'}" data-type="${type}"></button>`).join('')}</div>`
           : !choices ? '' : building.definition.job.auto
           ? building.definition.job.choices.map((choice, index) => `<button class="tool-toggle" data-index="${index}"></button>`).join('')
           : `<div id="choiceButton" class="choice-group">${building.definition.job.choices.map((choice, index) => `<button class="choice-radio" data-index="${index}"></button>`).join('')}</div>`;
@@ -3384,8 +3392,12 @@
 
         if (byId('choiceButton')) {
           const Behaviors = CityBuilder.Behaviors, focus = type => CityBuilder.Commands.issue('focus', { building: building.id, type });
-          if (focuses.length > 1) {
-            for (const radio of panel.querySelectorAll('.choice-radio')) radio.onclick = event => { event.stopPropagation(); focus(radio.dataset.type); };
+          if (panel.querySelector('.choice-radio[data-type]')) {
+            for (const radio of panel.querySelectorAll('.choice-radio')) radio.onclick = event => {
+              event.stopPropagation();
+              if (radio.classList.contains('locked')) return this.showToast(t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(radio.dataset.type) }));
+              focus(radio.dataset.type);
+            };
             byId('choiceButton').onclick = () => { const list = Behaviors.focusesOf(building); focus(list[(list.indexOf(building.type) + 1) % list.length]); };   // snabbtangenten R
           } else {
             const choose = index => CityBuilder.Commands.issue('choice', { building: building.id, index });
@@ -3505,10 +3517,11 @@
       if (byId('choiceButton') && panel.querySelector('.choice-radio[data-type]')) {
         panel.querySelectorAll('.choice-radio').forEach(radio => {
           const definition = Config.buildings[radio.dataset.type], id = definition.job.outputResource ?? Object.keys(definition.job.outputs || {})[0], selected = radio.dataset.type === building.type;
-          const html = `${selected ? '●' : '○'} ${this.resourceChip(id)}${this.resourceName(id)}`;
+          const locked = radio.classList.contains('locked');
+          const html = `${locked ? '🔒' : selected ? '●' : '○'} ${this.resourceChip(id)}${this.resourceName(id)}`;
           if (radio.dataset.html !== html) { radio.dataset.html = html; radio.innerHTML = html; }
           radio.classList.toggle('on', selected);
-          radio.title = t('Gathering: {source} → {output}', { source: this.terrainName(definition.job.sourceTerrain), output: this.resourceName(id) });
+          radio.title = locked ? t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(radio.dataset.type) }) : t('Gathering: {source} → {output}', { source: this.terrainName(definition.job.sourceTerrain), output: this.resourceName(id) });
         });
       } else if (byId('choiceButton')) {
         const choices = building.definition.job.choices, chosen = building.choice || 0;

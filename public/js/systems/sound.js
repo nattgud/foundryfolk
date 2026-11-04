@@ -125,7 +125,7 @@
     // Larm: en siren som växlar mellan två toner, två varv
     alarm: { synth: render(1.2, (time, p) => (Math.sign(Math.sin(TAU * (Math.floor(time * 3.3) % 2 ? 640 : 880) * time)) * 0.5 + Math.sin(TAU * (Math.floor(time * 3.3) % 2 ? 640 : 880) * time) * 0.5) * 0.35 * Math.min(1, (1 - p) * 4)), volume: 0.9, pitch: 0, maxVoices: 1, cooldown: 5 },
     // Flaggor: en kort ton när spelaren sätter sin flagga, och en varning när en fiendes flagga syns (egna filer: settings.audio.sounds.flag och flag_enemy)
-    // Meddelanden i storyn (brev, dialog): en mjuk klocka (egen fil: settings.audio.sounds.message)
+    // Brev i storyn (och sidor utan dialog): en mjuk klocka (egen fil: settings.audio.sounds.message)
     message: { synth: render(0.6, time => (note(880, time, 0, 0.4) + note(1319, time, 0.08, 0.5)) * 0.25), volume: 0.7, maxVoices: 1, cooldown: 0.1 },
     flag: { synth: render(0.3, time => (note(659, time, 0, 0.2) + note(988, time, 0.1, 0.25)) * 0.35), maxVoices: 1, cooldown: 0.1 },
     flag_enemy: { synth: render(0.7, time => (note(330, time, 0, 0.3) + note(247, time, 0.25, 0.4)) * 0.4), volume: 0.8, maxVoices: 1, cooldown: 1 },

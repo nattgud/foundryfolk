@@ -35,7 +35,7 @@
     place(type, x, y) {
       const spot = this.freeSpot(type, x, y);
       if (!spot) return null;
-      const building = World.placeBuilding(type, spot.x, spot.y, true, Players.HUMAN);
+      const building = World.placeBuilding(CityBuilder.Construction.variantFor(type, spot.x, spot.y) || type, spot.x, spot.y, true, Players.HUMAN);   // en samlare eller gruva får inriktningen som passar rutan
       if (building.definition.job) CityBuilder.Behaviors.forBuilding(building)?.onBuilt?.(building);
       return building;
     },
@@ -43,6 +43,7 @@
     // Placerar en byggnad på exakt plats (dx, dy rutor från HQ). Går det inte (vatten, berg, upptaget) skrivs en varning och den närmaste lediga rutan används.
     placeAt(type, dx, dy) {
       const hq = World.headquarters, x = hq.x + dx, y = hq.y + dy;
+      type = CityBuilder.Construction.variantFor(type, x, y) || type;   // 'gatherer' eller 'mine' ger inriktningen som passar rutan; ett variant-id (berry_gatherer ...) behålls
       if (!World.canPlace(type, x, y)) {
         console.warn(`Story: ${type} cannot stand at dx ${dx}, dy ${dy} in chapter ${this.chapter.number}; using the nearest free spot`);
         return this.place(type, x, y);
@@ -54,6 +55,7 @@
 
     // Kapitlets start: byggnaderna från föregående mål står redo och Eye of Shades står mot fienden.
     // En byggnad i start.buildings är antingen { type, dx, dy } (exakt plats, mätt i rutor från HQ) eller bara ett id (automatisk plats runt HQ).
+    // Inriktningen är själva typen: layout() skriver t.ex. 'herb_gatherer' eller 'copper_mine'. Ett 'gatherer' eller 'mine' får den inriktning som passar platsen.
     // eye: true placerar Eye of Shades automatiskt mot fienden, eye: { dx, dy } på en bestämd plats.
     begin() {
       const chapter = this.chapter, hq = World.headquarters;

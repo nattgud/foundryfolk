@@ -5,7 +5,6 @@
   'use strict';
 
   const t = (text, variables) => CityBuilder.t(text, variables);
-  const TYPE_MS = 16;   // millisekunder per tecken när en dialograd trycks upp
 
   const make = (tag, className, text) => {
     const element = document.createElement(tag);
@@ -40,11 +39,21 @@
       const next = () => { page++; show(); };
 
       // Trycker upp en text tecken för tecken; ett klick eller finish() visar resten
-      const print = (element, text) => {
-        let shown = 0;
-        const timer = setInterval(() => { element.textContent = text.slice(0, ++shown); if (shown >= text.length) stop(); }, TYPE_MS);
-        const stop = () => { clearInterval(timer); element.textContent = text; typing = null; };
+      // speaker: talarens röst; [tonläge] i texten byter tonläge (Voice.parse) och visas inte
+      const print = (element, raw, speaker) => {
+        const segments = CityBuilder.Voice.parse(raw), text = segments.map(segment => segment.text).join('');
+        let shown = 0, segment = 0, offset = 0, timer = 0;
+        const tick = () => {
+          while (offset >= segments[segment].text.length) { segment++; offset = 0; }
+          const { mood, text: part } = segments[segment], char = part[offset++];
+          element.textContent = text.slice(0, ++shown);
+          CityBuilder.Voice.speak(speaker, char, mood, offset / part.length, shown);
+          if (shown >= text.length) return stop();
+          timer = setTimeout(tick, CityBuilder.Voice.delay(speaker, mood, char));
+        };
+        const stop = () => { clearTimeout(timer); element.textContent = text; typing = null; };
         typing = stop;
+        if (text) tick(); else stop();
         return stop;
       };
 
@@ -72,13 +81,12 @@
           const advance = () => {
             if (typing) return typing();
             if (line >= current.lines.length) return next();
-            CityBuilder.Sound?.play('message', { defer: true });
             const { who, text: spoken } = current.lines[line++], speaker = story.speakers[who] || { name: who, color: '' };
             const row = make('p', 'story-line'), name = make('b', '', t(speaker.name) + ': '), words = make('span');
             name.style.color = speaker.color;
             row.append(name, words);
             text.append(row);
-            print(words, t(spoken));
+            print(words, t(spoken), who);
             action.textContent = line >= current.lines.length && last ? t('Continue') : t('Next');
             dialog.scrollTop = dialog.scrollHeight;
           };
@@ -116,6 +124,12 @@
       });
     },
 
+    // Kapitlets brev och dialog igen (knappen i målpanelen under hela kapitlet)
+    reread() {
+      const chapter = CityBuilder.Levels.story;
+      if (chapter) this.read([...(chapter.letter ? [{ type: 'letter', letter: chapter.letter }] : []), ...(chapter.dialogue ? [{ type: 'dialogue', lines: chapter.dialogue }] : [])]);
+    },
+
     // Rutan när ett kapitel är klart: först rådgivarnas avslutande dialog om det finns en, sedan nästa kapitel (eller epilogen efter det sista)
     complete() {
       this.injectStyles();
@@ -131,11 +145,9 @@
         dialog.setAttribute('aria-modal', 'true');
         const header = make('header', 'resource-window-header');
         header.append(make('strong', '', t('Chapter complete!')));
-        const fresh = last ? [] : Object.keys(story.unlock).filter(id => story.unlock[id] === chapter.number + 1 && CityBuilder.Config.buildings[id] && !CityBuilder.Config.buildings[id].hiddenInMenu).map(id => UI.buildingName(id));
         const body = make('div', 'main-menu-body');
         body.append(
           make('div', 'main-menu-level', t('Time: {time}', { time: UI.formatTime(Levels.seconds) })),
-          ...(fresh.length ? [make('div', 'main-menu-note', t('Next chapter unlocks: {list}', { list: fresh.join(', ') }))] : []),
           last ? button(t('Epilogue'), () => { overlay.remove(); this.read([{ type: 'prose', lines: story.epilogue, music: story.music?.epilogue }]); }) : button(t('Next chapter'), () => Levels.advance()),
           button(t('Keep playing'), () => overlay.remove()));
         dialog.append(header, body);

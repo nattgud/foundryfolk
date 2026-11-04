@@ -360,6 +360,13 @@
       return Object.entries(Config.buildings).filter(([id, definition]) => definition.group === group && (!Levels || id === building.type || Levels.isUnlocked(id))).map(([id]) => id);
     },
 
+    // Inriktningarna som ännu är låsta men syns (som i byggmenyn), så man ser att de finns och när de öppnas
+    lockedFocusesOf(building) {
+      const group = building.definition.group, Levels = CityBuilder.Levels;
+      if (!group || !Levels) return [];
+      return Object.entries(Config.buildings).filter(([id, definition]) => definition.group === group && !Levels.isUnlocked(id) && Levels.isVisible(id)).map(([id]) => id);
+    },
+
     // Byter inriktning: byggnaden blir en annan variant, och arbetaren börjar om med den nya råvaran. Verktyg som den nya inriktningen
     // inte behöver blir liggande i byggnaden (de går till en hög om den rivs).
     setFocus(building, type) {

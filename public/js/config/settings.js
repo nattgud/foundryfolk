@@ -66,7 +66,7 @@ CityBuilder.Config.settings = {
       demolish: 'sounds/demolish.mp3',
       error: 'sounds/error.mp3',
       levelComplete: 'sounds/level_complete.mp3',
-      message: 'sounds/letter.mp3',   // brev och dialog i storyn (utan fil används ett inbyggt klockljud)
+      message: 'sounds/letter.mp3',   // brev (och sidor utan dialog) i storyn (utan fil används ett inbyggt klockljud). Dialogerna har en egen syntetisk röst: story.voice
       drop: 'sounds/drop.mp3',
       alarm: 'sounds/alarm.mp3',
       arrow: 'sounds/arrow.mp3',          // pil avfyras
@@ -141,7 +141,7 @@ CityBuilder.Config.settings = {
         // supertornado: 'sounds/weather/supertornado_start.mp3',   // när två tornados blir en
         // volcano: 'sounds/weather/volcano_start.mp3',   // vid utbrottet
         // meteorstorm: 'sounds/weather/meteorstorm_start.mp3',   // varningen när en meteorstorm börjar (ihop med larmet)
-        thunder: { file: 'sounds/weather/thunder_start.mp3', maxVoices: 3 },   // vid varje blixt: ett nytt åskslag börjar direkt, även om det förra fortfarande hörs
+        thunder: { file: 'sounds/weather/thunder_start.mp3', volume: 3, maxVoices: 3 },   // vid varje blixt: ett nytt åskslag börjar direkt, även om det förra fortfarande hörs
       },
       loops: {                                          // loopas så länge vädret varar (tornado och volcano bara där de finns, och hörs på skärmen)
         rain: 'sounds/weather/rain_loop.mp3',

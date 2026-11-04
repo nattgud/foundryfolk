@@ -61,6 +61,7 @@ self.GAME_SCRIPTS = [
   'js/render/layers.js',
   'js/input.js',
   'js/systems/sound.js',
+  'js/systems/voice.js',
   'js/ui.js',
   'js/minimap.js',
   // 7. Spelloop (Sista steg innan init)

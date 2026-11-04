@@ -17,6 +17,7 @@ button { background: #252d34; color: inherit; border: 1px solid var(--line); bor
 button:active { background: #313b44; }
 button.on { border-color: var(--accent); background: #26402b; }
 button.tool-toggle, button.choice-radio { display: inline-flex; align-items: center; gap: 4px; }
+button.choice-radio.locked { opacity: .55; filter: grayscale(.6); }
 .choice-group { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 button.tool-toggle:not(.on) { opacity: .5; }
 button.tool-toggle.making { box-shadow: 0 0 0 2px #ffd23f; }
