@@ -7,7 +7,12 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
-      'Area colours: your buildings are grouped into districts with a faint, see-through colour and sharp edges, one colour per category: red for war, green for food, blue for metalwork, purple for magic, orange for construction, yellow for valuables and teal for trade. Districts never overlap: a tile belongs to the nearest building. The same colours mark the categories in the build menu. Press G to turn them on or off',
+      'Ruins are now found almost everywhere: single ruins are scattered across the whole land (rare, but never far away), and ruined villages and altar rings are about three times as common',
+      'Far from your buildings, plants hardly spread or grow any more and the animals breed more slowly, so you have to expand your base to keep finding berries, herbs, mushrooms, apples and game',
+      'The order of the ingredients in a mix no longer matters, only which ingredients and how much of each, which makes new recipes much easier to find',
+      'The spell workshop now gives a hint when you are close to a true recipe: a faint stirring, very close, or the right ingredients in the wrong amounts',
+      'Every kind of spell now has its own sound, and a mix that does nothing makes a little fizzle and has no cooldown, so you can try mix after mix',
+      'Area colours: your buildings are grouped into districts with a faint, see-through colour and sharp edges, one colour per category: red for war, green for food, blue for metalwork, purple for magic, orange for construction, yellow for valuables and teal for trade. Districts never overlap: a tile belongs to the nearest building, and they have a sharper outline and lie under trees, rocks and other resources. The same colours mark the categories in the build menu. They are off by default: turn them on with the button under the minimap (works on a phone too) or with the G key',
       'The main menu is a little lower, so it fits on a desktop screen without a scrollbar, and scrollbars everywhere are now thin and dark to match the game',
       'The main menu is clearer about the game modes: Story mode (coming soon) comes first, then Free Realm with its own Restart level and New game (which starts over from level 1), then Custom map',
       'The normal game is now called Free Realm, and the main menu has a place for Story mode, a handwritten campaign that is coming soon',

@@ -999,17 +999,17 @@ CityBuilder.Config.buildings = {
     mixing: {
       slots: 5, maxAmount: 6, maxBook: 20,
       // En blandning ger bara en effekt om den är ett "sant recept": exakt slots olika ingredienser (ingen får användas två gånger, färre ger ingenting).
-      //   - Varje ingrediens hör till en familj (ingredients: [familj, kraft], families). Platsernas ORDNING spelar roll, och så mängderna.
-      //   - recipes: de sanna recepten, ingredienserna i rätt ordning med rätt mängd (needs: [[ingrediens, mängd], ...]).
+      //   - Varje ingrediens hör till en familj (ingredients: [familj, kraft], families). Bara ingredienserna och mängderna spelar roll, inte vilken plats de ligger på.
+      //   - recipes: de sanna recepten, ingredienserna med rätt mängd (needs: [[ingrediens, mängd], ...]).
       //       För lite av en ingrediens drar ner STYRKAN (amountPenalty per steg), för mycket gör formeln OSTADIG (overUnrest per steg). Högst spread steg fel
       //       per ingrediens och tolerance steg fel sammanlagt: de starkaste recepten tål bara ett steg per ingrediens, de svagare fler.
-      //       Fel ordning gör formeln ostadig och lite svagare. En ingrediens kan bytas mot en annan ur samma familj (högst maxSwaps, aldrig i exact-recept): det
+      //       En ingrediens kan bytas mot en annan ur samma familj (högst maxSwaps, aldrig i exact-recept): det
       //       gör formeln ostadig och lite svagare.
       //   - En enda främmande ingrediens (ur en familj som inte finns i receptet) ger i stället den familjens egen, tråkigare effekt (families.effect, alltid ostadig),
       //     eller ingenting om familjen saknar effekt. Allt annat ger ingenting.
       //   - minQuality: under denna styrka (andel av receptets) ger ett recept ingenting.
-      amountPenalty: 0.1, swapPenalty: 0.1, orderPenalty: 0.04, minQuality: 0.3, maxSwaps: 2,
-      swapUnrest: 0.25, orderUnrest: 0.15, overUnrest: 0.2, maxUnrest: 0.9,   // ostadighet per byte, per platssteg fel och per ingrediens för mycket (summerat, högst maxUnrest)
+      amountPenalty: 0.1, swapPenalty: 0.1, minQuality: 0.3, maxSwaps: 2,
+      swapUnrest: 0.25, overUnrest: 0.2, maxUnrest: 0.9,   // ostadighet per byte och per ingrediens för mycket (summerat, högst maxUnrest)
       taintUnrest: 0.5, taintStrength: 0.5,                  // en främmande ingrediens: risken för fel och styrkan (andel av taintPower)
       taintPower: 1,
       // Fel: en ostadig formel går fel med den risken (spell.chance). Då hamnar den ALLTID på ett annat ställe än där spelaren tryckte, desto längre bort ju mer fel
@@ -1075,7 +1075,7 @@ CityBuilder.Config.buildings = {
         occult: { name: 'Occult', icon: '💀' },
         relic: { name: 'Relics', icon: '🗿' },
       },
-      // Ingredienserna: [familj, kraft]. Kraften ger en vanlig enkel formel dess styrka; i sanna recept räknas bara familjen, ordningen och mängden
+      // Ingredienserna: [familj, kraft]. Kraften ger en vanlig enkel formel dess styrka; i sanna recept räknas bara familjen och mängden
       ingredients: {
         sand: ['earth', 0.8],
         charcoal: ['fuel', 0.9], sun: ['fuel', 1],

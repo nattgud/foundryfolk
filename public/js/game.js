@@ -7,7 +7,7 @@
   const Game = {
     selectedBuilding: null,
     placingType: null,      // byggnadstyp som spelaren håller på att placera
-    showDistricts: (() => { try { return localStorage.getItem('cityBuilderDistricts') !== 'off'; } catch (error) { return true; } })(),   // områdesfärgerna (tangenten G)
+    showDistricts: (() => { try { return localStorage.getItem('cityBuilderDistricts') === 'on'; } catch (error) { return false; } })(),   // områdesfärgerna: av som standard, knappen under minikartan eller tangenten G slår på dem
     casting: null,          // { building, spell }: en trollformel väntar på att spelaren pekar ut ett mål
     flagging: false,        // flaggläget: nästa tryck på kartan sätter eller flyttar flaggan (ett tryck på flaggan själv tar bort den)
     speedIndex: 0,          // index i Config.settings.gameSpeeds
@@ -100,7 +100,12 @@
     castSpell(x, y) {
       const { building, spell } = this.casting;
       const problem = CityBuilder.Commands.issue('cast', { building: building.id, spell: spell.id, x, y });
-      if (!problem) { this.casting = null; if (spell.pure) UI.offerSpell(spell); return; }
+      if (!problem) {
+        this.casting = null;
+        if (CityBuilder.Spells.misfire) { UI.showToast(t('The spell misfired and landed elsewhere')); this.scrollTo(CityBuilder.Spells.misfire.x, CityBuilder.Spells.misfire.y); }   // en felkastad formel: visa var den hamnade
+        if (spell.pure) UI.offerSpell(spell);
+        return;
+      }
       this.refuse({
         cooldown: () => t('The enchanter is resting'),
         locked: () => t('Spells of this kind are still recharging'),
@@ -112,6 +117,21 @@
         nothing: () => t('Nothing here to affect'),
         sky: () => t('The sky does not suit this mix'),
       }[problem]());
+    },
+
+    // Rullar kartan mjukt så att rutan hamnar i mitten (görs bara om den inte redan syns väl)
+    scrollTo(x, y) {
+      const renderer = CityBuilder.Renderer, size = renderer.tileSize, viewW = innerWidth / renderer.zoom, viewH = innerHeight / renderer.zoom;
+      const goalX = (x + 0.5) * size - viewW / 2, goalY = (y + 0.5) * size - viewH / 2, fromX = renderer.camera.x, fromY = renderer.camera.y;
+      if (Math.abs(goalX - fromX) < viewW * 0.3 && Math.abs(goalY - fromY) < viewH * 0.3) return;
+      const start = performance.now(), ms = 600, token = this.scrollToken = {};
+      const step = now => {
+        if (this.scrollToken !== token) return;   // en nyare rullning har tagit över
+        const t = Math.min(1, (now - start) / ms), ease = 1 - (1 - t) ** 3;
+        renderer.camera.x = fromX + (goalX - fromX) * ease; renderer.camera.y = fromY + (goalY - fromY) * ease;
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
     },
 
     selectBuilding(building) {

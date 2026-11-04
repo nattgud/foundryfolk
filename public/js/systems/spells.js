@@ -1,8 +1,8 @@
 /* Trollformler. Förtrollaren blandar Config.buildings.enchanter.mixing.slots olika ingredienser till en formel (Spells.evaluate). De flesta blandningar ger
-   ingenting, och färre ingredienser, eller samma ingrediens två gånger, ger alltid ingenting. Ordningen, vilka ingredienser och hur många av varje spelar roll
+   ingenting, och färre ingredienser, eller samma ingrediens två gånger, ger alltid ingenting. Vilka ingredienser och hur många av varje spelar roll (platsernas ordning gör ingen skillnad)
    (se mixing i buildings.js):
-     - ett sant recept: rätt ingredienser i rätt ordning. För lite av en ingrediens ger svagare styrka (högst ett visst antal steg fel, utspridda över
-       ingredienserna), för mycket gör formeln ostadig. Fel ordning, eller en ingrediens bytt mot en annan ur samma familj, gör den också ostadig (spell.chance)
+     - ett sant recept: rätt ingredienser i rätt mängd. För lite av en ingrediens ger svagare styrka (högst ett visst antal steg fel, utspridda över
+       ingredienserna), för mycket gör formeln ostadig. En ingrediens bytt mot en annan ur samma familj, gör den också ostadig (spell.chance)
        och lite svagare
      - en enda främmande ingrediens ger i stället den familjens egen, tråkigare effekt (alltid ostadig) eller ingenting
    En ostadig formel kan gå fel när den kastas: den landar då ALLTID på ett annat ställe än där spelaren tryckte (längre bort ju sämre blandning, inom synfältet)
@@ -60,7 +60,7 @@
       return Object.keys(config.ingredients).filter(id => config.sky[id] ? (config.sky[id] === 'night') === night : Economy.freeAmount(id) > 0);
     },
 
-    // Blandningen [{ id, amount }] som [[id, mängd]] i platsernas ordning (samma ingrediens på flera platser slås ihop; tomma platser och okända hoppas över; himlen räknas som en)
+    // Blandningen [{ id, amount }] som [[id, mängd]] (samma ingrediens på flera platser slås ihop; tomma platser och okända hoppas över; himlen räknas som en)
     entries(mix) {
       const config = Config.buildings.enchanter.mixing, list = [];
       for (const slot of mix.slice(0, config.slots)) {
@@ -71,8 +71,8 @@
       return list;
     },
 
-    // Blandningens id: ingredienserna i ordning ("sand:2,tar:1"), så att samma blandning alltid ger samma formel och ett kommando kan bära den som text
-    idOf(entries) { return entries.map(([id, amount]) => id + ':' + amount).join(','); },
+    // Blandningens id: ingredienserna i bokstavsordning, så att platsernas ordning inte spelar roll ("sand:2,tar:1"), så att samma blandning alltid ger samma formel och ett kommando kan bära den som text
+    idOf(entries) { return entries.map(([id, amount]) => id + ':' + amount).sort().join(','); },
 
     // Vad blandningen kostar ur lagret (himlen är gratis)
     costOf(entries) {
@@ -82,7 +82,7 @@
     },
 
     // Hur väl blandningen träffar ett recept, eller null om den inte duger. Varje ingrediens måste höra till receptet, antingen själv, som byte mot en saknad
-    // ingrediens ur samma familj, eller (en enda) som främmande ingrediens. Mängderna ger styrkan, ordningen, byten och för mycket ger ostadighet.
+    // ingrediens ur samma familj, eller (en enda) som främmande ingrediens. Mängderna ger styrkan, byten och för mycket ger ostadighet.
     match(entries, recipe) {
       const config = Config.buildings.enchanter.mixing, needs = recipe.needs;
       if (entries.length !== needs.length) return null;
@@ -101,15 +101,15 @@
       const swaps = pairs.filter(pair => pair.swap).length;
       if (swaps > config.maxSwaps) return null;
       if (foreign) foreign = free.pop().entry[0];
-      let off = 0, order = 0, over = 0;
+      let off = 0, over = 0;
       for (const pair of pairs) {
         const diff = pair.have.entry[1] - pair.need, miss = Math.abs(diff);
         if (miss > recipe.spread) return null;
-        off += miss; over += Math.max(0, diff); order += Math.abs(pair.have.index - pair.index);
+        off += miss; over += Math.max(0, diff);
       }
       if (off > recipe.tolerance) return null;
-      const unrest = Math.min(config.maxUnrest, swaps * config.swapUnrest + order * config.orderUnrest + over * config.overUnrest);
-      const factor = 1 - off * config.amountPenalty - swaps * config.swapPenalty - order * config.orderPenalty;
+      const unrest = Math.min(config.maxUnrest, swaps * config.swapUnrest + over * config.overUnrest);
+      const factor = 1 - off * config.amountPenalty - swaps * config.swapPenalty;
       return factor < config.minQuality ? null : { factor, unrest, foreign };
     },
 
@@ -122,6 +122,15 @@
         const score = (hit.foreign ? 0 : 10) + hit.factor * (1 - hit.unrest);
         if (!best || score > best.score) best = { recipe, ...hit, score };
       }
+      return best;
+    },
+
+    // Hur nära blandningen är ett sant recept, som antal ingredienser den delar med det närmaste (0 om den inte har alla platser fyllda). Det avslöjar inte vilket recept det är.
+    nearness(entries) {
+      const config = Config.buildings.enchanter.mixing;
+      if (entries.length < config.slots) return 0;
+      let best = 0;
+      for (const recipe of config.recipes) best = Math.max(best, entries.filter(([id]) => recipe.needs.some(([need]) => need === id)).length);
       return best;
     },
 
@@ -346,7 +355,7 @@
       return { spell, x, y };
     },
 
-    // Kastar en blandning som inte ger någon effekt: ingredienserna förbrukas, förtrollaren vilar en stund och blandningen kommer ihåg som misslyckad
+    // Kastar en blandning som inte ger någon effekt: ingredienserna förbrukas (ingen vilotid, så man kan prova flera i rad) och blandningen kommer ihåg som misslyckad
     fizzle(building, id) {
       const cost = this.costOf(this.entries(this.mixOf(id)));
       if (!Object.keys(cost).length) return 'nothing';
@@ -356,7 +365,7 @@
       Economy.spend(cost, building.player);
       this.tried[this.idOf(this.entries(this.mixOf(id)))] = 'none';
       this.persist();
-      building.spellCooldown = building.spellTotal = Config.buildings.enchanter.spellRecharge.min;
+      CityBuilder.Sound?.play('spell_fizzle');
       return null;
     },
 
@@ -389,7 +398,7 @@
       building.spellCooldown = building.spellTotal = this.recharge(intended);
       this.locks[this.lockKey(building.player, this.group(intended))] = building.spellCooldown;
       CityBuilder.Levels?.onCast(building.player);
-      CityBuilder.Sound?.play('built', { x, y });
+      if (spell.kind !== 'storm') CityBuilder.Sound?.play('spell_' + spell.kind, { x, y });   // åskan (storm) har sitt eget ljud ovan
       return null;
     },
   };

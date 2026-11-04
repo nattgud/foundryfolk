@@ -113,8 +113,8 @@
     affectPlants(type = this.type, zone, chunks) {
       const settings = Config.settings.weather, boost = zone?.factor || 1;
       if (type === 'rain') {
-        this.forEachPlant(tile => {
-          if (Utils.random() < settings.rain.chance * boost) tile.remainingAmount = Math.min(tile.remainingAmount + 1, Math.ceil(Config.terrain[tile.terrainType].resourceAmount * settings.rain.cap));
+        this.forEachPlant((tile, x, y) => {
+          if (Utils.random() < settings.rain.chance * boost * (zone ? 1 : World.homeFactor(x, y, Config.settings.wild.plantMin))) tile.remainingAmount = Math.min(tile.remainingAmount + 1, Math.ceil(Config.terrain[tile.terrainType].resourceAmount * settings.rain.cap));
         }, zone, chunks);
       }
     },

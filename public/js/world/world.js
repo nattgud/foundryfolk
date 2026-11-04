@@ -41,6 +41,22 @@
       return chunk[(y - chunkY * chunkSize) * chunkSize + (x - chunkX * chunkSize)];
     },
 
+    // Hur mycket som lever och växer på en plats: 1 nära någon byggnad (inom wild.near rutor), sedan jämnt ner till 'min' vid wild.far rutor och längre bort.
+    // Avståndet cachas per åttarutors cell och räknas om när en byggnad tillkommer eller försvinner, och annars var femte sekund.
+    homeFactor(x, y, min) {
+      const { near, far } = Config.settings.wild, cell = 8, cx = Math.floor(x / cell), cy = Math.floor(y / cell), now = performance.now();
+      if (!this.homeCache || this.homeCache.count !== this.buildings.length || now - this.homeCache.at > 5000) this.homeCache = { count: this.buildings.length, at: now, cells: new Map() };
+      const key = cx + ',' + cy;
+      let distance = this.homeCache.cells.get(key);
+      if (distance === undefined) {
+        const px = (cx + 0.5) * cell, py = (cy + 0.5) * cell;
+        distance = Infinity;
+        for (const building of this.buildings) if (!building.definition.pile) distance = Math.min(distance, Math.hypot(building.x - px, building.y - py));
+        this.homeCache.cells.set(key, distance);
+      }
+      return distance <= near ? 1 : Math.max(min, 1 - (1 - min) * (distance - near) / (far - near));
+    },
+
     buildingAt: (x, y) => World.buildingsByTile.get(Utils.tileKey(x, y)),
 
     // Byggnad på rutan som spelaren ser: andras byggnader i dimman finns inte för spelaren (klick, markering och verktygstips)

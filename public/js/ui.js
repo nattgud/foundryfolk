@@ -288,7 +288,7 @@
         { title: 'Imports and exports', mock: 'trade', lines: ['Every building shows what it imports (what carriers bring to it) and what it exports (what carriers fetch from it), even when the stock is empty.', 'Imports are on the left of the arrow and exports on the right. Tools the building needs are shown next to its name. They are delivered once and never used up.', 'A red number means something is missing. A grey number means nothing is waiting right now.'] },
         { title: 'Tools', lines: ['Many buildings need a tool before they can work: a Woodcutter needs an axe, a Farm or Herb Gatherer a scythe, a Hunters Cottage or Mushroom Gatherer a knife, a Sawmill a saw, a Clay Pit or Sand Collector a shovel, and quarries and mines a pickaxe. Carriers bring the tool once and it is not used up.', 'You start with a good stock of tools, so you cannot get stuck early on. Demolishing a building gives its tool back, and the Toolsmith makes more once it unlocks. It makes the tool you have least of, and you can switch tools on or off in its panel.', 'Hammers are different: they are used up when you build larger buildings. Fine buildings also use limestone, bronze and steel.'] },
         { title: 'Food and meals', lines: ['Miners get hungry. Meat, fish or bread keeps a basic mine going, but the deep mines (gold, silver, gemstones, salt and sulfur) want proper meals from a Kitchen.', 'A Kitchen cooks meals from meat, fish, flour, apples, berries and mushrooms. Tap it to change the recipe.'] },
-        { title: 'Mixing spells', lines: ['Select the Enchanter and tap Mix a spell. Put five different ingredients in the slots, with the amount of each. An ingredient can only be used once, and fewer than five does nothing. Most mixes do nothing at all, and a mix that does nothing still uses up its ingredients. The game remembers what you have tried.', 'Every ingredient belongs to a family. A true recipe needs exactly the right five ingredients. If one of them is swapped for another from the same family you get a related but weaker and unstable spell. One ingredient from another family gives a different, duller and unreliable effect, or nothing. The strongest recipes are made of rare and occult ingredients.', 'The strongest spells are found by experiment: the right ingredients in the right order. The amounts set the strength, and the most destructive recipes tolerate only one wrong step per ingredient, while weaker ones forgive more. Too much of an ingredient, the wrong order or a swapped ingredient makes the spell unstable.', 'An unstable spell can go wrong when you cast it: it always lands somewhere other than where you tapped, the farther away the worse the mix, and it may also turn into a completely different effect, even a disaster. A mix that went wrong is marked Tried. Catastrophic, and one that did nothing Tried. No effect. Only a pure spell, a recipe that never goes wrong, is safe: when you find one you are asked if you want to save it. Nothing is saved to the grimoire by itself.', 'The mixer shows the strength, duration, reach and purity as you go. Save a mix to the grimoire, then open the Spellbook, pick it from the list (the strongest first), tap Cast and tap the map within reach of the Enchanter. Rain spells only affect plants, so they need some in the area, and storm spells need water.'] },
+        { title: 'Mixing spells', lines: ['Select the Enchanter and tap Mix a spell. Put five different ingredients in the slots, with the amount of each. An ingredient can only be used once, and fewer than five does nothing. Most mixes do nothing at all, and a mix that does nothing still uses up its ingredients. The game remembers what you have tried.', 'Every ingredient belongs to a family. A true recipe needs exactly the right five ingredients. If one of them is swapped for another from the same family you get a related but weaker and unstable spell. One ingredient from another family gives a different, duller and unreliable effect, or nothing. The strongest recipes are made of rare and occult ingredients.', 'The strongest spells are found by experiment: the right ingredients in the right amounts. The amounts set the strength, and the most destructive recipes tolerate only one wrong step per ingredient, while weaker ones forgive more. Too much of an ingredient or a swapped ingredient makes the spell unstable.', 'An unstable spell can go wrong when you cast it: it always lands somewhere other than where you tapped, the farther away the worse the mix, and it may also turn into a completely different effect, even a disaster. A mix that went wrong is marked Tried. Catastrophic, and one that did nothing Tried. No effect. Only a pure spell, a recipe that never goes wrong, is safe: when you find one you are asked if you want to save it. Nothing is saved to the grimoire by itself.', 'The mixer shows the strength, duration, reach and purity as you go. Save a mix to the grimoire, then open the Spellbook, pick it from the list (the strongest first), tap Cast and tap the map within reach of the Enchanter. Rain spells only affect plants, so they need some in the area, and storm spells need water.'] },
         { title: 'Leftovers and spells', lines: ['Some buildings leave something extra: charcoal burners leave tar and ash, hunters leave bones and blood. They are only kept when there is room, so they never hold up the main product.', 'The Enchanter puts them to use in one-off spells. Select it, pick a spell and tap the map within its reach. Some spells create new trees, berries, rocks, ore or gems on free grass around the spot, or clear everything in a small area into grass. Others speed up workers or carriers for a while, make buildings produce more or animals breed, bring rain or a flood, raise a tornado, lava or meteors, summon monsters, weaken enemy soldiers or heal your own. A spell costs goods from your store, and each enchanter rests a short while after casting.'] },
         { title: 'Carriers', target: ['#carrierCount'], lines: ['Carriers move goods between buildings and stores. "Carriers 20/20" means idle/total.', 'You get 1 carrier per building, and more per store: 5 for a warehouse, 10 for a large warehouse and 25 for a great depot.', 'Producers deliver straight to buildings that need their goods. The rest goes to a store, so build warehouses where things are far apart.'] },
         { title: 'Market', lines: ['The Market, which unlocks late in the game, opens a trading window when you tap it.', 'Buy goods for coins, or sell goods for half the price. Choose the amount with ×1, ×5, ×10 or ×25. Coins are made at the Mint from silver and gold, and are only good for trading.'] },
@@ -1133,11 +1133,12 @@
         const step = delta => () => { slot().amount = Math.max(1, Math.min(this.ingredientMax(slot().id), slot().amount + delta)); refresh(); };
         const minus = button('−', step(-1)), plus = button('+', step(1));
         const clear = button('×', () => { state.mix[index] = { id: '', amount: 1 }; refresh(); }, t('Remove'));
-        row.append(make('span', 'workshop-index', String(index + 1)), select, minus, amount, plus, clear);
-        state.rows.push({ select, amount, minus, plus, clear });
+        const icon = make('span', 'workshop-icon');
+        row.append(make('span', 'workshop-index', String(index + 1)), icon, select, minus, amount, plus, clear);
+        state.rows.push({ select, icon, amount, minus, plus, clear });
         slots.appendChild(row);
       }
-      state.hint = make('div', 'workshop-note', t('Each ingredient only once. The order and the amounts matter. Fewer than five ingredients does nothing.'));
+      state.hint = make('div', 'workshop-note', t('Each ingredient only once. The amounts matter. Fewer than five ingredients does nothing.'));
       state.preview = make('div', 'workshop-preview');
       body.append(slots, state.hint, state.preview);
 
@@ -1173,6 +1174,8 @@
       document.body.appendChild(overlay);
     },
 
+    slotIcon(id) { const config = Config.buildings.enchanter.mixing; return config.families[config.ingredients[id][0]].icon; },   // familjens ikon (kategorin)
+
     ingredientMax(id) { const config = Config.buildings.enchanter.mixing; return config.sky[id] ? 1 : config.maxAmount; },
 
     // Skriver om fönstret efter varje ändring (spelet står stilla medan det är öppet)
@@ -1190,6 +1193,8 @@
           })));
         }
         row.select.value = slot.id;
+        const iconHtml = !slot.id ? '' : config.sky[slot.id] ? (slot.id === 'moon' ? '🌙' : '☀️') : this.resourceChip(slot.id) + `<span class="workshop-family" title="${this.ingredientInfo(slot.id)}">${this.slotIcon(slot.id)}</span>`;   // ingrediensens egen ikon och familjens (kategorins)
+        if (row.icon.dataset.html !== iconHtml) { row.icon.dataset.html = iconHtml; row.icon.innerHTML = iconHtml; }
         row.select.title = slot.id ? this.ingredientInfo(slot.id) : '';
         row.amount.textContent = slot.id ? '×' + slot.amount : '';
         row.minus.disabled = !slot.id || slot.amount <= 1;
@@ -1208,6 +1213,8 @@
         lines.push(`<div class="info-dim">${t(!entries.length ? 'Add an ingredient to see what it makes' : tried ? 'Tried. No effect' : 'This mix does nothing')}</div>`);
         if (entries.length) lines.push(`<div>${this.resourceIconsHtml(Spells.costOf(entries), true)}</div>`);
       }
+      const level = (!spell || !spell.recipe) ? Spells.nearness(Spells.entries(mix)) : 0, hint = { 5: 'The ingredients are right, but not the amounts', 4: 'Something stirs. Very close', 3: 'A faint stirring' }[level];
+      if (hint) lines.push(`<div class="resonance level-${level}" title="${t(hint)}" aria-label="${t(hint)}">${'<i></i>'.repeat(5).replace(/<i>/g, (tag, at) => at / 7 < level ? '<i class="lit">' : tag)}</div>`);
       const html = lines.join('');
       if (state.preview.dataset.html !== html) { state.preview.dataset.html = html; state.preview.innerHTML = html; }
 
@@ -1394,7 +1401,7 @@
       const recipe = Spells.book[state.selected];
       const details = [t(this.spellGroupNames[this.spellGroup(spell)]), spell.radius ? t('Radius: {n} tiles', { n: spell.radius }) : '', spell.seconds ? t('Lasts {n} s', { n: spell.seconds }) : '', t('Recharge: {n} s', { n: Spells.recharge(spell) })].filter(Boolean).join(' · ');
       const sky = spell.sky ? `<span class="info-dim">${spell.sky === 'night' ? '🌙 ' + t('Night only') : '☀️ ' + t('Day only')}</span>` : '';
-      // Ingredienserna i blandningens ordning: ordningen ändrar formeln
+      // Ingredienserna i receptets ordning (platsernas ordning påverkar inte formeln)
       const ingredients = recipe.mix.filter(slot => config.ingredients[slot.id]).map(slot => config.sky[slot.id]
         ? `<span class="info-dim">${slot.id === 'moon' ? '🌙' : '☀️'} ${this.ingredientName(slot.id)}</span>`
         : this.resourceIconsHtml({ [slot.id]: slot.amount }, true)).join('');
@@ -1423,7 +1430,6 @@
     },
 
     // Ikonen för ingrediensens familj
-    slotIcon(id) { const config = Config.buildings.enchanter.mixing; return config.families[config.ingredients[id][0]].icon; },
 
     // Ingrediensens familj och kraft som en rad
     ingredientInfo(id) {
@@ -1759,6 +1765,19 @@
         showOnTouch: true,
       });
       flagButton.onclick = () => this.toggleFlagging();
+      // Områdesfärgerna: samma sorts rund kartknapp, överst under zoomknapparna (Minimap.layout), så att de går att slå på också på en mobil. Av som standard.
+      const districtsButton = this.createIconButton({
+        id: 'districtsButton',
+        className: 'map-flag',
+        label: t('Area colours'),
+        icon: { symbol: '▦' },
+        tooltip: () => this.tooltipContent(t('Area colours'), null, [t('A faint colour around your buildings shows what belongs together: red for war, green for food, blue for metalwork, purple for magic, orange for construction, yellow for valuables and teal for trade'), ...this.hotkeyLines('g')]),
+        showOnTouch: true,
+      });
+      districtsButton.classList.toggle('on', CityBuilder.Game.showDistricts);
+      districtsButton.onclick = () => this.toggleDistricts();
+      byId('districtsButton')?.remove();
+      document.body.appendChild(districtsButton);
       byId('flagButton')?.remove();
       document.body.appendChild(flagButton);
       if (CityBuilder.Minimap?.canvas) CityBuilder.Minimap.layout();   // placerar knappen (kartan finns inte alltid än: den kallar själv layout när den startar)
@@ -1893,6 +1912,15 @@
       });
     },
 
+    // Områdesfärgerna (render/layers.js) på eller av: valet sparas. Knappen under minikartan och tangenten G gör detsamma
+    toggleDistricts() {
+      const game = CityBuilder.Game;
+      game.showDistricts = !game.showDistricts;
+      try { localStorage.setItem('cityBuilderDistricts', game.showDistricts ? 'on' : 'off'); } catch (error) { /* lagring saknas: gäller tills sidan laddas om */ }
+      byId('districtsButton')?.classList.toggle('on', game.showDistricts);
+      this.showToast(t(game.showDistricts ? 'Area colours on' : 'Area colours off'));
+    },
+
     // Flaggläget på eller av
     toggleFlagging() {
       const game = CityBuilder.Game, on = !game.flagging;
@@ -1911,12 +1939,7 @@
     // Returnerar true om tangenten användes
     handleHotkey(key) {
       const game = CityBuilder.Game, selected = game.selectedBuilding;
-      if (key === 'g') {   // områdesfärgerna på eller av
-        game.showDistricts = !game.showDistricts;
-        try { localStorage.setItem('cityBuilderDistricts', game.showDistricts ? 'on' : 'off'); } catch (error) { /* lagring saknas: gäller tills sidan laddas om */ }
-        this.showToast(t(game.showDistricts ? 'Area colours on. Press G to turn them off' : 'Area colours off. Press G to turn them on'));
-        return true;
-      }
+      if (key === 'g') { this.toggleDistricts(); return true; }   // områdesfärgerna på eller av
       if (key === 'a' && byId('flagButton') && !byId('flagButton').hidden) { this.toggleFlagging(); return true; }
 
       if (key === 'Escape') { // ett steg tillbaka: placering, öppen kategori, vald byggnad
@@ -2633,16 +2656,25 @@
         .workshop-window { width: min(520px, 100%); }
         .workshop-body { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; overflow-y: auto; min-height: 0; }
         .workshop-slots { display: flex; flex-direction: column; gap: 4px; }
-        .workshop-row { display: grid; grid-template-columns: 16px minmax(0, 1fr) 28px 34px 28px 28px 28px 28px; align-items: center; gap: 4px; }
+        .workshop-row { display: grid; grid-template-columns: 16px 44px minmax(0, 1fr) 28px 34px 28px 28px 28px 28px; align-items: center; gap: 4px; }
         .workshop-row button { padding: 3px 0; }
         .workshop-row button:disabled { border-color: var(--line); background: none; opacity: .35; }
         .workshop-index { color: var(--dim); text-align: center; font-size: 12px; }
         .workshop-select { min-width: 0; padding: 4px; }
+        .workshop-icon { display: flex; justify-content: center; align-items: center; gap: 3px; font-size: 16px; }
+        .workshop-family { font-size: 14px; }
         .workshop-amount { text-align: center; font-size: 13px; }
         .workshop-note { font-size: 11px; color: var(--dim); }
         .workshop-preview { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; background: rgb(255 255 255 / 2%); }
         .workshop-name { font-weight: 600; font-size: 14px; }
         .workshop-warning { font-weight: 600; font-size: 13px; color: #e0655b; }
+        .resonance { display: flex; gap: 7px; justify-content: center; padding: 4px 0; }
+        .resonance i { width: 12px; height: 12px; transform: rotate(45deg); border-radius: 2px; background: rgb(255 255 255 / 10%); }
+        .resonance i.lit { background: #b88cf0; box-shadow: 0 0 6px 1px #b88cf0aa; animation: resonance-pulse 1.6s ease-in-out infinite; }
+        .resonance.level-4 i.lit { background: #e3c6ff; box-shadow: 0 0 9px 2px #d3a8ffcc; animation-duration: 1.1s; }
+        .resonance.level-5 i.lit { background: #ffd666; box-shadow: 0 0 10px 3px #ffc83ddd; animation-duration: .7s; }
+        .resonance i.lit:nth-child(2) { animation-delay: .12s; } .resonance i.lit:nth-child(3) { animation-delay: .24s; } .resonance i.lit:nth-child(4) { animation-delay: .36s; } .resonance i.lit:nth-child(5) { animation-delay: .48s; }
+        @keyframes resonance-pulse { 0%, 100% { opacity: .65; } 50% { opacity: 1; } }
         .workshop-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; margin-bottom: 4px; }
         .workshop-bar { display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: center; gap: 6px; font-size: 11px; color: var(--dim); }
         .workshop-bar i { display: block; height: 6px; border-radius: 3px; background: rgb(255 255 255 / 8%); overflow: hidden; }
@@ -3183,7 +3215,7 @@
 
       if (job?.byproducts) lines.push(t('Also leaves: {list}', { list: this.resourceIconsHtml(job.byproducts) }));
       if (definition.mixing) {
-        lines.push(t('Mixes spells from {slots} different ingredients. Most mixes do nothing: only the right ingredients in the right order and amounts give an effect, and too much of an ingredient makes it go wrong. Up to {n} tiles away. After a cast the enchanter rests longer the stronger the spell is ({min}-{max} s), and that kind of spell then recharges for all your enchanters.', { slots: definition.mixing.slots, n: definition.spellRange, min: definition.spellRecharge.min, max: definition.spellRecharge.max }));
+        lines.push(t('Mixes spells from {slots} different ingredients; only the right recipes work.', { slots: definition.mixing.slots, n: definition.spellRange, min: definition.spellRecharge.min, max: definition.spellRecharge.max }));
       }
 
       if (definition.placeOnTerrain && !definition.variants) {

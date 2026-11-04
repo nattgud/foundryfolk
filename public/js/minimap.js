@@ -324,13 +324,15 @@
         element.style.left = left ? beside : 'auto';
         element.style.right = left ? 'auto' : beside;
       }
-      const flag = document.getElementById('flagButton');   // flaggknappen (ui.js) ligger i zoomknapparnas kolumn, under dem
-      if (flag) {
-        flag.style.width = flag.style.height = button + 'px';
-        flag.style.top = (topEdge + 2 * (button + 4)) + 'px';
-        flag.style.left = left ? beside : 'auto';
-        flag.style.right = left ? 'auto' : beside;
-      }
+      // knapparna från ui.js ligger i zoomknapparnas kolumn, under dem: områdesfärgerna först, sedan flaggan (som döljs tills garnisonen är upplåst)
+      ['districtsButton', 'flagButton'].forEach((id, slot) => {
+        const extra = document.getElementById(id);
+        if (!extra) return;
+        extra.style.width = extra.style.height = button + 'px';
+        extra.style.top = (topEdge + (2 + slot) * (button + 4)) + 'px';
+        extra.style.left = left ? beside : 'auto';
+        extra.style.right = left ? 'auto' : beside;
+      });
       this.legendBox.style.top = (topEdge + outer + 6) + 'px';
       this.legendBox.style.left = left ? '8px' : 'auto';
       this.legendBox.style.right = left ? 'auto' : '8px';

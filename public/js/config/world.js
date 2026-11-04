@@ -152,6 +152,7 @@
   };
 
   const GRAVE_CHANCE = 1 / 1500;   // andel rutor som får en grav
+  const RUIN_CHANCE = 1 / 450;     // andel rutor (utanför startområdet och bergen) som får en enstaka ruin, utöver byarna och altarringarna: ruiner finns nästan överallt, men glest
   const isOpenWater = model => model.seaDepth > 0 || model.riverDistance < 0;
 
   // Malm inne i bergen: ungefär så här stor andel av bergsrutorna blir malm (tuning.oreShare, exklusive svavel och månsten).
@@ -499,25 +500,28 @@
 
     // 3. Forntida altare: ett altare omgivet av en ring av ruiner.
     context => {
-      const site = siteInCell(context, 130, 310, 0.18, 10);
+      const site = siteInCell(context, 100, 310, 0.3, 10);
       if (!site) return;
       const distance = Math.hypot(context.x - site.centerX, context.y - site.centerY);
       if (distance < 0.5) return 'ancient_altar';
       if (distance < 4 && distance > 1.5 && random(context, context.x, context.y, 315) < 0.35) return 'ruins';
     },
 
-    // 4. Ruiner efter en by, med grusade ytor och enstaka skuggor av husgrunder.
+    // 4. Ruiner efter en by, med grusade ytor och enstaka skuggor av husgrunder, och dessutom enstaka ruiner här och var över hela världen.
     context => {
-      const site = siteInCell(context, 70, 320, 0.3, 9);
-      if (!site) return;
-      const radius = 3 + site.roll * 4;
-      const dx = context.x - site.centerX, dy = context.y - site.centerY;
-      const distance = Math.hypot(dx, dy);
-      if (distance > radius) return;
-      // husgrunder sitter i ett glest rutnät, med några enstaka stenar emellan
-      const onFoundationGrid = (dx + 40) % 3 === 0 || (dy + 40) % 3 === 0;
-      const chance = (onFoundationGrid ? 0.6 : 0.12) * (1 - distance / (radius + 1));
-      if (random(context, context.x, context.y, 325) < chance) return 'ruins';
+      const site = siteInCell(context, 48, 320, 0.45, 8);
+      if (site) {
+        const radius = 3 + site.roll * 4;
+        const dx = context.x - site.centerX, dy = context.y - site.centerY;
+        const distance = Math.hypot(dx, dy);
+        if (distance <= radius) {
+          // husgrunder sitter i ett glest rutnät, med några enstaka stenar emellan
+          const onFoundationGrid = (dx + 40) % 3 === 0 || (dy + 40) % 3 === 0;
+          const chance = (onFoundationGrid ? 0.6 : 0.12) * (1 - distance / (radius + 1));
+          if (random(context, context.x, context.y, 325) < chance) return 'ruins';
+        }
+      }
+      if (context.distanceFromOrigin > 28 && random(context, context.x, context.y, 326) < RUIN_CHANCE && !CityBuilder.Config.world.isMountain(context) && !isOpenWater(landscapeAt(context))) return 'ruins';
     },
 
     // 5. Gravar: enstaka, här och var på land (gräs, sand och jord). De används inte till något, så de ska vara få: ungefär en per 1500 rutor.

@@ -416,8 +416,15 @@
       // 1. Återför alltid den uppätna växten först.
       if (unit.animalLastEaten) {
         const eaten = unit.animalLastEaten;
+        const meal = unit.animalMealTile, home = meal && World.getTile(meal.x, meal.y);
 
-        Utils.assign(tile, Config.terrain[eaten.type], {
+        if (Utils.random() >= World.homeFactor(x, y, Config.settings.wild.plantMin) && home && (home.terrainType === 'grass' || home.terrainType === eaten.type)) {
+          // Långt från alla byggnader sprider sig växten inte: det som åts läggs tillbaka där djuret åt (ingen ny ruta, ingen ökning)
+          Utils.assign(home, Config.terrain[eaten.type], {
+            terrainType: eaten.type,
+            remainingAmount: (home.terrainType === eaten.type ? home.remainingAmount : 0) + eaten.amount
+          });
+        } else Utils.assign(tile, Config.terrain[eaten.type], {
           terrainType: eaten.type,
           remainingAmount: Math.max(
             1,
@@ -436,7 +443,7 @@
       }
 
       // 2. Träd får spridas separat, även när ingen växtåterföring väntar.
-      if (Utils.random() < Config.settings.animalTreeSpreadChance) {
+      if (Utils.random() < Config.settings.animalTreeSpreadChance * World.homeFactor(x, y, Config.settings.wild.plantMin)) {
         Utils.assign(tile, Config.terrain.tree, {
           terrainType: 'tree',
           remainingAmount: Math.ceil(Utils.random() * 2)
@@ -460,6 +467,7 @@
         if (other !== unit && Utils.distance(other.x - unit.x, other.y - unit.y) <= radius) nearby++;
       }
       if (population >= ANIMAL.maxPopulation || Utils.random() < nearby / (capacity * surge)) return;   // under en Wild Surge får flocken vara tätare
+      if (surge <= 1 && Utils.random() >= World.homeFactor(unit.x, unit.y, Config.settings.wild.animalMin)) return;   // långt från alla byggnader förökar sig djuren långsammare (inte under en Wild Surge)
 
       // Ungen föds på en ledig gräs- eller trädruta i närheten (annars på samma ruta)
       const cx = Math.floor(unit.x), cy = Math.floor(unit.y);
