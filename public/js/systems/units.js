@@ -6,12 +6,12 @@
   const ANIMAL = {
     foodRadius: 3, 
     eatSeconds: 4,
-    eatCooldown: 40,   // speltid i sekunder mellan två måltider: bestämmer hur fort bär, örter, svamp och äpplen sprids (varje måltid planteras om en bit bort)
+    eatCooldown: 75,   // speltid i sekunder mellan två måltider: bestämmer hur fort bär, örter, svamp och äpplen sprids (varje måltid planteras om en bit bort)
     spreadChance: 0.1,
     wanderRadius: 8,
     idleCooldown: 1,
     maxFoodPerTile: 5,
-    maxSpreadDistance: 6,
+    maxSpreadDistance: 5,
     breedChancePerSecond: 3 / 1000, // chans per speltidssekund att få en unge vid normal täthet (snitt ca 5 min mellan ungar per djur)
     breedCooldown: 30,              // speltid i sekunder innan samma djur (eller ungen) kan få en ny unge
     maxPopulation: 400,             // säkerhetsgräns för prestanda: inga fler djur än så här i världen

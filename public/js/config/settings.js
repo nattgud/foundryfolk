@@ -194,7 +194,7 @@ CityBuilder.Config.settings = {
     growth: { tree: 'wood', apple_tree: 'apples', berry_bush: 'berries', herbs: 'herbs', mushrooms: 'mushrooms' },
     scanSeconds: 2,
     scanSpreadSeconds: 1,                  // en skanning delas på så lång speltid (några chunkar per steg), så att kostnaden blir jämn
-    rain: { chance: 0.08, cap: 2 },        // chans per skanning att en växt får +1 mängd, högst cap gånger terrängens normala mängd
+    rain: { chance: 0.1, cap: 2 },        // chans per skanning att en växt får +1 mängd, högst cap gånger terrängens normala mängd
     flood: {                               // stormen: översvämning (se systems/weather.js)
       reach: 3,                            // så många rutor från vattnet når den som mest
       riseSeconds: 6,                      // tid per ring när vattnet stiger
