@@ -93,6 +93,8 @@
       'Cast': 'Произнести',
       'Add an ingredient to see what it makes': 'Добавьте ингредиент, чтобы увидеть результат',
       'This mix does nothing': 'Эта смесь ничего не даёт',
+      'Area colours on. Press G to turn them off': 'Цвета районов включены. Нажмите G, чтобы выключить',
+      'Area colours off. Press G to turn them on': 'Цвета районов выключены. Нажмите G, чтобы включить',
       'Tried. No effect': 'Пробовали. Без эффекта',
       'Tried. Catastrophic': 'Пробовали. Катастрофа',
       'Nothing happened. The ingredients are gone.': 'Ничего не произошло. Ингредиенты потрачены.',

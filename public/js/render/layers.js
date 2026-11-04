@@ -440,6 +440,38 @@
     });
   };
 
+  // Områdesfärger: varje kategori ritas som heltäckande cirklar (hårda kanter) runt sina byggnader i en mellanbild (några bildpunkter per ruta) som sedan sträcks ut över
+  // kartan, under byggnaderna men över terrängen. Cirklar av samma kategori flyter ihop till ett område med jämn färg (de ritas täckande först och görs genomskinliga när bilden läggs på kartan). Bara spelarens egna byggnader (Game.showDistricts).
+  const districtCanvas = document.createElement('canvas');
+  Renderer.addLayer('districts', (context, renderer) => {
+    if (!CityBuilder.Game.showDistricts) return;
+    const { radius, alpha, resolution, colors } = Config.settings.districts, tileSize = renderer.tileSize, view = renderer.viewBounds(radius * tileSize);
+    const groups = {};
+    for (const building of World.buildings) {
+      if (building.player !== Players.HUMAN || building.definition.pile || !colors[building.definition.category] || outside(view, (building.x + .5) * tileSize, (building.y + .5) * tileSize)) continue;
+      (groups[building.definition.category] = groups[building.definition.category] || []).push(building);
+    }
+    const categories = Object.keys(groups);
+    if (!categories.length) return;
+    const left = Math.floor(view.left / tileSize), top = Math.floor(view.top / tileSize);   // hela rutor: fläckarna står stilla när kartan rullar
+    const columns = Math.ceil(view.right / tileSize) - left + 1, rows = Math.ceil(view.bottom / tileSize) - top + 1;
+    if (districtCanvas.width !== columns * resolution || districtCanvas.height !== rows * resolution) { districtCanvas.width = columns * resolution; districtCanvas.height = rows * resolution; }
+    const small = districtCanvas.getContext('2d'), smoothing = context.imageSmoothingEnabled;
+    context.imageSmoothingEnabled = true;
+    context.globalAlpha = alpha;
+    for (const category of categories) {
+      small.clearRect(0, 0, districtCanvas.width, districtCanvas.height);
+      for (const building of groups[category]) {
+        const x = (building.x + .5 - left) * resolution, y = (building.y + .5 - top) * resolution, reach = radius * resolution;
+        small.fillStyle = colors[category];
+        small.beginPath(); small.arc(x, y, reach, 0, Math.PI * 2); small.fill();
+      }
+      context.drawImage(districtCanvas, left * tileSize, top * tileSize, columns * tileSize, rows * tileSize);
+    }
+    context.globalAlpha = 1;
+    context.imageSmoothingEnabled = smoothing;
+  });
+
   Renderer.addLayer('buildings', (context, renderer) => {
     const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize);
     for (const building of World.buildings) {

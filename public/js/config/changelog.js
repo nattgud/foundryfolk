@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Area colours: a faint, see-through colour with sharp edges under your buildings shows what belongs together, one colour per category: red for war, green for food, blue for metalwork, purple for magic, orange for construction, yellow for valuables and teal for trade. The same colours mark the categories in the build menu. Press G to turn them on or off',
       'The main menu is a little lower, so it fits on a desktop screen without a scrollbar, and scrollbars everywhere are now thin and dark to match the game',
       'The main menu is clearer about the game modes: Story mode (coming soon) comes first, then Free Realm with its own Restart level and New game (which starts over from level 1), then Custom map',
       'The normal game is now called Free Realm, and the main menu has a place for Story mode, a handwritten campaign that is coming soon',

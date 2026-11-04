@@ -93,6 +93,8 @@
       'Cast': 'ألقِ',
       'Add an ingredient to see what it makes': 'أضف مكوّناً لترى النتيجة',
       'This mix does nothing': 'هذه الخلطة لا تفعل شيئاً',
+      'Area colours on. Press G to turn them off': 'ألوان المناطق قيد التشغيل. اضغط G لإيقافها',
+      'Area colours off. Press G to turn them on': 'ألوان المناطق متوقفة. اضغط G لتشغيلها',
       'Tried. No effect': 'جُرّبت. بلا تأثير',
       'Tried. Catastrophic': 'جُرّبت. كارثية',
       'Nothing happened. The ingredients are gone.': 'لم يحدث شيء. ضاعت المكوّنات.',

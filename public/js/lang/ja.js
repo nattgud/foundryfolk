@@ -92,6 +92,8 @@
       'Cast': '唱える',
       'Add an ingredient to see what it makes': '材料を加えると結果が表示されます',
       'This mix does nothing': 'この組み合わせでは何も起こりません',
+      'Area colours on. Press G to turn them off': 'エリアの色をオンにしました。G キーでオフにできます',
+      'Area colours off. Press G to turn them on': 'エリアの色をオフにしました。G キーでオンにできます',
       'Tried. No effect': '試行済み。効果なし',
       'Tried. Catastrophic': '試行済み。大惨事',
       'Nothing happened. The ingredients are gone.': '何も起こりませんでした。材料は失われました。',

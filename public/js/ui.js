@@ -1778,6 +1778,7 @@
           showOnTouch: true,
         });
 
+        toggle.style.boxShadow = `inset 0 -3px 0 ${Config.settings.districts.colors[categoryId] || 'transparent'}`;   // samma färg som områdena på kartan
         toggle.setAttribute('aria-expanded', 'false');
         toggle.setAttribute('aria-controls', 'build-submenu-' + categoryId);
         toggle.onclick = () => {
@@ -1910,6 +1911,12 @@
     // Returnerar true om tangenten användes
     handleHotkey(key) {
       const game = CityBuilder.Game, selected = game.selectedBuilding;
+      if (key === 'g') {   // områdesfärgerna på eller av
+        game.showDistricts = !game.showDistricts;
+        try { localStorage.setItem('cityBuilderDistricts', game.showDistricts ? 'on' : 'off'); } catch (error) { /* lagring saknas: gäller tills sidan laddas om */ }
+        this.showToast(t(game.showDistricts ? 'Area colours on. Press G to turn them off' : 'Area colours off. Press G to turn them on'));
+        return true;
+      }
       if (key === 'a' && byId('flagButton') && !byId('flagButton').hidden) { this.toggleFlagging(); return true; }
 
       if (key === 'Escape') { // ett steg tillbaka: placering, öppen kategori, vald byggnad

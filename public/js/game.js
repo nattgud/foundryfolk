@@ -7,6 +7,7 @@
   const Game = {
     selectedBuilding: null,
     placingType: null,      // byggnadstyp som spelaren håller på att placera
+    showDistricts: (() => { try { return localStorage.getItem('cityBuilderDistricts') !== 'off'; } catch (error) { return true; } })(),   // områdesfärgerna (tangenten G)
     casting: null,          // { building, spell }: en trollformel väntar på att spelaren pekar ut ett mål
     flagging: false,        // flaggläget: nästa tryck på kartan sätter eller flyttar flaggan (ett tryck på flaggan själv tar bort den)
     speedIndex: 0,          // index i Config.settings.gameSpeeds

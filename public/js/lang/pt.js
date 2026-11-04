@@ -93,6 +93,8 @@
       'Cast': 'Lançar',
       'Add an ingredient to see what it makes': 'Adicione um ingrediente para ver o resultado',
       'This mix does nothing': 'Esta mistura não faz nada',
+      'Area colours on. Press G to turn them off': 'Cores das áreas ligadas. Pressione G para desligar',
+      'Area colours off. Press G to turn them on': 'Cores das áreas desligadas. Pressione G para ligar',
       'Tried. No effect': 'Testada. Sem efeito',
       'Tried. Catastrophic': 'Testada. Catastrófica',
       'Nothing happened. The ingredients are gone.': 'Nada aconteceu. Os ingredientes se foram.',

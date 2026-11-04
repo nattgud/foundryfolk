@@ -92,6 +92,8 @@
       'Cast': '施放',
       'Add an ingredient to see what it makes': '添加材料以查看结果',
       'This mix does nothing': '这种混合物没有效果',
+      'Area colours on. Press G to turn them off': '区域颜色已开启。按 G 关闭',
+      'Area colours off. Press G to turn them on': '区域颜色已关闭。按 G 开启',
       'Tried. No effect': '已试过。无效果',
       'Tried. Catastrophic': '已试过。灾难性',
       'Nothing happened. The ingredients are gone.': '什么都没有发生。材料已经消失。',
