@@ -25,7 +25,9 @@
                   eller bara ett id (automatisk plats runt HQ). Placera dem i spelet och kör CityBuilder.Story.layout() i konsolen för färdiga rader.
      eye, fog     eye: true = Eye of Shades står närmare fienden än något annat, eye: { dx, dy } = på en bestämd plats; fog: konstant dimma tills den förstörs
      end          'hq': kapitlet är klart när fiendens HQ förstörs
-     events       [{ at (sekunder), tell: dialog | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]
+     events       [{ at (sekunder), goal, when, tell: dialog | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]. En händelse sker en gång, när alla
+                  villkor den har slår till. at: sekunder in i kapitlet. goal: målet med det numret (1 = första målet) är klart. when: { resource, amount } (har så mycket av en vara)
+                  eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
      meteorProof  enhetstyper som meteorer inte skadar */
 (function (CityBuilder) {
   'use strict';
@@ -171,7 +173,18 @@
           say('thordram', '[calm]The soldiers drank it gladly. Every one of them.'),
           say('albertha', '[happy]Such good appetites!'),
         ] },
-      { name: 'Relics and Starlight', start: { buildings: [] }, eye: true, goals: [more('ancient_relic', 2), more('fallen_star', 2)],
+      { name: 'Relics and Starlight', start: { buildings: [
+          { type: 'hunters_cottage', dx: -7, dy: -5 },
+          { type: 'quarry', dx: 7, dy: -5 },
+          { type: 'quarry', dx: 2, dy: -4 },
+          { type: 'herb_gatherer', dx: -11, dy: -3 },
+          { type: 'woodcutter', dx: -2, dy: -3 },
+          { type: 'sawmill', dx: -2, dy: 2 },
+          { type: 'woodcutter', dx: -2, dy: 3 },
+          { type: 'fishing_hut', dx: -9, dy: 4 },
+          { type: 'well', dx: -7, dy: 5 },
+          { type: 'woodcutter', dx: 2, dy: 6 },
+        ] }, eye: true, goals: [more('ancient_relic', 2), more('fallen_star', 2)],
         letter: letter(['Reeve, my counsellors speak of relics and fallen stars, old magic that might turn the war. Find what you can. I do not understand it, but I trust them.'], true),
         dialogue: [
           say('thordram', '[calm]Relics remember. It is their only fault.'),

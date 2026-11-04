@@ -134,8 +134,16 @@
         ...(chapter.dialogue ? this.once('dialogue', [{ type: 'dialogue', lines: chapter.dialogue }]) : []),
       ]);
 
+      // En händelse sker en gång, när alla villkor den har slår till: at (sekunder in i kapitlet), goal (målet med det numret, räknat från 1, är klart) och when
+      // (ett mål av samma slag som kapitlets: { resource | type, id, amount }, som att man har 50 järn eller har byggt en förtrollare)
       (chapter.events || []).forEach((event, i) => {
-        if (Levels.seconds >= event.at && !Levels.told('event:' + i)) { Levels.markTold('event:' + i); this.fire(event); }
+        if (Levels.told('event:' + i)) return;
+        if (event.at === undefined && !event.goal && !event.when) return;
+        if (event.at !== undefined && Levels.seconds < event.at) return;
+        if (event.goal && !Levels.progress()[event.goal - 1]?.done) return;
+        if (event.when && Levels.have(event.when) < event.when.amount) return;
+        Levels.markTold('event:' + i);
+        this.fire(event);
       });
 
       // Dimman ligger över kapitlet så länge Eye of Shades står. När den är borta lyfter dimman och rådgivarna lämnar.

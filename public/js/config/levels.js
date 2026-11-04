@@ -1112,6 +1112,7 @@
     forget() { resetProgress(); Object.assign(progress, { run: null, level: null }); },
 
     // Goals
+    have: item => (held ? 0 : haveOf(item)),                // hur långt ett mål ({ resource | type, id, amount }) har kommit just nu (0 medan en sparning återställs)
     progress: evaluate,                                   // [{ key, type, id|resource, amount, have, done }]
     get seconds() { return progress.seconds; },
     get completed() { return progress.complete; },
