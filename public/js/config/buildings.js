@@ -998,22 +998,30 @@ CityBuilder.Config.buildings = {
     spellRecharge: { min: 30, max: 180 },
     mixing: {
       slots: 5, maxAmount: 6, maxBook: 20,
-      weights: [1.5, 1, 0.8, 0.6, 0.45],   // första ingrediensen väger mest
-      strengthScale: 0.5,                  // styrka = summan av ingrediensernas styrka (viktad efter plats) gånger detta, högst 3
-      impurity: 0.3,                       // en formel utan ingredienser av andra slag är ren. Är alla andra blir den så här mycket svagare (andel av styrkan)
-      dose: 2,                             // mängden delat med detta ger hur mycket ingrediensens varaktighet och räckvidd räknas (2 = normalt, 1 = hälften, 4 = dubbelt). Styrkan påverkas inte
-      superStrength: 2.9,                  // en tornado med minst så stor styrka (max 3) blir en supertornado, om blandningen också har superIngredient
-      superIngredient: 'ancient_relic',
+      // En blandning ger bara en effekt om den är ett "sant recept": exakt slots olika ingredienser (ingen får användas två gånger, färre ger ingenting).
+      //   - Varje ingrediens hör till en familj (ingredients: [familj, kraft], families). Platsernas ORDNING spelar roll, och så mängderna.
+      //   - recipes: de sanna recepten, ingredienserna i rätt ordning med rätt mängd (needs: [[ingrediens, mängd], ...]).
+      //       För lite av en ingrediens drar ner STYRKAN (amountPenalty per steg), för mycket gör formeln OSTADIG (overUnrest per steg). Högst spread steg fel
+      //       per ingrediens och tolerance steg fel sammanlagt: de starkaste recepten tål bara ett steg per ingrediens, de svagare fler.
+      //       Fel ordning gör formeln ostadig och lite svagare. En ingrediens kan bytas mot en annan ur samma familj (högst maxSwaps, aldrig i exact-recept): det
+      //       gör formeln ostadig och lite svagare.
+      //   - En enda främmande ingrediens (ur en familj som inte finns i receptet) ger i stället den familjens egen, tråkigare effekt (families.effect, alltid ostadig),
+      //     eller ingenting om familjen saknar effekt. Allt annat ger ingenting.
+      //   - minQuality: under denna styrka (andel av receptets) ger ett recept ingenting.
+      amountPenalty: 0.1, swapPenalty: 0.1, orderPenalty: 0.04, minQuality: 0.3, maxSwaps: 2,
+      swapUnrest: 0.25, orderUnrest: 0.15, overUnrest: 0.2, maxUnrest: 0.9,   // ostadighet per byte, per platssteg fel och per ingrediens för mycket (summerat, högst maxUnrest)
+      taintUnrest: 0.5, taintStrength: 0.5,                  // en främmande ingrediens: risken för fel och styrkan (andel av taintPower)
+      taintPower: 1,
+      // Fel: en ostadig formel går fel med den risken (spell.chance). Då hamnar den ALLTID på ett annat ställe än där spelaren tryckte, desto längre bort ju mer fel
+      // blandningen är (2 rutor upp till far rutor, inom synfältet). Dessutom blir den med sannolikheten effect en helt annan effekt. Utfallet slumpas bland alla effekter så
+      // det känns som ren tur.
+      misfire: { effect: 0.65, far: 50, strength: [0.6, 2.8] },
+      rarity: 0.5,                         // Creation: ett recept jämnar ut chanserna mellan fyndigheterna (chans upphöjt till 1 - rarity), så att de sällsynta blir vanligare
       // Himlen: gratis ingredienser som bara finns på natten respektive dagen
       sky: { moon: 'night', sun: 'day' },
-      // Kategorier. Namnet före punkten är slaget (kind), efter punkten vad det gäller. inverse = vad en vändare gör av den. Samma ingrediens ger alltid samma kategori:
-      // en katastrof blir därför alltid samma katastrof. terrains: vad 'create' ger (relativ chans).
-      // Creation (kind create): den första ingrediensen väljer slaget, de efterföljande väljer vilka fyndigheter som skapas (en familj var, se terrains:
-      // sten, malm, ädelsten och lund; står en ensam väljer den själv). En blandning ger lite av varje familj. rarity: en ren formel jämnar ut chanserna
-      // (chans upphöjt till 1 - rarity * renhet), så att de sällsynta fyndigheterna blir vanligare.
+      // Effekterna. Namnet före punkten är slaget (kind), efter punkten vad det gäller. terrains: vad 'create' ger (relativ chans).
       // Upheaval (kind break) tar alltid bort allt på rutorna inom radien (berg, vatten, sumpmark, träd, fyndigheter; byggnader står kvar). Radien är liten
       // (1-4 rutor, se kinds) och styrkan gör att förtrollaren vilar kortare.
-      rarity: 0.5,
       categories: {
         'create.stone': { kind: 'create', name: 'Creation', terrains: { rock: 3, clay: 2, sand: 2, limestone: 1 } },
         'create.ore': { kind: 'create', name: 'Creation', terrains: { coal: 3, iron_ore: 2, copper_ore: 1, tin_ore: 1 } },
@@ -1024,13 +1032,13 @@ CityBuilder.Config.buildings = {
         surge: { kind: 'surge', name: 'Surge' },
         workers: { kind: 'pace', name: 'Blaze' },
         carriers: { kind: 'carriers', name: 'Gust' },
-        rain: { kind: 'rain', name: 'Rain', inverse: 'rain.sky' },
+        rain: { kind: 'rain', name: 'Rain' },
         'rain.sky': { kind: 'sky', name: 'Clearing' },
         'rain.flood': { kind: 'storm', name: 'Tempest' },
         'disaster.tornado': { kind: 'tornado', name: 'Cyclone' },
         'disaster.lava': { kind: 'lava', name: 'Eruption' },
         'disaster.meteors': { kind: 'meteors', name: 'Meteor Rain' },
-        combat: { kind: 'smite', name: 'Blight', inverse: 'combat.mend' },
+        combat: { kind: 'smite', name: 'Blight' },
         summon: { kind: 'summon', name: 'Summoning' },
         'combat.mend': { kind: 'mend', name: 'Mending' },
       },
@@ -1052,42 +1060,63 @@ CityBuilder.Config.buildings = {
         mend: { group: 'combat', radius: [5, 3, 12] },
         summon: { group: 'combat', radius: [3, 1, 6] },
       },
-      // Ingrediensens fem delar: [kategori, styrka, varaktighet, räckvidd, vändare]
-      //   styrka      läggs till formelns styrka (viktad efter platsen)
-      //   varaktighet läggs till hur länge den varar (och hur många rutor den ger eller tar bort); mängden räknas in
-      //   räckvidd    läggs till radien i rutor; mängden räknas in
-      //   vändare     1 = vänder formeln (gift blir läkedom, regn blir klar himmel) om kategorin har en motsats
-      ingredients: {
-        wood: ['create.grove', 0.8, 0.2, 0, 0], plank: ['create.grove', 0.6, 0.3, 0, 0], berries: ['create.grove', 0.8, 0, 0.5, 0],
-        stone: ['create.stone', 1, 0.3, -0.5, 0], clay: ['create.stone', 0.7, 0.2, 0, 0], sand: ['create.stone', 0.6, 0, 1, 0], limestone: ['create.stone', 0.8, 0.3, 0, 0],
-        coal: ['create.ore', 1, 0.2, -0.5, 0], iron_ore: ['create.ore', 1.3, 0.3, -0.5, 0], copper_ore: ['create.ore', 1.2, 0.2, -0.5, 0], tin_ore: ['create.ore', 1.1, 0.2, 0, 0],
-        gold_ore: ['create.gem', 1.4, 0.3, -0.5, 0], silver_ore: ['create.gem', 1.3, 0.2, 0, 0], gemstone: ['create.gem', 1.6, 0.4, 0, 0], crystal: ['create.gem', 1.8, 0.2, 1, 0],
-        sulfur: ['clear', 1, -0.3, 0, 0], salt: ['clear', 0.8, 0.2, 0.3, 0], enchanted_wood: ['clear', 1.2, 0.2, 0.5, 0], talisman: ['clear', 1.5, 0.3, 1, 0],
-        herbs: ['yield', 1, 0.2, 0, 0], mushrooms: ['yield', 0.9, 0.2, 0, 0], grain: ['yield', 0.7, 0.1, 0.5, 0],
-        seeds: ['surge', 1, 0, 1, 0], apples: ['surge', 0.8, 0.1, 0.5, 0],
-        charcoal: ['workers', 0.9, 0.2, 0, 0], gold: ['workers', 1.5, -0.2, 0, 0], sun: ['workers', 1, 0.3, 1, 0],
-        leather: ['carriers', 0.9, 0.3, 0, 0], potion: ['carriers', 1.2, 0.2, 0.5, 0], coins: ['carriers', 0.8, 0, 1, 0],
-        water: ['rain', 1, 0.2, 1, 0], fish: ['rain.flood', 0.9, 0.3, 0, 0], glass: ['rain', 0.5, 0, 0, 1], moon: ['rain', 0.8, 0.3, 0, 1],
-        straw: ['disaster.tornado', 1, -0.2, 1, 0], ancient_relic: ['disaster.tornado', 2, 0.3, 0, 0], tar: ['disaster.lava', 1.2, 0.2, 0, 0], ash: ['disaster.lava', 0.8, -0.2, 1, 0],
-        fallen_star: ['disaster.meteors', 2, 0.3, 1, 0],
-        bone: ['combat', 1, 0, 0, 0], blood: ['summon', 1.2, 0.1, 0, 0], cursed_ash: ['summon', 1.5, -0.2, 0, 0], silver: ['combat', 0.8, 0, 0, 1], moonstone: ['combat', 0.7, 0.2, 0, 1],
+      // Familjerna. effect: vad vanliga ingredienser ur just den familjen ger ensamma (ingen = ingen egen effekt, bara delar av sanna recept). icon: i listan
+      families: {
+        earth: { name: 'Earth', effect: 'create.stone', icon: '⛰️' },
+        fuel: { name: 'Fuel', effect: 'workers', icon: '🔥' },
+        ember: { name: 'Embers', icon: '🌋' },
+        harvest: { name: 'Harvest', effect: 'yield', icon: '🌾' },
+        beast: { name: 'Beasts', effect: 'surge', icon: '🐾' },
+        water: { name: 'Water', effect: 'rain', icon: '💧' },
+        brine: { name: 'Brine', icon: '🧂' },
+        metal: { name: 'Metal', effect: 'carriers', icon: '🪙' },
+        gem: { name: 'Gems', effect: 'create.gem', icon: '💎' },
+        star: { name: 'Celestial', icon: '☄️' },
+        occult: { name: 'Occult', icon: '💀' },
+        relic: { name: 'Relics', icon: '🗿' },
       },
-      // Trollboken man börjar med: [ingrediens, mängd] i ordning
+      // Ingredienserna: [familj, kraft]. Kraften ger en vanlig enkel formel dess styrka; i sanna recept räknas bara familjen, ordningen och mängden
+      ingredients: {
+        sand: ['earth', 0.8],
+        charcoal: ['fuel', 0.9], sun: ['fuel', 1],
+        ash: ['ember', 1], tar: ['ember', 1], sulfur: ['ember', 1],
+        herbs: ['harvest', 1], mushrooms: ['harvest', 0.9],
+        seeds: ['beast', 1],
+        water: ['water', 1], moon: ['water', 0.8],
+        salt: ['brine', 1],
+        gold: ['metal', 1.2], silver: ['metal', 1.1],
+        crystal: ['gem', 1.5],
+        fallen_star: ['star', 1], moonstone: ['star', 1],
+        bone: ['occult', 1], blood: ['occult', 1], cursed_ash: ['occult', 1],
+        ancient_relic: ['relic', 1], enchanted_wood: ['relic', 1],
+      },
+      // De sanna recepten, alltid slots olika ingredienser. effect: en av categories. strength (0-3) och radius är det full träff ger.
+      // tolerance: steg fel sammanlagt, spread: högst per ingrediens. De två första är trollbokens startformler: svaga, men kända från början.
+      recipes: [
+        { effect: 'yield', needs: [['herbs', 1], ['mushrooms', 1], ['seeds', 1], ['water', 1], ['sand', 1]], strength: 0.9, radius: 5, tolerance: 6, spread: 3 },
+        { effect: 'create.stone', needs: [['sand', 2], ['salt', 1], ['ash', 1], ['water', 1], ['charcoal', 1]], strength: 0.9, radius: 2, tolerance: 6, spread: 3 },
+        { effect: 'disaster.meteors', needs: [['fallen_star', 2], ['blood', 1], ['bone', 2], ['ash', 2], ['sand', 1]], strength: 3, radius: 6, tolerance: 5, spread: 1 },
+        { effect: 'disaster.lava', needs: [['tar', 3], ['sulfur', 2], ['ash', 1], ['bone', 1], ['charcoal', 1]], strength: 2.8, radius: 3, tolerance: 5, spread: 1 },
+        { effect: 'disaster.tornado', needs: [['ancient_relic', 1], ['enchanted_wood', 2], ['salt', 1], ['bone', 1], ['moonstone', 1]], strength: 2.6, radius: 3, tolerance: 5, spread: 1 },
+        { effect: 'disaster.tornado', name: 'Supercyclone', super: true, exact: true, needs: [['ancient_relic', 2], ['moonstone', 1], ['fallen_star', 1], ['enchanted_wood', 1], ['bone', 2]], strength: 3, radius: 3, tolerance: 3, spread: 1 },
+        { effect: 'summon', needs: [['blood', 2], ['bone', 2], ['cursed_ash', 1], ['silver', 1], ['moonstone', 1]], strength: 3, radius: 4, tolerance: 4, spread: 1 },
+        { effect: 'combat', needs: [['bone', 2], ['cursed_ash', 1], ['silver', 1], ['sulfur', 1], ['blood', 1]], strength: 2.5, radius: 8, tolerance: 5, spread: 2 },
+        { effect: 'clear', needs: [['sulfur', 2], ['salt', 1], ['ancient_relic', 1], ['sand', 2], ['tar', 1]], strength: 2.5, radius: 3, tolerance: 5, spread: 2 },
+        { effect: 'rain.flood', needs: [['water', 3], ['salt', 1], ['crystal', 1], ['moonstone', 1], ['fallen_star', 1]], strength: 2.4, radius: 8, tolerance: 5, spread: 2 },
+        { effect: 'combat.mend', needs: [['silver', 1], ['herbs', 2], ['crystal', 1], ['water', 1], ['mushrooms', 1]], strength: 2.2, radius: 8, tolerance: 6, spread: 3 },
+        { effect: 'rain.sky', needs: [['water', 1], ['crystal', 2], ['salt', 1], ['moonstone', 1], ['silver', 1]], strength: 1.5, radius: 0, tolerance: 6, spread: 3 },
+        { effect: 'yield', needs: [['herbs', 2], ['mushrooms', 2], ['seeds', 1], ['water', 1], ['charcoal', 1]], strength: 1.8, radius: 8, tolerance: 6, spread: 3 },
+        { effect: 'surge', needs: [['seeds', 3], ['herbs', 1], ['blood', 1], ['mushrooms', 1], ['water', 1]], strength: 1.8, radius: 8, tolerance: 6, spread: 3 },
+        { effect: 'workers', needs: [['charcoal', 2], ['gold', 1], ['sulfur', 1], ['ash', 1], ['tar', 1]], strength: 1.8, radius: 8, tolerance: 6, spread: 3 },
+        { effect: 'carriers', needs: [['silver', 2], ['gold', 1], ['moonstone', 1], ['herbs', 1], ['salt', 1]], strength: 1.8, radius: 8, tolerance: 6, spread: 3 },
+        { effect: 'create.gem', needs: [['crystal', 2], ['gold', 1], ['moonstone', 1], ['sand', 1], ['silver', 1]], strength: 2, radius: 3, tolerance: 6, spread: 3 },
+        { effect: 'create.ore', needs: [['sand', 2], ['charcoal', 2], ['sulfur', 1], ['tar', 1], ['ash', 1]], strength: 1.8, radius: 3, tolerance: 6, spread: 3 },
+        { effect: 'create.grove', needs: [['seeds', 2], ['herbs', 1], ['water', 2], ['mushrooms', 1], ['charcoal', 1]], strength: 1.8, radius: 3, tolerance: 6, spread: 3 },
+      ],
+      // Trollboken man börjar med: de två första recepten, svaga. Resten får spelaren leta efter själv
       book: [
-        [['wood', 2], ['berries', 1]],
-        [['stone', 2], ['clay', 2]],
-        [['coal', 2], ['iron_ore', 1]],
-        [['herbs', 2], ['mushrooms', 1]],
-        [['seeds', 2], ['apples', 1]],
-        [['charcoal', 2]],
-        [['leather', 2]],
-        [['sulfur', 1]],
-        [['water', 2]],
-        [['fish', 2], ['water', 1]],
-        [['bone', 2]],
-        [['blood', 2]],
-        [['silver', 1]],
-        [['straw', 2]],
+        [['herbs', 1], ['mushrooms', 1], ['seeds', 1], ['water', 1], ['sand', 1]],
+        [['sand', 2], ['salt', 1], ['ash', 1], ['water', 1], ['charcoal', 1]],
       ],
     },
     job: {

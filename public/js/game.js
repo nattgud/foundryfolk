@@ -99,7 +99,7 @@
     castSpell(x, y) {
       const { building, spell } = this.casting;
       const problem = CityBuilder.Commands.issue('cast', { building: building.id, spell: spell.id, x, y });
-      if (!problem) { this.casting = null; return; }
+      if (!problem) { this.casting = null; if (spell.pure) UI.offerSpell(spell); return; }
       this.refuse({
         cooldown: () => t('The enchanter is resting'),
         locked: () => t('Spells of this kind are still recharging'),

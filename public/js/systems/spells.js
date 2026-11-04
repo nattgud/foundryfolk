@@ -1,11 +1,13 @@
-/* Trollformler. Förtrollaren blandar upp till Config.buildings.enchanter.mixing.slots ingredienser till en formel (Spells.evaluate):
-     - den FÖRSTA ingrediensen väljer kategorin, alltså vad formeln gör. En katastrof blir därför alltid samma katastrof, aldrig slumpad
-     - varje ingrediens har fem delar (kategori, styrka, varaktighet, räckvidd och vändare, se settings i buildings.js). Platsen ger en vikt (första väger mest)
-     - styrkan är summan av ingrediensernas styrka. Mängden räknas inte in i styrkan: den ändrar bara varaktighet och räckvidd (hälften eller dubbelt)
-     - ingredienser av ett annat slag än den första gör formeln oren och svagare. En ren formel har bara ingredienser av första slaget. Slag = formelns
-       grupp, utom för Creation och Upheaval där varje familj (sten, malm, ädelsten, lund, och berg, vatten, sumpmark) är ett eget slag: en ren Creation
-       ger bara en familj fyndigheter, och oftare de sällsynta, en blandad lite av varje, och en ren Upheaval tar bara bort en sorts hinder
-     - en vändare vänder formeln när kategorin har en motsats (gift blir läkedom, regn blir klar himmel)
+/* Trollformler. Förtrollaren blandar Config.buildings.enchanter.mixing.slots olika ingredienser till en formel (Spells.evaluate). De flesta blandningar ger
+   ingenting, och färre ingredienser, eller samma ingrediens två gånger, ger alltid ingenting. Ordningen, vilka ingredienser och hur många av varje spelar roll
+   (se mixing i buildings.js):
+     - ett sant recept: rätt ingredienser i rätt ordning. För lite av en ingrediens ger svagare styrka (högst ett visst antal steg fel, utspridda över
+       ingredienserna), för mycket gör formeln ostadig. Fel ordning, eller en ingrediens bytt mot en annan ur samma familj, gör den också ostadig (spell.chance)
+       och lite svagare
+     - en enda främmande ingrediens ger i stället den familjens egen, tråkigare effekt (alltid ostadig) eller ingenting
+   En ostadig formel kan gå fel när den kastas: den landar då ALLTID på ett annat ställe än där spelaren tryckte (längre bort ju sämre blandning, inom synfältet)
+   och blir ibland dessutom en helt annan effekt. En blandning utan effekt går också att kasta: den förbrukar ingredienserna. Spells.tried kommer ihåg vad som
+   har provats ('none': ingen effekt, 'bad': gick fel). En ren formel (ett recept utan ostadighet) erbjuds spelaren att spara i trollboken, inget sparas av sig självt.
    En formel kostar ingredienserna ur lagret och läses på en plats inom spellRange rutor från förtrollaren; varje förtrollare vilar en
    stund efteråt (building.spellCooldown, sparas med byggnaden), och slaget formeln hör till är låst för alla spelarens förtrollare lika länge (Spells.locks). Slag (spell.kind):
      create   förvandlar lediga gräsrutor runt målet till nya fyndigheter (träd, bär, sten, malm, ädelstenar ...)
@@ -28,23 +30,27 @@
   'use strict';
   const { Config, World, Economy, Construction, Players, Utils } = CityBuilder;
 
-  const BOOK_KEY = 'citybuilder.grimoire';
+  const BOOK_KEY = 'citybuilder.grimoire', FAILED_KEY = 'citybuilder.triedmixes';
 
   const Spells = {
     zones: [],   // { kind, x, y, radius, player, left, total, factor?, bonus? }: pågående effekter
     locks: {},   // { 'spelare:slag': sekunder kvar }: slag som laddas om efter ett kast, för alla spelarens förtrollare
+    declined: new Set(),   // ID för rena formler som spelaren sagt nej till att spara (bara i det här spelet)
+    tried: {},   // { blandningens id: 'none' | 'bad' }: blandningar spelaren har provat och som inte gav något eller gick fel. De ligger i webbläsarens lagring och följer med mellan banor
     book: null,  // trollboken: [{ mix: [{ id, amount }] }]. Hör till spelaren, inte till ett spel: den ligger i webbläsarens lagring och följer med mellan banor
 
     reset() {
       this.zones = [];
       this.locks = {};
+      this.declined = new Set();
       if (this.book) return;
+      try { this.tried = JSON.parse(localStorage.getItem(FAILED_KEY)) || {}; } catch (error) { /* inga sparade försök */ }
       let saved = null;
       try { saved = JSON.parse(localStorage.getItem(BOOK_KEY)); } catch (error) { /* ingen sparad bok */ }
-      this.book = Array.isArray(saved) ? saved : Config.buildings.enchanter.mixing.book.map(recipe => ({ mix: recipe.map(([id, amount]) => ({ id, amount })) }));
+      this.book = Array.isArray(saved) ? saved.filter(recipe => this.evaluate(recipe.mix)) : Config.buildings.enchanter.mixing.book.map(recipe => ({ mix: recipe.map(([id, amount]) => ({ id, amount })) }));
     },
 
-    persist() { try { localStorage.setItem(BOOK_KEY, JSON.stringify(this.book)); } catch (error) { /* lagring saknas: boken gäller till sidan laddas om */ } },
+    persist() { try { localStorage.setItem(BOOK_KEY, JSON.stringify(this.book)); localStorage.setItem(FAILED_KEY, JSON.stringify(this.tried)); } catch (error) { /* lagring saknas: boken gäller till sidan laddas om */ } },
 
     // ---- Blandningen ----------------------------------------------------------------------------------------------------------
 
@@ -54,38 +60,105 @@
       return Object.keys(config.ingredients).filter(id => config.sky[id] ? (config.sky[id] === 'night') === night : Economy.freeAmount(id) > 0);
     },
 
-    // Blandningen [{ id, amount }] som ingrediensernas delar, i platsernas ordning: tomma platser och okända ingredienser hoppas över
-    parts(mix) {
-      const config = Config.buildings.enchanter.mixing;
-      return mix.slice(0, config.slots).filter(slot => config.ingredients[slot.id] && slot.amount > 0).map((slot, index) => {
-        const [category, strength, lasting, area, flip] = config.ingredients[slot.id], weight = config.weights[index], dose = config.sky[slot.id] ? 1 : slot.amount / config.dose;
-        const group = category.split('.')[0];
-        return { id: slot.id, amount: slot.amount, category, group, weight, strength: strength * weight, lasting: lasting * weight * dose, area: area * weight * dose, flip: !!flip };
-      });
+    // Blandningen [{ id, amount }] som [[id, mängd]] i platsernas ordning (samma ingrediens på flera platser slås ihop; tomma platser och okända hoppas över; himlen räknas som en)
+    entries(mix) {
+      const config = Config.buildings.enchanter.mixing, list = [];
+      for (const slot of mix.slice(0, config.slots)) {
+        if (!config.ingredients[slot.id] || !(slot.amount > 0)) continue;
+        const amount = config.sky[slot.id] ? 1 : Math.min(config.maxAmount, slot.amount), old = list.find(entry => entry[0] === slot.id);
+        if (old) old[1] = config.sky[slot.id] ? 1 : Math.min(config.maxAmount, old[1] + amount); else list.push([slot.id, amount]);
+      }
+      return list;
     },
 
-    // Blandningen som formel, eller null om den är tom. Samma blandning ger alltid samma formel.
+    // Blandningens id: ingredienserna i ordning ("sand:2,tar:1"), så att samma blandning alltid ger samma formel och ett kommando kan bära den som text
+    idOf(entries) { return entries.map(([id, amount]) => id + ':' + amount).join(','); },
+
+    // Vad blandningen kostar ur lagret (himlen är gratis)
+    costOf(entries) {
+      const config = Config.buildings.enchanter.mixing, cost = {};
+      for (const [id, amount] of entries) if (!config.sky[id]) cost[id] = amount;
+      return cost;
+    },
+
+    // Hur väl blandningen träffar ett recept, eller null om den inte duger. Varje ingrediens måste höra till receptet, antingen själv, som byte mot en saknad
+    // ingrediens ur samma familj, eller (en enda) som främmande ingrediens. Mängderna ger styrkan, ordningen, byten och för mycket ger ostadighet.
+    match(entries, recipe) {
+      const config = Config.buildings.enchanter.mixing, needs = recipe.needs;
+      if (entries.length !== needs.length) return null;
+      const pairs = [], free = entries.map((entry, index) => ({ entry, index })), open = [];
+      needs.forEach(([id, amount], index) => {
+        const at = free.findIndex(item => item.entry[0] === id);
+        if (at >= 0) pairs.push({ need: amount, have: free.splice(at, 1)[0], index, swap: false }); else open.push([id, amount, index]);
+      });
+      let foreign = null;
+      for (const [id, amount, index] of open) {
+        const at = free.findIndex(item => config.ingredients[item.entry[0]][0] === config.ingredients[id][0]);
+        if (at >= 0 && !recipe.exact) { pairs.push({ need: amount, have: free.splice(at, 1)[0], index, swap: true }); continue; }
+        if (foreign || recipe.exact) return null;
+        foreign = [id, amount, index];
+      }
+      const swaps = pairs.filter(pair => pair.swap).length;
+      if (swaps > config.maxSwaps) return null;
+      if (foreign) foreign = free.pop().entry[0];
+      let off = 0, order = 0, over = 0;
+      for (const pair of pairs) {
+        const diff = pair.have.entry[1] - pair.need, miss = Math.abs(diff);
+        if (miss > recipe.spread) return null;
+        off += miss; over += Math.max(0, diff); order += Math.abs(pair.have.index - pair.index);
+      }
+      if (off > recipe.tolerance) return null;
+      const unrest = Math.min(config.maxUnrest, swaps * config.swapUnrest + order * config.orderUnrest + over * config.overUnrest);
+      const factor = 1 - off * config.amountPenalty - swaps * config.swapPenalty - order * config.orderPenalty;
+      return factor < config.minQuality ? null : { factor, unrest, foreign };
+    },
+
+    // Receptet och träffen för blandningen, eller null. Ett rent recept går före ett med främmande ingrediens; bland jämbördiga vinner bäst träff.
+    recipeOf(entries) {
+      let best = null;
+      for (const recipe of Config.buildings.enchanter.mixing.recipes) {
+        const hit = this.match(entries, recipe);
+        if (!hit) continue;
+        const score = (hit.foreign ? 0 : 10) + hit.factor * (1 - hit.unrest);
+        if (!best || score > best.score) best = { recipe, ...hit, score };
+      }
+      return best;
+    },
+
+    // Blandningen som formel, eller null om den inte ger någon effekt. Samma blandning ger alltid samma formel.
     evaluate(mix) {
-      const config = Config.buildings.enchanter.mixing, parts = this.parts(mix), cost = {};
-      for (const part of parts) if (!config.sky[part.id]) cost[part.id] = (cost[part.id] || 0) + part.amount;
-      if (!Object.keys(cost).length) return null;
-      const sum = key => parts.reduce((total, part) => total + part[key], 0), clamp = (low, high, value) => Math.min(high, Math.max(low, value));
-      const first = parts[0], purity = parts.filter(part => part.group === first.group).reduce((total, part) => total + part.weight, 0) / sum('weight');
-      const strength = clamp(0.3, 3, sum('strength') * config.strengthScale * (1 - config.impurity * (1 - purity)));
-      const lasting = clamp(0.5, 2.5, 1 + sum('lasting')), seconds = base => Math.round(base * lasting);
-      let category = first.category;
-      if (parts.some(part => part.flip) && config.categories[category].inverse) category = config.categories[category].inverse;   // en vändare vänder formeln
-      const { kind, name } = config.categories[category], [radius, least, most] = config.kinds[kind].radius;
-      const ids = mix.slice(0, config.slots).filter(slot => config.ingredients[slot.id] && slot.amount > 0).map(slot => slot.id + ':' + slot.amount).join(',');
-      const spell = { id: ids, cost, kind, category, noun: name, strength, power: strength, lasting, purity, pure: purity === 1, radius: clamp(least, most, radius + Math.round(sum('area'))), sky: parts.map(part => config.sky[part.id]).find(Boolean) };
+      const config = Config.buildings.enchanter.mixing, entries = this.entries(mix);
+      if (entries.length < config.slots || !Object.keys(this.costOf(entries)).length) return null;
+      const id = this.idOf(entries);
+      this.cache = this.cache || {};
+      if (!(id in this.cache)) this.cache[id] = this.formula(id, entries);
+      return this.cache[id];
+    },
+
+    formula(id, entries) {
+      const config = Config.buildings.enchanter.mixing, clamp = (low, high, value) => Math.min(high, Math.max(low, value));
+      const hit = this.recipeOf(entries);
+      if (!hit) return null;
+      const dull = hit.foreign && config.families[config.ingredients[hit.foreign][0]].effect;   // främmande ingrediens: familjens egen, tråkigare effekt
+      if (hit.foreign && !dull) return null;
+      const effect = dull || hit.recipe.effect, taint = hit.foreign ? config.taintStrength : 1;
+      const [base] = config.kinds[config.categories[effect].kind].radius;
+      const radius = hit.foreign ? base : Math.round(hit.recipe.radius * (0.5 + 0.5 * hit.factor)), unrest = hit.foreign ? config.taintUnrest : hit.unrest;
+      const root = { id, cost: this.costOf(entries), mix: entries.map(([ingredient, amount]) => ({ id: ingredient, amount })), sky: entries.map(([ingredient]) => config.sky[ingredient]).find(Boolean) };
+      const strength = hit.foreign ? config.taintPower * taint * hit.factor : hit.recipe.strength * hit.factor;
+      const spell = this.shape(root, effect, { strength: clamp(0.3, 3, strength), quality: hit.factor * (1 - unrest), radius, lasting: hit.foreign ? 1 : 0.6 + 0.8 * hit.factor, recipe: !hit.foreign, super: !!hit.recipe.super && !hit.foreign });
+      return Object.assign(spell, { chance: unrest, pure: !hit.foreign && unrest === 0 });   // ren: ett recept som aldrig går fel
+    },
+
+    // Effekten för en kategori som formel
+    shape(root, category, { strength, quality, radius, lasting, recipe, super: huge }) {
+      const config = Config.buildings.enchanter.mixing, clamp = (low, high, value) => Math.min(high, Math.max(low, value));
+      const { kind, name } = config.categories[category], [, least, most] = config.kinds[kind].radius, seconds = base => Math.round(base * lasting);
+      const spell = { ...root, kind, category, noun: name, recipe, strength, power: strength, lasting, purity: quality, radius: clamp(least, most, radius) };
       switch (kind) {
-        case 'create': {   // den första ingrediensen väljer slaget, de följande väljer vilka fyndigheter som skapas (en ensam ingrediens väljer själv). Ju renare formel, desto jämnare chanser inom en familj: de sällsynta blir vanligare
-          const terrains = {}, flatten = 1 - config.rarity * purity, rest = parts.slice(1).filter(part => part.group === first.group), chosen = rest.length ? rest : [first];
-          for (const part of chosen) {
-            const table = Object.fromEntries(Object.entries(config.categories[part.category].terrains).map(([terrain, chance]) => [terrain, chance ** flatten])), total = Object.values(table).reduce((a, b) => a + b, 0);
-            for (const [terrain, chance] of Object.entries(table)) terrains[terrain] = (terrains[terrain] || 0) + chance / total * part.weight;
-          }
-          return Object.assign(spell, { terrains, count: Math.max(1, Math.round((2 + 3 * strength) * lasting)) });
+        case 'create': {   // familjens fyndigheter, en sällsyntare blandning av alla; ett sant recept jämnar ut chanserna (de sällsynta blir vanligare)
+          const flatten = 1 - config.rarity * quality, table = config.categories[category].terrains;
+          return Object.assign(spell, { terrains: Object.fromEntries(Object.entries(table).map(([terrain, chance]) => [terrain, chance ** flatten])), count: Math.max(1, Math.round((2 + 3 * strength) * lasting)) });
         }
         case 'break': return Object.assign(spell, { power: 3.3 - strength });   // tar alltid bort allt inom radien; ett starkare förtrollat jordskalv vilar kortare
         case 'yield': return Object.assign(spell, { bonus: Math.min(1.5, Math.round(0.6 * strength * 10) / 10), seconds: seconds(15 + 15 * strength) });
@@ -97,10 +170,7 @@
         case 'pace': case 'carriers': return Object.assign(spell, { factor: Math.min(3.5, Math.round((1 + 0.8 * strength) * 10) / 10), seconds: seconds(15 + 15 * strength) });
         case 'rain': case 'storm': return Object.assign(spell, { factor: Math.round(2 + 2 * strength), seconds: seconds(15 + 15 * strength) });
         case 'sky': return Object.assign(spell, { seconds: seconds(40 + 30 * strength) });
-        case 'tornado': {   // nästan allt måste vara rätt för en supertornado: stor styrka och en uråldrig relik
-          const huge = strength >= config.superStrength && parts.some(part => part.id === config.superIngredient);
-          return Object.assign(spell, { super: huge, seconds: Math.min(30, seconds(12 + 8 * strength)), noun: huge ? 'Supercyclone' : name });
-        }
+        case 'tornado': return Object.assign(spell, { super: huge, seconds: Math.min(30, seconds(12 + 8 * strength)), noun: huge ? 'Supercyclone' : name });
         case 'lava': return Object.assign(spell, { seconds: seconds(15 + 15 * strength) });
         case 'meteors': return Object.assign(spell, { seconds: seconds(10 + 8 * strength) });
         case 'smite': return Object.assign(spell, { health: clamp(0.05, 0.5, Math.round((0.55 - 0.2 * strength) * 100) / 100) });
@@ -108,10 +178,12 @@
       }
     },
 
-    // Formeln för en id-sträng ("earth:2,fire:1"), så att ett kommando kan bära formeln som text
-    fromId(id) {
-      return this.evaluate(String(id).split(',').filter(Boolean).map(part => { const [slot, amount] = part.split(':'); return { id: slot, amount: Number(amount) }; }));
+    // Blandningen för en id-sträng ("sand:2,tar:1")
+    mixOf(id) {
+      return String(id).split(',').filter(Boolean).map(part => { const [slot, amount] = part.split(':'); return { id: slot, amount: Number(amount) }; });
     },
+
+    fromId(id) { return this.evaluate(this.mixOf(id)); },
 
     // Dagens recept ur trollboken som formler
     recipes() { return this.book.map(recipe => this.evaluate(recipe.mix)).filter(Boolean); },
@@ -252,11 +324,54 @@
       CityBuilder.Pathfinder.clearCache();
     },
 
+    // Går en ostadig formel fel? Då hamnar den ALLTID någon annanstans än där spelaren tryckte, längre bort ju mer fel blandningen är (inom synfältet), och blir
+    // ibland dessutom en annan effekt. Allt slumpas (Utils.random) bland alla effekter och ställen, så att det känns som ren tur.
+    // Returnerar { spell, x, y } eller null.
+    misfireOf(spell, x, y, player) {
+      if (!spell.chance || Utils.random() >= spell.chance) return null;
+      const config = Config.buildings.enchanter.mixing, wrong = config.misfire, reach = Math.min(1, spell.chance / config.maxUnrest);
+      let moved = null;
+      for (let tries = 0; tries < 30 && !moved; tries++) {
+        const angle = Utils.random() * Math.PI * 2, far = 2 + (wrong.far - 2) * reach * (0.3 + 0.7 * Utils.random());
+        const nx = Math.round(x + Math.cos(angle) * far), ny = Math.round(y + Math.sin(angle) * far);
+        if ((nx !== x || ny !== y) && World.getTile(nx, ny) && !Construction.isHidden(nx, ny, player)) moved = { x: nx, y: ny };
+      }
+      if (moved) ({ x, y } = moved);
+      if (Utils.random() < wrong.effect) {
+        const categories = Object.keys(config.categories).filter(category => category !== spell.category), category = categories[Math.floor(Utils.random() * categories.length)];
+        const [, least, most] = config.kinds[config.categories[category].kind].radius, [weak, strong] = wrong.strength;
+        const strength = weak + Utils.random() * (strong - weak);
+        spell = this.shape({ id: spell.id, cost: spell.cost, mix: spell.mix }, category, { strength, quality: 1, radius: Math.round(least + Utils.random() * (most - least)), lasting: 0.6 + Utils.random() * 0.8, recipe: false, super: false });
+      }
+      return { spell, x, y };
+    },
+
+    // Kastar en blandning som inte ger någon effekt: ingredienserna förbrukas, förtrollaren vilar en stund och blandningen kommer ihåg som misslyckad
+    fizzle(building, id) {
+      const cost = this.costOf(this.entries(this.mixOf(id)));
+      if (!Object.keys(cost).length) return 'nothing';
+      if (building.buildProgress < 1) return 'unbuilt';
+      if ((building.spellCooldown || 0) > 0) return 'cooldown';
+      if (!Economy.canAfford(cost, building.player)) return 'cost';
+      Economy.spend(cost, building.player);
+      this.tried[this.idOf(this.entries(this.mixOf(id)))] = 'none';
+      this.persist();
+      building.spellCooldown = building.spellTotal = Config.buildings.enchanter.spellRecharge.min;
+      return null;
+    },
+
     // Läser formeln: returnerar orsaken om den misslyckas (ingenting förbrukas då), annars null
-    cast(building, spell, x, y) {
+    cast(building, spell, x, y) {   // this.misfire: { spell, x, y } om blandningen gick fel (annars null)
       const problem = this.problem(building, spell, x, y);
       if (problem) return problem;
       Economy.spend(spell.cost, building.player);
+      const intended = spell;
+      this.misfire = this.misfireOf(spell, x, y, building.player);
+      if (this.misfire) {
+        ({ spell, x, y } = this.misfire);
+        this.tried[intended.id] = 'bad';
+        this.persist();
+      }
       const zone = effect => {
         const seconds = effect.seconds || 1.5;   // smiter och läkning har ingen varaktighet, bara en blixt
         this.addZone({ kind: effect.kind, x, y, radius: effect.radius, player: building.player, left: seconds, total: seconds, factor: effect.factor, bonus: effect.bonus });
@@ -271,8 +386,8 @@
       else if (spell.kind === 'summon') CityBuilder.Monsters.summon(spell.monster, spell.count, x, y, spell.radius, building.player);
       else if (spell.kind === 'storm') { Weather.spawnFlood(x, y, spell.radius, spell.seconds); CityBuilder.Sound?.play('weather.thunder'); zone(spell); }
       else { if (spell.kind === 'smite') this.smite(spell, x, y, building.player); else if (spell.kind === 'mend') this.mend(spell, x, y, building.player); zone(spell); }
-      building.spellCooldown = building.spellTotal = this.recharge(spell);
-      this.locks[this.lockKey(building.player, this.group(spell))] = building.spellCooldown;
+      building.spellCooldown = building.spellTotal = this.recharge(intended);
+      this.locks[this.lockKey(building.player, this.group(intended))] = building.spellCooldown;
       CityBuilder.Levels?.onCast(building.player);
       CityBuilder.Sound?.play('built', { x, y });
       return null;
