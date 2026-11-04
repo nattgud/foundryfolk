@@ -440,35 +440,37 @@
     });
   };
 
-  // Områdesfärger: varje kategori ritas som heltäckande cirklar (hårda kanter) runt sina byggnader i en mellanbild (några bildpunkter per ruta) som sedan sträcks ut över
-  // kartan, under byggnaderna men över terrängen. Cirklar av samma kategori flyter ihop till ett område med jämn färg (de ritas täckande först och görs genomskinliga när bilden läggs på kartan). Bara spelarens egna byggnader (Game.showDistricts).
-  const districtCanvas = document.createElement('canvas');
+  // Områdesfärger: varje ruta nära spelarens byggnader tillhör högst ETT distrikt, den närmaste byggnadens kategori (inom radius), så distrikten överlappar aldrig
+  // och får raka, hårda kanter. Rutorna läggs i en bild med en bildpunkt per ruta som sträcks ut över kartan utan utjämning, under byggnaderna men över terrängen.
+  const districtCanvas = document.createElement('canvas'), districtRgb = {};
   Renderer.addLayer('districts', (context, renderer) => {
     if (!CityBuilder.Game.showDistricts) return;
-    const { radius, alpha, resolution, colors } = Config.settings.districts, tileSize = renderer.tileSize, view = renderer.viewBounds(radius * tileSize);
-    const groups = {};
+    const { radius, alpha, colors } = Config.settings.districts, tileSize = renderer.tileSize, view = renderer.viewBounds(radius * tileSize), names = Object.keys(colors);
+    const left = Math.floor(view.left / tileSize), top = Math.floor(view.top / tileSize);   // hela rutor: distrikten står stilla när kartan rullar
+    const columns = Math.ceil(view.right / tileSize) - left + 1, rows = Math.ceil(view.bottom / tileSize) - top + 1, reach = Math.floor(radius);
+    const owner = new Int8Array(columns * rows).fill(-1), nearest = new Float32Array(columns * rows).fill(Infinity);
+    let any = false;
     for (const building of World.buildings) {
-      if (building.player !== Players.HUMAN || building.definition.pile || !colors[building.definition.category] || outside(view, (building.x + .5) * tileSize, (building.y + .5) * tileSize)) continue;
-      (groups[building.definition.category] = groups[building.definition.category] || []).push(building);
-    }
-    const categories = Object.keys(groups);
-    if (!categories.length) return;
-    const left = Math.floor(view.left / tileSize), top = Math.floor(view.top / tileSize);   // hela rutor: fläckarna står stilla när kartan rullar
-    const columns = Math.ceil(view.right / tileSize) - left + 1, rows = Math.ceil(view.bottom / tileSize) - top + 1;
-    if (districtCanvas.width !== columns * resolution || districtCanvas.height !== rows * resolution) { districtCanvas.width = columns * resolution; districtCanvas.height = rows * resolution; }
-    const small = districtCanvas.getContext('2d'), smoothing = context.imageSmoothingEnabled;
-    context.imageSmoothingEnabled = true;
-    context.globalAlpha = alpha;
-    for (const category of categories) {
-      small.clearRect(0, 0, districtCanvas.width, districtCanvas.height);
-      for (const building of groups[category]) {
-        const x = (building.x + .5 - left) * resolution, y = (building.y + .5 - top) * resolution, reach = radius * resolution;
-        small.fillStyle = colors[category];
-        small.beginPath(); small.arc(x, y, reach, 0, Math.PI * 2); small.fill();
+      const kind = names.indexOf(building.definition.category);
+      if (building.player !== Players.HUMAN || building.definition.pile || kind < 0) continue;
+      for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
+        const x = building.x + dx - left, y = building.y + dy - top, distance = Math.hypot(dx, dy), at = y * columns + x;
+        if (x < 0 || y < 0 || x >= columns || y >= rows || distance > radius || distance >= nearest[at]) continue;
+        nearest[at] = distance; owner[at] = kind; any = true;
       }
-      context.drawImage(districtCanvas, left * tileSize, top * tileSize, columns * tileSize, rows * tileSize);
     }
-    context.globalAlpha = 1;
+    if (!any) return;
+    if (districtCanvas.width !== columns || districtCanvas.height !== rows) { districtCanvas.width = columns; districtCanvas.height = rows; }
+    const small = districtCanvas.getContext('2d'), image = small.createImageData(columns, rows);
+    for (let at = 0; at < owner.length; at++) {
+      if (owner[at] < 0) continue;
+      const color = districtRgb[names[owner[at]]] || (districtRgb[names[owner[at]]] = [1, 3, 5].map(i => parseInt(colors[names[owner[at]]].slice(i, i + 2), 16)));
+      image.data.set([color[0], color[1], color[2], Math.round(alpha * 255)], at * 4);
+    }
+    small.putImageData(image, 0, 0);
+    const smoothing = context.imageSmoothingEnabled;
+    context.imageSmoothingEnabled = false;   // hårda kanter
+    context.drawImage(districtCanvas, left * tileSize, top * tileSize, columns * tileSize, rows * tileSize);
     context.imageSmoothingEnabled = smoothing;
   });
 

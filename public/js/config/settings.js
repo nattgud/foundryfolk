@@ -13,10 +13,10 @@ CityBuilder.Config.settings = {
   // när capacity djur finns i närheten). Ungen föds högst dispersal rutor bort.
   animalBreeding: { radius: 12, capacity: 6, boost: 8, dispersal: 6 },
   animalTreeSpreadChance: 0.005,
-  // Områdesfärger (render/layers.js, tangenten G): ett nästan helt genomskinligt färgfält med hårda kanter under byggnaderna, en färg per kategori, så att man ser vad som hör ihop.
-  // radius: hur långt fläcken når från en byggnad (rutor), alpha: täckning (0.12 = 88 % genomskinligt; 0.05 syns knappt), resolution: bildpunkter per ruta i den lilla mellanbilden (kantens skärpa och kostnad)
+  // Områdesfärger (render/layers.js, tangenten G): distrikt med hårda kanter under byggnaderna, en färg per kategori. Varje ruta tillhör högst ett distrikt (den närmaste
+  // byggnadens kategori), så de överlappar aldrig. radius: hur långt ett distrikt når från en byggnad (rutor), alpha: täckning (0.15 = 85 % genomskinligt)
   districts: {
-    radius: 2.4, alpha: 0.12, resolution: 12,
+    radius: 2.5, alpha: 0.15,
     colors: { construction: '#d98a3d', food: '#4cc254', metalwork: '#3f84f0', valuables: '#f0cf3a', war: '#e5484d', magic: '#a85cf0', trade: '#2ec7b7' },
   },
   // Verktyg går inte åt (de följer med huset och kommer tillbaka vid rivning), men varje hus som kräver ett behöver ett eget. Antalen räcker till
