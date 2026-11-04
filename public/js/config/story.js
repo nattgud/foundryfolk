@@ -22,7 +22,7 @@
      rivals, ai   antal fiender (0 om inget anges) och deras styrka som en banas nummer; races: { spelare: ras } (se Players.race)
      start        { buildings: [...] }: färdiga byggnader vid starten (inga bärare). Varje post är { type, dx, dy } (exakt plats, rutor från HQ)
                   eller bara ett id (automatisk plats runt HQ). Placera dem i spelet och kör CityBuilder.Story.layout() i konsolen för färdiga rader.
-     eye, fog     eye: true = Eye of Shades står närmare fienden än något annat, eye: { dx, dy } = på en bestämd plats; fog: konstant dimma tills den förstörs
+     eye, fog     eye: true = Eye of Shades står närmare fienden än något annat, eye: { reach } = längre eller kortare dit (andel av avståndet mellan baserna, annars 0,3), eye: { dx, dy } = på en bestämd plats; fog: konstant dimma tills den förstörs
      end          'hq': kapitlet är klart när fiendens HQ förstörs
      waves        { from, every (sekunder), size: [första, +1 var N:e våg, högst (utelämnas: ingen gräns)], kinds: [soldattyper i turordning], maxAlive (valfritt), until: 'fog' }: kapitlets egna anfallsvågor från
                   fiendens HQ mot spelarens, oberoende av datorns vanliga anfallsregler (ai.js). until: 'fog' = tills dimman lyft, annars tills kapitlet är klart
@@ -228,16 +228,22 @@
       // 7
       { name: 'Relics and Starlight',
         start: { buildings: [
-          { type: 'hunters_cottage', dx: -7, dy: -5 },
-          { type: 'quarry', dx: 7, dy: -5 },
+          { type: 'clay_pit', dx: -2, dy: -8 },
+          { type: 'brickworks', dx: -3, dy: -7 },
           { type: 'quarry', dx: 2, dy: -4 },
-          { type: 'herb_gatherer', dx: -11, dy: -3 },
           { type: 'woodcutter', dx: -2, dy: -3 },
-          { type: 'sawmill', dx: -2, dy: 2 },
+          { type: 'herb_gatherer', dx: 10, dy: -2 },
+          { type: 'kitchen', dx: -9, dy: -1 },
+          { type: 'bakery', dx: -8, dy: -1 },
+          { type: 'mill', dx: -7, dy: -1 },
+          { type: 'farm', dx: -6, dy: -1 },
+          { type: 'hunters_cottage', dx: -2, dy: -1 },
+          { type: 'warehouse', dx: -6, dy: 1 },
+          { type: 'sawmill', dx: -1, dy: 2 },
           { type: 'woodcutter', dx: -2, dy: 3 },
-          { type: 'fishing_hut', dx: -9, dy: 4 },
+          { type: 'fishing_hut', dx: -8, dy: 4 },
           { type: 'well', dx: -7, dy: 5 },
-          { type: 'woodcutter', dx: 2, dy: 6 },
+          { type: 'berry_gatherer', dx: 2, dy: 6 },
         ] },
         eye: true,
         goals: [{ key: 's:ancient_relic', type: 'stock', resource: 'ancient_relic', amount: 2 }, { key: 's:fallen_star', type: 'stock', resource: 'fallen_star', amount: 2 }],
@@ -388,7 +394,7 @@
       // 11
       { name: 'The Eye Closes',
         start: { buildings: [] },
-        eye: true,
+        eye: { reach: 0.45 },
         fog: true,
         rivals: 1,
         ai: 20,

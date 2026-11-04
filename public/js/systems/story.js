@@ -7,9 +7,9 @@
   const { Config, World, Players, Utils } = CityBuilder;
 
   const SPREAD = 2;           // minsta avstånd (rutor) mellan färdiga byggnader
-  const EYE_REACH = 0.55;     // hur långt mot fienden Eye of Shades står (andel av avståndet mellan baserna)
-  const EYE_MAX = 70;         // ... och högst så många rutor från HQ
-  const EYE_ALONE = 32;       // utan fiende: så långt från HQ
+  const EYE_REACH = 0.3;      // hur långt mot fienden Eye of Shades står (andel av avståndet mellan baserna), om kapitlet inte anger eye: { reach }
+  const EYE_MAX = 40;         // ... och högst så många rutor från HQ
+  const EYE_ALONE = 16;       // utan fiende: så långt från HQ
   const TORNADO_LIFE = 45;
 
   const Story = {
@@ -56,7 +56,7 @@
     // Kapitlets start: byggnaderna från föregående mål står redo och Eye of Shades står mot fienden.
     // En byggnad i start.buildings är antingen { type, dx, dy } (exakt plats, mätt i rutor från HQ) eller bara ett id (automatisk plats runt HQ).
     // Inriktningen är själva typen: layout() skriver t.ex. 'herb_gatherer' eller 'copper_mine'. Ett 'gatherer' eller 'mine' får den inriktning som passar platsen.
-    // eye: true placerar Eye of Shades automatiskt mot fienden, eye: { dx, dy } på en bestämd plats.
+    // eye: true placerar Eye of Shades automatiskt mot fienden, eye: { reach } längre eller kortare dit (andel av avståndet mellan baserna), eye: { dx, dy } på en bestämd plats.
     begin() {
       const chapter = this.chapter, hq = World.headquarters;
       if (!chapter || !hq) return;
@@ -69,7 +69,7 @@
       else if (chapter.eye) {
         const rival = World.hqOf(Players.ENEMY);
         const angle = rival ? Math.atan2(rival.y - hq.y, rival.x - hq.x) : chapter.number * 2.1;
-        const distance = rival ? Math.min(EYE_MAX, Math.hypot(rival.x - hq.x, rival.y - hq.y) * EYE_REACH) : EYE_ALONE;
+        const distance = rival ? Math.min(EYE_MAX, Math.hypot(rival.x - hq.x, rival.y - hq.y) * (chapter.eye.reach ?? EYE_REACH)) : EYE_ALONE;
         this.place('eye_of_shades', hq.x + Math.cos(angle) * distance, hq.y + Math.sin(angle) * distance);
       }
       if (chapter.fog) CityBuilder.Levels.markTold('fog:on');
