@@ -111,7 +111,7 @@
           { type: 'quarry', dx: 3, dy: 4 },
         ] },
         goals: [more('berries', 25), more('fish', 25)],
-        letter: letter(['My thanks. Your wagons have reached the camps, and the men speak your name.',
+        letter: letter(['My thanks. Your carriers have reached the camps, and the men speak your name.',
         'Now they need food. Send berries and fish, as much as you can find. A hungry soldier is of little use to anyone.']) },
       // 3
       { name: 'Walls of Brick',
@@ -284,12 +284,12 @@
         start: { buildings: [] },
         eye: true,
         goals: [{ key: 'x:carriers', type: 'carriers', amount: 80 }, { key: 's:steel', type: 'stock', resource: 'steel', amount: 10 }],
-        letter: letter(['The roads are not safe and the wagons do not arrive.',
-        'Build yours, and build them well. I must have steel for the smiths before the cold sets in.',
+        letter: letter(['The roads are not safe and the supplies do not arrive.',
+        'Put more carriers on the roads, and keep the roads in good repair. I must have steel for the smiths before the cold sets in.',
         'The crown cannot afford further delays.'], true),
         dialogue: [
           say('thordram', '[calm]Eighty carriers. A road is only as long as the legs on it.'),
-          say('albertha', '[happy]And a village is only as strong as its roads! The more wagons, the better.'),
+          say('albertha', '[happy]And a village is only as strong as its roads! The more carriers, the better.'),
           say('reeve', '[question]Why does the crown need so many of mine?'),
           say('albertha', '[calm]To carry what must be carried, Reeve.'),
           say('thordram', 'And to be somewhere, when it is needed.'),
@@ -298,7 +298,7 @@
         ],
         events: [
           { when: { type: 'carriers', amount: 55 }, tell: [
-            say('albertha', '[happy]Look at them! So many little wagons!'),
+            say('albertha', '[happy]Look at them! So many little carriers!'),
             say('reeve', 'They are not little.'),
             say('albertha', '[happy]Everything is little when you look at it from far away.'),
             say('thordram', 'Remarkably profound.'),
@@ -308,7 +308,7 @@
           ] },
         ],
         after: [
-          say('albertha', '[happy]Such a lovely lot of wagons! Thordram, are they not lovely?'),
+          say('albertha', '[happy]Such a lovely lot of carriers! Thordram, are they not lovely?'),
           say('thordram', 'They will do.'),
           say('albertha', '[happy]He likes them.'),
           say('thordram', 'I tolerate them.'),
@@ -466,7 +466,7 @@
           say('baelthar', 'A crown is a useful disguise.'),
         ],
         after: [
-          say('reeve', '[sad]Every wall, every wagon, every gate. I built the war they wanted.'),
+          say('reeve', '[sad]Every wall, every road, every gate. I built the war they wanted.'),
           say('mordrath', 'You did.'),
           say('reeve', 'And you wore the crown.'),
           say('baelthar', 'We did.'),
@@ -586,7 +586,7 @@
         end: 'hq',
         dialogue: [
           say('reeve', 'The first outpost holds the road where it meets the hills. If I take it, the rest may follow.'),
-          say('reeve', 'My roads brought their wagons. Now they will bring mine.'),
+          say('reeve', 'My roads brought their supplies. Now they will bring mine.'),
           say('mordrath', 'Clever. Careful.'),
           say('reeve', "I'm beginning to understand why you liked my roads so much."),
           say('baelthar', 'We did put them to excellent use.'),
@@ -620,7 +620,7 @@
           say('baelthar', 'Used? Such an ugly word. We preferred partnership.'),
           say('reeve', 'You gave me orders.'),
           say('baelthar', 'And you followed them. A remarkably productive partnership.'),
-          say('reeve', 'I can build you more wagons.'),
+          say('reeve', 'I can build you more roads.'),
           say('baelthar', 'Really?'),
           say('reeve', 'No.'),
           say('mordrath', 'A disappointing negotiation.'),
