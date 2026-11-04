@@ -70,7 +70,7 @@
           const letter = current.letter, sign = story.signature;
           dialog.classList.add('is-letter');
           text.append(
-            make('p', 'story-greeting', t(story.greeting, { village: t(story.village) })),
+            make('p', 'story-greeting', t(letter.greeting || story.greeting, { village: t(story.village) })),
             ...letter.lines.map(line => make('p', '', t(line))),
             make('p', 'story-signature', t(letter.throne ? sign.throne : sign.realm) + ','),
             make('p', 'story-signature story-name', t(sign.name)));
@@ -82,9 +82,9 @@
             if (typing) return typing();
             if (line >= current.lines.length) return next();
             const { who, text: spoken } = current.lines[line++], speaker = story.speakers[who] || { name: who, color: '' };
-            const row = make('p', 'story-line'), name = make('b', '', t(speaker.name) + ': '), words = make('span');
+            const row = make('p', speaker.narrator ? 'story-line story-narration' : 'story-line'), name = make('b', '', t(speaker.name) + ': '), words = make('span');
             name.style.color = speaker.color;
-            row.append(name, words);
+            row.append(...(speaker.narrator ? [words] : [name, words]));   // berättaren har inget namn och skrivs kursivt
             text.append(row);
             print(words, t(spoken), who);
             action.textContent = line >= current.lines.length && last ? t('Continue') : t('Next');
@@ -171,6 +171,7 @@
         .story-signature { text-align: right; margin: 0; }
         .story-signature + .story-signature { margin-top: -8px; font-style: italic; }
         .story-line b { margin-right: 2px; }
+        .story-narration { font-style: italic; opacity: .85; }
         .story-next { align-self: flex-end; min-width: 140px; }
       `;
       document.head.append(style);

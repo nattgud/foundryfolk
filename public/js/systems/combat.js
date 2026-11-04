@@ -383,7 +383,7 @@
       }
 
       // Fri soldat: ta en ledig plats i en garnison om det finns någon, annars vakta posten
-      if (unit.homeSearchTimer <= 0) {
+      if (unit.homeSearchTimer <= 0 && !unit.wave) {
         unit.homeSearchTimer = HOME_SEARCH_SECONDS;
         const newHome = Garrison.findHome(unit);
         if (newHome) { Garrison.assign(unit, newHome); return; }

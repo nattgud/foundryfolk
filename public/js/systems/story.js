@@ -123,6 +123,38 @@
       if (event.meteors && hq) Weather.spawnMeteors(hq.x + 8, hq.y + 6, 10, event.meteors);
     },
 
+    // Anfallsvågor: kapitlets egna fiender, oberoende av datorns vanliga anfallsregler (ai.js). chapter.waves:
+    //   { from, every (sekunder), size: [första, växer 1 var N:e våg, högst], kinds: [soldattyper i turordning], maxAlive, until: 'fog' }
+    // Soldaterna tillhör första datorspelaren, skapas vid dess HQ och går mot spelarens huvudlager, där de slår det de ser. until: 'fog' avslutar vågorna
+    // när dimman lyft (Eye of Shades förstörd), annars fortsätter de tills kapitlet är klart.
+    waves(chapter) {
+      const wave = chapter.waves, Levels = CityBuilder.Levels;
+      if (!wave || Levels.complete || Levels.seconds < wave.from || (wave.until === 'fog' && Levels.told('fog:lifted'))) return;
+      const n = Math.floor((Levels.seconds - wave.from) / wave.every), key = 'wave:' + n;
+      if (Levels.told(key)) return;
+      Levels.markTold(key);
+      this.launchWave(wave, n);
+    },
+
+    launchWave(wave, n) {
+      const home = World.headquarters, rival = World.hqOf(Players.ENEMY);
+      if (!home || !rival) return;
+      const alive = World.units.filter(unit => unit.wave && !unit.removed).length, [first, every, cap] = wave.size;
+      const count = Math.min(cap, first + Math.floor(n / every), wave.maxAlive - alive);
+      if (count <= 0) return;
+      const spots = [];
+      for (let dy = -9; dy <= 9; dy++) for (let dx = -9; dx <= 9; dx++) {
+        const x = rival.x + dx, y = rival.y + dy, tile = World.getTile(x, y), distance = Utils.distance(dx, dy);
+        if (distance >= 5 && distance <= 9 && tile && Number.isFinite(Config.terrain[tile.terrainType].walkCost) && !World.buildingAt(x, y)) spots.push({ x, y });
+      }
+      for (let i = 0; i < count && spots.length; i++) {
+        const spot = spots.splice(Math.floor(Utils.random() * spots.length), 1)[0];
+        const unit = CityBuilder.Combat.spawnSoldier(wave.kinds[i % wave.kinds.length], spot.x, spot.y, Players.ENEMY);
+        unit.post = { x: home.x + .5, y: home.y + .5 };
+        unit.wave = true;   // en vågsoldat söker aldrig en garnison utan går till posten (Combat.standDown)
+      }
+    },
+
     update() {
       const chapter = this.chapter, Levels = CityBuilder.Levels, Weather = CityBuilder.Weather;
       if (!chapter) return;
@@ -141,10 +173,12 @@
         if (event.at === undefined && !event.goal && !event.when) return;
         if (event.at !== undefined && Levels.seconds < event.at) return;
         if (event.goal && !Levels.progress()[event.goal - 1]?.done) return;
-        if (event.when && Levels.have(event.when) < event.when.amount) return;
+        if ([].concat(event.when || []).some(need => Levels.have(need) < need.amount)) return;   // when kan vara flera villkor som alla ska gälla
         Levels.markTold('event:' + i);
         this.fire(event);
       });
+
+      this.waves(chapter);
 
       // Dimman ligger över kapitlet så länge Eye of Shades står. När den är borta lyfter dimman och rådgivarna lämnar.
       if (chapter.fog && Levels.told('fog:on') && !Levels.told('fog:lifted')) {
