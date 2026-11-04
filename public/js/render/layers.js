@@ -440,6 +440,74 @@
     });
   };
 
+  // Resursen på en ruta (träd, sten, malm, bär ...) ritad på nytt ovanpå distriktet, så att färgen hamnar under resurserna men över marken. Samma bild och spegling som i
+  // terrängbrickan; bilder med gräs som bakgrund klipps ut, så att färgen syns genom bakgrunden. Hela rutor (vatten, sand, berg) är mark och får färgen över sig.
+  const drawResource = (context, x, y, left, top, size) => {
+    const tile = World.getTile(x, y), type = tile?.terrainType;
+    if (!type || type === 'grass' || WHOLE_TILE.has(type)) return;
+    const terrain = Config.terrain[type];
+    let image = Assets.getVariant(terrain.image, x, y);
+    if (tile.ground === 'sand' && terrain.sandImage) image = Assets.get(terrain.sandImage) || image;
+    if (!image) return;
+    if (!isTransparent(image) && !(image = cutOut(image, Assets.getVariant(Config.terrain.grass.image, x, y)))) return;
+    if (CLUSTERS.has(type)) drawFlipped(context, image, left, top, size, size, Utils.hash(x, y, 80) < 0.5, false);
+    else context.drawImage(image, left, top, size, size);
+  };
+
+  // Områdesfärger: varje ruta nära spelarens byggnader tillhör högst ETT distrikt, den närmaste byggnadens kategori (inom radius), så distrikten överlappar aldrig
+  // och får raka, hårda kanter. Rutorna läggs i en bild med en bildpunkt per ruta som sträcks ut över kartan utan utjämning, under byggnaderna men över terrängen.
+  const districtCanvas = document.createElement('canvas'), districtRgb = {};
+  Renderer.addLayer('districts', (context, renderer) => {
+    if (!CityBuilder.Game.showDistricts) return;
+    const { radius, alpha, colors } = Config.settings.districts, tileSize = renderer.tileSize, view = renderer.viewBounds(radius * tileSize), names = Object.keys(colors);
+    const left = Math.floor(view.left / tileSize), top = Math.floor(view.top / tileSize);   // hela rutor: distrikten står stilla när kartan rullar
+    const columns = Math.ceil(view.right / tileSize) - left + 1, rows = Math.ceil(view.bottom / tileSize) - top + 1, reach = Math.floor(radius);
+    const owner = new Int8Array(columns * rows).fill(-1), nearest = new Float32Array(columns * rows).fill(Infinity);
+    let any = false;
+    for (const building of World.buildings) {
+      const kind = names.indexOf(building.definition.category);
+      if (building.player !== Players.HUMAN || building.definition.pile || kind < 0) continue;
+      for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
+        const x = building.x + dx - left, y = building.y + dy - top, distance = Math.hypot(dx, dy), at = y * columns + x;
+        if (x < 0 || y < 0 || x >= columns || y >= rows || distance > radius || distance >= nearest[at]) continue;
+        nearest[at] = distance; owner[at] = kind; any = true;
+      }
+    }
+    if (!any) return;
+    if (districtCanvas.width !== columns || districtCanvas.height !== rows) { districtCanvas.width = columns; districtCanvas.height = rows; }
+    const small = districtCanvas.getContext('2d'), image = small.createImageData(columns, rows);
+    for (let at = 0; at < owner.length; at++) {
+      if (owner[at] < 0) continue;
+      const color = districtRgb[names[owner[at]]] || (districtRgb[names[owner[at]]] = [1, 3, 5].map(i => parseInt(colors[names[owner[at]]].slice(i, i + 2), 16)));
+      image.data.set([color[0], color[1], color[2], Math.round(alpha * 255)], at * 4);
+    }
+    small.putImageData(image, 0, 0);
+    const smoothing = context.imageSmoothingEnabled;
+    context.imageSmoothingEnabled = false;   // hårda kanter
+    context.drawImage(districtCanvas, left * tileSize, top * tileSize, columns * tileSize, rows * tileSize);
+    context.imageSmoothingEnabled = smoothing;
+    // Kantlinje längs distriktens gräns (varje ruta ritar sin egen sida invid sig, så två distrikt som möts får var sin linje), under resurserna
+    const { alpha: edgeAlpha, width: edgeWidth } = Config.settings.districtEdge, line = Math.max(edgeWidth / renderer.zoom, 1), half = line / 2;
+    context.save();
+    context.globalAlpha = edgeAlpha;
+    context.lineWidth = line;
+    names.forEach((name, kind) => {
+      context.beginPath();
+      for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) {
+        if (owner[y * columns + x] !== kind) continue;
+        const px = (left + x) * tileSize, py = (top + y) * tileSize, other = (dx, dy) => owner[(y + dy) * columns + x + dx] !== kind || x + dx < 0 || x + dx >= columns || y + dy < 0 || y + dy >= rows;
+        if (other(0, -1)) { context.moveTo(px, py + half); context.lineTo(px + tileSize, py + half); }
+        if (other(0, 1)) { context.moveTo(px, py + tileSize - half); context.lineTo(px + tileSize, py + tileSize - half); }
+        if (other(-1, 0)) { context.moveTo(px + half, py); context.lineTo(px + half, py + tileSize); }
+        if (other(1, 0)) { context.moveTo(px + tileSize - half, py); context.lineTo(px + tileSize - half, py + tileSize); }
+      }
+      context.strokeStyle = colors[name];
+      context.stroke();
+    });
+    context.restore();
+    for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) if (owner[y * columns + x] >= 0) drawResource(context, left + x, top + y, (left + x) * tileSize, (top + y) * tileSize, tileSize);
+  });
+
   Renderer.addLayer('buildings', (context, renderer) => {
     const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize);
     for (const building of World.buildings) {

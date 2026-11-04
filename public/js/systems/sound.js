@@ -109,6 +109,9 @@
     },
   };
 
+  // Ett trollformelljud: seconds långt, build() ger funktionen (tid, andel) -> värde (med eget tillstånd för filter), jämnad ut med finish()
+  const spellSound = (seconds, build, peak = 0.65) => ({ synth: rate => finish(render(seconds, build())(rate), peak), volume: 0.8, maxVoices: 2, cooldown: 0.1 });
+
   const DEFAULT_SOUNDS = {
     click: { synth: render(0.05, (time, p) => Math.sin(TAU * 1600 * time) * Math.pow(1 - p, 3) * 0.45), volume: 0.6, cooldown: 0.04, maxVoices: 3 },
     build: { loop: true, synth: render(0.22, (time, p) => (Math.sin(TAU * (170 - 90 * p) * time) * 0.8 + (Math.random() * 2 - 1) * 0.3 * (1 - p)) * Math.pow(1 - p, 2)), maxVoices: 3 },
@@ -144,6 +147,23 @@
     died: { synth: render(0.4, (time, p) => Math.sin(TAU * (320 - 200 * p) * time) * 0.35 * Math.pow(1 - p, 1.5)), volume: 0.6, ...EFFECT },
     destroyed: { synth: (() => { let low = 0; return render(0.6, (time, p) => { low += (noise() - low) * 0.25; return low * 1.4 * Math.pow(1 - p, 1.5); }); })(), volume: 0.8, ...EFFECT },
     drop: { synth: render(0.04, (time, p) => Math.sin(TAU * 900 * time) * Math.pow(1 - p, 3) * 0.3), volume: 0.5, cooldown: 0.05, maxVoices: 4 },
+    // Trollformler: ett eget ljud för varje slag (spells.js spelar spell_<slag> när formeln lyckas) och ett för en blandning som inte ger något. Egna filer:
+    // settings.audio.sounds.spell_create osv. Slag: create break yield surge pace carriers rain sky tornado lava meteors smite mend summon (storm har åskan).
+    spell_fizzle: spellSound(0.5, () => (time, p) => (noise() * (Math.random() < 0.45 ? 1 : 0.15) * 0.35 + Math.sin(TAU * (520 - 380 * p) * time) * 0.15) * Math.pow(1 - p, 1.4), 0.5),
+    spell_create: spellSound(0.9, () => (time, p) => (note(392, time, 0, 0.5) + note(494, time, 0.12, 0.5) + note(587, time, 0.24, 0.55) + note(784, time, 0.36, 0.5) * 0.7) * 0.4 + Math.sin(TAU * 70 * time) * Math.pow(1 - p, 6) * 0.5),
+    spell_break: spellSound(1, () => { const low = lowPass(0.07); return (time, p) => low(noise()) * 3 * Math.pow(1 - p, 1.6) + Math.sin(TAU * (75 - 40 * p) * time) * 0.6 * Math.pow(1 - p, 2) + noise() * 0.6 * Math.pow(1 - p, 30); }),
+    spell_yield: spellSound(0.9, () => (time) => (note(523, time, 0, 0.45) + note(659, time, 0.15, 0.45) + note(784, time, 0.3, 0.5) + note(1047, time, 0.45, 0.4) * 0.8) * 0.3, 0.5),
+    spell_surge: spellSound(0.8, () => (time, p) => { const chirp = (time * 7) % 1; return Math.sin(TAU * (700 + 500 * chirp) * time + Math.sin(TAU * 30 * time) * 2) * Math.pow(1 - chirp, 1.5) * Math.pow(1 - p, 0.8) * 0.4; }, 0.5),
+    spell_pace: spellSound(0.7, () => (time, p) => (((time * (180 + 900 * p * p)) % 1) * 2 - 1) * 0.25 * Math.sin(Math.PI * p) * (0.7 + 0.3 * Math.sin(TAU * 28 * time)), 0.5),
+    spell_carriers: spellSound(0.9, () => { const low = lowPass(0.25); return (time, p) => (noise() - low(noise())) * Math.sin(Math.PI * p) * 0.35 + Math.sin(TAU * (500 + 400 * p) * time) * Math.sin(Math.PI * p) * 0.12; }, 0.45),
+    spell_rain: spellSound(1, () => { const high = lowPass(0.4); return (time, p) => (noise() - high(noise())) * (Math.random() < 0.35 ? 1 : 0.1) * 0.4 * Math.sin(Math.PI * Math.pow(p, 0.6)); }, 0.45),
+    spell_sky: spellSound(1.2, () => (time, p) => (Math.sin(TAU * 880 * time) + Math.sin(TAU * 1320 * time) * 0.6 + Math.sin(TAU * 1760 * time) * 0.3) * 0.2 * Math.sin(Math.PI * Math.pow(p, 0.7)), 0.4),
+    spell_tornado: spellSound(1.5, () => { const low = lowPass(0.06); return (time, p) => low(noise()) * 4 * Math.sin(Math.PI * p) + Math.sin(TAU * (95 + 45 * Math.sin(TAU * 3 * time)) * time) * 0.35 * Math.sin(Math.PI * p); }, 0.7),
+    spell_lava: spellSound(1.6, () => { const low = lowPass(0.04), hiss = lowPass(0.5); return (time, p) => low(noise()) * 5 * Math.pow(1 - p, 0.8) + (noise() - hiss(noise())) * 0.12 * (1 - p) + Math.sin(TAU * 46 * time) * 0.5 * Math.pow(1 - p, 1.5) + (Math.random() < 0.004 ? 0.8 : 0) * Math.sin(TAU * 220 * time); }, 0.75),
+    spell_meteors: spellSound(1.5, () => { const low = lowPass(0.08); return (time, p) => p < 0.7 ? Math.sin(TAU * (2200 - 1900 * (p / 0.7)) * time) * 0.18 * (p / 0.7) : (low(noise()) * 4 + Math.sin(TAU * 60 * time) * 0.7) * Math.pow(1 - (p - 0.7) / 0.3, 2); }, 0.75),
+    spell_smite: spellSound(0.8, () => (time, p) => (Math.sin(TAU * 233 * time) + Math.sin(TAU * 247 * time) + Math.sin(TAU * 349 * time) * 0.6) * 0.2 * Math.pow(1 - p, 1.8) + noise() * 0.35 * Math.pow(1 - p, 14), 0.6),
+    spell_mend: spellSound(1.2, () => (time) => (note(523, time, 0, 0.6) + note(784, time, 0.18, 0.7) + note(1047, time, 0.36, 0.8) + note(1319, time, 0.5, 0.6) * 0.7) * 0.28, 0.5),
+    spell_summon: spellSound(1.4, () => (time, p) => { const saw = ((time * (55 + 6 * Math.sin(TAU * 5 * time))) % 1) * 2 - 1, saw2 = ((time * 58.5) % 1) * 2 - 1; return (saw * 0.4 + saw2 * 0.3 + noise() * 0.08) * Math.sin(Math.PI * Math.pow(p, 0.8)); }, 0.7),
   };
 
   const DRY_LOSS = 0.5;           // hur mycket direktljudet minskar när ekot är som störst (1 = helt borta)

@@ -28,7 +28,7 @@
     demolish: onBuilding(target => { CityBuilder.Construction.dismantle(target, true); return null; }),
     cast: onBuilding((target, { spell, x, y }) => {
       const formula = CityBuilder.Spells.fromId(spell);
-      return formula ? CityBuilder.Spells.cast(target, formula, x, y) : 'nothing';
+      return formula ? CityBuilder.Spells.cast(target, formula, x, y) : CityBuilder.Spells.fizzle(target, spell);
     }),
     pause: onFinished((target, { on }) => { target.paused = !!on; return null; }),
     priority: onBuilding((target, { on }) => { target.prioritized = !!on; return null; }),

@@ -13,6 +13,16 @@ CityBuilder.Config.settings = {
   // när capacity djur finns i närheten). Ungen föds högst dispersal rutor bort.
   animalBreeding: { radius: 12, capacity: 6, boost: 8, dispersal: 6 },
   animalTreeSpreadChance: 0.005,
+  // Vildmarken långt från spelarnas byggnader: inom 'near' rutor från närmaste byggnad är allt som vanligt, sedan avtar det jämnt till 'far' rutor, där
+  // växterna bara sprider sig och växer (regn) 'plantMin' gånger så ofta (nästan inte alls) och djuren föröker sig 'animalMin' gånger så ofta (se World.homeFactor)
+  wild: { near: 15, far: 50, plantMin: 0.03, animalMin: 0.2 },
+  districtEdge: { alpha: 0.8, width: 4 },   // kantlinjen runt områdesfärgerna (se districts nedan): täckning och bredd i skärmpixlar
+  // Områdesfärger (render/layers.js, tangenten G): distrikt med hårda kanter under byggnaderna, en färg per kategori. Varje ruta tillhör högst ett distrikt (den närmaste
+  // byggnadens kategori), så de överlappar aldrig. radius: hur långt ett distrikt når från en byggnad (rutor), alpha: täckning (0.15 = 85 % genomskinligt)
+  districts: {
+    radius: 2.5, alpha: 0.2,
+    colors: { construction: '#d98a3d', food: '#4cc254', metalwork: '#3f84f0', valuables: '#f0cf3a', war: '#e5484d', magic: '#a85cf0', trade: '#2ec7b7' },
+  },
   // Verktyg går inte åt (de följer med huset och kommer tillbaka vid rivning), men varje hus som kräver ett behöver ett eget. Antalen räcker till
   // de första banornas byggnader, innan smederna öppnar; hammare går åt som byggkostnad.
   startingResources: { wood: 10, plank: 10, stone: 10, hammer: 15, axe: 12, pickaxe: 12, scythe: 8, shovel: 8, saw: 6, knife: 8 },
@@ -60,34 +70,45 @@ CityBuilder.Config.settings = {
   },
   audio: {  // play('coin', { x: ruta_x, y: ruta_y })
     sounds: {
-      click: 'sounds/click.mp3',
-      build: 'sounds/build.mp3',            // loopas vid varje byggarbetsplats tills byggnaden är färdig (build: { file: 'sounds/build.mp3', loop: false } ger ett enstaka ljud vid placeringen)
-      built: 'sounds/built.mp3',
-      demolish: 'sounds/demolish.mp3',
-      error: 'sounds/error.mp3',
-      levelComplete: 'sounds/level_complete.mp3',
-      message: 'sounds/letter.mp3',   // brev (och sidor utan dialog) i storyn (utan fil används ett inbyggt klockljud). Dialogerna har en egen syntetisk röst: story.voice
-      drop: 'sounds/drop.mp3',
-      alarm: 'sounds/alarm.mp3',
-      arrow: 'sounds/arrow.mp3',          // pil avfyras
-      swing: 'sounds/swing.mp3',          // närstrid
-      hit: ['sounds/hit/hit1.mp3','sounds/hit/hit2.mp3','sounds/hit/hit3.mp3','sounds/hit/hit4.mp3'],              // träff (flera filer: en lista, ['sounds/hit1.mp3', 'sounds/hit2.mp3'], så slumpas en varje gång)
-      died: ['sounds/died/died1.mp3','sounds/died/died2.mp3','sounds/died/died3.mp3'],            // soldat dör
-      destroyed: 'sounds/destroyed.mp3',  // byggnad förstörs
+      click: 'sounds/sfx/ui/click.mp3',
+      build: 'sounds/sfx/buildings/build.mp3',            // loopas vid varje byggarbetsplats tills byggnaden är färdig (build: { file: 'sounds/build.mp3', loop: false } ger ett enstaka ljud vid placeringen)
+      built: 'sounds/sfx/buildings/built.mp3',
+      demolish: 'sounds/sfx/buildings/demolish.mp3',
+      error: 'sounds/sfx/ui/error.mp3',
+      levelComplete: 'sounds/sfx/ui/level_complete.mp3',
+      message: 'sounds/sfx/ui/letter.mp3',   // brev (och sidor utan dialog) i storyn (utan fil används ett inbyggt klockljud). Dialogerna har en egen syntetisk röst: story.voice
+      drop: 'sounds/sfx/buildings/drop.mp3',
+      alarm: 'sounds/sfx/alarm.mp3',
+      arrow: 'sounds/sfx/battle/arrow.mp3',          // pil avfyras
+      swing: 'sounds/sfx/battle/swing.mp3',          // närstrid
+      hit: ['sounds/sfx/battle/hit/hit1.mp3','sounds/sfx/battle/hit/hit2.mp3','sounds/sfx/battle/hit/hit3.mp3','sounds/sfx/battle/hit/hit4.mp3'],              // träff (flera filer: en lista, ['sounds/hit1.mp3', 'sounds/hit2.mp3'], så slumpas en varje gång)
+      died: ['sounds/sfx/battle/died/died1.mp3','sounds/sfx/battle/died/died2.mp3','sounds/sfx/battle/died/died3.mp3'],            // soldat dör
+      destroyed: 'sounds/sfx/buildings/destroyed.mp3',  // byggnad förstörs
 
       // MONSTER
-      slime_attack: "sounds/monster/slime_attack.mp3",
-      slime_hit: "sounds/monster/slime_hit.mp3",
-      slime_die: "sounds/monster/slime_die.mp3",
-      spider_attack: "sounds/monster/spider_attack.mp3",
-      maneater_attack: "sounds/monster/maneater_attack.mp3",
-      golem_attack: "sounds/monster/golem_attack.mp3",
-      wolf_attack: "sounds/monster/wolf_attack.mp3",
-      troll_attack: "sounds/monster/troll_attack.mp3",
-      ogre_attack: "sounds/monster/ogre_attack.mp3",
+      slime_attack: "sounds/sfx/monster/slime_attack.mp3",
+      slime_hit: "sounds/sfx/monster/slime_hit.mp3",
+      slime_die: "sounds/sfx/monster/slime_die.mp3",
+      spider_attack: "sounds/sfx/monster/spider_attack.mp3",
+      maneater_attack: "sounds/sfx/monster/maneater_attack.mp3",
+      golem_attack: "sounds/sfx/monster/golem_attack.mp3",
+      wolf_attack: "sounds/sfx/monster/wolf_attack.mp3",
+      troll_attack: "sounds/sfx/monster/troll_attack.mp3",
+      ogre_attack: "sounds/sfx/monster/ogre_attack.mp3",
       // Valfria: när arten skadas (<art>_hit) och dör (<art>_die). Utan en rad används hit och monster_die. Samma för alla arter: slime spider maneater golem wolf troll ogre
       // slime_hit: "sounds/monster/slime_hit.mp3",
       // slime_die: "sounds/monster/slime_die.mp3",
+      // TROLLFORMLER: spell_fizzle (blandning utan effekt) och ett ljud per slag: spell_create spell_break spell_yield spell_surge spell_pace spell_carriers spell_rain spell_sky
+      // spell_tornado spell_lava spell_meteors spell_smite spell_mend spell_summon (storm har åskan). Utan en rad används ett inbyggt syntetljud.
+      spell_fizzle: 'sounds/sfx/spells/spell_fizzle.mp3',
+      spell_create: 'sounds/sfx/spells/spell_create.mp3',
+      spell_break: 'sounds/sfx/spells/spell_break.mp3',
+      spell_yield: 'sounds/sfx/spells/spell_yield.mp3',
+      spell_surge: 'sounds/sfx/spells/spell_surge.mp3',
+      spell_pace: 'sounds/sfx/spells/spell_pace.mp3',
+      spell_carriers: 'sounds/sfx/spells/spell_carriers.mp3',
+      spell_rain: 'sounds/sfx/spells/spell_rain.mp3',
+      spell_break: 'sounds/sfx/spells/spell_break.mp3',
     },
     // Byggnadernas arbete. Varje byggnad kan ha tre valfria ljud: start (arbetet börjar), loop (loopas medan det pågår) och done (arbetet är klart).
     // Det som inte anges är tyst. Ett ljud är en fil, en lista (en slumpas varje gång) eller { file, volume }. Exempel:
@@ -97,35 +118,35 @@ CityBuilder.Config.settings = {
     // moonstone_gatherer relic_hunter fallen_star_collector sawmill farm stables mill bakery brickworks iron_smelter copper_smelter tin_smelter silver_smelter
     // gold_smelter bronze_foundry charcoal_burner kitchen glassworks steelworks toolsmith swordsmith bowyer leatherworker armorsmith mint alchemist enchanter shrine
     buildings: {
-      woodcutter: { start: 'sounds/chop.mp3' },
-      limestone_quarry: { start: 'sounds/mine.mp3' },
-      quarry: { start: 'sounds/mine.mp3' },
-      rock_crusher: { done: 'sounds/rock-crusher-done.mp3' },
-      iron_mine: { start: 'sounds/mine.mp3' },
-      copper_mine: { start: 'sounds/mine.mp3' },
-      tin_mine: { start: 'sounds/mine.mp3' },
-      coal_mine: { start: 'sounds/mine.mp3' },
-      gold_mine: { start: 'sounds/mine.mp3' },
-      silver_mine: { start: 'sounds/mine.mp3' },
-      gemstone_mine: { start: 'sounds/mine.mp3' },
-      salt_mine: { start: 'sounds/mine.mp3' },
-      sulfur_mine: { start: 'sounds/mine.mp3' },
-      crystal_gatherer: { start: 'sounds/mine.mp3' },
-      relic_hunter: { done: 'sounds/relic-hunter_done.mp3' },
-      apple_gatherer: { start: 'sounds/pick.mp3' },
-      berry_gatherer: { start: 'sounds/pick.mp3' },
-      herb_gatherer: { start: 'sounds/pick.mp3' },
-      mushroom_gatherer: { start: 'sounds/pick.mp3' },
-      moonstone_gatherer: { start: 'sounds/mine.mp3' },
-      fallen_star_collector: { start: 'sounds/mine.mp3' },
-      sand_collector: { start: 'sounds/dig.mp3' },
-      clay_pit: { start: 'sounds/dig.mp3' },
-      fishing_hut: { start: 'sounds/fish_start.mp3', done: 'sounds/fish_done.mp3' },
-      well: { start: 'sounds/well_done.mp3' },
-      hunters_cottage: { start: 'sounds/hunt.mp3' },
-      planter: { start: 'sounds/plant.mp3' },
-      sawmill: { loop: 'sounds/craft_sawmill.mp3' },
-      kitchen: { start: 'sounds/craft_kitchen.mp3' },
+      woodcutter: { start: 'sounds/sfx/workers/chop.mp3' },
+      limestone_quarry: { start: 'sounds/sfx/workers/mine.mp3' },
+      quarry: { start: 'sounds/sfx/workers/mine.mp3' },
+      rock_crusher: { done: 'sounds/sfx/workers/rock-crusher-done.mp3' },
+      iron_mine: { start: 'sounds/sfx/workers/mine.mp3' },
+      copper_mine: { start: 'sounds/sfx/workers/mine.mp3' },
+      tin_mine: { start: 'sounds/sfx/workers/mine.mp3' },
+      coal_mine: { start: 'sounds/sfx/workers/mine.mp3' },
+      gold_mine: { start: 'sounds/sfx/workers/mine.mp3' },
+      silver_mine: { start: 'sounds/sfx/workers/mine.mp3' },
+      gemstone_mine: { start: 'sounds/sfx/workers/mine.mp3' },
+      salt_mine: { start: 'sounds/sfx/workers/mine.mp3' },
+      sulfur_mine: { start: 'sounds/sfx/workers/mine.mp3' },
+      crystal_gatherer: { start: 'sounds/sfx/workers/mine.mp3' },
+      relic_hunter: { done: 'sounds/sfx/workers/relic-hunter_done.mp3' },
+      apple_gatherer: { start: 'sounds/sfx/workers/pick.mp3' },
+      berry_gatherer: { start: 'sounds/sfx/workers/pick.mp3' },
+      herb_gatherer: { start: 'sounds/sfx/workers/pick.mp3' },
+      mushroom_gatherer: { start: 'sounds/sfx/workers/pick.mp3' },
+      moonstone_gatherer: { start: 'sounds/sfx/workers/mine.mp3' },
+      fallen_star_collector: { start: 'sounds/sfx/workers/mine.mp3' },
+      sand_collector: { start: 'sounds/sfx/workers/dig.mp3' },
+      clay_pit: { start: 'sounds/sfx/workers/dig.mp3' },
+      fishing_hut: { start: 'sounds/sfx/workers/fish_start.mp3', done: 'sounds/sfx/workers/fish_done.mp3' },
+      well: { start: 'sounds/sfx/workers/well_done.mp3' },
+      hunters_cottage: { start: 'sounds/sfx/workers/hunt.mp3' },
+      planter: { start: 'sounds/sfx/workers/plant.mp3' },
+      sawmill: { loop: 'sounds/sfx/workers/craft_sawmill.mp3' },
+      kitchen: { start: 'sounds/sfx/workers/craft_kitchen.mp3' },
     },
     music: ["music/song1.mp3", "music/song2.mp3", "music/song3.mp3"],
     // Väderljud och ljudlandskap (systems/sound.js). Alla filer är valfria: saknas en fil är det tyst. Ta bort // för att slå på en rad.
@@ -152,8 +173,8 @@ CityBuilder.Config.settings = {
         volcano: { file: 'sounds/weather/warning_bell.mp3', volume: 0.3 },
         meteorstorm: { file: 'sounds/weather/warning_bell.mp3', volume: 0.4 },
       },
-      day: 'sounds/day.mp3',                 // loopas dagtid
-      night: 'sounds/night.mp3',             // loopas nattetid
+      day: 'sounds/ambience/day.mp3',                 // loopas dagtid
+      night: 'sounds/ambience/night.mp3',             // loopas nattetid
     },
   },
   playerColors: { 1: '#4aa3ff', 2: '#e5534b', 3: '#e0a030', 4: '#a56bd6', '-1': '#9b59d0' }, // lagfärg per spelare (ring runt soldater, ram runt byggnader), se core/players.js
@@ -195,7 +216,7 @@ CityBuilder.Config.settings = {
     growth: { tree: 'wood', apple_tree: 'apples', berry_bush: 'berries', herbs: 'herbs', mushrooms: 'mushrooms' },
     scanSeconds: 2,
     scanSpreadSeconds: 1,                  // en skanning delas på så lång speltid (några chunkar per steg), så att kostnaden blir jämn
-    rain: { chance: 0.08, cap: 2 },        // chans per skanning att en växt får +1 mängd, högst cap gånger terrängens normala mängd
+    rain: { chance: 0.1, cap: 2 },        // chans per skanning att en växt får +1 mängd, högst cap gånger terrängens normala mängd
     flood: {                               // stormen: översvämning (se systems/weather.js)
       reach: 3,                            // så många rutor från vattnet når den som mest
       riseSeconds: 6,                      // tid per ring när vattnet stiger
