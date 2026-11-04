@@ -394,7 +394,7 @@
         ai: 20,
         races: { 2: 'demon' },
         end: 'hq',
-        waves: { from: 150, every: 60, size: [2, 1], kinds: ['swordsman'], until: 'fog' },
+        waves: { from: 45, every: 30, size: [3, 1], kinds: ['swordsman'], until: 'fog' },
         letter: letter(['A fog has risen around the Eye, and my counsellors say the fog is the demons.',
         'The Eye must remain intact. Hold your village. Hold it until the fog lifts, whatever you hear.',
         'Do not leave your position. Do not question the Eye.',
@@ -410,14 +410,14 @@
           say('thordram', 'Comfort is not its purpose.'),
         ],
         events: [
-          { at: 240, whileFog: true, tell: [
+          { at: 80, whileFog: true, tell: [
             say('thordram', '[calm]The siege tightens. How inconvenient.'),
             say('albertha', '[whisper]Thordram. Not yet.'),
             say('reeve', '[question]Not yet what?'),
             say('thordram', 'Nothing that concerns you.'),
             say('reeve', "That's becoming a rather familiar answer."),
           ] },
-          { at: 420, whileFog: true, tell: [
+          { at: 120, whileFog: true, tell: [
             say('reeve', '[scared]Something is moving out there. Many things.'),
             say('thordram', '[angry]Hold.'),
             say('reeve', 'I can barely see the walls.'),
@@ -732,9 +732,9 @@
         rivals: 1,
         ai: 55,
         end: 'hq',
-        waves: { from: 90, every: 90, size: [3, 2, 10], kinds: ['swordsman', 'swordsman', 'archer', 'knight'], maxAlive: 16 },
+        waves: { from: 90, every: 60, size: [3, 1], kinds: ['swordsman', 'swordsman', 'archer', 'knight'] },
         dialogue: [
-          say('reeve', '[sad]They march because I took their homes. I called it protecting Farael. I can hardly blame them.'),
+          say('reeve', '[sad]Vedahast marches because I took their homes. I called it protecting Farael. I can hardly blame them.'),
           say('baelthar', 'There. At last, some honesty.'),
           say('mordrath', 'You could still surrender.'),
           say('reeve', 'And let them burn?'),
@@ -747,7 +747,7 @@
         ],
         events: [
           { at: 180, tell: [
-            say('mordrath', 'They are getting closer.'),
+            say('mordrath', 'The soldiers of Vedahast are getting closer.'),
             say('reeve', 'I noticed.'),
             say('baelthar', 'Perhaps you should tell them who really burned their homes.'),
             say('reeve', 'I intend to.'),
@@ -756,7 +756,7 @@
             say('baelthar', 'Stubborn little creature.'),
           ] },
           { at: 360, tell: [
-            say('reeve', "They're still coming."),
+            say('reeve', 'Vedahast is still coming.'),
             say('mordrath', 'Of course they are.'),
             say('reeve', "I wouldn't blame them either."),
             say('baelthar', 'Then why keep fighting?'),
