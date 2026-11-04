@@ -33,6 +33,7 @@
   const Game = {
     selectedBuilding: null,
     placingType: null,      // byggnadstyp som spelaren håller på att placera
+    wallStart: null,        // en mur (linePlacement) som ritas: rutan där den börjar, tills slutet valts eller den avbryts
     showDistricts: (() => { try { return localStorage.getItem('cityBuilderDistricts') === 'on'; } catch (error) { return false; } })(),   // områdesfärgerna: av som standard, knappen under minikartan eller tangenten G slår på dem
     casting: null,          // { building, spell }: en trollformel väntar på att spelaren pekar ut ett mål
     flagging: false,        // flaggläget: nästa tryck på kartan sätter eller flyttar flaggan (ett tryck på flaggan själv tar bort den)
@@ -123,7 +124,8 @@
       pathfinder.reset();
       CityBuilder.Systems.pathDecay.reset();
       Sound?.reset();
-      Object.assign(this, { selectedBuilding: null, placingType: null, casting: null, flagging: false, pending: 0, alpha: 0, tick: 0, paused: false });
+      Object.assign(this, { selectedBuilding: null, placingType: null, wallStart: null, casting: null, flagging: false, pending: 0, alpha: 0, tick: 0, paused: false });
+      UI.updateLineButton?.();
     },
 
     // Spelet pausas alltid när fönstret förlorar fokus eller fliken göms
@@ -145,7 +147,7 @@
       request();
     },
 
-    setPlacingType(buildingType) { this.placingType = buildingType; this.casting = null; this.flagging = false; this.selectedBuilding = null; },
+    setPlacingType(buildingType) { this.placingType = buildingType; this.wallStart = null; this.casting = null; this.flagging = false; this.selectedBuilding = null; UI.updateLineButton?.(); },
 
     // Flaggläget (systems/flags.js)
     setFlagging(on) {
@@ -219,27 +221,74 @@
       if (CityBuilder.Levels && !CityBuilder.Levels.isUnlocked(buildingType)) {
         return this.refuse(t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(buildingType) }));
       }
+      if (definition.linePlacement) return this.placeLine(buildingType, x, y);
       const problem = CityBuilder.Commands.issue('build', { type: buildingType, x, y });
-      if (problem) {
-        return this.refuse({
-          terrain: () => t('Must be built on: {terrain}', { terrain: UI.terrainName(definition.placeOnTerrain) }),
-          locked: () => t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(CityBuilder.Construction.variantFor(buildingType, x, y)) }),
-          occupied: () => t('This spot is occupied'),
-          far: () => t('Too far from your buildings'),
-          unreachable: () => t('This spot cannot be reached'),
-          fog: () => t('Hidden in the fog of war'),
-          cost: () => {
-            const lacking = CityBuilder.Construction.shortage(definition.buildCost)[0];
-            if (!lacking) return t('Not enough resources');
-            const reserved = Economy.totalAmount(lacking.resourceId) - lacking.have;   // lagret finns men är bokat: bärare på väg eller byggen som väntar
-            return t('Not enough {name}: {have} of {need} free', { name: UI.resourceName(lacking.resourceId), have: lacking.have, need: lacking.need }) + (reserved > 0 ? ' · ' + t('Reserved: {amount}', { amount: reserved }) : '');
-          },
-          unique: () => t('You can only build one'),
-        }[problem]());
-      }
+      if (problem) return this.refuse(this.refusalText(problem, buildingType, x, y));
       CityBuilder.Sound?.play('build', { x, y });
       if (!definition.repeatPlacement) this.setPlacingType(null);   // vald byggnad avmarkeras när den placerats (inte när något annat, som en hög efter en tornado, dyker upp)
     },
+
+    // Texten för en avvisad byggorder (orsaken från Construction.build). cost: kostnaden som saknas om den inte är byggnadens egen (en hel mur)
+    refusalText(problem, buildingType, x, y, cost) {
+      const definition = Config.buildings[buildingType];
+      return {
+        terrain: () => t('Must be built on: {terrain}', { terrain: UI.terrainName(definition.placeOnTerrain) }),
+        locked: () => t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(CityBuilder.Construction.variantFor(buildingType, x, y)) }),
+        occupied: () => t('This spot is occupied'),
+        far: () => t('Too far from your buildings'),
+        unreachable: () => t('This spot cannot be reached'),
+        fog: () => t('Hidden in the fog of war'),
+        cost: () => {
+          const lacking = CityBuilder.Construction.shortage(cost || definition.buildCost)[0];
+          if (!lacking) return t('Not enough resources');
+          const reserved = Economy.totalAmount(lacking.resourceId) - lacking.have;   // lagret finns men är bokat: bärare på väg eller byggen som väntar
+          return t('Not enough {name}: {have} of {need} free', { name: UI.resourceName(lacking.resourceId), have: lacking.have, need: lacking.need }) + (reserved > 0 ? ' · ' + t('Reserved: {amount}', { amount: reserved }) : '');
+        },
+        unique: () => t('You can only build one'),
+      }[problem]();
+    },
+
+    // Murar (linePlacement) ritas som ett rakt streck: ett tryck sätter början och ett andra slutet. Strecket går längs den axel det är längst, och hela muren
+    // byggs eller ingen del: räcker inte stenen, eller är en ruta upptagen, blir hela muren röd och trycket gör ingenting. Avbryt (knappen, Esc) tar bort början.
+    lineTiles(start, end) {
+      const horizontal = Math.abs(end.x - start.x) >= Math.abs(end.y - start.y);
+      const steps = horizontal ? Math.abs(end.x - start.x) : Math.abs(end.y - start.y), stepX = horizontal ? Math.sign(end.x - start.x) || 1 : 0, stepY = horizontal ? 0 : Math.sign(end.y - start.y) || 1;
+      return Array.from({ length: steps + 1 }, (_, i) => ({ x: start.x + stepX * i, y: start.y + stepY * i }));
+    },
+
+    lineCost(type, tiles) { return Object.fromEntries(Object.entries(Config.buildings[type].buildCost).map(([id, amount]) => [id, amount * tiles.length])); },
+
+    // Det som hindrar muren: { problem, tile } för första rutan som inte går (tile: null om det bara är kostnaden), annars null. cheap: utan vägsökning (förhandsvisningen ritas varje bildruta)
+    lineProblem(type, tiles, cheap = false) {
+      const Construction = CityBuilder.Construction, human = CityBuilder.Players.HUMAN;
+      for (const tile of tiles) {
+        const problem = !cheap ? Construction.siteProblem(type, tile.x, tile.y)
+          : Construction.isHidden(tile.x, tile.y, human) ? 'fog' : !World.canPlace(type, tile.x, tile.y) ? 'occupied' : !Construction.isNearOwnBuilding(tile.x, tile.y, human) ? 'far' : null;
+        if (problem) return { problem, tile };
+      }
+      return Construction.canAfford(this.lineCost(type, tiles)) ? null : { problem: 'cost', tile: null };
+    },
+
+    placeLine(type, x, y) {
+      const Construction = CityBuilder.Construction;
+      if (!this.wallStart) {
+        const problem = Construction.siteProblem(type, x, y);
+        if (problem) return this.refuse(this.refusalText(problem, type, x, y));
+        this.wallStart = { x, y };
+        UI.updateLineButton();
+        CityBuilder.Sound?.play('click');
+        return;
+      }
+      const tiles = this.lineTiles(this.wallStart, { x, y }), found = this.lineProblem(type, tiles);
+      if (found) return this.refuse(this.refusalText(found.problem, type, (found.tile || { x }).x, (found.tile || { y }).y, this.lineCost(type, tiles)));
+      let failed = null;
+      for (const tile of tiles) failed = CityBuilder.Commands.issue('build', { type, x: tile.x, y: tile.y }) || failed;
+      CityBuilder.Sound?.play('build', { x, y });
+      this.cancelLine();
+      if (failed) this.refuse(this.refusalText(failed, type, x, y, this.lineCost(type, tiles)));   // t.ex. när en tidigare ruta i muren stängde vägen till en senare
+    },
+
+    cancelLine() { this.wallStart = null; UI.updateLineButton(); },
 
     // Avvisad handling: felljud och meddelande
     refuse(text) {

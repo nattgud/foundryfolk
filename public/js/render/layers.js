@@ -508,18 +508,48 @@
     for (let y = 0; y < rows; y++) for (let x = 0; x < columns; x++) if (owner[y * columns + x] >= 0) drawResource(context, left + x, top + y, (left + x) * tileSize, (top + y) * tileSize, tileSize);
   });
 
+  // Murar: bilden följer grannarna (upp, höger, ner, vänster; bit 1, 2, 4, 8). wall.png är en ensam ruta och de andra formerna ansluter så här:
+  // _end uppåt, _straight uppåt och nedåt, _corner uppåt och åt höger, _t uppåt, åt höger och nedåt, _cross åt alla håll. Bilden vrids i koden (medurs), så en bild per form räcker.
+  // Saknas en bild används wall.png.
+  const WALL_PIECES = [['_end', 1], ['_straight', 5], ['_corner', 3], ['_t', 7], ['_cross', 15]];
+  const turnMask = mask => ((mask << 1) & 15) | (mask >> 3);
+  const wallMask = (x, y, isWall) => (isWall(x, y - 1) ? 1 : 0) | (isWall(x + 1, y) ? 2 : 0) | (isWall(x, y + 1) ? 4 : 0) | (isWall(x - 1, y) ? 8 : 0);
+  const wallPiece = (definition, mask, race) => {
+    const single = { image: Assets.get(definition.image, race), turns: 0 };
+    for (const [suffix, base] of WALL_PIECES) {
+      let shape = base;
+      for (let turns = 0; turns < 4; turns++, shape = turnMask(shape)) {
+        if (shape !== mask) continue;
+        const image = Assets.get(definition.image.replace('.png', suffix + '.png'), race);
+        return image ? { image, turns } : single;
+      }
+    }
+    return single;
+  };
+  const drawTurned = (context, image, x, y, size, turns) => {
+    if (!turns) return context.drawImage(image, x, y, size, size);
+    context.save();
+    context.translate(x + size / 2, y + size / 2);
+    context.rotate(turns * Math.PI / 2);
+    context.drawImage(image, -size / 2, -size / 2, size, size);
+    context.restore();
+  };
+  const isOwnWall = (type, player) => (x, y) => { const other = World.buildingAt(x, y); return !!other && !other.removed && other.type === type && other.player === player; };
+
   Renderer.addLayer('buildings', (context, renderer) => {
     const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize);
     for (const building of World.buildings) {
       const x = building.x * tileSize, y = building.y * tileSize;
       if (outside(view, x, y) || hidden(building)) continue;
-      const isFinished = building.buildProgress >= 1, image = Assets.get(building.definition.image, Players.raceOf(building.player));
+      const isFinished = building.buildProgress >= 1;
+      let image = Assets.get(building.definition.image, Players.raceOf(building.player)), turns = 0;
+      if (building.definition.linePlacement) ({ image, turns } = wallPiece(building.definition, wallMask(building.x, building.y, isOwnWall(building.type, building.player)), Players.raceOf(building.player)));
       context.globalAlpha = isFinished ? (building.paused ? .5 : 1) : .7;
 
       if (building.definition.pile) { // hög på marken: en jordhög, varorna ritas som ikoner nedan
         context.fillStyle = 'rgb(70 50 30 / 70%)';
         context.beginPath(); context.ellipse(x + tileSize / 2, y + tileSize * .62, tileSize * .38, tileSize * .24, 0, 0, Math.PI * 2); context.fill();
-      } else if (image) context.drawImage(image, x, y, tileSize, tileSize);
+      } else if (image) drawTurned(context, image, x, y, tileSize, turns);
       else {
         context.fillStyle = building.definition.color;
         context.fillRect(x + 3, y + 3, tileSize - 6, tileSize - 6);
@@ -978,9 +1008,32 @@
     }
   });
 
+  // Muren som ritas (efter första trycket): hela strecket från början till rutan under markören, grönt om det går att bygga och annars rött (som en enda mur)
+  const drawWallGhost = (context, renderer, type) => {
+    const Game = CityBuilder.Game, size = renderer.tileSize, definition = Config.buildings[type];
+    const tiles = Game.lineTiles(Game.wallStart, renderer.hoverTile), color = Game.lineProblem(type, tiles, true) ? '217,83,79' : '95,181,95';
+    const planned = new Set(tiles.map(tile => tile.x + ',' + tile.y)), existing = isOwnWall(type, Players.HUMAN);
+    const isWall = (x, y) => planned.has(x + ',' + y) || existing(x, y);
+    for (const { x, y } of tiles) {
+      const px = x * size, py = y * size, { image, turns } = wallPiece(definition, wallMask(x, y, isWall));
+      context.fillStyle = `rgba(${color},.22)`;
+      context.fillRect(px, py, size, size);
+      context.globalAlpha = .65;
+      if (image) drawTurned(context, image, px, py, size, turns);
+      else { context.fillStyle = definition.color; context.fillRect(px + 3, py + 3, size - 6, size - 6); }
+      context.globalAlpha = 1;
+      context.strokeStyle = `rgba(${color},.9)`;
+      context.lineWidth = 2;
+      context.strokeRect(px + 1, py + 1, size - 2, size - 2);
+    }
+    const end = tiles[tiles.length - 1];
+    renderer.drawResourceIcons(context, Game.lineCost(type, tiles), end.x * size, end.y * size);   // vad hela muren kostar
+  };
+
   Renderer.addLayer('placementGhost', (context, renderer) => {
     const placingType = CityBuilder.Game.placingType;
     if (!placingType || !renderer.hoverTile) return;
+    if (Config.buildings[placingType].linePlacement && CityBuilder.Game.wallStart) return drawWallGhost(context, renderer, placingType);
     const { x, y } = renderer.hoverTile;
     const isValid = !CityBuilder.Construction.isHidden(x, y, Players.HUMAN) && World.canPlace(placingType, x, y) && !CityBuilder.Construction.isUniqueTaken(placingType, Players.HUMAN) && CityBuilder.Construction.isNearOwnBuilding(x, y, CityBuilder.Players.HUMAN) && Economy.canAfford(Config.buildings[placingType].buildCost);
     // Den valda byggnaden syns genomskinlig på rutan. En svag färgton och en ram visar om den får plats (grön) eller inte (röd).

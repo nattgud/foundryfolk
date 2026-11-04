@@ -1949,6 +1949,22 @@
       this.showToast(t(game.showDistricts ? 'Area colours on' : 'Area colours off'));
     },
 
+    // Knappen Avbryt medan en mur ritas (ett tryck har satt början): syns bara då. Behövs på pekskärm, där det inte finns någon Esc.
+    updateLineButton() {
+      let button = byId('cancelLineButton');
+      const on = !!CityBuilder.Game.wallStart;
+      if (!button && on) {
+        button = document.createElement('button');
+        button.id = 'cancelLineButton';
+        button.type = 'button';
+        button.textContent = '✕ ' + t('Cancel');
+        button.style.cssText = 'position:fixed;left:50%;bottom:150px;transform:translateX(-50%);z-index:25;min-height:44px;padding:10px 24px;font-size:16px;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer';
+        button.onclick = () => CityBuilder.Game.cancelLine();
+        document.body.appendChild(button);
+      }
+      if (button) button.hidden = !on;
+    },
+
     // Flaggläget på eller av
     toggleFlagging() {
       const game = CityBuilder.Game, on = !game.flagging;
@@ -1973,6 +1989,7 @@
       if (key === 'Escape') { // ett steg tillbaka: placering, öppen kategori, vald byggnad
         if (game.flagging) game.setFlagging(false);
         else if (game.casting) game.casting = null;
+        else if (game.wallStart) game.cancelLine();   // en mur som ritas: första steget tillbaka tar bort början
         else if (game.placingType) game.setPlacingType(null);
         else if (this.openCategoryId) this.setOpenCategory(null);
         else if (selected) game.selectBuilding(null);

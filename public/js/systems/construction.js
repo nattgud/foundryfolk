@@ -121,7 +121,8 @@
       return Object.entries(cost).reduce((sum, [resourceId, amount]) => sum + Math.min(amount, building.inputStock[resourceId] || 0), 0) / total;
     },
 
-    build(buildingType, x, y, player = Players.HUMAN) {
+    // Allt som hindrar en byggnad på rutan utom kostnaden: orsaken, eller null. build() och murar som ritas som ett streck (Game.placeLine) kontrollerar på samma sätt.
+    siteProblem(buildingType, x, y, player = Players.HUMAN) {
       const definition = Config.buildings[buildingType];
       const from = this.nearestOwnBuilding(x, y, player);   // vägen räknas från närmaste egna byggnad, så att utposter långt från basen går att bygga
       if (!from) return 'far';
@@ -132,8 +133,14 @@
       if (!type) return 'terrain';
       if (type !== buildingType && player === Players.HUMAN && CityBuilder.Levels && !CityBuilder.Levels.isUnlocked(type)) return 'locked';   // inriktningen är inte upplåst än
       if (Pathfinder.findPathNow(from.x, from.y, x, y) === null) return 'unreachable';
-      if (!this.canAfford(definition.buildCost, player)) return 'cost';
-      World.placeBuilding(type, x, y, false, player).needsMaterials = true;   // varorna hämtas av bärarna
+      return null;
+    },
+
+    build(buildingType, x, y, player = Players.HUMAN) {
+      const problem = this.siteProblem(buildingType, x, y, player);
+      if (problem) return problem;
+      if (!this.canAfford(Config.buildings[buildingType].buildCost, player)) return 'cost';
+      World.placeBuilding(this.variantFor(buildingType, x, y), x, y, false, player).needsMaterials = true;   // varorna hämtas av bärarna
       return null;
     },
   };

@@ -1204,7 +1204,9 @@ CityBuilder.Config.buildings = {
   },
 
   // Mur: ett block som ingen enhet kan gå igenom (byggnader blockerar all gång). Fienden måste slå sig igenom den.
-  // repeatPlacement: placeringsläget stannar kvar efter varje bygge så att en hel mur kan läggas i ett svep.
+  // linePlacement: muren ritas som ett rakt streck, ett tryck för början och ett för slutet (Game.placeLine); hela muren byggs eller ingen del.
+  // repeatPlacement: placeringsläget stannar kvar efter varje bygge, så att nästa mur kan läggas direkt.
+  // Bilderna följer grannmurarna (render/layers.js): wall.png ensam, wall_end ände, wall_straight rak, wall_corner hörn, wall_t trevägs, wall_cross fyrvägs.
   wall: {
     name: 'Wall',
     category: 'war',
@@ -1213,6 +1215,7 @@ CityBuilder.Config.buildings = {
     buildCost: { stone: 3 },
     maxHp: 250,
     repeatPlacement: true,
+    linePlacement: true,
     buildDuration: 6
   },
 
