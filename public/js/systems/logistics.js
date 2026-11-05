@@ -129,17 +129,45 @@
         Economy.updateStats();
         this.clearPiles();
         this.startRound();
-        this.stepOffWalls(); this.balanceCarriers(); this.purgeInvalidTasks(); this.redirectOrphans(); this.rebuildCounters(); this.requestMissingInputs(); this.orders = null; this.flushSurplusToStorage(); this.orders = null;
+        this.stepOffWalls(); this.parkIdle(); this.balanceCarriers(); this.purgeInvalidTasks(); this.redirectOrphans(); this.rebuildCounters(); this.requestMissingInputs(); this.orders = null; this.flushSurplusToStorage(); this.orders = null;
         this.round = null; this.soft = null;
       }
       this.time = (this.time || 0) + deltaSeconds;
       this.assignTasksToCarriers();
     },
 
+    // Ledig bärare: inget uppdrag, ingen last och ingen kö, eller på väg till lagret för att vänta där (då kan ett uppdrag ta över direkt)
+    isIdle(unit) {
+      if (!unit.definition.isHauler || unit.carriedResource || unit.deliveryTask) return false;
+      if (unit.parking && !unit.stepQueue.length) unit.parking = false;
+      return !unit.stepQueue.length || !!unit.parking;
+    },
+
+    // Lediga bärare går till närmaste färdiga lager och väntar där. En gång per ledig period, och bara om de står mer än några rutor därifrån.
+    parkIdle() {
+      const storages = new Map();
+      for (const building of World.buildings) {
+        if (building.removed || building.buildProgress < 1 || !this.stores(building)) continue;
+        const list = storages.get(building.player); if (list) list.push(building); else storages.set(building.player, [building]);
+      }
+      if (!storages.size) return;
+      for (const unit of World.units) {
+        if (!this.isIdle(unit) || unit.stepQueue.length || unit.parked) continue;
+        const list = storages.get(unit.player);
+        if (!list) continue;
+        let best = null, bestDistance = 1e9;
+        for (const building of list) { const distance = Utils.manhattanDistance(unit, building); if (distance < bestDistance) { best = building; bestDistance = distance; } }
+        unit.parked = true;
+        if (!best || bestDistance <= 4) continue;
+        unit.parking = true;
+        unit.stepQueue = [Jobs.walkTo(best.x, best.y)];
+      }
+    },
+
     // Lediga bärare som står på en mur (de lämnade sista leveransen på murens byggplats, eller muren byggdes under dem) går till närmaste vanliga ruta
     stepOffWalls() {
       for (const unit of World.units) {
-        if (!unit.definition.isHauler || unit.stepQueue.length || unit.carriedResource || unit.deliveryTask) continue;
+        if (!this.isIdle(unit) || unit.stepQueue.length) continue;
         const x = Math.floor(unit.x), y = Math.floor(unit.y);
         if (!CityBuilder.Pathfinder.isWall(x, y)) continue;
         let best = null, bestDistance = 1e9;
@@ -312,7 +340,7 @@
     // lediga bärare utöver väntande uppdrag. Bara det som inga byggen väntar på tas ur lagren, och vanliga beställningar tar över dem vid behov.
     topUp(order) {
       const slack = {}, pending = {};
-      for (const unit of World.units) if (unit.definition.isHauler && !unit.deliveryTask && !unit.stepQueue.length && !unit.carriedResource) slack[unit.player] = (slack[unit.player] || 0) + 1;
+      for (const unit of World.units) if (unit.definition.isHauler && this.isIdle(unit)) slack[unit.player] = (slack[unit.player] || 0) + 1;
       let any = false;
       for (const player in slack) { slack[player] -= this.load[player] || 0; any ||= slack[player] > 0; }
       if (!any) return;
@@ -491,7 +519,7 @@
       const idleBy = new Map();
       let spare = 0;
       for (const unit of World.units) {
-        if (!unit.definition.isHauler || unit.stepQueue.length || unit.carriedResource || unit.deliveryTask) continue;
+        if (!this.isIdle(unit)) continue;
         const list = idleBy.get(unit.player); if (list) list.push(unit); else idleBy.set(unit.player, [unit]);
         spare++;
       }
@@ -541,6 +569,7 @@
         if (pile(task)) pileBusy[player] = (pileBusy[player] || 0) + 1;
         carrier.deliveryTask = task;
         carrier.hasPickedUp = false;
+        carrier.parking = carrier.parked = false;
         carrier.stepQueue = [
           Jobs.walkTo(task.source.x, task.source.y),
           Jobs.run(unit => this.pickUp(unit)),
