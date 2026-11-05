@@ -280,6 +280,7 @@
       'Defeat enemy units: {have}/{need}': '击败敌方单位：{have}/{need}',
       'Destroy enemy buildings: {have}/{need}': '摧毁敌方建筑：{have}/{need}',
       'Destroy enemy {name}: {have}/{need}': '摧毁敌方{name}：{have}/{need}',
+      'Hold out until the fog lifts': '坚守到雾散去',
       'Destroy the enemy base': '摧毁敌方基地',
       'Your base was destroyed': '你的基地被摧毁了',
       'Try the level again': '再试一次本关',

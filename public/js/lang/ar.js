@@ -281,6 +281,7 @@
       'Defeat enemy units: {have}/{need}': 'اهزم وحدات العدو: {have}/{need}',
       'Destroy enemy buildings: {have}/{need}': 'دمّر مباني العدو: {have}/{need}',
       'Destroy enemy {name}: {have}/{need}': 'دمّر {name} للعدو: {have}/{need}',
+      'Hold out until the fog lifts': 'اصمد حتى ينقشع الضباب',
       'Destroy the enemy base': 'دمّر قاعدة العدو',
       'Your base was destroyed': 'دُمّرت قاعدتك',
       'Try the level again': 'أعد محاولة المرحلة',

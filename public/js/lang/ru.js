@@ -281,6 +281,7 @@
       'Defeat enemy units: {have}/{need}': 'Победите вражеских юнитов: {have}/{need}',
       'Destroy enemy buildings: {have}/{need}': 'Уничтожьте вражеские здания: {have}/{need}',
       'Destroy enemy {name}: {have}/{need}': 'Уничтожьте вражеское здание «{name}»: {have}/{need}',
+      'Hold out until the fog lifts': 'Продержитесь, пока не рассеется туман',
       'Destroy the enemy base': 'Уничтожьте вражескую базу',
       'Your base was destroyed': 'Ваша база уничтожена',
       'Try the level again': 'Попробовать уровень снова',

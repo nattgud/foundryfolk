@@ -188,7 +188,9 @@
       for (const building of [...World.buildings]) if (building.player === player) CityBuilder.Construction.dismantle(building, false);
       for (const unit of [...World.units]) if (unit.player === player) this.kill(unit);
       if (player !== Players.HUMAN) Players.active = Players.active.filter(other => other !== player);
-      if (player === Players.HUMAN) CityBuilder.Game?.defeat?.();
+      // Kapitel som slutar när dimman lyfter (end: 'fog'): faller basen faller också Eye of Shades, och dimman lyfter. Det är målet, inte en förlust.
+      const holdsOut = CityBuilder.Levels?.story?.end === 'fog' && !CityBuilder.Levels.told('fog:lifted');
+      if (player === Players.HUMAN) { if (!holdsOut) CityBuilder.Game?.defeat?.(); }
       else {
         if (!restoring && Players.isHostile(Players.HUMAN, player)) CityBuilder.Levels?.onRivalDown?.();
         if (!restoring) {   // notis med spelarens färg och hur många som är kvar

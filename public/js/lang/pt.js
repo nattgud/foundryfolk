@@ -281,6 +281,7 @@
       'Defeat enemy units: {have}/{need}': 'Derrotar unidades inimigas: {have}/{need}',
       'Destroy enemy buildings: {have}/{need}': 'Destruir construções inimigas: {have}/{need}',
       'Destroy enemy {name}: {have}/{need}': 'Destruir {name} inimigo: {have}/{need}',
+      'Hold out until the fog lifts': 'Resista até a névoa se dissipar',
       'Destroy the enemy base': 'Destruir a base inimiga',
       'Your base was destroyed': 'Sua base foi destruída',
       'Try the level again': 'Tentar a fase de novo',

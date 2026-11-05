@@ -508,7 +508,7 @@
         rivals: 1,
         ai: 20,
         races: { 2: 'demon' },
-        end: 'hq',
+        end: 'fog',
         waves: { from: 45, every: 30, size: [3, 1], kinds: ['swordsman'], until: 'fog' },
         letter: letter(['A fog has risen around the Eye, and my counsellors say the fog is the demons.',
         'The Eye must remain intact. Hold your village. Hold it until the fog lifts, whatever you hear.',

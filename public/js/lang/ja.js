@@ -280,6 +280,7 @@
       'Defeat enemy units: {have}/{need}': '敵ユニットを倒す：{have}/{need}',
       'Destroy enemy buildings: {have}/{need}': '敵の建物を破壊：{have}/{need}',
       'Destroy enemy {name}: {have}/{need}': '敵の{name}を破壊：{have}/{need}',
+      'Hold out until the fog lifts': '霧が晴れるまで持ちこたえる',
       'Destroy the enemy base': '敵の基地を破壊',
       'Your base was destroyed': 'あなたの基地は破壊されました',
       'Try the level again': 'もう一度挑戦',

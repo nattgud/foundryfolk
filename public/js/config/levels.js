@@ -807,6 +807,7 @@
     let goals = null;
     const goal = () => {
       if (data.end === 'hq') return { items: [{ key: 'm:eliminate', type: 'eliminate', amount: 1 }], par: 0 };
+      if (data.end === 'fog') return { items: [{ key: 'm:fog', type: 'fog', amount: 1 }], par: 0 };   // håll ut tills dimman lyft (Eye of Shades förstörd)
       if (!data.goals) return { ...base.goal, par: 0 };
       const start = startingResourcesAt(number);
       return {
@@ -973,6 +974,7 @@
       case 'kills': return progress.kills;
       case 'destroy': return progress.destroyed[item.id] || 0;
       case 'eliminate': return progress.won ? item.amount : progress.rivalsDown;
+      case 'fog': return progress.told['fog:lifted'] ? 1 : 0;
       default: return Economy() ? Economy().totalAmount(item.resource) : 0;
     }
   };
