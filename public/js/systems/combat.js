@@ -297,7 +297,7 @@
 
         const flag = Garrison.flagOf(building);
         if (flag) { Garrison.deploy(building, null); continue; }   // på väg till flaggan
-        const enemy = this.findEnemy(building.player, building.x + .5, building.y + .5, Garrison.radius(building));
+        const enemy = this.findEnemy(building.player, building.x + .5, building.y + .5, Garrison.radius(building), target => target.type === 'wall');   // murar ger ingen utryckning
         if (enemy) Garrison.deploy(building, enemy);
       }
     },
@@ -341,7 +341,9 @@
       const rank = monster ? priority : this.rankFor(unit);
       if (!(unit.blocker && unit.target === unit.blocker && !attacked) && (!unit.target || rank(unit.target) > 0) && unit.scanTimer <= 0) {
         unit.scanTimer = settings().scanIntervalSeconds;
-        const ignored = unit.ignoreUntil > this.time || unit.unreachable?.size ? (target => (unit.ignoreUntil > this.time && target === unit.ignore) || this.isUnreachable(unit, target)) : null;
+        // Murar slås bara när de stänger vägen (blocker), inte bara för att de står nära; mål som inte går att nå ignoreras (se onPathFailure)
+        const ignored = monster ? (unit.ignoreUntil > this.time ? unit.ignore : null)
+          : target => (isBuilding(target) && target.type === 'wall' && target !== unit.blocker) || (unit.ignoreUntil > this.time && target === unit.ignore) || this.isUnreachable(unit, target);
         const found = this.findEnemy(unit.player, anchor.x, anchor.y, anchor.radius, ignored, monster ? unit : undefined, rank);
         if (found && (!unit.target || rank(found) < rank(unit.target))) unit.target = found;
       }
