@@ -167,7 +167,7 @@
         ...(chapter.number === 1 ? this.once('prologue', [{ type: 'prose', lines: Config.story.prologue, music: Config.story.music?.prologue }, ...(Config.story.prologueDialogue ? [{ type: 'dialogue', lines: Config.story.prologueDialogue }] : [])]) : []),
         ...(chapter.letter ? this.once('letter', [{ type: 'letter', letter: chapter.letter }]) : []),
         ...(chapter.dialogue ? this.once('dialogue', [{ type: 'dialogue', lines: chapter.dialogue }]) : []),
-        ...(chapter.number === 1 && !this.guideAsked && !CityBuilder.UI.guideDone() ? (this.guideAsked = true, [{ type: 'guide' }]) : []),   // en gång per start tills guiden är klar
+        ...(chapter.number === 1 && this.guideAsked !== chapter && !CityBuilder.UI.guideDone() ? (this.guideAsked = chapter, [{ type: 'guide' }]) : []),   // en gång varje gång kapitlet startas (omladdning, nytt försök) tills guiden är klar
       ]);
 
       // En händelse sker en gång, när alla villkor den har slår till: at (sekunder in i kapitlet), goal (målet med det numret, räknat från 1, är klart) och when
