@@ -3642,10 +3642,11 @@
         panel.querySelectorAll('.tool-toggle').forEach(button => {
           const index = +button.dataset.index, id = Object.keys(choices[index].outputs)[0], on = Behaviors.recipeEnabled(building, index);
           const stock = CityBuilder.Economy.totalAmount(id, building.player), item = this.resourceName(id);
-          const html = `${on ? '✓' : '✕'} ${this.resourceChip(id)}${item} <b>${stock}</b>`;
+          const html = this.resourceChip(id);   // bara ikonen: läget syns på knappen (grå = av, gul ring = tillverkas nu), antalet och namnet i hovern
           if (button.dataset.html !== html) { button.dataset.html = html; button.innerHTML = html; }
           button.classList.toggle('on', on);
           button.classList.toggle('making', on && index === current);
+          button.setAttribute('aria-label', `${item}: ${stock}`);
           button.title = !on ? t('{item}: {n} in stock. Click to switch on', { item, n: stock })
             : enabled <= 1 ? t('At least one tool must stay on')
             : t('{item}: {n} in stock. Click to switch off', { item, n: stock });

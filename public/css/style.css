@@ -19,7 +19,10 @@ button.on { border-color: var(--accent); background: #26402b; }
 button.tool-toggle, button.choice-radio { display: inline-flex; align-items: center; gap: 4px; }
 button.choice-radio.locked { opacity: .55; filter: grayscale(.6); }
 .choice-group { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
-button.tool-toggle:not(.on) { opacity: .5; }
+button.tool-toggle { padding: 5px; }
+button.tool-toggle .info-res { pointer-events: none; margin: 0; }
+button.tool-toggle .info-res-icon { width: 34px; height: 34px; }   /* bara ikonen, större än i löpande text */
+button.tool-toggle:not(.on) { opacity: .4; filter: grayscale(.7); }
 button.tool-toggle.making { box-shadow: 0 0 0 2px #ffd23f; }
 button:disabled, button.unavailable { border-color: var(--bad-line); background: #35201f; background-image: linear-gradient(var(--bad-bg), var(--bad-bg)); cursor: not-allowed; }
 
