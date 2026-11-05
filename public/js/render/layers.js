@@ -229,6 +229,7 @@
   const PATH_ALPHA = [0, 0.225, 0.45, 0.675, 0.9, 1]; // nivå 1-4: slitage under 100 %, nivå 5: minst 100 %
   const PATH_SCALE = 8;                  // opacitetskartans upplösning: bildpunkter per ruta
   const PATH_BLEND = 0.4;                // toningen mellan rutor med olika slitage: så stor del av en rutas bredd
+  const PATH_TEXTURE_BLEND = 0.5;        // detsamma för övergången mellan de två stigbilderna (path och path_worn)
   const GRID = PATH_CHUNK + 2;           // brickan + en ruta runt om, för att se grannarna
   const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
   const grid = new Uint8Array(GRID * GRID);
@@ -353,7 +354,7 @@
     }
     for (let k = 0; k < GRID * GRID; k++) if (!covered[k]) { partialMap[k] = fillMap[k]; wornMap[k] = fillWorn[k]; }
 
-    const drawLayer = (pattern, map) => {
+    const drawLayer = (pattern, map, blend) => {
       const layer = scratch.getContext('2d');
       layer.setTransform(1, 0, 0, 1, 0, 0);
       layer.globalCompositeOperation = 'source-over';
@@ -372,10 +373,10 @@
       } else { layer.lineWidth = width; layer.globalAlpha = 1; layer.stroke(shape); }
       layer.setTransform(1, 0, 0, 1, 0, 0);
       layer.globalAlpha = 1;
-      // Kartan skalas upp PATH_SCALE gånger med en smalare toning än vanlig bilinjär: vikten mellan två rutor trycks ihop till en S-kurva som
-      // går från 0 till 1 över PATH_BLEND av en rutas bredd, mitt på rutkanten
+      // Kartan skalas upp PATH_SCALE gånger med en smalare toning än vanlig bilinjär: vikten mellan två rutor trycks ihop så att den
+      // går linjärt från 0 till 1 över PATH_BLEND av en rutas bredd, mitt på rutkanten
       const image = mapContext.createImageData(GRID * PATH_SCALE, GRID * PATH_SCALE), data = image.data, side = GRID * PATH_SCALE;
-      const weight = f => { const t = Math.min(1, Math.max(0, (f - 0.5) / PATH_BLEND + 0.5)); return t * t * (3 - 2 * t); };
+      const weight = f => { const t = Math.min(1, Math.max(0, (f - 0.5) / blend + 0.5)); return t; };
       for (let py = 0; py < side; py++) {
         const fy = (py + 0.5) / PATH_SCALE - 0.5, j0 = Math.floor(fy), wy = weight(fy - j0), ja = Math.min(GRID - 1, Math.max(0, j0)), jb = Math.min(GRID - 1, Math.max(0, j0 + 1));
         for (let px = 0; px < side; px++) {
@@ -394,8 +395,8 @@
       context.drawImage(scratch, 0, 0);
     };
     scratch.width = scratch.height = size;   // (nollställer också)
-    drawLayer(pathStyle.partial, partialMap);
-    if (anyWorn) drawLayer(pathStyle.worn, wornMap);
+    drawLayer(pathStyle.partial, partialMap, PATH_BLEND);
+    if (anyWorn) drawLayer(pathStyle.worn, wornMap, PATH_TEXTURE_BLEND);
   };
 
   // Blandar brickans förra bild (fadeFrom) och nya bild (canvas): gammal * (1 - p) + ny * p, på en delad canvas. Mellanläget hamnar
