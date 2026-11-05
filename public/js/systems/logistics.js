@@ -439,13 +439,14 @@
     preempt() {
       const waiting = this.tasks.filter(task => !task.soft);
       if (!waiting.length) return;
-      const idle = {}, soft = {}, ordinary = {};
+      const idle = {}, soft = {}, ordinary = {}, piles = {};
       for (const unit of World.units) {
         if (!unit.definition.isHauler) continue;
         const task = unit.deliveryTask;
         if (!task && !unit.stepQueue.length && !unit.carriedResource) idle[unit.player] = (idle[unit.player] || 0) + 1;
         else if (task && !unit.hasPickedUp) {
-          if (task.soft) (soft[unit.player] ||= []).push(unit);
+          if (task.source.definition.pile) (piles[unit.player] ||= []).push(unit);   // på väg till en hög: får lämna den för annat arbete
+          else if (task.soft) (soft[unit.player] ||= []).push(unit);
           else if (!task.destination.prioritized && !task.source.prioritized) (ordinary[unit.player] ||= []).push(unit);
         }
       }
@@ -458,7 +459,8 @@
       for (const task of waiting) {
         const player = task.source.player;
         if (idle[player]) { idle[player]--; continue; }
-        if (soft[player]?.length) take(soft[player], task.source);
+        if (!task.source.definition.pile && piles[player]?.length) take(piles[player], task.source);
+        else if (soft[player]?.length) take(soft[player], task.source);
         else if ((task.destination.prioritized || task.source.prioritized) && ordinary[player]?.length) take(ordinary[player], task.source);
       }
     },
@@ -496,8 +498,9 @@
       const pile = task => task.source.definition.pile ? 1 : 0;   // högar sist: allt annat arbete går före
       const priority = task => (task.destination.prioritized || task.source.prioritized ? 0 : 1);   // prioriterade byggnaders leveranser går först av allt
       // Nycklarna räknas en gång per uppdrag (inte i varje jämförelse)
-      const keyed = this.tasks.map(task => { const u = urgent(task); return { task, priority: priority(task), pile: pile(task), soft: task.soft ? 1 : 0, urgent: u, stock: u ? stock(task) : 0 }; });
-      keyed.sort((a, b) => a.priority - b.priority || a.pile - b.pile || a.soft - b.soft || a.urgent - b.urgent || (a.urgent ? a.stock - b.stock : 0) || a.task.seq - b.task.seq);
+      const route = task => (this.stores(task.destination) ? 1 : 0);   // leverans till annan byggnad före leverans till lager
+      const keyed = this.tasks.map(task => { const u = urgent(task); return { task, priority: priority(task), pile: pile(task), route: route(task), soft: task.soft ? 1 : 0, urgent: u, stock: u ? stock(task) : 0 }; });
+      keyed.sort((a, b) => a.priority - b.priority || a.pile - b.pile || a.route - b.route || a.soft - b.soft || a.urgent - b.urgent || (a.urgent ? a.stock - b.stock : 0) || a.task.seq - b.task.seq);
       this.tasks = keyed.map(entry => entry.task);
       // Högar får högst pileShare av en spelares bärare så länge annat arbete väntar eller nyss väntade, så att en tornado inte tömmer produktionen på bärare
       const { pileShare, pileRecent } = cfg(), pileBusy = {}, totals = {};
