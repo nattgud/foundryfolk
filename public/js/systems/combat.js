@@ -28,7 +28,7 @@
   const POST_TOLERANCE = 3;           // så nära posten räknas en fri soldat som på plats
   const SETTLE_SPEED = 1;             // hur fort en stillastående soldat glider till sin plats i rutan (rutor per sekund)
   const HQ_NEAR = 12;                // rutor: så nära fiendens HQ är HQ målet för datorns soldater (om inget militärt finns)
-  const BREACH_SECONDS = 30;         // så länge slår datorns soldater det som står närmast efter ett misslyckat vägval
+  const BREACH_SECONDS = 12;         // så länge går murar först för en soldat efter ett misslyckat vägval (förnyas vid nästa misslyckande)
   const MELEE_RANGE = 2;              // attackRange upp till detta är närstrid, över det en projektil
   const GRID_CELL = 8, GRID_KEY = 100003, GRID_SECONDS = 0.25, GRID_MARGIN = 3;   // rutnätet för sökningen efter fiender (se targets)
   const BUILDING_REACH = 0.6;         // en byggnad är en hel ruta: räckhållet räknas från kanten, inte mitten
@@ -109,6 +109,7 @@
     attack(attacker, target) {
       const definition = attacker.definition, amount = Math.max(1, definition.attackDamage - (target.definition.armor || 0));
       attacker.attackCooldownLeft = definition.attackCooldown;
+      if (target.type === 'wall' && !definition.isMonster) attacker.breachUntil = this.time + BREACH_SECONDS;   // håller fast vid muren tills den faller
       if (definition.attackRange <= MELEE_RANGE) {
         this.effects.push({ x1: attacker.x, y1: attacker.y, x2: centreX(target), y2: centreY(target), life: 0.18 });
         CityBuilder.Sound?.play(definition.attackSound || 'swing', { x: attacker.x, y: attacker.y });
@@ -165,7 +166,10 @@
       if (target.removed) return;
       const Levels = CityBuilder.Levels;
       if (attacker?.player === Players.HUMAN && Players.isPlayer(target.player) && Players.isHostile(Players.HUMAN, target.player)) Levels?.onDefeated?.(target);   // monster räknas inte mot banans mål
-      if (isBuilding(target)) return this.destroyBuilding(target);
+      if (isBuilding(target)) {
+        if (target.type === 'wall') for (const other of World.units) if (other.breachUntil > this.time && Utils.distance(other.x - target.x, other.y - target.y) <= 15) other.breachUntil = 0;   // muren föll: nu prövas vägen mot målet igen
+        return this.destroyBuilding(target);
+      }
       const unit = target;
       const Sound = CityBuilder.Sound;
       if (unit.definition.isSoldier) Sound?.play(unit.definition.isMonster ? Sound.known(unit.definition.dieSound, 'monster_die') : 'died', { x: unit.x, y: unit.y });
@@ -271,13 +275,15 @@
     // vanliga byggnader, HQ sist. En stor: HQ före murar och byggnader. Står soldaten vid HQ (HQ_NEAR) och inget militärt är i närheten är HQ målet. Efter ett misslyckat vägval (onPathFailure)
     // slår den det som står närmast i vägen (murar först) en stund. Andra spelare och monster: soldater, byggnader, övrigt (priority).
     rankFor(unit) {
-      if (!Players.isAI(unit.player) || unit.definition.isMonster) return priority;
-      const big = (this.peakFoes?.get(unit.player) || 0) >= (Config.ai.attack.bigForce ?? 8), breaching = unit.breachUntil > this.time;
+      if (unit.definition.isMonster) return priority;
+      const breaching = unit.breachUntil > this.time;   // vägen till målet är stängd: muren går först (före soldater som ändå inte går att nå), annars växlar soldaten mellan mur och mål utan att slå någon
+      if (!Players.isAI(unit.player)) return breaching ? (target => isBuilding(target) && target.type === 'wall' ? -.5 : priority(target)) : priority;
+      const big = (this.peakFoes?.get(unit.player) || 0) >= (Config.ai.attack.bigForce ?? 8);
       return target => {
         if (!isBuilding(target)) return target.definition.isSoldier ? 0 : 6;
         if (target.definition.job?.kind === 'garrison') return 1;
         const hq = target.type === 'hq';
-        if (breaching && !hq) return target.type === 'wall' ? 1.1 : 1.2;
+        if (breaching && !hq) return target.type === 'wall' ? -.5 : 1.2;
         if (hq) return Utils.distance(target.x - unit.x, target.y - unit.y) <= HQ_NEAR ? 1.5 : big ? 2 : 5;
         if (target.type === 'wall') return big ? 3 : 2;
         return big ? 4 : 3;
@@ -447,7 +453,7 @@
 
     // Anropas av Units när en soldat inte hittar någon väg: det ignorerade målet provas inte om på en stund
     onPathFailure(unit) {
-      if (Players.isAI(unit.player) && !unit.definition.isMonster) unit.breachUntil = this.time + BREACH_SECONDS;   // datorn: slå sig igenom det som står i vägen
+      if (!unit.definition.isMonster) unit.breachUntil = this.time + BREACH_SECONDS;   // slå sig igenom det som står i vägen (fiendens murar)
       unit.orderCooldown = settings().retrySeconds;
       unit.mode = 'idle';
       unit.goal = null;
