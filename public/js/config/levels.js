@@ -1208,5 +1208,8 @@
     },
   };
 
+  // En helt ny spelare (inget sparat alls) börjar i storyn, inte i Free Realm. Måste ske före setLevel nedan, som själv sparar LEVEL_KEY.
+  if ([LEVEL_KEY, STORY_KEY, CUSTOM_KEY, REACHED_KEY].every(key => store.get(key) === null)) store.set(STORY_KEY, 1);
+
   setLevel(clampLevel(store.get(LEVEL_KEY)), true);
 })(window.CityBuilder);
