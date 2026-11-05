@@ -164,7 +164,7 @@
       if (!this.reading) CityBuilder.Sound?.scene(chapter.music);   // kapitlets egen musik (läsvyn sköter sin egen)
       // Berättelsen i ordning: prolog (bara i kapitel 1), brev, dialog
       this.tell([
-        ...(chapter.number === 1 ? this.once('prologue', [{ type: 'prose', lines: Config.story.prologue, music: Config.story.music?.prologue }]) : []),
+        ...(chapter.number === 1 ? this.once('prologue', [{ type: 'prose', lines: Config.story.prologue, music: Config.story.music?.prologue }, ...(Config.story.prologueDialogue ? [{ type: 'dialogue', lines: Config.story.prologueDialogue }] : [])]) : []),
         ...(chapter.letter ? this.once('letter', [{ type: 'letter', letter: chapter.letter }]) : []),
         ...(chapter.dialogue ? this.once('dialogue', [{ type: 'dialogue', lines: chapter.dialogue }]) : []),
         ...(chapter.number === 1 && !this.guideAsked && !CityBuilder.UI.guideDone() ? (this.guideAsked = true, [{ type: 'guide' }]) : []),   // en gång per start tills guiden är klar
