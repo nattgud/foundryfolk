@@ -158,7 +158,8 @@
 
         if (building.buildProgress < 1) continue;
 
-        // Just färdigbyggd: materialet är förbrukat
+        // Just färdigbyggd: materialet är förbrukat, och byggnaden blockerar nu vägarna
+        CityBuilder.Pathfinder.clearCache();
         if (building.needsMaterials) { building.needsMaterials = false; building.inputStock = {}; }
         if (building.definition.job) {
           const behavior = Behaviors.forBuilding(building);

@@ -32,11 +32,13 @@
 
     settings() { return Config.settings.pathfinding; },
 
-    isWall(x, y) { const building = World.buildingAt(x, y); return !!building && building.type === 'wall'; },
+    // En byggnad blockerar först när den är färdigbyggd: en som håller på att byggas går att gå igenom
+    blocks: building => !!building && (building.buildProgress ?? 1) >= 1,
+    isWall(x, y) { const building = World.buildingAt(x, y); return this.blocks(building) && building.type === 'wall'; },
 
     // Gångkostnad för en ruta (slitna rutor är snabbare, byggnader blockerar)
     tileCost(x, y) {
-      if (World.buildingAt(x, y)) return Infinity;
+      if (this.blocks(World.buildingAt(x, y))) return Infinity;
       const tile = World.getTile(x, y);
       return Config.terrain[tile.terrainType].walkCost * (1 - Config.settings.maxWearSpeedBonus * tile.wear);
     },
@@ -126,7 +128,7 @@
       const kind = (x, y, index) => {
         if (index === goalIndex) return 0;
         const building = World.buildingAt(x, y);
-        if (building) return building.hp != null && Players.isHostile(player, building.player) ? 1 : 2;
+        if (this.blocks(building)) return building.hp != null && Players.isHostile(player, building.player) ? 1 : 2;
         const tile = World.getTile(x, y);
         return tile && Number.isFinite(Config.terrain[tile.terrainType].walkCost) ? 0 : 2;
       };
