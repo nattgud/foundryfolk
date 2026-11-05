@@ -19,6 +19,7 @@
     DIRECTIONS: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]],
     pathCache: new Map(),   // nyckel -> { path | null, until, epoch }
     pending: new Map(),     // nyckel -> förfrågan (i ankomstordning)
+    assessCache: new Map(),  // bedömningar av stängda vägar (assess), per mål och område
     failures: new Map(),    // misslyckade sökningar per mål och område (8x8 rutor): andra enheter i området får ingen väg direkt, i stället för en egen dyr sökning
     active: null,           // sökningen som pågår
     time: 0,                // simuleringstid (s)
@@ -44,7 +45,7 @@
     clearCache() { this.epoch++; },
 
     // Rensa allt (ny värld)
-    reset() { this.pathCache.clear(); this.pending.clear(); this.failures.clear(); this.active = null; this.epoch++; },
+    reset() { this.assessCache.clear(); this.pathCache.clear(); this.pending.clear(); this.failures.clear(); this.active = null; this.epoch++; },
 
     // Enheten upptäckte att vägen är blockerad: glöm den så att nästa sökning blir ny
     drop(path) {
@@ -96,6 +97,72 @@
       this.begin({ key, startX, startY, goalX, goalY, stopBeforeGoal: !!stopBeforeGoal, asked: this.frame });
       if (this.active) this.run(Infinity);
       return this.pathCache.get(key).path;
+    },
+
+    // Varför går det inte att nå (goalX, goalY)? Söker en egen väg där fiendens byggnader (hostile mot 'player') går att ta sig igenom till ett pris, och svarar
+    //   { blocker: första fientliga byggnaden på den vägen (att slå sönder), near: den ruta som går att nå och ligger närmast målet }.
+    // blocker är null när inget fientligt står i vägen (vatten, berg, egna byggnader). Billig nog för enstaka soldater som just misslyckats: svaret gäller en stund.
+    assess(startX, startY, goalX, goalY, player) {
+      const key = `${startX >> 2},${startY >> 2},${goalX},${goalY},${player}`, cached = this.assessCache.get(key);
+      if (cached && cached.epoch === this.epoch && cached.until > this.time) return cached.result;
+      const result = { blocker: null, near: null };
+      if (this.assessCache.size > 400) this.assessCache.clear();
+      this.assessCache.set(key, { result, epoch: this.epoch, until: this.time + (this.settings().noPathSeconds ?? 8) });
+
+      const margin = 24, minX = Math.min(startX, goalX) - margin, minY = Math.min(startY, goalY) - margin;
+      const width = Math.abs(startX - goalX) + 2 * margin + 1, height = Math.abs(startY - goalY) + 2 * margin + 1, count = width * height;
+      if (count > this.settings().maxCells) return result;
+      const cost = new Float32Array(count).fill(Infinity), parent = new Int32Array(count).fill(-1), closed = new Uint8Array(count);
+      const goalIndex = (goalY - minY) * width + (goalX - minX), startIndex = (startY - minY) * width + (startX - minX);
+      const { Players } = CityBuilder;
+      const heap = [];   // [kostnad, index], minhög
+      const push = (c, i) => { let k = heap.length; heap.push([c, i]); while (k) { const p = (k - 1) >> 1; if (heap[p][0] <= c) break; heap[k] = heap[p]; k = p; } heap[k] = [c, i]; };
+      const pop = () => {
+        const top = heap[0], last = heap.pop();
+        if (heap.length) { let k = 0; for (;;) { let c = 2 * k + 1; if (c >= heap.length) break; if (c + 1 < heap.length && heap[c + 1][0] < heap[c][0]) c++; if (heap[c][0] >= last[0]) break; heap[k] = heap[c]; k = c; } heap[k] = last; }
+        return top;
+      };
+      // 0 = fri, 1 = fientlig byggnad (går att slå sönder), 2 = blockerad
+      const kind = (x, y, index) => {
+        if (index === goalIndex) return 0;
+        const building = World.buildingAt(x, y);
+        if (building) return building.hp != null && Players.isHostile(player, building.player) ? 1 : 2;
+        const tile = World.getTile(x, y);
+        return tile && Number.isFinite(Config.terrain[tile.terrainType].walkCost) ? 0 : 2;
+      };
+      cost[startIndex] = 0; push(0, startIndex);
+      let near = startIndex, nearDistance = Infinity, settled = 0;
+      while (heap.length && settled < 20000) {
+        const [c, index] = pop();
+        if (closed[index]) continue;
+        closed[index] = 1; settled++;
+        const x = minX + index % width, y = minY + ((index / width) | 0);
+        const distance = Math.hypot(x - goalX, y - goalY);
+        if (distance < nearDistance && kind(x, y, index) === 0) { nearDistance = distance; near = index; }
+        if (index === goalIndex) break;
+        for (let d = 0; d < 8; d++) {
+          const nx = x + DX[d], ny = y + DY[d];
+          if (nx < minX || ny < minY || nx >= minX + width || ny >= minY + height) continue;
+          const next = index + DY[d] * width + DX[d];
+          if (closed[next]) continue;
+          const k = kind(nx, ny, next);
+          if (k === 2) continue;
+          if (d >= 4 && (kind(x + DX[d], y, index + DX[d]) === 2 || kind(x, y + DY[d], index + DY[d] * width) === 2)) continue;   // inte diagonalt förbi ett hörn
+          const tile = World.getTile(nx, ny), terrain = tile ? Config.terrain[tile.terrainType].walkCost : 1;
+          const total = c + (d >= 4 ? DIAGONAL : 1) * terrain + (k === 1 ? 15 : 0);
+          if (total < cost[next]) { cost[next] = total; parent[next] = index; push(total, next); }
+        }
+      }
+      if (closed[goalIndex]) {
+        const path = [];
+        for (let cell = goalIndex; cell !== startIndex && cell >= 0; cell = parent[cell]) path.push(cell);
+        for (let i = path.length - 1; i >= 0; i--) {
+          const cell = path[i], x = minX + cell % width, y = minY + ((cell / width) | 0);
+          if (cell !== goalIndex && World.buildingAt(x, y) && kind(x, y, cell) === 1) { result.blocker = World.buildingAt(x, y); break; }
+        }
+      }
+      if (!result.blocker && near !== startIndex) result.near = { x: minX + near % width, y: minY + ((near / width) | 0) };
+      return result;
     },
 
     requeueActive() {

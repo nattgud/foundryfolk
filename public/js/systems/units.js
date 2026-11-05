@@ -497,9 +497,10 @@
     },
 
     handlePathFailure(unit) {
+      const step = unit.stepQueue[0];
       unit.stepQueue.length = 0; unit.idleCooldown = 1; unit.status = "Can't reach";
       Logistics.failTask(unit);
-      if (unit.definition.isSoldier) CityBuilder.Combat.onPathFailure(unit);
+      if (unit.definition.isSoldier) CityBuilder.Combat.onPathFailure(unit, step);
     },
   };
 
