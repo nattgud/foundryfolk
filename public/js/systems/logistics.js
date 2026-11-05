@@ -129,11 +129,27 @@
         Economy.updateStats();
         this.clearPiles();
         this.startRound();
-        this.balanceCarriers(); this.purgeInvalidTasks(); this.redirectOrphans(); this.rebuildCounters(); this.requestMissingInputs(); this.orders = null; this.flushSurplusToStorage(); this.orders = null;
+        this.stepOffWalls(); this.balanceCarriers(); this.purgeInvalidTasks(); this.redirectOrphans(); this.rebuildCounters(); this.requestMissingInputs(); this.orders = null; this.flushSurplusToStorage(); this.orders = null;
         this.round = null; this.soft = null;
       }
       this.time = (this.time || 0) + deltaSeconds;
       this.assignTasksToCarriers();
+    },
+
+    // Lediga bärare som står på en mur (de lämnade sista leveransen på murens byggplats, eller muren byggdes under dem) går till närmaste vanliga ruta
+    stepOffWalls() {
+      for (const unit of World.units) {
+        if (!unit.definition.isHauler || unit.stepQueue.length || unit.carriedResource || unit.deliveryTask) continue;
+        const x = Math.floor(unit.x), y = Math.floor(unit.y);
+        if (!CityBuilder.Pathfinder.isWall(x, y)) continue;
+        let best = null, bestDistance = 1e9;
+        for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+          const tile = World.getTile(x + dx, y + dy), distance = dx * dx + dy * dy;
+          if (!tile || distance >= bestDistance || !Number.isFinite(Config.terrain[tile.terrainType].walkCost) || World.buildingAt(x + dx, y + dy)) continue;
+          best = { x: x + dx, y: y + dy }; bestDistance = distance;
+        }
+        if (best) unit.stepQueue = [Jobs.walkTo(best.x, best.y)];
+      }
     },
 
     // Tomma högar (det som blev kvar efter en rivning) försvinner när bärarna hämtat allt
