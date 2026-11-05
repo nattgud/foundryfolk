@@ -43,13 +43,13 @@
     seed: 1861,
     music: { prologue: null, epilogue: null },   // t.ex. prologue: 'music/prologue.mp3'
     speakers: {   // voice: { pitch ×, dark (lowpass ×), stretch (längre ljud, långsammare text), slide (tonen sjunker), detune (cent, en andra ostämd röst) }
-      thordram: { name: 'Thordram', color: '#c9a45c', voice: { pitch: 0.75 } },
-      albertha: { name: 'Albertha', color: '#b78bd6', voice: { pitch: 1.25 } },
-      mordrath: { name: 'Mordrath', color: '#d9534f', voice: { pitch: 0.6, dark: 0.65, stretch: 2.4, slide: 0.22, detune: -45 } },
-      baelthar: { name: 'Baelthar', color: '#d9534f', voice: { pitch: 0.8, dark: 0.8, stretch: 2.4, slide: 0.22, detune: 70 } },
-      pipwick: { name: 'Pipwick', color: '#8fb86a', voice: { pitch: 0.95 } },
-      onden: { name: 'Onden', color: '#e0402f', voice: { pitch: 0.42, dark: 0.5, stretch: 3.2, slide: 0.3, detune: -60 } },
-      reeve: { name: 'You', color: '#8fc1ad' },
+      reeve: { name: 'You', color: '#7572ff' },
+      pipwick: { name: 'Pipwick', color: '#79ddd8', voice: { pitch: 0.8 } },
+      thordram: { name: 'Thordram', color: '#5ae655', voice: { pitch: 0.75 } },
+      albertha: { name: 'Albertha', color: '#e266ab', voice: { pitch: 1.25 } },
+      mordrath: { name: 'Mordrath', color: '#6bb132', voice: { pitch: 0.6, dark: 0.65, stretch: 2.4, slide: 0.22, detune: -45 } },
+      baelthar: { name: 'Baelthar', color: '#9e1460', voice: { pitch: 0.8, dark: 0.8, stretch: 2.4, slide: 0.22, detune: 70 } },
+      onden: { name: 'Onden', color: '#ca2a18', voice: { pitch: 0.42, dark: 0.5, stretch: 3.2, slide: 0.3, detune: -60 } },
       narrator: { name: '', color: '', narrator: true, voice: { pitch: 0.9, dark: 0.85 } },
     },
     // Rösten i dialogerna (systems/voice.js). Ett [tonläge] i en replik, t.ex. '[angry]Nej!', byter tonläge från den platsen (tills nästa tagg).
@@ -98,7 +98,7 @@
       'There are those who believe the Rule cannot be broken. Others believe it already has.',
       'You are the Reeve of a small village at the edge of the realm. No hero, no soldier, only someone with good land, honest work and a quiet life you mean to keep.',
       'Then a letter arrives.',
-      'Your closest companion in the village is Pipwick, a middle-aged human and former royal roadkeeper. He knows the roads of Farael better than anyone, though his inventions are not always quite as reliable.',
+      'Your closest companion in the village is Pipwick, a former royal roadkeeper. He knows the roads of Farael better than anyone, though his inventions are not always quite as reliable.',
     ],
     // Efter prologens stycken (när brevet kommit)
     prologueDialogue: [
