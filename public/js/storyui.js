@@ -82,9 +82,10 @@
             if (typing) return typing();
             if (line >= current.lines.length) return next();
             const { who, text: spoken } = current.lines[line++], speaker = story.speakers[who] || { name: who, color: '' };
-            const row = make('p', speaker.narrator ? 'story-line story-narration' : 'story-line'), name = make('b', '', t(speaker.name) + ': '), words = make('span');
+            const row = make('div', speaker.narrator ? 'story-line story-narration' : 'story-line'), name = make('b', '', t(speaker.name) + ': '), words = make('span');
             name.style.color = speaker.color;
-            row.append(...(speaker.narrator ? [words] : [name, words]));   // berättaren har inget namn och skrivs kursivt
+            if (speaker.narrator) row.append(words);   // berättaren har inget namn och ingen bild och skrivs kursivt
+            else { const body = make('p', 'story-body'); body.append(name, words); row.append(this.portrait(who, speaker), body); }
             text.append(row);
             print(words, t(spoken), who);
             action.textContent = line >= current.lines.length && last ? t('Continue') : t('Next');
@@ -101,6 +102,17 @@
         action.focus();
       };
       show();
+    },
+
+    // Talarens porträtt, en rund bild bredvid repliken: images/portraits/<talare>.png (eller speaker.portrait). Saknas bilden visas talarens initial i dess färg.
+    portrait(who, speaker) {
+      const frame = make('div', 'story-portrait'), image = new Image();
+      frame.style.borderColor = speaker.color;
+      image.alt = '';
+      image.onerror = () => { image.remove(); frame.classList.add('is-missing'); frame.style.color = speaker.color; frame.textContent = [...t(speaker.name)][0] || ''; };
+      image.src = `images/portraits/${speaker.portrait || who}.png?v=${window.version}`;
+      frame.append(image);
+      return frame;
     },
 
     // Kapitelvyn i huvudmenyn. ui: { make, button, confirm(alternativ), back }
@@ -170,7 +182,11 @@
         .story-greeting { font-style: italic; }
         .story-signature { text-align: right; margin: 0; }
         .story-signature + .story-signature { margin-top: -8px; font-style: italic; }
+        .story-line { display: flex; gap: 12px; align-items: flex-start; }
+        .story-body { margin: 0; flex: 1; min-width: 0; }
         .story-line b { margin-right: 2px; }
+        .story-portrait { flex: 0 0 56px; width: 56px; height: 56px; box-sizing: border-box; border: 2px solid #888; border-radius: 50%; overflow: hidden; background: #1b1f27; display: flex; align-items: center; justify-content: center; font: 700 26px Georgia, serif; font-style: normal; }
+        .story-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .story-narration { font-style: italic; opacity: .85; }
         .story-next { align-self: flex-end; min-width: 140px; }
       `;

@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'In the story, everyone who speaks now has a round portrait next to their lines',
       'Walls are now drawn as a straight line: tap where the wall starts and where it ends, and the whole line is built at once (all or nothing: if the stone is not enough, the whole wall turns red). Cancel with the button or Esc. A wall now changes its picture to match its neighbours, with ends, bends, T-junctions and crossings',
       'The build menu now always shows every building, in the same place and with the same hotkey in the story, in Free Realm and on custom maps: buildings you cannot build yet are greyed out and say when they unlock',
       'Ruins are now found almost everywhere: single ruins are scattered across the whole land (rare, but never far away), and ruined villages and altar rings are about three times as common',
