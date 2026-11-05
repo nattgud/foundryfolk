@@ -121,6 +121,7 @@
     // Händelser på bestämda tider (Weather sköter själva vädret)
     fire(event) {
       const Weather = CityBuilder.Weather, hq = World.headquarters;
+      if (event.give && hq) for (const [resourceId, amount] of Object.entries(event.give)) hq.storedGoods[resourceId] = (hq.storedGoods[resourceId] || 0) + amount;   // give: varor till spelarens huvudlager
       if (event.tell) this.tell([{ type: 'dialogue', lines: event.tell, part: 'events', scene: event.scene }]);
       if (event.weather) { Weather.type = event.weather; Weather.left = 90; Weather.flashIn = 1; CityBuilder.Sound?.play('weather.' + event.weather); }
       if (event.tornado || event.super) {
