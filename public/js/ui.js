@@ -424,10 +424,11 @@
           }
           const buttons = document.createElement('div');
           buttons.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end';
-          const labels = trade ? [] : garrison ? [[this.unitName('swordsman'), false], [this.unitName('archer'), false], [t('Defence mode'), true]] : [[t('Pause'), true], [t('Demolish'), false]];
-          for (const [text, glow] of labels) {
+          const labels = trade ? [] : garrison ? [[this.unitName('swordsman'), false], [this.unitName('archer'), false], [this.stanceIcon(false), true, t('Defence mode')]] : [[t('Pause'), true], [t('Demolish'), false]];
+          for (const [text, glow, icon] of labels) {
             const element = document.createElement('button');
-            element.type = 'button'; element.textContent = text; element.tabIndex = -1;
+            element.type = 'button'; element.tabIndex = -1;
+            if (icon) { element.innerHTML = text; element.className = 'icon-button'; element.setAttribute('aria-label', icon); } else element.textContent = text;
             if (glow) element.className = 'glow';
             buttons.append(element);
           }
@@ -3069,6 +3070,12 @@
     },
 
     // En resurs som ikon (bild, annars färgruta) med namnet som hover. amount utelämnat = bara ikonen. className 'info-short' = röd (saknas).
+    // Garnisonens läge som bild: images/ui/stance_defence.png och stance_attack.png (saknas bilden syns lägets namn i stället)
+    stanceIcon(attacking) {
+      const label = t(attacking ? 'Attack mode' : 'Defence mode');
+      return `<img class="stance-icon" src="images/ui/stance_${attacking ? 'attack' : 'defence'}.png?v=${version}" alt="${label}">`;
+    },
+
     resourceChip(resourceId, amount, className = '') {
       const resource = Config.resources[resourceId] || {};
       const name = this.resourceName(resourceId).replace(/"/g, '&quot;'), color = resource.color || '#3a444d';
@@ -3449,7 +3456,7 @@
         const focuses = active ? CityBuilder.Behaviors.focusesOf(building) : [];   // byggnad med inriktning (gruva, samlare): en alternativknapp per upplåst inriktning
         const lockedFocuses = active ? CityBuilder.Behaviors.lockedFocusesOf(building) : [];   // låsta inriktningar visas också, grå med lås
         const choiceButton = focuses.length + lockedFocuses.length > 1
-          ? `<div id="choiceButton" class="choice-group">${[...focuses, ...lockedFocuses].map(type => `<button class="choice-radio${focuses.includes(type) ? '' : ' locked'}" data-type="${type}"></button>`).join('')}</div>`
+          ? `<div id="choiceButton" class="choice-group">${[...focuses, ...lockedFocuses].map(type => `<button class="choice-radio focus-icon\${focuses.includes(type) ? '' : ' locked'}" data-type="${type}"></button>`).join('')}</div>`
           : !choices ? '' : building.definition.job.auto
           ? building.definition.job.choices.map((choice, index) => `<button class="tool-toggle" data-index="${index}"></button>`).join('')
           : `<div id="choiceButton" class="choice-group">${building.definition.job.choices.map((choice, index) => `<button class="choice-radio" data-index="${index}"></button>`).join('')}</div>`;
@@ -3465,7 +3472,7 @@
           ? building.definition.job.trains.map(kind => `<button class="train-button" data-kind="${kind}">${this.unitName(kind)}</button>`).join('')
           : '';
 
-        const stanceButton = active && CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton"></button>' : '';
+        const stanceButton = active && CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton" class="icon-button"></button>' : '';
 
         panel.innerHTML =
           `<div><b id="infoName">${this.buildingName(building.definition)}</b><span id="infoTools"></span><br><span id="infoStatus"></span></div>` +
@@ -3617,9 +3624,10 @@
         panel.querySelectorAll('.choice-radio').forEach(radio => {
           const definition = Config.buildings[radio.dataset.type], id = definition.job.outputResource ?? Object.keys(definition.job.outputs || {})[0], selected = radio.dataset.type === building.type;
           const locked = radio.classList.contains('locked');
-          const html = `${locked ? '🔒' : selected ? '●' : '○'} ${this.resourceChip(id)}${this.resourceName(id)}`;
+          const html = this.resourceChip(id) + (locked ? '<span class="focus-lock">🔒</span>' : '');   // bara ikonen; vald = full färg, övriga bleka
           if (radio.dataset.html !== html) { radio.dataset.html = html; radio.innerHTML = html; }
           radio.classList.toggle('on', selected);
+          radio.setAttribute('aria-label', this.resourceName(id));
           radio.title = locked ? t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(radio.dataset.type) }) : t('Gathering: {source} → {output}', { source: this.terrainName(definition.job.sourceTerrain), output: this.resourceName(id) });
         });
       } else if (byId('choiceButton')) {
@@ -3661,8 +3669,10 @@
 
       if (byId('stanceButton')) {
         const attacking = CityBuilder.Garrison.isAttacking(building);
-        byId('stanceButton').textContent = t(attacking ? 'Attack mode' : 'Defence mode');
-        byId('stanceButton').classList.toggle('on', attacking);
+        const label = t(attacking ? 'Attack mode' : 'Defence mode');
+        setButton('stanceButton', this.stanceIcon(attacking), attacking);
+        byId('stanceButton').setAttribute('aria-label', label);
+        byId('stanceButton').title = label + ' [' + this.HOTKEYS.stanceButton.toUpperCase() + ']';
       }
     },
 
