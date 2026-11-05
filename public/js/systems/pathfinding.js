@@ -12,6 +12,7 @@
   const DX = [1, -1, 0, 0, 1, 1, -1, -1];
   const DY = [0, 0, 1, -1, 1, -1, 1, -1];
   const DIAGONAL = Math.SQRT2;
+  const INSIDE_COST = 6;   // kostnad för en blockerad ruta när enheten redan står i en (så att den helst går direkt ut)
   const MAX_WEAR = 2; // samma tak som i units.js
 
   const Pathfinder = {
@@ -172,6 +173,7 @@
         this.closed = new Uint32Array(cellCount);       // sökning som noden är färdigbehandlad i
         this.tileCosts = new Float32Array(cellCount);
         this.tileStamp = new Uint32Array(cellCount);
+        this.insideStamp = new Uint32Array(cellCount);  // noden nåddes bara över blockerade rutor från en blockerad startruta (se run)
         this.searchId = 0;
       }
       if (!this.heapCapacity) this.growHeap(1024);
@@ -195,6 +197,7 @@
         nodeLimit: Math.max(settings.nodeLimit, (Math.abs(startX - goalX) + Math.abs(startY - goalY)) * (settings.nodeLimitPerTile ?? 80)),
       };
       this.gCost[s.startIndex] = 0; this.gStamp[s.startIndex] = this.searchId; this.parent[s.startIndex] = -1;
+      if (World.buildingAt(startX, startY)) this.insideStamp[s.startIndex] = this.searchId;   // enheten står på en blockerad ruta (t.ex. en mur som byggts under den)
       this.push(this.heuristic(s, startX, startY), s.startIndex);
     },
 
@@ -213,7 +216,7 @@
     run(budget) {
       const s = this.s, request = this.active, id = this.searchId;
       const { minX, minY, width, goalIndex } = s, maxX = minX + width, maxY = minY + s.height;
-      const { gCost, gStamp, closed, parent } = this;
+      const { gCost, gStamp, closed, parent, insideStamp } = this;
       const nodeLimit = s.nodeLimit;
 
       while (this.heapSize) {
@@ -235,17 +238,19 @@
         if (++s.expanded > nodeLimit) break;
 
         const x = minX + index % width, y = minY + ((index / width) | 0), g = gCost[index];
+        const inside = insideStamp[index] === id;   // står på en blockerad ruta och har bara gått över blockerade: ignorerar blockeringen tills en vanlig ruta nås
         for (let d = 0; d < 8; d++) {
           const nextX = x + DX[d], nextY = y + DY[d];
           if (nextX < minX || nextY < minY || nextX >= maxX || nextY >= maxY) continue;
           const nextIndex = index + DY[d] * width + DX[d];
           if (closed[nextIndex] === id) continue;
           const nextCost = this.cost(nextX, nextY, nextIndex);
-          if (nextCost === Infinity && nextIndex !== goalIndex) continue; // endast målet får vara blockerat
-          // inga diagonaler som skär hörn av blockerade rutor
-          if (d >= 4 && (this.cost(nextX, y, index + DX[d]) === Infinity || this.cost(x, nextY, index + DY[d] * width) === Infinity)) continue;
-          const newCost = g + (d >= 4 ? DIAGONAL : 1) * (nextCost === Infinity ? 1 : nextCost);
+          if (nextCost === Infinity && nextIndex !== goalIndex && !inside) continue; // endast målet får vara blockerat (och rutor man kommer ut ur när man står i en blockerad ruta)
+          // inga diagonaler som skär hörn av blockerade rutor (utom när man står i en blockerad ruta)
+          if (!inside && d >= 4 && (this.cost(nextX, y, index + DX[d]) === Infinity || this.cost(x, nextY, index + DY[d] * width) === Infinity)) continue;
+          const newCost = g + (d >= 4 ? DIAGONAL : 1) * (nextCost === Infinity ? (inside && nextIndex !== goalIndex ? INSIDE_COST : 1) : nextCost);   // dyrt att gå genom blockerade rutor: helst direkt ut på en vanlig ruta
           if (gStamp[nextIndex] !== id || newCost < gCost[nextIndex]) {
+            if (inside && nextCost === Infinity) insideStamp[nextIndex] = id; else if (insideStamp[nextIndex] === id) insideStamp[nextIndex] = 0;
             gStamp[nextIndex] = id;
             gCost[nextIndex] = newCost;
             parent[nextIndex] = index;
