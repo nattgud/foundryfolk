@@ -1214,6 +1214,7 @@ CityBuilder.Config.buildings = {
     color: '#8a8f98',
     buildCost: { stone: 3 },
     maxHp: 250,
+    carriers: 0,        // en mur ger inga bärare (och räknas inte heller med när bärare per byggnad växer)
     repeatPlacement: true,
     linePlacement: true,
     buildDuration: 6
