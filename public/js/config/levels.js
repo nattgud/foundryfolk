@@ -993,6 +993,7 @@
   const Systems = CityBuilder.Systems = CityBuilder.Systems || {};
   Systems.levels = {
     update(deltaSeconds) {
+      advancing = false;   // nya banan körs
       if (!progress.complete) progress.seconds += deltaSeconds;
       checkTimer += deltaSeconds;
       if (checkTimer >= 1) {
@@ -1019,6 +1020,7 @@
     return info;
   };
   const setCustom = raw => { const info = enter(customInfo(raw)); applyProgress(null); return info; };
+  let advancing = false;   // advance() är igång: nästa bana byggs (nollställs när nya banan börjar köras)
   const setStory = n => {
     const info = enter(storyInfo(n));
     store.set(STORY_KEY, info.story.number);
@@ -1207,6 +1209,8 @@
     },
     // Goes to the next level: a new world is built (the autosave is removed)
     advance() {
+      if (advancing) return;   // ett andra klick (eller en andra knapp) medan nästa bana byggs ska inte hoppa över den
+      advancing = true;
       const save = CityBuilder.Save;
       if (state.info.story) setStory(state.info.story.number + 1); else setLevel(state.info.level + 1, true);
       if (save && save.newGame) save.newGame(); else CityBuilder.Game.restart();
