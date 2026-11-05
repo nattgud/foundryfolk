@@ -238,6 +238,8 @@
   const pathChunks = new Map();
   const scratch = document.createElement('canvas'), mapCanvas = document.createElement('canvas'), mapContext = mapCanvas.getContext('2d');
   const fillMap = new Float32Array(GRID * GRID), fillWorn = new Float32Array(GRID * GRID);
+  let mapImage = null;
+  const axisA = new Int32Array(GRID * 16), axisB = new Int32Array(GRID * 16), axisW = new Float32Array(GRID * 16);   // (rymmer PATH_SCALE upp till 16)
   const pathStyle = { tileSize: 0, soft: false, partialImage: null, wornImage: null, partial: '#655', worn: '#777' };
 
   const wearLevel = wear => (wear >= 1 ? 5 : Math.round(wear * 4));
@@ -354,11 +356,12 @@
     }
     for (let k = 0; k < GRID * GRID; k++) if (!covered[k]) { partialMap[k] = fillMap[k]; wornMap[k] = fillWorn[k]; }
 
-    const drawLayer = (pattern, map, blend) => {
-      const layer = scratch.getContext('2d');
+    // direct = lagret ritas rakt på brickans egen canvas (den är tom, så det som maskas är bara det lagret); annars på en tillfällig canvas som läggs ovanpå
+    const drawLayer = (pattern, map, blend, direct) => {
+      const layer = direct ? context : scratch.getContext('2d');
       layer.setTransform(1, 0, 0, 1, 0, 0);
       layer.globalCompositeOperation = 'source-over';
-      layer.clearRect(0, 0, size, size);
+      if (!direct) layer.clearRect(0, 0, size, size);
       layer.setTransform(1, 0, 0, 1, -chunk.cx * size, -chunk.cy * size);   // världskoordinater, så att mönstret fortsätter obrutet mellan brickor
       layer.lineCap = layer.lineJoin = 'round';
       layer.strokeStyle = pattern;
@@ -375,28 +378,32 @@
       layer.globalAlpha = 1;
       // Kartan skalas upp PATH_SCALE gånger med en smalare toning än vanlig bilinjär: vikten mellan två rutor trycks ihop så att den
       // går linjärt från 0 till 1 över PATH_BLEND av en rutas bredd, mitt på rutkanten
-      const image = mapContext.createImageData(GRID * PATH_SCALE, GRID * PATH_SCALE), data = image.data, side = GRID * PATH_SCALE;
-      const weight = f => { const t = Math.min(1, Math.max(0, (f - 0.5) / blend + 0.5)); return t; };
+      const side = GRID * PATH_SCALE;
+      if (mapCanvas.width !== side) { mapCanvas.width = mapCanvas.height = side; mapImage = mapContext.createImageData(side, side); }
+      const data = mapImage.data;
+      // Vikterna och rutorna per bildpunkt räknas en gång per axel, inte per bildpunkt
+      for (let p = 0; p < side; p++) {
+        const f = (p + 0.5) / PATH_SCALE - 0.5, i0 = Math.floor(f), t = Math.min(1, Math.max(0, (f - i0 - 0.5) / blend + 0.5));
+        axisA[p] = Math.min(GRID - 1, Math.max(0, i0)); axisB[p] = Math.min(GRID - 1, Math.max(0, i0 + 1)); axisW[p] = t;
+      }
       for (let py = 0; py < side; py++) {
-        const fy = (py + 0.5) / PATH_SCALE - 0.5, j0 = Math.floor(fy), wy = weight(fy - j0), ja = Math.min(GRID - 1, Math.max(0, j0)), jb = Math.min(GRID - 1, Math.max(0, j0 + 1));
+        const rowA = axisA[py] * GRID, rowB = axisB[py] * GRID, wy = axisW[py], base = py * side * 4 + 3;
         for (let px = 0; px < side; px++) {
-          const fx = (px + 0.5) / PATH_SCALE - 0.5, i0 = Math.floor(fx), wx = weight(fx - i0), ia = Math.min(GRID - 1, Math.max(0, i0)), ib = Math.min(GRID - 1, Math.max(0, i0 + 1));
-          const top = map[ja * GRID + ia] * (1 - wx) + map[ja * GRID + ib] * wx, bottom = map[jb * GRID + ia] * (1 - wx) + map[jb * GRID + ib] * wx;
-          data[(py * side + px) * 4 + 3] = Math.round((top * (1 - wy) + bottom * wy) * 255);
+          const ia = axisA[px], ib = axisB[px], wx = axisW[px];
+          const top = map[rowA + ia] + (map[rowA + ib] - map[rowA + ia]) * wx, bottom = map[rowB + ia] + (map[rowB + ib] - map[rowB + ia]) * wx;
+          data[base + px * 4] = (top + (bottom - top) * wy) * 255 + 0.5;
         }
       }
-      if (mapCanvas.width !== side) mapCanvas.width = mapCanvas.height = side;
-      mapContext.putImageData(image, 0, 0);
+      mapContext.putImageData(mapImage, 0, 0);
       layer.globalCompositeOperation = 'destination-in';
-      layer.imageSmoothingEnabled = true; layer.imageSmoothingQuality = 'high';
-      layer.drawImage(mapCanvas, -tileSize, -tileSize, GRID * tileSize, GRID * tileSize);   // brickans egna yta börjar en ruta in i kartan
+      layer.imageSmoothingEnabled = true;
+      layer.drawImage(mapCanvas, PATH_SCALE, PATH_SCALE, PATH_CHUNK * PATH_SCALE, PATH_CHUNK * PATH_SCALE, 0, 0, size, size);   // brickans egna yta börjar en ruta in i kartan
       layer.globalCompositeOperation = 'source-over';
-      context.setTransform(1, 0, 0, 1, 0, 0);
-      context.drawImage(scratch, 0, 0);
+      if (!direct) { context.setTransform(1, 0, 0, 1, 0, 0); context.drawImage(scratch, 0, 0); }
     };
-    scratch.width = scratch.height = size;   // (nollställer också)
-    drawLayer(pathStyle.partial, partialMap, PATH_BLEND);
-    if (anyWorn) drawLayer(pathStyle.worn, wornMap, PATH_TEXTURE_BLEND);
+    if (scratch.width !== size) scratch.width = scratch.height = size;
+    drawLayer(pathStyle.partial, partialMap, PATH_BLEND, true);
+    if (anyWorn) drawLayer(pathStyle.worn, wornMap, PATH_TEXTURE_BLEND, false);
   };
 
   // Blandar brickans förra bild (fadeFrom) och nya bild (canvas): gammal * (1 - p) + ny * p, på en delad canvas. Mellanläget hamnar

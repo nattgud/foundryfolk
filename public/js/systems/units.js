@@ -110,8 +110,8 @@
       }
       const tileCost = step.cost;
       const isTarget = nextTile.x === step.targetX && nextTile.y === step.targetY;
-      // Står enheten på en blockerad ruta (en mur byggdes under den) ignorerar den blockeringen tills den kommit ut på en vanlig ruta
-      if (tileCost === Infinity && !isTarget && !World.buildingAt(Math.floor(unit.x), Math.floor(unit.y))) { Pathfinder.drop(step.path); step.path = null; return; } // vägen blockerades -> räkna om
+      // Står enheten på en mur (som byggdes under den) ignorerar den blockeringen tills den kommit ut på en vanlig ruta
+      if (tileCost === Infinity && !isTarget && !Pathfinder.isWall(Math.floor(unit.x), Math.floor(unit.y))) { Pathfinder.drop(step.path); step.path = null; return; } // vägen blockerades -> räkna om
 
       const laneX = unit.laneX || 0, laneY = unit.laneY || 0; // soldaters egen linje i rutan, så att en marscherande grupp inte blir en enda hög
       const dx = nextTile.x + .5 + laneX - unit.x, dy = nextTile.y + .5 + laneY - unit.y, distance = Utils.distance(dx, dy);

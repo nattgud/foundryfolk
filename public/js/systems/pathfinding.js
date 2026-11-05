@@ -19,6 +19,7 @@
     DIRECTIONS: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]],
     pathCache: new Map(),   // nyckel -> { path | null, until, epoch }
     pending: new Map(),     // nyckel -> förfrågan (i ankomstordning)
+    failures: new Map(),    // misslyckade sökningar per mål och område (8x8 rutor): andra enheter i området får ingen väg direkt, i stället för en egen dyr sökning
     active: null,           // sökningen som pågår
     time: 0,                // simuleringstid (s)
     frame: 0,
@@ -29,6 +30,8 @@
     heapCapacity: 0,
 
     settings() { return Config.settings.pathfinding; },
+
+    isWall(x, y) { const building = World.buildingAt(x, y); return !!building && building.type === 'wall'; },
 
     // Gångkostnad för en ruta (slitna rutor är snabbare, byggnader blockerar)
     tileCost(x, y) {
@@ -41,13 +44,15 @@
     clearCache() { this.epoch++; },
 
     // Rensa allt (ny värld)
-    reset() { this.pathCache.clear(); this.pending.clear(); this.active = null; this.epoch++; },
+    reset() { this.pathCache.clear(); this.pending.clear(); this.failures.clear(); this.active = null; this.epoch++; },
 
     // Enheten upptäckte att vägen är blockerad: glöm den så att nästa sökning blir ny
     drop(path) {
       const entry = path && this.pathCache.get(path.key);
       if (entry && entry.path === path) this.pathCache.delete(path.key);
     },
+
+    failureKey: (startX, startY, goalX, goalY, stopBeforeGoal) => `${goalX},${goalY},${stopBeforeGoal ? 's' : ''},${startX >> 3},${startY >> 3}`,
 
     keyOf(startX, startY, goalX, goalY, stopBeforeGoal) {
       return `${startX},${startY},${goalX},${goalY}${stopBeforeGoal ? 's' : ''}`;
@@ -70,6 +75,8 @@
       const key = this.keyOf(startX, startY, goalX, goalY, stopBeforeGoal);
       const hit = this.cached(key);
       if (hit !== undefined) return hit;
+      const failure = this.failures.get(this.failureKey(startX, startY, goalX, goalY, stopBeforeGoal));   // en granne har just sökt förgäves mot samma mål (t.ex. en inmurad stad)
+      if (failure && failure.epoch === this.epoch && failure.until > this.time) return null;
 
       let request = this.pending.get(key);
       if (!request) this.pending.set(key, request = { key, startX, startY, goalX, goalY, stopBeforeGoal: !!stopBeforeGoal, asked: 0 });
@@ -104,15 +111,19 @@
       this.frame++;
       this.expireCache();
 
+      // Högst nodesPerFrame noder OCH högst msPerFrame millisekunder per steg: många sökningar som misslyckas (en inmurad stad) tar annars flera bildrutor i anspråk.
+      // De som blir kvar väntar på nästa steg (sökningen fortsätter där den slutade).
       let budget = this.settings().nodesPerFrame ?? 9000;
-      while (budget > 0) {
+      const deadline = performance.now() + (this.settings().msPerFrame ?? 4);
+      while (budget > 0 && performance.now() < deadline) {
         if (!this.active) {
           const request = this.nextRequest();
           if (!request) break;
           this.begin(request);
           if (!this.active) continue;                                 // klar direkt (för stort fönster)
         }
-        budget = this.run(budget);
+        const slice = Math.min(budget, 100);
+        budget -= slice - this.run(slice);
       }
     },
 
@@ -146,6 +157,10 @@
     finish(request, path) {
       const settings = this.settings();
       if (path) path.key = request.key;
+      else {
+        if (this.failures.size > 2000) this.failures.clear();
+        this.failures.set(this.failureKey(request.startX, request.startY, request.goalX, request.goalY, request.stopBeforeGoal), { until: this.time + (settings.noPathSeconds ?? 8), epoch: this.epoch });
+      }
       this.pathCache.set(request.key, {
         path,
         until: this.time + (path ? (settings.cacheSeconds ?? 45) : (settings.noPathSeconds ?? 8)),
@@ -197,7 +212,7 @@
         nodeLimit: Math.max(settings.nodeLimit, (Math.abs(startX - goalX) + Math.abs(startY - goalY)) * (settings.nodeLimitPerTile ?? 80)),
       };
       this.gCost[s.startIndex] = 0; this.gStamp[s.startIndex] = this.searchId; this.parent[s.startIndex] = -1;
-      if (World.buildingAt(startX, startY)) this.insideStamp[s.startIndex] = this.searchId;   // enheten står på en blockerad ruta (t.ex. en mur som byggts under den)
+      if (this.isWall(startX, startY)) this.insideStamp[s.startIndex] = this.searchId;   // enheten står på en mur (som byggts under den)
       this.push(this.heuristic(s, startX, startY), s.startIndex);
     },
 
@@ -245,7 +260,7 @@
           const nextIndex = index + DY[d] * width + DX[d];
           if (closed[nextIndex] === id) continue;
           const nextCost = this.cost(nextX, nextY, nextIndex);
-          if (nextCost === Infinity && nextIndex !== goalIndex && !inside) continue; // endast målet får vara blockerat (och rutor man kommer ut ur när man står i en blockerad ruta)
+          if (nextCost === Infinity && nextIndex !== goalIndex && !(inside && this.isWall(nextX, nextY))) continue; // endast målet får vara blockerat (och murrutor, när man står i en mur)
           // inga diagonaler som skär hörn av blockerade rutor (utom när man står i en blockerad ruta)
           if (!inside && d >= 4 && (this.cost(nextX, y, index + DX[d]) === Infinity || this.cost(x, nextY, index + DY[d] * width) === Infinity)) continue;
           const newCost = g + (d >= 4 ? DIAGONAL : 1) * (nextCost === Infinity ? (inside && nextIndex !== goalIndex ? INSIDE_COST : 1) : nextCost);   // dyrt att gå genom blockerade rutor: helst direkt ut på en vanlig ruta
