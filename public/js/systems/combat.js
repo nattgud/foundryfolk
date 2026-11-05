@@ -35,7 +35,7 @@
   const isBuilding = target => target.buildProgress !== undefined;
   const centreX = target => target.x + (isBuilding(target) ? .5 : 0);
   const centreY = target => target.y + (isBuilding(target) ? .5 : 0);
-  const priority = target => target.definition.isSoldier && !isBuilding(target) ? 0 : isBuilding(target) ? 1 : 2;
+  const priority = target => target.definition.isSoldier && !isBuilding(target) ? 0 : isBuilding(target) ? (target.definition.job?.kind === 'garrison' ? .5 : 1) : 2;   // soldat, torn och baracker (där försvararna kommer ifrån), övriga byggnader, övrigt
 
   // Platsen (0..1 inom rutan) för soldat nummer index av count på samma ruta: en i mitten, få i en ring, många i ett rutnät
   const slotIn = (index, count) => {
@@ -323,6 +323,7 @@
         return { x: home.x + .5, y: home.y + .5, radius: Garrison.radius(home) };
       }
       if (home) Garrison.release(unit); // byggnaden finns inte längre
+      if (unit.wave) return { x: unit.x, y: unit.y, radius: unit.definition.searchRadius ?? settings().searchRadius };   // vågsoldat: ser det som är i vägen där den står (torn, hus), inte bara runt posten den är på väg till
       unit.post = unit.post || { x: unit.x, y: unit.y };
       return { x: unit.post.x, y: unit.post.y, radius: unit.definition.searchRadius ?? settings().searchRadius };
     },
