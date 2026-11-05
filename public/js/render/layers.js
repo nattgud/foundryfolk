@@ -227,6 +227,8 @@
   const PATH_WIDTH = 0.6;                // stigens bredd i rutor
   const PATH_EDGE = 0.11;                // den mjuka kantens bredd i rutor (ca 4 px) vid medel och hög grafik
   const PATH_ALPHA = [0, 0.225, 0.45, 0.675, 0.9, 1]; // nivå 1-4: slitage under 100 %, nivå 5: minst 100 %
+  const PATH_SCALE = 8;                  // opacitetskartans upplösning: bildpunkter per ruta
+  const PATH_BLEND = 0.4;                // toningen mellan rutor med olika slitage: så stor del av en rutas bredd
   const GRID = PATH_CHUNK + 2;           // brickan + en ruta runt om, för att se grannarna
   const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
   const grid = new Uint8Array(GRID * GRID);
@@ -234,7 +236,6 @@
   const ground = new Uint8Array(GRID * GRID);
   const pathChunks = new Map();
   const scratch = document.createElement('canvas'), mapCanvas = document.createElement('canvas'), mapContext = mapCanvas.getContext('2d');
-  mapCanvas.width = mapCanvas.height = GRID;
   const fillMap = new Float32Array(GRID * GRID), fillWorn = new Float32Array(GRID * GRID);
   const pathStyle = { tileSize: 0, soft: false, partialImage: null, wornImage: null, partial: '#655', worn: '#777' };
 
@@ -371,8 +372,19 @@
       } else { layer.lineWidth = width; layer.globalAlpha = 1; layer.stroke(shape); }
       layer.setTransform(1, 0, 0, 1, 0, 0);
       layer.globalAlpha = 1;
-      const image = mapContext.createImageData(GRID, GRID);
-      for (let k = 0; k < GRID * GRID; k++) image.data[k * 4 + 3] = Math.round(map[k] * 255);
+      // Kartan skalas upp PATH_SCALE gånger med en smalare toning än vanlig bilinjär: vikten mellan två rutor trycks ihop till en S-kurva som
+      // går från 0 till 1 över PATH_BLEND av en rutas bredd, mitt på rutkanten
+      const image = mapContext.createImageData(GRID * PATH_SCALE, GRID * PATH_SCALE), data = image.data, side = GRID * PATH_SCALE;
+      const weight = f => { const t = Math.min(1, Math.max(0, (f - 0.5) / PATH_BLEND + 0.5)); return t * t * (3 - 2 * t); };
+      for (let py = 0; py < side; py++) {
+        const fy = (py + 0.5) / PATH_SCALE - 0.5, j0 = Math.floor(fy), wy = weight(fy - j0), ja = Math.min(GRID - 1, Math.max(0, j0)), jb = Math.min(GRID - 1, Math.max(0, j0 + 1));
+        for (let px = 0; px < side; px++) {
+          const fx = (px + 0.5) / PATH_SCALE - 0.5, i0 = Math.floor(fx), wx = weight(fx - i0), ia = Math.min(GRID - 1, Math.max(0, i0)), ib = Math.min(GRID - 1, Math.max(0, i0 + 1));
+          const top = map[ja * GRID + ia] * (1 - wx) + map[ja * GRID + ib] * wx, bottom = map[jb * GRID + ia] * (1 - wx) + map[jb * GRID + ib] * wx;
+          data[(py * side + px) * 4 + 3] = Math.round((top * (1 - wy) + bottom * wy) * 255);
+        }
+      }
+      if (mapCanvas.width !== side) mapCanvas.width = mapCanvas.height = side;
       mapContext.putImageData(image, 0, 0);
       layer.globalCompositeOperation = 'destination-in';
       layer.imageSmoothingEnabled = true; layer.imageSmoothingQuality = 'high';
