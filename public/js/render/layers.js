@@ -233,6 +233,9 @@
   const built = new Uint8Array(GRID * GRID);
   const ground = new Uint8Array(GRID * GRID);
   const pathChunks = new Map();
+  const scratch = document.createElement('canvas'), mapCanvas = document.createElement('canvas'), mapContext = mapCanvas.getContext('2d');
+  mapCanvas.width = mapCanvas.height = GRID;
+  const fillMap = new Float32Array(GRID * GRID), fillWorn = new Float32Array(GRID * GRID);
   const pathStyle = { tileSize: 0, soft: false, partialImage: null, wornImage: null, partial: '#655', worn: '#777' };
 
   const wearLevel = wear => (wear >= 1 ? 5 : Math.round(wear * 4));
@@ -320,33 +323,67 @@
       else for (let k = 0; k < ends.length; k += 2) { shape.moveTo(cx, cy); shape.lineTo(ends[k], ends[k + 1]); }
     }
 
-    // Världskoordinater, så att mönstret fortsätter obrutet mellan brickor
-    context.setTransform(1, 0, 0, 1, -chunk.cx * size, -chunk.cy * size);
-    context.lineCap = context.lineJoin = 'round';
-    const width = tileSize * PATH_WIDTH, edge = tileSize * PATH_EDGE;
+    // Opaciteten följer en liten karta med en pixel per ruta (slitagenivåns alfa i rutans mitt) som skalas upp mjukt, så att övergången mellan två
+    // rutor med olika slitage blir en jämn toning över ungefär en ruta i stället för ett hårt steg vid rutkanten. Rutor utan stig tar grannarnas
+    // värde (annars skulle stigens ändar tona ut). Stigen ritas först med full täckning och multipliceras sedan med kartan (destination-in).
+    // Det är två lager: path-bilden (nivå 1-5) och, där nivå 5 finns, path_worn-bilden ovanpå, vars karta bara är 1 på nivå 5.
+    const covered = new Uint8Array(GRID * GRID), partialMap = new Float32Array(GRID * GRID), wornMap = new Float32Array(GRID * GRID);
+    let anyWorn = false;
     for (let level = 1; level <= 5; level++) {
       const list = rects[level];
-      if (!list.length) continue;
-      context.save();
-      context.beginPath();
-      for (let k = 0; k < list.length; k += 2) context.rect(list[k], list[k + 1], tileSize, tileSize);
-      context.clip();
-      context.strokeStyle = level === 5 ? pathStyle.worn : pathStyle.partial;
-      const alpha = PATH_ALPHA[level];
-      if (soft) {
-        // Mjuk kant: tre linjer, bredast och svagast först, så att kanten går från osynlig till full över ca PATH_EDGE. Alfavärdena
-        // är valda så att de tre lagren tillsammans ger 1/3, 2/3 och hela den slitagenivåns genomskinlighet
-        for (let step = 0; step < 3; step++) {
-          context.lineWidth = width + edge * 2 * (2 - step) / 2;
-          context.globalAlpha = step === 0 ? alpha / 3 : (alpha / 3) / (1 - alpha * step / 3);
-          context.stroke(shape);
-        }
-      } else {
-        context.lineWidth = width; context.globalAlpha = alpha;
-        context.stroke(shape);
+      for (let k = 0; k < list.length; k += 2) {
+        const i = Math.round((list[k] - originX) / tileSize), j = Math.round((list[k + 1] - originY) / tileSize);
+        if (i < 0 || j < 0 || i >= GRID || j >= GRID) continue;
+        const index = j * GRID + i;
+        covered[index] = 1;
+        partialMap[index] = Math.max(partialMap[index], level === 5 ? PATH_ALPHA[4] : PATH_ALPHA[level]);
+        if (level === 5) { wornMap[index] = 1; anyWorn = true; }
       }
-      context.restore();
     }
+    for (let j = 0; j < GRID; j++) for (let i = 0; i < GRID; i++) {   // rutor utan stig: största värdet bland grannarna
+      if (covered[j * GRID + i]) continue;
+      let partial = 0, worn = 0;
+      for (const [dx, dy] of DIRECTIONS) {
+        const x = i + dx, y = j + dy;
+        if (x < 0 || y < 0 || x >= GRID || y >= GRID || !covered[y * GRID + x]) continue;
+        partial = Math.max(partial, partialMap[y * GRID + x]); worn = Math.max(worn, wornMap[y * GRID + x]);
+      }
+      fillMap[j * GRID + i] = partial; fillWorn[j * GRID + i] = worn;
+    }
+    for (let k = 0; k < GRID * GRID; k++) if (!covered[k]) { partialMap[k] = fillMap[k]; wornMap[k] = fillWorn[k]; }
+
+    const drawLayer = (pattern, map) => {
+      const layer = scratch.getContext('2d');
+      layer.setTransform(1, 0, 0, 1, 0, 0);
+      layer.globalCompositeOperation = 'source-over';
+      layer.clearRect(0, 0, size, size);
+      layer.setTransform(1, 0, 0, 1, -chunk.cx * size, -chunk.cy * size);   // världskoordinater, så att mönstret fortsätter obrutet mellan brickor
+      layer.lineCap = layer.lineJoin = 'round';
+      layer.strokeStyle = pattern;
+      const width = tileSize * PATH_WIDTH, edge = tileSize * PATH_EDGE;
+      if (soft) {
+        // Mjuk kant: tre linjer, bredast och svagast först (1/3, 2/3 och hela täckningen), så att kanten går från osynlig till full över ca PATH_EDGE
+        for (let step = 0; step < 3; step++) {
+          layer.lineWidth = width + edge * 2 * (2 - step) / 2;
+          layer.globalAlpha = step === 0 ? 1 / 3 : (1 / 3) / (1 - step / 3);
+          layer.stroke(shape);
+        }
+      } else { layer.lineWidth = width; layer.globalAlpha = 1; layer.stroke(shape); }
+      layer.setTransform(1, 0, 0, 1, 0, 0);
+      layer.globalAlpha = 1;
+      const image = mapContext.createImageData(GRID, GRID);
+      for (let k = 0; k < GRID * GRID; k++) image.data[k * 4 + 3] = Math.round(map[k] * 255);
+      mapContext.putImageData(image, 0, 0);
+      layer.globalCompositeOperation = 'destination-in';
+      layer.imageSmoothingEnabled = true; layer.imageSmoothingQuality = 'high';
+      layer.drawImage(mapCanvas, -tileSize, -tileSize, GRID * tileSize, GRID * tileSize);   // brickans egna yta börjar en ruta in i kartan
+      layer.globalCompositeOperation = 'source-over';
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.drawImage(scratch, 0, 0);
+    };
+    scratch.width = scratch.height = size;   // (nollställer också)
+    drawLayer(pathStyle.partial, partialMap);
+    if (anyWorn) drawLayer(pathStyle.worn, wornMap);
   };
 
   // Blandar brickans förra bild (fadeFrom) och nya bild (canvas): gammal * (1 - p) + ny * p, på en delad canvas. Mellanläget hamnar
