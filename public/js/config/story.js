@@ -24,7 +24,7 @@
                   eller bara ett id (automatisk plats runt HQ). Placera dem i spelet och kör CityBuilder.Story.layout() i konsolen för färdiga rader.
      eye, fog     eye: true = Eye of Shades står närmare fienden än något annat, eye: { reach } = längre eller kortare dit (andel av avståndet mellan baserna, annars 0,3), eye: { dx, dy } = på en bestämd plats; fog: konstant dimma tills den förstörs
      end          'hq': kapitlet är klart när fiendens HQ förstörs
-     waves        { from, every (sekunder), size: [första, +1 var N:e våg, högst (utelämnas: ingen gräns)], kinds: [soldattyper i turordning], maxAlive (valfritt), until: 'fog' }: kapitlets egna anfallsvågor från
+     waves        { from, every (sekunder), size: [första, +1 var N:e våg, högst (utelämnas: ingen gräns)], kinds: [soldattyper i turordning], maxAlive (valfritt), until: 'fog', spawn: [[dx, dy], ...] (valfritt: platser i rutor från spelarens HQ där soldaterna dyker upp, t.ex. [[50, 0], [-50, 0]]; utan spawn vid fiendens HQ) }: kapitlets egna anfallsvågor från
                   fiendens HQ mot spelarens, oberoende av datorns vanliga anfallsregler (ai.js). until: 'fog' = tills dimman lyft, annars tills kapitlet är klart
      events       [{ at (sekunder), goal, when, tell: dialog | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]. En händelse sker en gång, när alla
                   villkor den har slår till. at: sekunder in i kapitlet. goal: målet med det numret (1 = första målet) är klart. whileFog: true = bara så länge dimman ligger (en händelse som kommer för sent hoppas över). when: { resource, amount } (har så mycket av en vara)
@@ -509,7 +509,7 @@
         ai: 20,
         races: { 2: 'demon' },
         end: 'fog',
-        waves: { from: 45, every: 30, size: [3, 1], kinds: ['swordsman'], until: 'fog' },
+        waves: { from: 45, every: 30, size: [3, 1], kinds: ['swordsman'], until: 'fog', spawn: [[50, 0], [-50, 0]] },
         letter: letter(['A fog has risen around the Eye, and my counsellors say the fog is the demons.',
         'The Eye must remain intact. Hold your village. Hold it until the fog lifts, whatever you hear.',
         'Do not leave your position. Do not question the Eye.',

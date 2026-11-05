@@ -132,8 +132,10 @@
     },
 
     // Anfallsvågor: kapitlets egna fiender, oberoende av datorns vanliga anfallsregler (ai.js). chapter.waves:
-    //   { from, every (sekunder), size: [första, växer 1 var N:e våg, högst (valfritt: utan tak växer vågorna hela tiden)], kinds: [soldattyper i turordning], maxAlive (valfritt), until: 'fog' }
-    // Soldaterna tillhör första datorspelaren, skapas vid dess HQ och går mot spelarens huvudlager, där de slår det de ser. until: 'fog' avslutar vågorna
+    //   { from, every (sekunder), size: [första, växer 1 var N:e våg, högst (valfritt: utan tak växer vågorna hela tiden)], kinds: [soldattyper i turordning], maxAlive (valfritt), until: 'fog',
+    //     spawn: [[dx, dy], ...] (valfritt) }
+    // Soldaterna tillhör första datorspelaren och går mot spelarens huvudlager, där de slår det de ser. Utan spawn skapas de vid dess HQ. Med spawn kommer de från platser dx, dy
+    // rutor från spelarens HQ (t.ex. [[50, 0], [-50, 0]] = 50 rutor åt höger och vänster), jämnt fördelade, och går därifrån. until: 'fog' avslutar vågorna
     // när dimman lyft (Eye of Shades förstörd), annars fortsätter de tills kapitlet är klart.
     waves(chapter) {
       const wave = chapter.waves, Levels = CityBuilder.Levels;
@@ -150,12 +152,21 @@
       const alive = World.units.filter(unit => unit.wave && !unit.removed).length, [first, every, cap = Infinity] = wave.size;
       const count = Math.min(cap, first + Math.floor(n / every), (wave.maxAlive ?? Infinity) - alive);
       if (count <= 0) return;
-      const spots = [];
-      for (let dy = -9; dy <= 9; dy++) for (let dx = -9; dx <= 9; dx++) {
-        const x = rival.x + dx, y = rival.y + dy, tile = World.getTile(x, y), distance = Utils.distance(dx, dy);
-        if (distance >= 5 && distance <= 9 && tile && Number.isFinite(Config.terrain[tile.terrainType].walkCost) && !World.buildingAt(x, y)) spots.push({ x, y });
-      }
-      for (let i = 0; i < count && spots.length; i++) {
+      // Platser att skapa soldater på: runt fiendens HQ, eller (spawn) runt varje angiven plats i förhållande till spelarens HQ, med soldaterna jämnt fördelade
+      const walkable = (x, y) => { const tile = World.getTile(x, y); return tile && Number.isFinite(Config.terrain[tile.terrainType].walkCost) && !World.buildingAt(x, y); };
+      const around = (center, minRadius, maxRadius) => {
+        const found = [];
+        for (let dy = -maxRadius; dy <= maxRadius; dy++) for (let dx = -maxRadius; dx <= maxRadius; dx++) {
+          const distance = Utils.distance(dx, dy);
+          if (distance >= minRadius && distance <= maxRadius && walkable(center.x + dx, center.y + dy)) found.push({ x: center.x + dx, y: center.y + dy });
+        }
+        return found;
+      };
+      const groups = (wave.spawn || [null]).map(offset => offset ? around({ x: home.x + offset[0], y: home.y + offset[1] }, 0, 6) : around(rival, 5, 9)).filter(list => list.length);
+      if (!groups.length) return;
+      for (let i = 0; i < count; i++) {
+        const spots = groups[i % groups.length];
+        if (!spots.length) continue;
         const spot = spots.splice(Math.floor(Utils.random() * spots.length), 1)[0];
         const unit = CityBuilder.Combat.spawnSoldier(wave.kinds[i % wave.kinds.length], spot.x, spot.y, Players.ENEMY);
         unit.post = { x: home.x + .5, y: home.y + .5 };
