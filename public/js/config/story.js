@@ -28,7 +28,7 @@
                   fiendens HQ mot spelarens, oberoende av datorns vanliga anfallsregler (ai.js). until: 'fog' = tills dimman lyft, annars tills kapitlet är klart
      events       [{ at (sekunder), goal, when, tell: dialog | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]. En händelse sker en gång, när alla
                   villkor den har slår till. at: sekunder in i kapitlet. goal: målet med det numret (1 = första målet) är klart. whileFog: true = bara så länge dimman ligger (en händelse som kommer för sent hoppas över). when: { resource, amount } (har så mycket av en vara)
-                  eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { goal: n, left: k } = mål nummer n har högst k kvar (t.ex. näst sista yxan, utan att upprepa målets siffror); { resource, made: n } = n har tillverkats eller samlats i kapitlet, oavsett vart varan tog vägen (också direkt till nästa hus, utan att passera lagret); { resource, more: n } = lagret har n fler än man började med. T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
+                  eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { goal: n, left: k } = mål nummer n har högst k kvar (t.ex. näst sista yxan, utan att upprepa målets siffror); { resource, made: n } = n har tillverkats eller samlats i kapitlet, oavsett vart varan tog vägen (också direkt till nästa hus, utan att passera lagret); { resource, more: n } = lagret har n fler än man började med; { sees: 'rival' } = man har sett någon av fiendens byggnader. T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
      meteorProof  enhetstyper som meteorer inte skadar */
 (function (CityBuilder) {
   'use strict';
@@ -448,7 +448,7 @@
           say('reeve', 'That is not quite how that works.'),
         ],
         events: [
-          { at: 90, tell: [
+          { when: { sees: 'rival' }, tell: [
             say('reeve', "They're not coming out. They're just holding the walls."),
             say('thordram', 'An effective strategy.'),
             say('reeve', "They're defending their homes."),

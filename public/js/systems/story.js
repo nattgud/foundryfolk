@@ -165,6 +165,7 @@
 
     // Har villkoret slagit till? goal: n, left: k = målet n har högst k kvar; made: n = n har tillverkats eller samlats i kapitlet (oavsett vart varan tog vägen); annars har man amount, eller more fler än man startade med
     reached(need, chapter) {
+      if (need.sees === 'rival') return World.buildings.some(building => Players.isAI(building.player) && CityBuilder.Vision.explored(Players.HUMAN, building.x + .5, building.y + .5));   // sees: 'rival' = man har sett någon av fiendens byggnader (dimma eller inte)
       if (need.goal !== undefined) { const item = CityBuilder.Levels.progress()[need.goal - 1]; return !!item && item.have >= item.amount - (need.left || 0); }   // goal: n, left: k = målet med det numret har högst k kvar (följer målets egna siffror)
       if (need.made !== undefined) return CityBuilder.Levels.made(need.resource) >= need.made;
       return CityBuilder.Levels.have(need) >= this.needed(need, chapter);
