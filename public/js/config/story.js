@@ -53,7 +53,7 @@
       narrator: { name: '', color: '', narrator: true, voice: { pitch: 0.9, dark: 0.85 } },
     },
     // Rösten i dialogerna (systems/voice.js). Ett [tonläge] i en replik, t.ex. '[angry]Nej!', byter tonläge från den platsen (tills nästa tagg).
-    // wave, pitch (Hz), vary (% slumpad variation), every (ljud var N:e tecken), dur (ms), volume (%), speed (ms per tecken), cutoff (Hz), byLetter (tonhöjd följer bokstaven 0/1),
+    // wave, pitch (Hz), vary (% slumpad variation), every (ljud var N:e tecken), dur (ms), volume (%), speed (ms per tecken), cutoff (Hz), byLetter (tonhöjd följer bokstaven 0/1; med syllables följer den vokalen: i ljusast, e, a, o, u mörkast),
     // noise (% luft), voice (% röstklang), vibrato (%), syllables (1 = ett ljud per vokalgrupp, 0 = ett ljud var 'every':e bokstav; bara bokstäver låter i båda). Tonläge: pitch ×, vary ×, speed ×, volume ×, slope (tonhöjdens lutning över meningen).
     voice: {
       wave: 'sawtooth', pitch: 314, vary: 31, every: 2, syllables: 1, dur: 102, volume: 40, speed: 35, cutoff: 3450, byLetter: 1, noise: 23, voice: 100, vibrato: 97,

@@ -7,6 +7,7 @@
   const PLAIN = { pitch: 1, dark: 1, stretch: 1, slide: 0, detune: 0 };
   const VOWELS = { a: [800, 1200], e: [450, 2000], i: [320, 2300], o: [500, 900], u: [350, 700] };   // vokalens två första formanter (Hz)
 
+  const VOWEL_PITCH = { i: 1.25, e: 1.12, a: 1, o: 0.88, u: 0.78 };   // vokalens tonhöjd (× grundtonen): i ljusast, u mörkast, a lagom
   const BASE = { å: 'o', ä: 'e', ö: 'e', æ: 'e', ø: 'e', y: 'i' };
   const baseOf = char => { const c = char.toLowerCase(); return BASE[c] || c.normalize('NFD')[0]; };   // é -> e, ü -> u ...
   const isLetter = char => /\p{L}/u.test(char);
@@ -44,7 +45,8 @@
       else if (count % S.every) return;
       if (!context || context.state !== 'running' || !Sound.settings.sfxOn || Sound.settings.sfxVolume <= 0) return;
       const who = speakerOf(speaker), m = moodOf(mood), t = context.currentTime, d = S.dur / 1000 * who.stretch;
-      const letter = S.byLetter ? 1 + ((char.toLowerCase().charCodeAt(0) % 12) - 6) / 24 : 1;   // a-z: ±25 %
+      const vowel = S.syllables && VOWEL_PITCH[baseOf(char)];   // ett ljud per vokalgrupp: tonhöjden följer gruppens första vokal
+      const letter = !S.byLetter ? 1 : vowel || 1 + ((char.toLowerCase().charCodeAt(0) % 12) - 6) / 24;   // annars a-z: ±25 %
       const jitter = 1 + (Math.random() * 2 - 1) * S.vary * m.vary / 100, bend = 1 + m.slope * (progress - 0.5);
       const freq = S.pitch * who.pitch * m.pitch * bend * letter * jitter, level = S.volume * m.volume / 100;
 
