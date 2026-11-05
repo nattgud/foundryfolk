@@ -71,7 +71,7 @@
     },
     greeting: 'To the Reeve of {village},',
     signature: { realm: 'In service of the realm', throne: 'In service of the throne', name: 'Maegnius, King of Farael' },
-    // Bakgrunden bakom dialogerna och styckena (images/story/<namn>.jpg, ca 1200x900). default gäller alla kapitel utan egen; chapters: { kapitelnummer: namn }.
+    // Bakgrunden bakom dialogerna och styckena (images/story/<namn>.jpg, 1376x768). default gäller alla kapitel utan egen; chapters: { kapitelnummer: namn }.
     // Ett kapitel kan också ha scene: 'namn' i sin egen data. Utan bild (scenes saknas) behålls den vanliga mörka rutan.
     scenes: { default: 'meadow', chapters: { 11: 'siege', 12: 'demon', 13: 'demon', 14: 'demon', 15: 'demon', 16: 'demon', 17: 'demon', 18: 'demon', 19: 'demon', 20: 'demon', 21: 'demon' } },
 
