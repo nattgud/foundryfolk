@@ -20,7 +20,7 @@ CityBuilder.Config.ai = {
   explore: { step: 33, maxScouts: 36 },
   lookouts: 8,                        // högst så många utkikstorn bygger datorn för att hitta råvaror den inte ser (fog of war gäller den som spelaren)
   sightRetrySeconds: 10,              // väntetid innan en byggnad vars råvara inte syns provas igen (när utkikstornet står klart)
-  attack: { fromLevel: 40, soldiers: [6, 2, 40], maxTowers: 12, afterSeconds: 1800 },   // datorn anfaller från bana fromLevel, när den har [start, +per bana, tak] soldater, tidigast afterSeconds in i spelet och bara om den sett något av motståndaren
+  attack: { fromLevel: 40, soldiers: [6, 2, 40], maxTowers: 12, afterSeconds: 1800, bigForce: 8 },   // datorn anfaller från bana fromLevel, när den har [start, +per bana, tak] soldater, tidigast afterSeconds in i spelet och bara om den sett något av motståndaren
   build: [
     ['woodcutter', 2], ['sawmill', 1], ['quarry', 1], ['warehouse', 1], ['woodcutter', 3],
     ['guard_tower', 1], ['garrison', 1], ['quarry', 2], ['sawmill', 2], ['guard_tower', 2],

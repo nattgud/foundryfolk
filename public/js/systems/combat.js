@@ -27,6 +27,8 @@
   const HOME_SEARCH_SECONDS = 2;      // hur ofta en fri soldat letar efter en ledig garnison
   const POST_TOLERANCE = 3;           // så nära posten räknas en fri soldat som på plats
   const SETTLE_SPEED = 1;             // hur fort en stillastående soldat glider till sin plats i rutan (rutor per sekund)
+  const HQ_NEAR = 12;                // rutor: så nära fiendens HQ är HQ målet för datorns soldater (om inget militärt finns)
+  const BREACH_SECONDS = 30;         // så länge slår datorns soldater det som står närmast efter ett misslyckat vägval
   const MELEE_RANGE = 2;              // attackRange upp till detta är närstrid, över det en projektil
   const GRID_CELL = 8, GRID_KEY = 100003, GRID_SECONDS = 0.25, GRID_MARGIN = 3;   // rutnätet för sökningen efter fiender (se targets)
   const BUILDING_REACH = 0.6;         // en byggnad är en hel ruta: räckhållet räknas från kanten, inte mitten
@@ -80,7 +82,7 @@
 
     // Bästa fiende till 'player' inom radius från (x, y): lägst prioritet först, sedan närmast (vid lika: den som kom först i listan).
     // 'hunter' (valfri): monstret som söker. Det får bara slå vissa mål (Monsters.mayHit) och ser allt (ingen fog of war).
-    findEnemy(player, x, y, radius, ignore, hunter) {
+    findEnemy(player, x, y, radius, ignore, hunter, ranker = priority) {
       const list = this.targets(), grid = this.grid, reach = radius + GRID_MARGIN, radiusSquared = radius * radius;
       const fromX = Math.floor((x - reach) / GRID_CELL), toX = Math.floor((x + reach) / GRID_CELL), fromY = Math.floor((y - reach) / GRID_CELL), toY = Math.floor((y + reach) / GRID_CELL);
       let best = null, bestPriority = Infinity, bestDistance = Infinity, bestIndex = Infinity;
@@ -94,7 +96,7 @@
           if (squared > radiusSquared) continue;
           const distance = Math.sqrt(squared);
           if (player !== Players.MONSTER && !Vision.knows(player, target)) continue;   // fog of war: bara det spelaren ser, eller (dator) känner till
-          const rank = priority(target);
+          const rank = ranker(target);
           if (rank > bestPriority || (rank === bestPriority && (distance > bestDistance || (distance === bestDistance && index > bestIndex)))) continue;
           best = target; bestPriority = rank; bestDistance = distance; bestIndex = index;
         }
@@ -239,6 +241,7 @@
     update(deltaSeconds) {
       this.time += deltaSeconds;
       this.alertGarrisons(deltaSeconds);
+      this.watchForces(deltaSeconds);
 
       for (const unit of [...World.units]) { // kopia: enheter kan dö eller försvinna under varvet
         if (unit.definition.isSoldier && !unit.removed) this.updateSoldier(unit, deltaSeconds);
@@ -248,6 +251,37 @@
       this.updateProjectiles(deltaSeconds);
       for (const effect of this.effects) effect.life -= deltaSeconds;
       this.effects = this.effects.filter(effect => effect.life > 0);
+    },
+
+    // Datorn minns hur många fientliga soldater den som mest sett på en gång: en stor styrka (bigForce) får den att gå på HQ efter det militära, en liten att arbeta sig fram
+    watchForces(deltaSeconds) {
+      this.forceTimer = (this.forceTimer || 0) - deltaSeconds;
+      if (this.forceTimer > 0) return;
+      this.forceTimer = 1;
+      const peaks = this.peakFoes ||= new Map();
+      const counts = new Map();
+      for (const unit of World.units) {
+        if (!unit.definition.isSoldier || unit.definition.isMonster || unit.removed || unit.player === Players.NEUTRAL) continue;
+        for (const player of Players.aiPlayers()) if (Players.isHostile(player, unit.player) && Vision.sees(player, unit)) counts.set(player, (counts.get(player) || 0) + 1);
+      }
+      for (const [player, count] of counts) if (count > (peaks.get(player) || 0)) peaks.set(player, count);
+    },
+
+    // Turordningen för vad en soldat slår först (lägre = först). Datorn: fiendens soldater, militära byggnader (torn, baracker), sedan efter läge. En liten fiendestyrka: murar,
+    // vanliga byggnader, HQ sist. En stor: HQ före murar och byggnader. Står soldaten vid HQ (HQ_NEAR) och inget militärt är i närheten är HQ målet. Efter ett misslyckat vägval (onPathFailure)
+    // slår den det som står närmast i vägen (murar först) en stund. Andra spelare och monster: soldater, byggnader, övrigt (priority).
+    rankFor(unit) {
+      if (!Players.isAI(unit.player) || unit.definition.isMonster) return priority;
+      const big = (this.peakFoes?.get(unit.player) || 0) >= (Config.ai.attack.bigForce ?? 8), breaching = unit.breachUntil > this.time;
+      return target => {
+        if (!isBuilding(target)) return target.definition.isSoldier ? 0 : 6;
+        if (target.definition.job?.kind === 'garrison') return 1;
+        const hq = target.type === 'hq';
+        if (breaching && !hq) return target.type === 'wall' ? 1.1 : 1.2;
+        if (hq) return Utils.distance(target.x - unit.x, target.y - unit.y) <= HQ_NEAR ? 1.5 : big ? 2 : 5;
+        if (target.type === 'wall') return big ? 3 : 2;
+        return big ? 4 : 3;
+      };
     },
 
     // Garnisoner med soldater hemma letar efter fiender och skickar ut dem
@@ -296,11 +330,12 @@
       if (unit.target && !this.isValidTarget(unit, anchor)) unit.target = null;
 
       // Utan mål söker soldaten ett, och med ett sämre mål än en soldat (byggnad, bärare) letar den vidare efter något bättre
-      if ((!unit.target || priority(unit.target) > 0) && unit.scanTimer <= 0) {
+      const rank = monster ? priority : this.rankFor(unit);
+      if ((!unit.target || rank(unit.target) > 0) && unit.scanTimer <= 0) {
         unit.scanTimer = settings().scanIntervalSeconds;
         const ignored = unit.ignoreUntil > this.time ? unit.ignore : null;
-        const found = this.findEnemy(unit.player, anchor.x, anchor.y, anchor.radius, ignored, monster ? unit : undefined);
-        if (found && (!unit.target || priority(found) < priority(unit.target))) unit.target = found;
+        const found = this.findEnemy(unit.player, anchor.x, anchor.y, anchor.radius, ignored, monster ? unit : undefined, rank);
+        if (found && (!unit.target || rank(found) < rank(unit.target))) unit.target = found;
       }
 
       if (unit.target) { this.engage(unit); return; }
@@ -412,6 +447,7 @@
 
     // Anropas av Units när en soldat inte hittar någon väg: det ignorerade målet provas inte om på en stund
     onPathFailure(unit) {
+      if (Players.isAI(unit.player) && !unit.definition.isMonster) unit.breachUntil = this.time + BREACH_SECONDS;   // datorn: slå sig igenom det som står i vägen
       unit.orderCooldown = settings().retrySeconds;
       unit.mode = 'idle';
       unit.goal = null;
