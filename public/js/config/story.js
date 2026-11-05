@@ -54,9 +54,9 @@
     },
     // Rösten i dialogerna (systems/voice.js). Ett [tonläge] i en replik, t.ex. '[angry]Nej!', byter tonläge från den platsen (tills nästa tagg).
     // wave, pitch (Hz), vary (% slumpad variation), every (ljud var N:e tecken), dur (ms), volume (%), speed (ms per tecken), cutoff (Hz), byLetter (tonhöjd följer bokstaven 0/1),
-    // noise (% luft), voice (% röstklang), vibrato (%). Tonläge: pitch ×, vary ×, speed ×, volume ×, slope (tonhöjdens lutning över meningen).
+    // noise (% luft), voice (% röstklang), vibrato (%), syllables (1 = ett ljud per vokalgrupp, 0 = ett ljud var 'every':e bokstav; bara bokstäver låter i båda). Tonläge: pitch ×, vary ×, speed ×, volume ×, slope (tonhöjdens lutning över meningen).
     voice: {
-      wave: 'sawtooth', pitch: 314, vary: 31, every: 2, dur: 102, volume: 40, speed: 35, cutoff: 3450, byLetter: 1, noise: 23, voice: 100, vibrato: 97,
+      wave: 'sawtooth', pitch: 314, vary: 31, every: 2, syllables: 1, dur: 102, volume: 40, speed: 35, cutoff: 3450, byLetter: 1, noise: 23, voice: 100, vibrato: 97,
       moods: {
         calm: { pitch: 1, vary: 1, speed: 1.15, volume: 1, slope: 0 },
         happy: { pitch: 1.2, vary: 1.4, speed: 0.85, volume: 1.1, slope: 0.1 },

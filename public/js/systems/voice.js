@@ -7,6 +7,11 @@
   const PLAIN = { pitch: 1, dark: 1, stretch: 1, slide: 0, detune: 0 };
   const VOWELS = { a: [800, 1200], e: [450, 2000], i: [320, 2300], o: [500, 900], u: [350, 700] };   // vokalens två första formanter (Hz)
 
+  const BASE = { å: 'o', ä: 'e', ö: 'e', æ: 'e', ø: 'e', y: 'i' };
+  const baseOf = char => { const c = char.toLowerCase(); return BASE[c] || c.normalize('NFD')[0]; };   // é -> e, ü -> u ...
+  const isLetter = char => /\p{L}/u.test(char);
+  const isVowel = char => isLetter(char) && 'aeiouy'.includes(baseOf(char)) || 'åäöæø'.includes(char.toLowerCase());
+
   const settings = () => CityBuilder.Config.story.voice;
   const speakerOf = id => ({ ...PLAIN, ...CityBuilder.Config.story.speakers[id]?.voice });
   const moodOf = name => settings().moods[name] || settings().moods.calm;
@@ -31,7 +36,13 @@
     // Ett ljud för tecknet (vart annat bokstavs- eller skiljetecken); progress 0-1: hur långt in i meningen tecknet står
     speak(speaker, char, mood, progress, count) {
       const Sound = CityBuilder.Sound, context = Sound?.context, S = settings();
-      if (!context || context.state !== 'running' || !Sound.settings.sfxOn || Sound.settings.sfxVolume <= 0 || !/\S/.test(char) || count % S.every) return;
+      const previous = count > 1 ? this.previous : '';
+      this.previous = char;
+      // Bara bokstäver ger ljud (inte skiljetecken). syllables: ett ljud per vokalgrupp, alltså per stavelse (skriv med andra alfabet än det latinska: en bokstav, ett ljud)
+      if (!isLetter(char)) return;
+      if (S.syllables) { const latin = /\p{Script=Latin}/u.test(char); if (latin && (!isVowel(char) || (previous && isVowel(previous)))) return; }
+      else if (count % S.every) return;
+      if (!context || context.state !== 'running' || !Sound.settings.sfxOn || Sound.settings.sfxVolume <= 0) return;
       const who = speakerOf(speaker), m = moodOf(mood), t = context.currentTime, d = S.dur / 1000 * who.stretch;
       const letter = S.byLetter ? 1 + ((char.toLowerCase().charCodeAt(0) % 12) - 6) / 24 : 1;   // a-z: ±25 %
       const jitter = 1 + (Math.random() * 2 - 1) * S.vary * m.vary / 100, bend = 1 + m.slope * (progress - 0.5);
@@ -62,7 +73,7 @@
         lfo.start(t); lfo.stop(t + d + 0.05);
       }
       // Formanter: vokalen i bokstaven formar klangen (konsonanter är neutrala)
-      for (const [frequency, q, gain] of (f => [[f[0], 5, 1], [f[1], 7, 0.55]])(VOWELS[char.toLowerCase()] || [500, 1500])) {
+      for (const [frequency, q, gain] of (f => [[f[0], 5, 1], [f[1], 7, 0.55]])(VOWELS[baseOf(char)] || [500, 1500])) {
         const band = context.createBiquadFilter(), amount = context.createGain();
         band.type = 'bandpass'; band.frequency.value = frequency; band.Q.value = q; amount.gain.value = gain;
         source.connect(band).connect(amount).connect(voiced);
