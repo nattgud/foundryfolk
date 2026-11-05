@@ -32,12 +32,18 @@
       return null;
     },
 
+    // Förbyggda hus har sina verktyg från början: de hämtas inte från lagret, så startresurserna är orörda (och målen räknar exakt från dem)
+    ready(building) {
+      for (const [resourceId, amount] of Object.entries(building.definition.requiredEquipment || {})) building.inputStock[resourceId] = amount;
+      if (building.definition.job) CityBuilder.Behaviors.forBuilding(building)?.onBuilt?.(building);
+      return building;
+    },
+
     place(type, x, y) {
       const spot = this.freeSpot(type, x, y);
       if (!spot) return null;
       const building = World.placeBuilding(CityBuilder.Construction.variantFor(type, spot.x, spot.y) || type, spot.x, spot.y, true, Players.HUMAN);   // en samlare eller gruva får inriktningen som passar rutan
-      if (building.definition.job) CityBuilder.Behaviors.forBuilding(building)?.onBuilt?.(building);
-      return building;
+      return this.ready(building);
     },
 
     // Placerar en byggnad på exakt plats (dx, dy rutor från HQ). Går det inte (vatten, berg, upptaget) skrivs en varning och den närmaste lediga rutan används.
@@ -49,8 +55,7 @@
         return this.place(type, x, y);
       }
       const building = World.placeBuilding(type, x, y, true, Players.HUMAN);
-      if (building.definition.job) CityBuilder.Behaviors.forBuilding(building)?.onBuilt?.(building);
-      return building;
+      return this.ready(building);
     },
 
     // Kapitlets start: byggnaderna från föregående mål står redo och Eye of Shades står mot fienden.
