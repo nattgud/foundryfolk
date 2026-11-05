@@ -158,6 +158,11 @@
       }
     },
 
+    // Hur mycket ett villkor kräver: amount, eller more = så mycket fler än man startade kapitlet med (som målen: start + more)
+    needed(need, chapter) {
+      return need.more === undefined ? need.amount : (CityBuilder.Levels.startingResourcesAt(chapter.number)[need.resource] || 0) + need.more;
+    },
+
     update() {
       const chapter = this.chapter, Levels = CityBuilder.Levels, Weather = CityBuilder.Weather;
       if (!chapter) return;
@@ -179,7 +184,7 @@
         if (event.whileFog && Levels.told('fog:lifted')) { Levels.markTold('event:' + i); return; }   // dimman har lyft: händelsen skulle komma för sent
         if (event.at !== undefined && Levels.seconds < event.at) return;
         if (event.goal && !Levels.progress()[event.goal - 1]?.done) return;
-        if ([].concat(event.when || []).some(need => Levels.have(need) < need.amount)) return;   // when kan vara flera villkor som alla ska gälla
+        if ([].concat(event.when || []).some(need => Levels.have(need) < this.needed(need, chapter))) return;   // when kan vara flera villkor som alla ska gälla
         Levels.markTold('event:' + i);
         this.fire(event);
       });

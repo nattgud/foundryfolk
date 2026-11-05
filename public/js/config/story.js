@@ -28,7 +28,7 @@
                   fiendens HQ mot spelarens, oberoende av datorns vanliga anfallsregler (ai.js). until: 'fog' = tills dimman lyft, annars tills kapitlet är klart
      events       [{ at (sekunder), goal, when, tell: dialog | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]. En händelse sker en gång, när alla
                   villkor den har slår till. at: sekunder in i kapitlet. goal: målet med det numret (1 = första målet) är klart. whileFog: true = bara så länge dimman ligger (en händelse som kommer för sent hoppas över). when: { resource, amount } (har så mycket av en vara)
-                  eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
+                  eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { resource, more: n } = n fler än man börjar med (startresurserna räknas inte: det som ska levereras eller tillverkas). T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
      meteorProof  enhetstyper som meteorer inte skadar */
 (function (CityBuilder) {
   'use strict';
@@ -177,7 +177,7 @@
           say('pipwick', 'Roads need tools. Tools need iron. Simple enough.'),
           say('thordram', '[calm]Reeve. Iron and tools. The king requires both.'),
           say('albertha', '[happy]And we are here to help you deliver them!'),
-          say('pipwick', "Oh. I wasn't told anyone else would be helping."),
+          say('pipwick', "[slow]Oh. [sad]I wasn't told anyone else would be helping."),
           say('thordram', 'You were not required.'),
           say('pipwick', '[confused]Not required?'),
           say('albertha', "[happy]You've done wonderfully. Leave the rest to us!"),
@@ -188,24 +188,24 @@
           say('reeve', 'Take care, Pipwick.'),
           say('pipwick', "You too. Don't let them work you too hard."),
           say('narrator', 'Pipwick leaves.'),
-          say('thordram', 'You will need to do the work, of course.'),
+          say('thordram', "Let us get to it! We will help. But you will need to do the work, of course."),
           say('albertha', "[happy]Naturally. We wouldn't dream of taking that pleasure away from you."),
           say('reeve', 'How generous.'),
           say('thordram', 'We try to be efficient.'),
           say('albertha', '[happy]He means we are very pleased to meet you!'),
         ],
         events: [
-          { when: { resource: 'iron_ore', amount: 1 }, tell: [
+          { when: { resource: 'iron_ore', more: 1 }, tell: [
             say('thordram', "Now you got iron ore. Smelt it with charcoal and you will have an iron bar"),
             say('albertha', '[happy]Just what the king needs!'),
           ] },
-          { when: { resource: 'iron', amount: 1 }, tell: [
+          { when: { resource: 'iron', more: 1 }, tell: [
             say('albertha', '[happy]There you go! Your first iron bar!'),
             say('thordram', "Keep it up. We'll be done before you know it."),
             say('albertha', '[happy]Although...'),
             say('thordram', "Yes. Make sure to make a lot of it. [sad]Some needs to go to make axes."),
           ] },
-          { when: { resource: 'axe', amount: 5 }, tell: [
+          { when: { resource: 'axe', more: 5 }, tell: [
             say('thordram', "Just one more axe to go."),
             say('albertha', '[happy]Great!'),
           ] },
@@ -266,7 +266,7 @@
           { type: 'fishing_hut', dx: 1, dy: 9 },
         ] },
         eye: true,
-        goals: [{ key: 's:potion', type: 'stock', resource: 'potion', amount: 8 }, { key: 's:leather_armor', type: 'stock', resource: 'leather_armor', amount: 6 }],
+        goals: [more('potion', 8), more('leather_armor', 6)],
         letter: letter(['The first soldiers are coming home from the border, wounded and worn.',
         'Send draughts to mend them, and leather armour so that fewer need mending.',
         'Albertha says her herbs and crystals will do more than any surgeon. I pray she is right.'], true),
@@ -282,7 +282,7 @@
           say('albertha', '[calm]Fear is terribly inconvenient. It makes people hesitate.'),
         ],
         events: [
-          { when: { resource: 'potion', amount: 1 }, tell: [
+          { when: { resource: 'potion', more: 1 }, tell: [
             say('albertha', '[happy]There! The first batch is ready. They should be feeling much better already.'),
             say('reeve', '[question]Have you tested them?'),
             say('albertha', '[happy]Of course!'),
@@ -319,7 +319,7 @@
           { type: 'berry_gatherer', dx: 2, dy: 6 },
         ] },
         eye: true,
-        goals: [{ key: 's:ancient_relic', type: 'stock', resource: 'ancient_relic', amount: 2 }, { key: 's:fallen_star', type: 'stock', resource: 'fallen_star', amount: 2 }],
+        goals: [more('ancient_relic', 2), more('fallen_star', 2)],
         letter: letter(['My counsellors speak of relics and fallen stars, old magic that might turn the war.',
         'Find what you can. I do not pretend to understand all of it, but I trust those who do.'], true),
         dialogue: [
@@ -333,7 +333,7 @@
           say('thordram', 'An explanation of remarkable precision.'),
         ],
         events: [
-          { when: { resource: 'fallen_star', amount: 1 }, tell: [
+          { when: { resource: 'fallen_star', more: 1 }, tell: [
             say('albertha', '[happy]Oh! You found one!'),
             say('reeve', 'It is still warm.'),
             say('albertha', '[happy]I told you!'),
@@ -373,7 +373,7 @@
           { type: 'brickworks', dx: 3, dy: 11 },
         ] },
         eye: true,
-        goals: [{ key: 'x:carriers', type: 'carriers', amount: 120 }, { key: 's:steel', type: 'stock', resource: 'steel', amount: 15 }],
+        goals: [{ key: 'x:carriers', type: 'carriers', amount: 120 }, more('steel', 15)],
         letter: letter(['The roads are not safe and the supplies do not arrive.',
         'Put more carriers on the roads, and keep the roads in good repair. I must have steel for the smiths before the cold sets in.',
         'The crown cannot afford further delays.'], true),
@@ -663,7 +663,7 @@
         ] },
       // 13
       { name: 'Embers',
-        goals: [{ key: 's:water', type: 'stock', resource: 'water', amount: 40 }, { key: 's:sand', type: 'stock', resource: 'sand', amount: 40 }],
+        goals: [more('water', 40), more('sand', 40)],
         dialogue: [
           say('reeve', 'Water to douse them, sand to smother what is left. If the embers die, the dark has less to feed on.'),
           say('baelthar', '[whisper]Rest, Reeve. Let the embers burn. Nobody would blame you.'),
@@ -680,7 +680,7 @@
           say('pipwick', "Good. I'll bring my tools."),
         ],
         events: [
-          { when: [{ resource: 'water', amount: 20 }, { resource: 'sand', amount: 20 }], tell: [
+          { when: [{ resource: 'water', more: 20 }, { resource: 'sand', more: 20 }], tell: [
             say('baelthar', 'You are making a habit of cleaning up after us.'),
             say('reeve', 'Someone has to.'),
             say('mordrath', 'And you have always been so willing.'),
