@@ -59,6 +59,9 @@
 
       const show = () => {
         dialog.replaceChildren();
+        const scene = pages[page]?.type === 'letter' ? null : this.scene();   // brevet ligger på sitt papper, allt annat på kapitlets bakgrund
+        dialog.style.backgroundImage = scene ? `linear-gradient(rgba(12,14,20,.45), rgba(12,14,20,.7)), url(images/story/${scene}.jpg?v=${window.version})` : '';
+        dialog.style.backgroundSize = 'cover'; dialog.style.backgroundPosition = 'center';
         if (page >= pages.length) return close();
         const current = pages[page], last = page === pages.length - 1;
         if (current.music) { scened = true; CityBuilder.Sound?.scene(current.music); }   // sidans egen musik (prolog, epilog) tills läsvyn stängs
@@ -102,6 +105,12 @@
         action.focus();
       };
       show();
+    },
+
+    // Kapitlets bakgrund (Config.story.scenes): namnet på bilden i images/story/, eller null
+    scene() {
+      const scenes = CityBuilder.Config.story.scenes, chapter = CityBuilder.Levels.story;
+      return chapter?.scene || scenes?.chapters?.[chapter?.number] || scenes?.default || null;
     },
 
     // Talarens porträtt, en rund bild bredvid repliken: images/portraits/<talare>.png (eller speaker.portrait). Saknas bilden visas talarens initial i dess färg.
@@ -187,7 +196,7 @@
         .story-player { flex-direction: row-reverse; }   /* spelaren: bilden till höger, som i en chatt */
         .story-player .story-body { text-align: right; }
         .story-line b { margin-right: 2px; }
-        .story-portrait { flex: 0 0 56px; width: 56px; height: 56px; box-sizing: border-box; border: 2px solid #888; border-radius: 50%; overflow: hidden; background: #1b1f27; display: flex; align-items: center; justify-content: center; font: 700 26px Georgia, serif; font-style: normal; }
+        .story-portrait { flex: 0 0 56px; width: 56px; height: 56px; box-sizing: border-box; border: 2px solid #888; border-radius: 50%; overflow: hidden; background: transparent; display: flex; align-items: center; justify-content: center; font: 700 26px Georgia, serif; font-style: normal; }
         .story-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .story-narration { font-style: italic; opacity: .85; }
         .story-next { align-self: flex-end; min-width: 140px; }
