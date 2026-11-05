@@ -99,8 +99,11 @@
     flush() {
       if (this.reading || !this.queue.length) return;
       this.reading = true;
-      const pages = this.queue.splice(0);
-      CityBuilder.StoryUI.read(pages, () => { this.reading = false; this.flush(); });
+      const guide = this.queue.findIndex(page => page.type === 'guide');   // guidens rörelsesidor (UI.openTutorial) kommer efter det som står före dem i kön
+      const pages = this.queue.splice(0, guide < 0 ? this.queue.length : guide);
+      const next = () => { this.reading = false; this.flush(); };
+      if (pages.length) CityBuilder.StoryUI.read(pages, next);
+      else { this.queue.shift(); CityBuilder.UI.openTutorial('story', next); }
     },
     // En gång per sparning: berättas första gången villkoret slår till. Returnerar sidorna, så att flera kan visas i en följd.
     once(key, pages) {
@@ -164,12 +167,14 @@
         ...(chapter.number === 1 ? this.once('prologue', [{ type: 'prose', lines: Config.story.prologue, music: Config.story.music?.prologue }]) : []),
         ...(chapter.letter ? this.once('letter', [{ type: 'letter', letter: chapter.letter }]) : []),
         ...(chapter.dialogue ? this.once('dialogue', [{ type: 'dialogue', lines: chapter.dialogue }]) : []),
+        ...(chapter.number === 1 && !this.guideAsked && !CityBuilder.UI.guideDone() ? (this.guideAsked = true, [{ type: 'guide' }]) : []),   // en gång per start tills guiden är klar
       ]);
 
       // En händelse sker en gång, när alla villkor den har slår till: at (sekunder in i kapitlet), goal (målet med det numret, räknat från 1, är klart) och when
       // (ett mål av samma slag som kapitlets: { resource | type, id, amount }, som att man har 50 järn eller har byggt en förtrollare)
       (chapter.events || []).forEach((event, i) => {
         if (Levels.told('event:' + i)) return;
+        if (event.guide && CityBuilder.UI.guideDone()) { Levels.markTold('event:' + i); return; }   // guide: true = hör till guiden och hoppas över av den som redan klarat den
         if (event.at === undefined && !event.goal && !event.when) return;
         if (event.whileFog && Levels.told('fog:lifted')) { Levels.markTold('event:' + i); return; }   // dimman har lyft: händelsen skulle komma för sent
         if (event.at !== undefined && Levels.seconds < event.at) return;

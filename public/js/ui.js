@@ -66,7 +66,7 @@
       this.initBuildingRange();
       this.createCopyrightLabel();
       this.createGoalPanel();
-      if (CityBuilder.Levels) CityBuilder.Levels.onComplete(result => this.showLevelComplete(result));
+      if (CityBuilder.Levels) CityBuilder.Levels.onComplete(result => { if (result.story && CityBuilder.Levels.story?.number === 1) this.markGuideDone(); this.showLevelComplete(result); });
 
       // Infopanelen ligger precis ovanför byggmenyn.
       this.positionInfoPanel = () => {
@@ -282,7 +282,9 @@
     // Handledningar: en sida per del av spelet. Grunderna (basics) visas automatiskt för nya spelare och ska vara korta; resten (advanced) finns i menyn.
     // Varje sida lyser upp det den förklarar (target = CSS-väljare, flera går bra) och kan först öppna en byggkategori (category).
     // mock: en bild av infopanelen för det som inte syns förrän man markerat en byggnad.
+    // story: bara de enkla rörelserna (kartan, byggmenyn) i berättelsens första kapitel; resten av guiden sköts där av händelser och dialog (systems/story.js)
     TUTORIAL: {
+      get story() { return this.basics.filter(page => ['Move and zoom', 'Build menu'].includes(page.title)); },
       basics: [
         { title: 'Welcome', lines: ['Welcome to Foundryfolk! You build a settlement: gather resources, make goods and grow stronger.', 'This short guide covers the basics. You can open it again from the menu at any time.'] },
         { title: 'Goals', target: ['#goalPanel'], lines: ['These are your goals for the level. Complete all of them to finish it and unlock new buildings.', 'The goals tell you what to build next. Start with the first one.'] },
@@ -319,7 +321,12 @@
     },
 
     // Handledningen (spelet pausas medan den är öppen). Varje sida lyser upp det den förklarar.
-    openTutorial(kind = 'basics') {
+    // Guiden är klar när spelaren tagit sig igenom den (inte när den bara stängts): i Free Realm när sista sidan stängts, i storyn när kapitel 1 är klart.
+    // Samma markering gäller båda lägena: den som klarat guiden i det ena får den inte automatiskt i det andra. onClose(klar) anropas när rutan stängts.
+    guideDone() { try { return !!localStorage.getItem('citybuilder.tutorialSeen'); } catch (error) { return false; } },
+    markGuideDone() { try { localStorage.setItem('citybuilder.tutorialSeen', '1'); } catch (error) {} },
+
+    openTutorial(kind = 'basics', onClose) {
       this.hideTooltip();
       const game = CityBuilder.Game, pages = this.TUTORIAL[kind], categoryBefore = this.openCategoryId;
       game.paused = true;
@@ -357,7 +364,7 @@
       const header = document.createElement('header');
       header.className = 'resource-window-header';
       const title = document.createElement('strong');
-      title.textContent = t(kind === 'basics' ? 'How to play' : 'Advanced guide');
+      title.textContent = t(kind !== 'advanced' ? 'How to play' : 'Advanced guide');
       header.appendChild(title);
       const body = document.createElement('div');
       body.className = 'main-menu-body';
@@ -371,14 +378,16 @@
         return element;
       };
       let frame = 0;
-      const close = () => {
+      const close = finished => {
         cancelAnimationFrame(frame); spotlight.remove(); overlay.remove(); removeEventListener('keydown', onKey);
         this.setOpenCategory(categoryBefore ?? null);
         if (menu) menu.hidden = !this.mainMenuOpen;
         game.paused = !!this.mainMenuOpen;
+        if (finished === true && kind === 'basics') this.markGuideDone();   // storyns sidor räknas inte: där är guiden klar först när kapitel 1 är det
+        onClose?.(finished === true);
       };
       const skip = button(close), back = button(() => { page--; render(); });
-      const next = button(() => { if (page === pages.length - 1) close(); else { page++; render(); } });
+      const next = button(() => { if (page === pages.length - 1) close(true); else { page++; render(); } });
       back.classList.add('tutorial-back'); next.classList.add('tutorial-next');
       skip.style.cssText = 'margin-left:auto;padding:2px 10px;flex:0 0 auto;width:auto';
       header.append(skip);
@@ -428,7 +437,7 @@
         for (const text of lines) add('main-menu-note', t(text));
         skip.textContent = t('Skip');
         back.textContent = t('Back'); back.disabled = page === 0;
-        next.textContent = page === pages.length - 1 ? t(kind === 'basics' ? 'Start playing' : 'Close') : t('Next');
+        next.textContent = page === pages.length - 1 ? t(kind !== 'advanced' ? 'Start playing' : 'Close') : t('Next');
       };
       const onKey = event => {
         if (event.key === 'Escape') close();
@@ -447,10 +456,8 @@
 
     // Nya spelare (ingen sparad version eller framgång) får handledningen en gång. Returnerar true om den öppnades.
     showTutorialIfNew() {
-      let seen = true, played = false;
-      try { seen = !!localStorage.getItem('citybuilder.tutorialSeen'); played = !!localStorage.getItem('citybuilder.progress'); } catch (error) {}
-      try { localStorage.setItem('citybuilder.tutorialSeen', '1'); } catch (error) {}
-      if (seen || played) return false;
+      // I storyn guidar kapitel 1 (Story.update). Free Realm och egna banor visar guiden för den som inte klarat den, tills den klarats (i något läge).
+      if (this.guideDone() || CityBuilder.Levels?.mode === 'story') return false;
       this.openTutorial();
       return true;
     },
