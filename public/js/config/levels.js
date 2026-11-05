@@ -936,16 +936,16 @@
 
   /* ---------- Goal progress ---------- */
   const Economy = () => CityBuilder.Economy;
-  const progress = { run: null, level: null, latched: {}, told: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, destroyed: {}, rivalsDown: 0, won: false };
+  const progress = { run: null, level: null, latched: {}, told: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, made: {}, destroyed: {}, rivalsDown: 0, won: false };
   const completeListeners = [];
   let checkTimer = 0;
 
   // Framstegen hör bara till en sparning (se restoreProgress): varje bana och varje nytt spel börjar med tomma mål.
   const applyProgress = saved => {
     const same = saved && (state.info.custom || state.info.story || saved.run === runSeed) && saved.level === state.info.key;   // en egen karta hör inte till banornas körning: ett nytt spel på banorna ska inte nollställa den
-    Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, told: same ? saved.told || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, casts: same ? saved.casts || 0 : 0, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
+    Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, told: same ? saved.told || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, casts: same ? saved.casts || 0 : 0, made: same ? saved.made || {} : {}, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
   };
-  const resetProgress = () => Object.assign(progress, { latched: {}, told: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, destroyed: {}, rivalsDown: 0, won: false });
+  const resetProgress = () => Object.assign(progress, { latched: {}, told: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, made: {}, destroyed: {}, rivalsDown: 0, won: false });
 
   // Finished buildings of the player: of one kind (id), or all of them except the headquarters
   const countBuilt = id => {
@@ -1100,6 +1100,9 @@
     },
     // The player cast a spell (counts towards the 'casts' goal)
     onCast(player) { if (player === CityBuilder.Players.HUMAN) progress.casts++; },
+    // Spelarens hus tillverkade eller samlade en vara (Behaviors.note 'make'): räknas oavsett vart den tog vägen, till lagret eller direkt till nästa hus
+    onMade(resourceId, amount) { progress.made[resourceId] = (progress.made[resourceId] || 0) + amount; },
+    made: resourceId => (held ? 0 : progress.made[resourceId] || 0),
     // A rival's base is destroyed (counts towards the 'eliminate' goal)
     onRivalDown() { progress.rivalsDown++; },
     // The last rival is gone: the level is won, whatever the other goals say

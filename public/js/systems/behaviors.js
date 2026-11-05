@@ -291,7 +291,10 @@
     },
 
     // Flödesstatistik (Economy.record): byggnaden förbrukade ('use') eller levererade ('make') en vara
-    note: (building, kind, resourceId, amount = 1) => CityBuilder.Economy.record(building.player, kind, resourceId, building.type, amount),
+    note(building, kind, resourceId, amount = 1) {
+      if (kind === 'make' && building.player === CityBuilder.Players.HUMAN) CityBuilder.Levels?.onMade?.(resourceId, amount);   // berättelsens händelser räknar det som tillverkats
+      CityBuilder.Economy.record(building.player, kind, resourceId, building.type, amount);
+    },
 
     // Lämnar det arbetaren bär i huset (jägarens alla varor, annars en)
     deposit(worker, building) {

@@ -28,7 +28,7 @@
                   fiendens HQ mot spelarens, oberoende av datorns vanliga anfallsregler (ai.js). until: 'fog' = tills dimman lyft, annars tills kapitlet är klart
      events       [{ at (sekunder), goal, when, tell: dialog | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]. En händelse sker en gång, när alla
                   villkor den har slår till. at: sekunder in i kapitlet. goal: målet med det numret (1 = första målet) är klart. whileFog: true = bara så länge dimman ligger (en händelse som kommer för sent hoppas över). when: { resource, amount } (har så mycket av en vara)
-                  eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { resource, more: n } = n fler än man börjar med (startresurserna räknas inte: det som ska levereras eller tillverkas). T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
+                  eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { resource, made: n } = n har tillverkats eller samlats i kapitlet, oavsett vart varan tog vägen (också direkt till nästa hus, utan att passera lagret); { resource, more: n } = lagret har n fler än man började med. T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
      meteorProof  enhetstyper som meteorer inte skadar */
 (function (CityBuilder) {
   'use strict';
@@ -195,17 +195,17 @@
           say('albertha', '[happy]He means we are very pleased to meet you!'),
         ],
         events: [
-          { when: { resource: 'iron_ore', more: 1 }, tell: [
+          { when: { resource: 'iron_ore', made: 1 }, tell: [
             say('thordram', "Now you got iron ore. Smelt it with charcoal and you will have an iron bar"),
             say('albertha', '[happy]Just what the king needs!'),
           ] },
-          { when: { resource: 'iron', more: 1 }, tell: [
+          { when: { resource: 'iron', made: 1 }, tell: [
             say('albertha', '[happy]There you go! Your first iron bar!'),
             say('thordram', "Keep it up. We'll be done before you know it."),
             say('albertha', '[happy]Although...'),
             say('thordram', "Yes. Make sure to make a lot of it. [sad]Some needs to go to make axes."),
           ] },
-          { when: { resource: 'axe', more: 5 }, tell: [
+          { when: { resource: 'axe', made: 5 }, tell: [
             say('thordram', "Just one more axe to go."),
             say('albertha', '[happy]Great!'),
           ] },
@@ -282,7 +282,7 @@
           say('albertha', '[calm]Fear is terribly inconvenient. It makes people hesitate.'),
         ],
         events: [
-          { when: { resource: 'potion', more: 1 }, tell: [
+          { when: { resource: 'potion', made: 1 }, tell: [
             say('albertha', '[happy]There! The first batch is ready. They should be feeling much better already.'),
             say('reeve', '[question]Have you tested them?'),
             say('albertha', '[happy]Of course!'),
@@ -333,7 +333,7 @@
           say('thordram', 'An explanation of remarkable precision.'),
         ],
         events: [
-          { when: { resource: 'fallen_star', more: 1 }, tell: [
+          { when: { resource: 'fallen_star', made: 1 }, tell: [
             say('albertha', '[happy]Oh! You found one!'),
             say('reeve', 'It is still warm.'),
             say('albertha', '[happy]I told you!'),
@@ -680,7 +680,7 @@
           say('pipwick', "Good. I'll bring my tools."),
         ],
         events: [
-          { when: [{ resource: 'water', more: 20 }, { resource: 'sand', more: 20 }], tell: [
+          { when: [{ resource: 'water', made: 20 }, { resource: 'sand', made: 20 }], tell: [
             say('baelthar', 'You are making a habit of cleaning up after us.'),
             say('reeve', 'Someone has to.'),
             say('mordrath', 'And you have always been so willing.'),
