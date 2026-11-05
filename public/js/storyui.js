@@ -187,6 +187,8 @@
         .story-reader { max-width: 560px; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; max-height: 88vh; overflow-y: auto; }
         .story-text { display: flex; flex-direction: column; gap: 12px; line-height: 1.5; }
         .story-text p { margin: 0; }
+        /* Texten mot bakgrundsbilden: svart kontur (fyra håll) och mjuk skugga. Brevet ligger på papper och behöver ingen. */
+        .story-reader:not(.is-letter) .story-text { text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 3px rgba(0,0,0,.95), 0 0 9px rgba(0,0,0,.85); }
         .story-reader.is-letter .story-text { font-family: Georgia, 'Times New Roman', serif; font-size: 1.05em; background: #e9dcc0; color: #3b2d1a; padding: 20px 22px; border-radius: 4px; box-shadow: inset 0 0 18px rgba(90, 60, 20, .35); }
         .story-greeting { font-style: italic; }
         .story-signature { text-align: right; margin: 0; }
