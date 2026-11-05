@@ -35,7 +35,7 @@
       CityBuilder.Sound?.syncPause();   // fryser det som låter nu innan läsvyns egna ljud startar, annars fryses också de (och hörs inte)
       let page = 0, typing = null, scened = false;
 
-      const close = () => { overlay.remove(); Game.paused = !!UI.mainMenuOpen; if (scened) CityBuilder.Sound?.scene(CityBuilder.Levels.story?.music); done?.(); };
+      const close = () => { overlay.remove(); Game.paused = !!UI.mainMenuOpen; if (scened) CityBuilder.Sound?.scene(null); done?.(); };
       const next = () => { page++; show(); };
 
       // Trycker upp en text tecken för tecken; ett klick eller finish() visar resten
@@ -59,7 +59,7 @@
 
       const show = () => {
         dialog.replaceChildren();
-        const scene = pages[page]?.type === 'letter' ? null : this.scene();   // brevet ligger på sitt papper, allt annat på kapitlets bakgrund
+        const scene = pages[page]?.type === 'letter' ? null : this.scene(pages[page]);   // brevet ligger på sitt papper, allt annat på kapitlets bakgrund
         dialog.style.backgroundImage = scene ? `linear-gradient(rgba(12,14,20,.45), rgba(12,14,20,.7)), url(images/story/${scene}.jpg?v=${window.version})` : '';
         dialog.style.backgroundSize = 'cover'; dialog.style.backgroundPosition = 'center';
         if (page >= pages.length) return close();
@@ -107,10 +107,16 @@
       show();
     },
 
-    // Kapitlets bakgrund (Config.story.scenes): namnet på bilden i images/story/, eller null
-    scene() {
+    // Bakgrunden för en sida (Config.story.scenes): namnet på bilden i images/story/, eller null.
+    // Sidans egen scene (en händelses scene) gäller först. Annars kapitlets (chapter.scene eller scenes.chapters[nummer]): ett namn för hela kapitlet,
+    // eller { intro, events, lifted, after } där varje del kan ha sin bild (saknas en del används intro, sedan scenes.default).
+    // intro = brev och inledande dialog, events = händelser under banan, lifted = när dimman lyft, after = dialogen efter banan.
+    scene(page = {}) {
       const scenes = CityBuilder.Config.story.scenes, chapter = CityBuilder.Levels.story;
-      return chapter?.scene || scenes?.chapters?.[chapter?.number] || scenes?.default || null;
+      if (page.scene) return page.scene;
+      const own = chapter?.scene || scenes?.chapters?.[chapter?.number];
+      const name = own && typeof own === 'object' ? (own[page.part || 'intro'] ?? own.intro) : own;
+      return name || scenes?.default || null;
     },
 
     // Talarens porträtt, en rund bild bredvid repliken: images/portraits/<talare>.png (eller speaker.portrait). Saknas bilden visas talarens initial i dess färg.
@@ -176,7 +182,7 @@
         document.body.append(overlay);
         body.querySelector('button').focus();
       };
-      if (chapter.after?.length) this.read([{ type: 'dialogue', lines: chapter.after }], show); else show();
+      if (chapter.after?.length) this.read([{ type: 'dialogue', lines: chapter.after, part: 'after' }], show); else show();
     },
 
     injectStyles() {

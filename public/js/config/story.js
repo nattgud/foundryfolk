@@ -9,10 +9,10 @@
    unlock:    byggnad -> kapitlet den blir byggbar i (byggnader som inte står här finns från kapitel 1). Storyn har egen tabell.
    prologue, epilogue: stycken som visas i läsvyn.
    music:     egen musik i stället för den vanliga: { prologue, epilogue } är en fil eller en lista (null = den vanliga musiken)
-               och spelas medan prologen och epilogen läses. Ett kapitel kan ha eget music-fält på samma sätt, som spelas hela kapitlet.
+               och spelas medan prologen och epilogen läses. Ett kapitel kan ha eget music-fält som ersätter standardmusiken i kapitlet (se chapters).
    chapters:  ett per bana, i ordning. Alla fält utom name är valfria:
      name         kapitlets namn
-     music        egen musik hela kapitlet (en fil eller en lista), t.ex. 'music/chapter9.mp3'
+     music        egen musik i kapitlet: en fil eller lista (lugn musik), t.ex. 'music/chapter9.mp3', eller { calm, battle, disaster } med en lista per läge. Fungerar som standardmusiken (blandad ordning, strid och katastrof byter låt); ett läge som inte anges behåller standardmusiken
      letter       { lines: [stycken], throne, greeting } från kungen, visas före banan (throne: signaturen är "In service of the throne"; greeting: egen hälsning i stället för standardens)
      dialogue     [{ who, text }] tryckt dialog som visas efter brevet
      lifted       dialog som visas när dimman lyfter (Eye of Shades förstörd)
@@ -72,8 +72,8 @@
     greeting: 'To the Reeve of {village},',
     signature: { realm: 'In service of the realm', throne: 'In service of the throne', name: 'Maegnius, King of Farael' },
     // Bakgrunden bakom dialogerna och styckena (images/story/<namn>.jpg, 1376x768). default gäller alla kapitel utan egen; chapters: { kapitelnummer: namn }.
-    // Ett kapitel kan också ha scene: 'namn' i sin egen data. Utan bild (scenes saknas) behålls den vanliga mörka rutan.
-    scenes: { default: 'meadow', chapters: { 11: 'siege', 12: 'demon', 13: 'demon', 14: 'demon', 15: 'demon', 16: 'demon', 17: 'demon', 18: 'demon', 19: 'demon', 20: 'demon', 21: 'demon' } },
+    // Ett kapitel kan också ha scene: 'namn' i sin egen data. Bilden kan bytas under kapitlet: { intro, events, lifted, after } i stället för ett namn (intro = brev och inledande dialog, events = händelserna, lifted = när dimman lyft, after = efter banan), och en händelse kan ha eget scene: 'namn'. Utan bild (scenes saknas) behålls den vanliga mörka rutan.
+    scenes: { default: 'meadow', chapters: { 11: { events: 'siege', lifted: 'siege', after: 'siege' }, 12: 'demon', 13: 'demon', 14: 'demon', 15: 'demon', 16: 'demon', 17: 'demon', 18: 'demon', 19: 'demon', 20: 'demon', 21: 'demon' } },
 
     unlock: {
       woodcutter: 1, quarry: 1, sawmill: 1, warehouse: 1,

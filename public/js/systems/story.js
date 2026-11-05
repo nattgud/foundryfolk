@@ -121,7 +121,7 @@
     // Händelser på bestämda tider (Weather sköter själva vädret)
     fire(event) {
       const Weather = CityBuilder.Weather, hq = World.headquarters;
-      if (event.tell) this.tell([{ type: 'dialogue', lines: event.tell }]);
+      if (event.tell) this.tell([{ type: 'dialogue', lines: event.tell, part: 'events', scene: event.scene }]);
       if (event.weather) { Weather.type = event.weather; Weather.left = 90; Weather.flashIn = 1; CityBuilder.Sound?.play('weather.' + event.weather); }
       if (event.tornado || event.super) {
         const spot = Weather.tornadoSpot() || (hq && { x: hq.x + 10, y: hq.y + 6, player: Players.HUMAN });
@@ -178,8 +178,8 @@
 
     update() {
       const chapter = this.chapter, Levels = CityBuilder.Levels, Weather = CityBuilder.Weather;
+      CityBuilder.Sound?.chapterMusic(chapter?.music);   // kapitlets egna musik (chapter.music), annars standardmusiken; läsvyns sidor har sin egen (scene)
       if (!chapter) return;
-      if (!this.reading) CityBuilder.Sound?.scene(chapter.music);   // kapitlets egen musik (läsvyn sköter sin egen)
       // Berättelsen i ordning: prolog (bara i kapitel 1), brev, dialog
       this.tell([
         ...(chapter.number === 1 ? this.once('prologue', [{ type: 'prose', lines: Config.story.prologue, music: Config.story.music?.prologue }, ...(Config.story.prologueDialogue ? [{ type: 'dialogue', lines: Config.story.prologueDialogue }] : [])]) : []),
@@ -210,7 +210,7 @@
         else {
           Levels.markTold('fog:lifted');
           Weather.type = 'clear'; Weather.left = 90;
-          if (chapter.lifted) this.tell([{ type: 'dialogue', lines: chapter.lifted }]);
+          if (chapter.lifted) this.tell([{ type: 'dialogue', lines: chapter.lifted, part: 'lifted' }]);
         }
       }
       // Meteorer skonar vissa enhetstyper (Weather.harm läser definition.meteorProof)

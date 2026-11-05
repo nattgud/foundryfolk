@@ -598,6 +598,26 @@
       if (channel) this.updateMood();
     },
 
+    // Egen musik för ett kapitel (chapter.music): en fil eller lista = lugn musik, eller { calm, battle, disaster } med en lista per läge. Allt fungerar som den vanliga
+    // musiken (blandad ordning, strid och katastrof byter låtar, samma fadningar och volym). Ett läge som inte anges behåller standardmusiken. null = standardmusik.
+    chapterMusic(spec) {
+      if (!this.channels) return;
+      const key = JSON.stringify(spec ?? null);
+      if (key === this.chapterKey) return;
+      this.chapterKey = key;
+      const own = spec && typeof spec === 'object' && !Array.isArray(spec) ? spec : spec ? { calm: spec } : {}, custom = Config.settings.audio || {};
+      const standard = { calm: custom.music, battle: custom.battleMusic, disaster: custom.disasterMusic };
+      for (const mood of ['calm', 'battle', 'disaster']) {
+        const channel = this.channels[mood], tracks = [].concat((own[mood] !== undefined ? own[mood] : standard[mood]) || []);
+        if (tracks.join('|') === channel.tracks.join('|')) continue;
+        this.stop(channel);
+        channel.element?.removeAttribute('src');
+        Object.assign(channel, { tracks, queue: [], current: null, buffer: null });
+        if (channel.gain) channel.gain.gain.value = 0;   // den nya låten tonas in
+      }
+      this.updateMusic();
+    },
+
     updateMusic() {
       const context = this.context;
       const on = !!context && context.state === 'running' && this.settings.musicOn && this.settings.musicVolume > 0;
