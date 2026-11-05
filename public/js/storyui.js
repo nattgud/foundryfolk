@@ -82,7 +82,7 @@
             if (typing) return typing();
             if (line >= current.lines.length) return next();
             const { who, text: spoken } = current.lines[line++], speaker = story.speakers[who] || { name: who, color: '' };
-            const row = make('div', speaker.narrator ? 'story-line story-narration' : 'story-line'), name = make('b', '', t(speaker.name) + ': '), words = make('span');
+            const row = make('div', speaker.narrator ? 'story-line story-narration' : who === 'reeve' ? 'story-line story-player' : 'story-line'), name = make('b', '', t(speaker.name) + ': '), words = make('span');
             name.style.color = speaker.color;
             if (speaker.narrator) row.append(words);   // berättaren har inget namn och ingen bild och skrivs kursivt
             else { const body = make('p', 'story-body'); body.append(name, words); row.append(this.portrait(who, speaker), body); }
@@ -184,6 +184,8 @@
         .story-signature + .story-signature { margin-top: -8px; font-style: italic; }
         .story-line { display: flex; gap: 12px; align-items: flex-start; }
         .story-body { margin: 0; flex: 1; min-width: 0; }
+        .story-player { flex-direction: row-reverse; }   /* spelaren: bilden till höger, som i en chatt */
+        .story-player .story-body { text-align: right; }
         .story-line b { margin-right: 2px; }
         .story-portrait { flex: 0 0 56px; width: 56px; height: 56px; box-sizing: border-box; border: 2px solid #888; border-radius: 50%; overflow: hidden; background: #1b1f27; display: flex; align-items: center; justify-content: center; font: 700 26px Georgia, serif; font-style: normal; }
         .story-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
