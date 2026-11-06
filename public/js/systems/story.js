@@ -193,8 +193,13 @@
       const chapter = this.chapter, Levels = CityBuilder.Levels, Weather = CityBuilder.Weather;
       // Kapitlets musik (chapter.music), annars standardmusiken; en händelse med music byter den (den senast utlösta i listan gäller, och den följer med i sparningen
       // eftersom händelsen är markerad som gjord). Läsvyns sidor har sin egen (scene).
+      // Händelsernas music läggs ovanpå kapitlets, läge för läge och i den ordning de utlösts (en fil eller lista = lugn musik; null = tillbaka till standardmusiken).
+      const modes = spec => spec && typeof spec === 'object' && !Array.isArray(spec) ? spec : spec ? { calm: spec } : {};
       let music = chapter?.music;
-      (chapter?.events || []).forEach((event, i) => { if (event.music !== undefined && CityBuilder.Levels.told('fired:' + i)) music = event.music; });
+      (chapter?.events || []).forEach((event, i) => {
+        if (event.music === undefined || !CityBuilder.Levels.told('fired:' + i)) return;
+        music = event.music === null ? null : { ...modes(music), ...modes(event.music) };
+      });
       CityBuilder.Sound?.chapterMusic(music);
       if (!chapter) return;
       // Berättelsen i ordning: prolog (bara i kapitel 1), brev, dialog

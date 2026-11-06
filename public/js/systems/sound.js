@@ -579,7 +579,8 @@
       const hazards = Weather ? Weather.tornadoes.length + Weather.volcanoes.filter(volcano => Weather.seen(volcano)).length + (Weather.storm && Weather.seen(Weather.storm) ? 1 : 0) : 0;   // bara det som syns
       if (hazards > this.hazards) this.hazardUntil = now + MOOD.disasterSeconds;
       this.hazards = hazards;
-      const mood = this.sceneOn ? 'scene' : hazards && now < this.hazardUntil ? 'disaster' : Combat && Combat.time - Combat.fightAt < MOOD.battleSeconds ? 'battle' : 'calm';
+      const off = name => this.channels?.[name]?.off;   // music: { battle: false } i ett kapitel eller en händelse: läget har ingen musik, den lugna musiken fortsätter
+      const mood = this.sceneOn ? 'scene' : hazards && now < this.hazardUntil && !off('disaster') ? 'disaster' : Combat && Combat.time - Combat.fightAt < MOOD.battleSeconds && !off('battle') ? 'battle' : 'calm';
       if (mood !== this.mood) { this.mood = mood; this.updateMusic(); }
     },
 
@@ -609,7 +610,7 @@
       for (const channel of Object.values(this.channels)) {
         this.stop(channel);
         channel.element?.removeAttribute('src');
-        Object.assign(channel, { tracks: [], queue: [], current: null, buffer: null });
+        Object.assign(channel, { tracks: [], queue: [], current: null, buffer: null, off: false });
         if (channel.gain) channel.gain.gain.value = 0;
       }
       this.chapterKey = null;
@@ -627,6 +628,7 @@
       const standard = { calm: custom.music, battle: custom.battleMusic, disaster: custom.disasterMusic };
       for (const mood of ['calm', 'battle', 'disaster']) {
         const channel = this.channels[mood], tracks = [].concat((own[mood] !== undefined ? own[mood] : standard[mood]) || []);
+        channel.off = own[mood] === false && mood !== 'calm';   // false = läget avstängt (ingen strid- eller katastrofmusik, inte ens den syntetiska)
         if (tracks.join('|') === channel.tracks.join('|')) continue;
         this.stop(channel);
         channel.element?.removeAttribute('src');
