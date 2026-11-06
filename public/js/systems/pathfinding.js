@@ -107,10 +107,11 @@
     // Varför går det inte att nå (goalX, goalY)? Söker en egen väg där fiendens byggnader (hostile mot 'player') går att ta sig igenom till ett pris, och svarar
     //   { blocker: första fientliga byggnaden på den vägen (att slå sönder), near: den ruta som går att nå och ligger närmast målet }.
     // blocker är null när inget fientligt står i vägen (vatten, berg, egna byggnader). Billig nog för enstaka soldater som just misslyckats: svaret gäller en stund.
-    assess(startX, startY, goalX, goalY, player) {
-      const key = `${startX >> 2},${startY >> 2},${goalX},${goalY},${player}`, cached = this.assessCache.get(key);
+    // breach = vad det kostar (i gångsekunder) att slå sönder en fientlig byggnad på vägen. Svaret har också cost: kostnaden för den billigaste vägen (null om målet inte nåddes).
+    assess(startX, startY, goalX, goalY, player, breach = 15) {
+      const key = `${startX >> 2},${startY >> 2},${goalX},${goalY},${player},${breach}`, cached = this.assessCache.get(key);
       if (cached && cached.epoch === this.epoch && cached.until > this.time) return cached.result;
-      const result = { blocker: null, near: null };
+      const result = { blocker: null, near: null, cost: null };
       if (this.assessCache.size > 400) this.assessCache.clear();
       this.assessCache.set(key, { result, epoch: this.epoch, until: this.time + (this.settings().noPathSeconds ?? 8) });
 
@@ -154,11 +155,12 @@
           if (k === 2) continue;
           if (d >= 4 && (kind(x + DX[d], y, index + DX[d]) !== 0 || kind(x, y + DY[d], index + DY[d] * width) !== 0)) continue;   // inte diagonalt förbi ett hörn (en byggnad, också en fientlig, stänger hörnet: som i sökningen)
           const tile = World.getTile(nx, ny), terrain = tile ? Config.terrain[tile.terrainType].walkCost : 1;
-          const total = c + (d >= 4 ? DIAGONAL : 1) * terrain + (k === 1 ? 15 : 0);
+          const total = c + (d >= 4 ? DIAGONAL : 1) * terrain + (k === 1 ? breach : 0);
           if (total < cost[next]) { cost[next] = total; parent[next] = index; push(total, next); }
         }
       }
       if (closed[goalIndex]) {
+        result.cost = cost[goalIndex];
         const path = [];
         for (let cell = goalIndex; cell !== startIndex && cell >= 0; cell = parent[cell]) path.push(cell);
         for (let i = path.length - 1; i >= 0; i--) {

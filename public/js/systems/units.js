@@ -3,6 +3,7 @@
   'use strict';
   const { Config, World, Pathfinder, Jobs, Economy, Logistics, Behaviors, Utils } = CityBuilder;
 
+  const LONG_PATH = 15;   // så många rutor räknas en soldats väg som lång nog för att kolla om det är snabbare att slå sönder en mur (Combat.considerBreach)
   const ANIMAL = {
     foodRadius: 3, 
     eatSeconds: 4,
@@ -92,6 +93,11 @@
         if (path === undefined) return;             // sökbudgeten slut, försök igen nästa bildruta
         if (!path) return this.handlePathFailure(unit);
         step.path = path; step.pathIndex = 0;
+        if (unit.definition.isSoldier && step.kind === 'walk' && path.length >= LONG_PATH) {   // en lång väg: är det snabbare att slå sönder en fientlig mur på vägen? (Combat.considerBreach)
+          let cost = 0, px = Math.floor(unit.x), py = Math.floor(unit.y);
+          for (const tile of path) { const c = Pathfinder.tileCost(tile.x, tile.y); cost += (Number.isFinite(c) ? c : 1) * (tile.x !== px && tile.y !== py ? Math.SQRT2 : 1); px = tile.x; py = tile.y; }
+          if (CityBuilder.Combat.considerBreach(unit, step, cost)) { Pathfinder.drop(path); step.path = null; unit.stepQueue.length = 0; return; }
+        }
       }
       if (step.pathIndex >= step.path.length) {
         if (step.kind === 'followUnit') {

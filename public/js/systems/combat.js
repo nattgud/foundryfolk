@@ -33,6 +33,7 @@
   const MELEE_RANGE = 2;              // attackRange upp till detta är närstrid, över det en projektil
   const GRID_CELL = 8, GRID_KEY = 100003, GRID_SECONDS = 0.25, GRID_MARGIN = 3;   // rutnätet för sökningen efter fiender (se targets)
   const RETRY_UNREACHABLE_SECONDS = 8;    // så länge ett mål som inte gick att nå får vara i fred efter att något byggts eller rivits (annars försöker soldaten hela tiden och hinner aldrig gå tillbaka till sin post)
+  const BREACH_SECONDS = 10;         // så lång tid räknas det ta att slå sönder en fientlig mur: är omvägen längre än så slår soldaten hellre sönder muren (considerBreach)
   const STUCK_SECONDS = 12;          // en soldat som varken rört sig eller slagit så länge, och inte står där den ska, är fast (se watchStuck)
   const BUILDING_REACH = 0.6;         // en byggnad är en hel ruta: räckhållet räknas från kanten, inte mitten
 
@@ -373,6 +374,17 @@
       unit.ignoreUntil = 0; unit.ignore = null; unit.unreachable?.clear(); unit.blocker = null; unit.target = null; unit.orderCooldown = 0; unit.stepQueue.length = 0; unit.mode = 'idle'; unit.goal = null;
       if (watch.strikes >= 2 && home && !flag) Garrison.reject(unit, home);
       if (this.time - (this.clearedAt ?? -Infinity) >= 8) { this.clearedAt = this.time; CityBuilder.Pathfinder.clearCache(); CityBuilder.Pathfinder.failures.clear(); }   // högst var 8:e sekund: många fasta soldater ska inte tvinga fram nya sökningar hela tiden
+    },
+
+    // En soldat har fått en lång väg (kostnad = gångsekunder). Går det snabbare att slå sönder en fientlig byggnad på en rakare väg (BREACH_SECONDS per byggnad) blir den soldatens blocker,
+    // som den slår sönder innan den går vidare. Svarar om vägen ska kastas.
+    considerBreach(unit, step, cost) {
+      if (unit.definition.isMonster || unit.blocker || step.toNear || step.targetX === undefined || this.time < (unit.breachCheckAt ?? 0)) return false;
+      unit.breachCheckAt = this.time + 3;
+      const found = CityBuilder.Pathfinder.assess(Math.floor(unit.x), Math.floor(unit.y), step.targetX, step.targetY, unit.player, BREACH_SECONDS);
+      if (!found.blocker || found.cost === null || found.cost >= cost) return false;
+      unit.blocker = found.blocker; unit.blockerUntil = this.time + BLOCKER_SECONDS;
+      return true;
     },
 
     // Platsen soldaten vaktar och hur långt därifrån den upptäcker fiender: flaggan (på väg dit: där soldaten står, så att fiender på vägen
