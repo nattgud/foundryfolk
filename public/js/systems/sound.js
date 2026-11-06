@@ -598,6 +598,24 @@
       if (channel) this.updateMood();
     },
 
+    // Ett kapitel eller en bana börjar om (nytt kapitel, omstart): all musik börjar om från början. Musiken som fördes över genom laddningen (en omladdad sida, se index.html)
+    // och allt som spelas tystas, kanalerna nollställs och låtlistorna fylls på nytt av chapterMusic (Story.update), så ingen gammal låt (t.ex. en händelses) hörs.
+    restartMusic() {
+      if (!this.channels) return;
+      const early = window.resumedMusic;
+      if (early) { early.element.pause(); delete window.resumedMusic; }
+      this.resume = null;
+      try { sessionStorage.removeItem(MUSIC_KEY); } catch (error) { /* ignorera */ }
+      for (const channel of Object.values(this.channels)) {
+        this.stop(channel);
+        channel.element?.removeAttribute('src');
+        Object.assign(channel, { tracks: [], queue: [], current: null, buffer: null });
+        if (channel.gain) channel.gain.gain.value = 0;
+      }
+      this.chapterKey = null;
+      this.scene(null);
+    },
+
     // Egen musik för ett kapitel (chapter.music): en fil eller lista = lugn musik, eller { calm, battle, disaster } med en lista per läge. Allt fungerar som den vanliga
     // musiken (blandad ordning, strid och katastrof byter låtar, samma fadningar och volym). Ett läge som inte anges behåller standardmusiken. null = standardmusik.
     chapterMusic(spec) {
@@ -661,7 +679,8 @@
     takeEarlyMusic(channel) {
       const early = window.resumedMusic;
       delete window.resumedMusic;
-      if (!early || early.ended || !channel.tracks.includes(early.track)) return null;
+      if (!early) return null;
+      if (early.ended || !channel.tracks.includes(early.track)) { early.element.pause(); return null; }   // en låt som inte hör hit får aldrig spelas vid sidan av den nya
       const { element } = early;
       if (element.paused && element.duration) element.currentTime = Math.min(early.time + (Date.now() - early.at) / 1000, element.duration - 0.5);
       this.resume = null;
