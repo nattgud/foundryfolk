@@ -49,6 +49,15 @@
           .map(building => ({ key: building, x: building.x, y: building.y }));
       },
     },
+    fire: {   // eld: kulissernas och meteorernas eldar som syns (de tre närmaste)
+      fade: 0.6,
+      sources: () => {
+        const { World, Weather, Vision, Players } = CityBuilder, seen = (x, y) => Vision.visible(Players.HUMAN, x, y), list = [];
+        for (const item of World.sceneryList) if (Config.story.sceneryTypes?.[item.type]?.light && seen(item.x, item.y)) list.push({ key: item, x: item.x, y: item.y });
+        for (const fire of Weather?.fires || []) if (fire.left > 0 && seen(fire.x, fire.y)) list.push({ key: fire, x: fire.x, y: fire.y });
+        return list;
+      },
+    },
   };
   const LOOP_GAP_MS = 50;   // längsta slumpade paus mellan två varv av en loop (samma ljud): gör att loopar låter lite mer levande
   const MAX_VOICES = 24; // samtidiga effekter totalt (mobilvänligt)
@@ -115,6 +124,8 @@
   const DEFAULT_SOUNDS = {
     click: { synth: render(0.05, (time, p) => Math.sin(TAU * 1600 * time) * Math.pow(1 - p, 3) * 0.45), volume: 0.6, cooldown: 0.04, maxVoices: 3 },
     build: { loop: true, synth: render(0.22, (time, p) => (Math.sin(TAU * (170 - 90 * p) * time) * 0.8 + (Math.random() * 2 - 1) * 0.3 * (1 - p)) * Math.pow(1 - p, 2)), maxVoices: 3 },
+    // Eld: dov susning med små smällar. Egen fil: settings.audio.sounds.fire (loopas medan någon eld syns)
+    fire: { loop: true, synth: rate => { const low = lowPass(0.04); let pop = 0; return finish(render(2.5, () => { if (Math.random() < 0.0012) pop = 0.5 + Math.random() * 0.5; pop *= 0.993; return low(noise()) * 1.6 + noise() * pop * 0.5; })(rate), 0.5); }, volume: 0.6, maxVoices: 3 },
     built: { synth: render(0.5, time => (note(523, time, 0, 0.25) + note(784, time, 0.15, 0.35)) * 0.4), maxVoices: 3, cooldown: 0.1 },
     demolish: {
       synth: (() => { let low = 0; return render(0.28, (time, p) => { low += ((Math.random() * 2 - 1) - low) * (0.12 + 0.45 * (1 - p)); return low * Math.pow(1 - p, 1.5) * 1.6; }); })(),

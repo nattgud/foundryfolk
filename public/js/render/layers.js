@@ -601,16 +601,13 @@
       const x = item.x * tileSize, y = item.y * tileSize;
       if (outside(view, x, y)) continue;
       const kind = types[item.type] || {}, seed = CityBuilder.Utils.hash(item.x, item.y, 31);
+      if (kind.light) { drawFire(context, item.type, item.x, item.y, tileSize, seed, now, 1); continue; }   // eld: samma som meteoreldarna
       const image = Assets.get(`images/scenery/${item.type}${kind.variants > 1 ? 1 + Math.floor(seed * kind.variants) : ''}.png`);
       if (image) {
         if (kind.frames > 1) {
           const frame = Math.floor(now * (kind.fps || 6) + seed * kind.frames) % kind.frames, width = image.width / kind.frames;
           context.drawImage(image, frame * width, 0, width, image.height, x, y, tileSize, tileSize);
         } else context.drawImage(image, x, y, tileSize, tileSize);
-      } else if (kind.light) {   // reservlåga
-        const flicker = .8 + .2 * Math.sin(now * 9 + seed * 50);
-        context.fillStyle = '#e8590c'; context.beginPath(); context.moveTo(x + tileSize * .2, y + tileSize * .9); context.lineTo(x + tileSize * .5, y + tileSize * (.9 - .7 * flicker)); context.lineTo(x + tileSize * .8, y + tileSize * .9); context.fill();
-        context.fillStyle = '#ffd43b'; context.beginPath(); context.moveTo(x + tileSize * .35, y + tileSize * .9); context.lineTo(x + tileSize * .5, y + tileSize * (.9 - .4 * flicker)); context.lineTo(x + tileSize * .65, y + tileSize * .9); context.fill();
       } else {   // reservskräp
         context.fillStyle = '#4a4540';
         context.fillRect(x + tileSize * .15, y + tileSize * (.45 + seed * .1), tileSize * .35, tileSize * .3);
@@ -875,6 +872,7 @@
     };
     for (const building of World.buildings) if (building.player === Players.HUMAN && !building.definition.pile) light(building.x + .5, building.y + .5, buildingLight);
     for (const item of World.sceneryList) { const radius = Config.story.sceneryTypes?.[item.type]?.light; if (radius) light(item.x + .5, item.y + .5, radius); }   // eld lyser
+    for (const fire of CityBuilder.Weather?.fires || []) if (fire.left > 0) light(fire.x + .5, fire.y + .5, Config.story.sceneryTypes?.fire?.light || 2);   // och meteoreldarna
     if (gfx.nightUnits) for (const unit of World.units) if (unit.player === Players.HUMAN) light(shownX(unit), shownY(unit), unitLight);
     context.imageSmoothingEnabled = true;
     context.drawImage(dusk, left * size, top * size, cols * size, rows * size);
@@ -952,6 +950,15 @@
     }
   };
 
+  // En eld på en ruta: kulissens animerade bild (Config.story.sceneryTypes[type], t.ex. fire), annars ritade lågor. Används av både kulissernas eld och meteoreldarna så att de ser likadana ut.
+  const drawFire = (context, type, tileX, tileY, size, seed, now, alpha) => {
+    const kind = Config.story.sceneryTypes?.[type] || {}, image = Assets.get(`images/scenery/${type}.png`);
+    if (image && kind.frames > 1) {
+      const frame = Math.floor(now * (kind.fps || 6) + seed * kind.frames) % kind.frames, width = image.width / kind.frames;
+      context.globalAlpha = alpha; context.drawImage(image, frame * width, 0, width, image.height, tileX * size, tileY * size, size, size); context.globalAlpha = 1;
+    } else drawFlames(context, (tileX + .5) * size, (tileY + .9) * size, size * .9, size * .95, seed * 50, now, alpha);
+  };
+
   // Meteorstorm: eldklotet faller diagonalt från precis ovanför skärmens överkant till nedslaget, med en skugga på marken som växer. Nedslag blixtrar till,
   // eldar brinner på rutor och på enheter som brinner (Weather.fires, unit.burning).
   const drawMeteors = (context, view, size, now) => {
@@ -981,7 +988,7 @@
     }
     for (const fire of Weather.fires) {
       if (fire.left <= 0 || fire.x * size < view.left - size || fire.x * size > view.right || fire.y * size < view.top - size || fire.y * size > view.bottom + size) continue;
-      drawFlames(context, (fire.x + .5) * size, (fire.y + .9) * size, size * .9, size * .95, fire.x * 12.9898 + fire.y * 78.233, now, Math.min(1, fire.left, .2 + fire.age * 2));
+      drawFire(context, 'fire', fire.x, fire.y, size, CityBuilder.Utils.hash(fire.x, fire.y, 31), now, Math.min(1, fire.left, .2 + fire.age * 2));
     }
     for (const unit of CityBuilder.World.units) {
       if (!(unit.burning > Weather.time) || !Vision.visible(Players.HUMAN, Math.floor(unit.x), Math.floor(unit.y))) continue;
