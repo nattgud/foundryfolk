@@ -64,7 +64,8 @@
         dialog.style.backgroundSize = 'cover'; dialog.style.backgroundPosition = 'center';
         if (page >= pages.length) return close();
         const current = pages[page], last = page === pages.length - 1;
-        if (current.music) { scened = true; CityBuilder.Sound?.scene(current.music); }   // sidans egen musik (prolog, epilog) tills läsvyn stängs
+        const song = current.music || this.dialogMusic(current);
+        if (song) { scened = true; CityBuilder.Sound?.scene(song); }   // sidans egen musik (prolog, epilog) eller kapitlets dialogMusic för dess del, tills läsvyn stängs
         if (current.type !== 'dialogue') CityBuilder.Sound?.play('message', { defer: true });   // ett ljud per sida (dialog: ett per replik, se advance)
         const text = make('div', 'story-text');
         const action = button(last ? t('Continue') : t('Next'), null, 'story-next');
@@ -117,6 +118,12 @@
       const own = chapter?.scene || scenes?.chapters?.[chapter?.number];
       const name = own && typeof own === 'object' ? (own[page.part || 'intro'] ?? own.intro) : own;
       return name || scenes?.default || null;
+    },
+
+    // Kapitlets musik för en sida (chapter.dialogMusic: { intro, events, lifted, after }, samma delar som scenes). En del utan värde, eller null, ändrar ingenting: spelets musik fortsätter.
+    dialogMusic(page = {}) {
+      const own = CityBuilder.Levels.story?.dialogMusic;
+      return own && typeof own === 'object' ? own[page.part || 'intro'] || null : null;
     },
 
     // Talarens porträtt, en rund bild bredvid repliken: images/portraits/<talare>.png (eller speaker.portrait). Saknas bilden visas talarens initial i dess färg.

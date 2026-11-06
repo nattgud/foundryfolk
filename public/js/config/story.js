@@ -17,6 +17,8 @@
      dialogue     [{ who, text }] tryckt dialog som visas efter brevet
      lifted       dialog som visas när dimman lyfter (Eye of Shades förstörd)
      after        dialog som visas när kapitlet är klart
+     dialogMusic  { intro, events, lifted, after }: egen musik medan den delens dialog läses (en fil eller lista, spelas i loop, spelets musik tystas så länge). intro = brev och inledande dialog,
+                  events = händelsernas dialoger (tell), lifted = när dimman lyft, after = efter banan. En del som saknas, eller null, låter spelets musik fortsätta. Exempel: dialogMusic: { after: 'music/sorg.mp3' }
      goals        målen som på banorna ({ type, resource | id, amount }), men { resource, more: n } betyder n fler än man börjar med.
                   Utan goals räknas målen fram som på en vanlig bana. Med end: 'hq' är fiendens HQ det enda målet.
      rivals, ai   antal fiender (0 om inget anges) och deras styrka som en banas nummer; races: { spelare: ras } (se Players.race)
