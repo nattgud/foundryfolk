@@ -593,6 +593,33 @@
   };
   const isOwnWall = (type, player) => (x, y) => { const other = World.buildingAt(x, y); return !!other && !other.removed && other.type === type && other.player === player; };
 
+  // Kulisser (World.scenery, Config.story.sceneryTypes): ruiner och eld. Bara bilder under byggnaderna. Saknas bilden ritas en enkel reserv: skräp, eller lågor om typen lyser.
+  Renderer.addLayer('scenery', (context, renderer) => {
+    if (!World.scenery.size) return;
+    const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize), types = Config.story.sceneryTypes || {}, now = performance.now() / 1000;
+    for (const item of World.scenery.values()) {
+      const x = item.x * tileSize, y = item.y * tileSize;
+      if (outside(view, x, y)) continue;
+      const kind = types[item.type] || {}, seed = CityBuilder.Utils.hash(item.x, item.y, 31);
+      const image = Assets.get(`images/scenery/${item.type}${kind.variants > 1 ? 1 + Math.floor(seed * kind.variants) : ''}.png`);
+      if (image) {
+        if (kind.frames > 1) {
+          const frame = Math.floor(now * (kind.fps || 6) + seed * kind.frames) % kind.frames, width = image.width / kind.frames;
+          context.drawImage(image, frame * width, 0, width, image.height, x, y, tileSize, tileSize);
+        } else context.drawImage(image, x, y, tileSize, tileSize);
+      } else if (kind.light) {   // reservlåga
+        const flicker = .8 + .2 * Math.sin(now * 9 + seed * 50);
+        context.fillStyle = '#e8590c'; context.beginPath(); context.moveTo(x + tileSize * .2, y + tileSize * .9); context.lineTo(x + tileSize * .5, y + tileSize * (.9 - .7 * flicker)); context.lineTo(x + tileSize * .8, y + tileSize * .9); context.fill();
+        context.fillStyle = '#ffd43b'; context.beginPath(); context.moveTo(x + tileSize * .35, y + tileSize * .9); context.lineTo(x + tileSize * .5, y + tileSize * (.9 - .4 * flicker)); context.lineTo(x + tileSize * .65, y + tileSize * .9); context.fill();
+      } else {   // reservskräp
+        context.fillStyle = '#4a4540';
+        context.fillRect(x + tileSize * .15, y + tileSize * (.45 + seed * .1), tileSize * .35, tileSize * .3);
+        context.fillRect(x + tileSize * .5, y + tileSize * .3, tileSize * .3, tileSize * (.35 + seed * .1));
+        context.fillStyle = '#625b61'; context.fillRect(x + tileSize * .3, y + tileSize * .65, tileSize * .4, tileSize * .18);
+      }
+    }
+  });
+
   Renderer.addLayer('buildings', (context, renderer) => {
     const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize);
     for (const building of World.buildings) {
@@ -847,6 +874,7 @@
       } else { mask.fillStyle = '#000'; mask.beginPath(); mask.arc(x, y, radius + fade / 2, 0, Math.PI * 2); mask.fill(); }   // enkel jämn cirkel
     };
     for (const building of World.buildings) if (building.player === Players.HUMAN && !building.definition.pile) light(building.x + .5, building.y + .5, buildingLight);
+    for (const item of World.scenery.values()) { const radius = Config.story.sceneryTypes?.[item.type]?.light; if (radius) light(item.x + .5, item.y + .5, radius); }   // eld lyser
     if (gfx.nightUnits) for (const unit of World.units) if (unit.player === Players.HUMAN) light(shownX(unit), shownY(unit), unitLight);
     context.imageSmoothingEnabled = true;
     context.drawImage(dusk, left * size, top * size, cols * size, rows * size);

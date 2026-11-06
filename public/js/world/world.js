@@ -12,6 +12,7 @@
   const World = {
     chunks: new Map(),          // chunkNyckel -> lista av rutor
     buildingsByTile: new Map(), // rutnyckel -> byggnad
+    scenery: new Map(),         // rutnyckel -> kuliss { type, x, y } (ruiner, eld; Config.story.sceneryTypes). Bara bilder: ingen byggnad, går att gå över, men inget kan byggas där
     buildings: [],
     units: [],
     headquarters: null,         // den mänskliga spelarens bas (alla spelares baser finns i hqs)
@@ -58,6 +59,7 @@
     },
 
     buildingAt: (x, y) => World.buildingsByTile.get(Utils.tileKey(x, y)),
+    sceneryAt: (x, y) => World.scenery.get(Utils.tileKey(x, y)),
 
     // Byggnad på rutan som spelaren ser: andras byggnader i dimman finns inte för spelaren (klick, markering och verktygstips)
     seenBuildingAt(x, y) {
@@ -79,6 +81,7 @@
       Players.team = { ...CityBuilder.Levels?.current?.teams };
       Players.race = { ...CityBuilder.Levels?.current?.races };
       this.addPlayer(Players.HUMAN, 0, 0);
+      this.placeScenery();
       const rivals = CityBuilder.Levels?.current?.rivals ?? 1, total = rivals * RIVAL_STEPS + warmCount(Players.HUMAN) + rivals * warmCount(Players.ENEMY);
       let done = 0, last = performance.now();
       const step = async text => {
@@ -90,6 +93,13 @@
       if (!rivals) this.endow(Players.HUMAN, 0, 0, Config.world.seed * 131 + Players.ENEMY * 977);   // annars gör rivalSite det (spelarens start, en gång)
       for (let i = 0; i < rivals; i++) this.addPlayer(Players.ENEMY + i, ...await this.rivalSite(Players.ENEMY + i, i, rivals, step));
       await this.warm(step);
+    },
+
+    // Kapitlets kulisser (chapter.scenery: [typ, x, y, bredd, höjd], de två sista valfria), på exakta rutor. Spelarens bas ligger alltid på 0, 0.
+    placeScenery() {
+      this.scenery.clear();
+      for (const [type, x, y, width = 1, height = 1] of CityBuilder.Levels?.current?.story?.scenery || [])
+        for (let dy = 0; dy < height; dy++) for (let dx = 0; dx < width; dx++) this.scenery.set(Utils.tileKey(x + dx, y + dy), { type, x: x + dx, y: y + dy });
     },
 
     // Genererar marken runt varje bas medan laddningsstapeln visas. Annars sker det mitt i spelet, när datorspelarna börjar bygga
@@ -193,7 +203,7 @@
     },
 
     canPlace(buildingType, x, y) {
-      return !this.buildingAt(x, y) && this.buildsOn(Config.buildings[buildingType], this.getTile(x, y).terrainType);
+      return !this.buildingAt(x, y) && !this.sceneryAt(x, y) && this.buildsOn(Config.buildings[buildingType], this.getTile(x, y).terrainType);
     },
 
     // player = vem byggnaden tillhör (se core/players.js)

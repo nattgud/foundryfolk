@@ -29,6 +29,8 @@
      events       [{ at (sekunder), goal, when, tell: dialog | give: { vara: antal, ... } (läggs i spelarens huvudlager) | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]. En händelse sker en gång, när alla
                   villkor den har slår till. at: sekunder in i kapitlet. goal: målet med det numret (1 = första målet) är klart. whileFog: true = bara så länge dimman ligger (en händelse som kommer för sent hoppas över). when: { resource, amount } (har så mycket av en vara)
                   eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { goal: n, left: k } = mål nummer n har högst k kvar (t.ex. näst sista yxan, utan att upprepa målets siffror); { resource, made: n } = n har tillverkats eller samlats i kapitlet, oavsett vart varan tog vägen (också direkt till nästa hus, utan att passera lagret); { resource, more: n } = lagret har n fler än man började med; { sees: 'rival' } = man har sett någon av fiendens byggnader. T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
+     scenery      [[typ, x, y, bredd, höjd], ...] kulisser på exakta rutor (bredd och höjd valfria: fyller en rektangel). Bara bilder, ingen byggnad: går att gå över, men inget kan byggas där.
+                  Typerna står i sceneryTypes. Spelarens bas ligger på 0, 0. Exempel: scenery: [['ruin', 4, -3], ['ruin', 5, -3, 3, 2], ['fire', 6, -2]]
      meteorProof  enhetstyper som meteorer inte skadar */
 (function (CityBuilder) {
   'use strict';
@@ -73,7 +75,11 @@
     signature: { realm: 'In service of the realm', throne: 'In service of the throne', name: 'Maegnius, King of Farael' },
     // Bakgrunden bakom dialogerna och styckena (images/story/<namn>.jpg, 1376x768). default gäller alla kapitel utan egen; chapters: { kapitelnummer: namn }.
     // Ett kapitel kan också ha scene: 'namn' i sin egen data. Bilden kan bytas under kapitlet: { intro, events, lifted, after } i stället för ett namn (intro = brev och inledande dialog, events = händelserna, lifted = när dimman lyft, after = efter banan), och en händelse kan ha eget scene: 'namn'. Utan bild (scenes saknas) behålls den vanliga mörka rutan.
-    scenes: { default: 'meadow', chapters: { 11: { events: 'siege', lifted: 'siege', after: 'siege' }, 12: 'demon', 13: 'demon', 14: 'demon', 15: 'demon', 16: 'demon', 17: 'demon', 18: 'demon', 19: 'demon', 20: 'demon', 21: 'demon' } },
+    scenes: { default: 'meadow', chapters: { 11: { events: 'siege', lifted: 'siege', after: 'siege' }, 13: 'demon', 14: 'demon', 15: 'demon', 16: 'demon', 17: 'demon', 18: 'demon', 19: 'demon', 20: 'demon', 21: 'demon' } },
+
+    // Kulisser (kapitlets scenery). Bilden är images/scenery/<typ>.png, eller <typ>1.png, <typ>2.png ... om variants > 1 (en slumpas per ruta). frames > 1: bilden är en remsa
+    // med lika många rutor bredvid varandra som spelas upp fps gånger i sekunden. light: lyser upp natten (radie i rutor). Saknas bilden ritas en enkel reserv.
+    sceneryTypes: { ruin: { variants: 1 }, fire: { frames: 1, fps: 6, light: 3 } },
 
     unlock: {
       woodcutter: 1, quarry: 1, sawmill: 1, warehouse: 1,
