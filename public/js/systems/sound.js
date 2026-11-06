@@ -593,7 +593,7 @@
       if (hazards > this.hazards) this.hazardUntil = now + MOOD.disasterSeconds;
       this.hazards = hazards;
       const off = name => this.channels?.[name]?.off;   // music: { battle: false } i ett kapitel eller en händelse: läget har ingen musik, den lugna musiken fortsätter
-      const mood = this.sceneOn ? 'scene' : hazards && now < this.hazardUntil && !off('disaster') ? 'disaster' : Combat && Combat.time - Combat.fightAt < MOOD.battleSeconds && !off('battle') ? 'battle' : 'calm';
+      const mood = this.sceneOn ? 'scene' : Combat && Combat.time - Combat.fightAt < MOOD.battleSeconds && !off('battle') ? 'battle' : hazards && now < this.hazardUntil && !off('disaster') ? 'disaster' : 'calm';   // krigsmusiken går alltid före katastrofmusiken
       if (mood !== this.mood) { this.mood = mood; this.updateMusic(); }
     },
 
