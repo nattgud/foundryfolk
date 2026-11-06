@@ -945,6 +945,7 @@
           say('reeve', 'I know.'),
           say('baelthar', 'You are prepared to be hated?'),
           say('reeve', "I've had worse conversations."),
+        scenery: [],   // kulisser på exakta rutor, bas = 0, 0: [['ruin', x, y], ['ruin', x, y, bredd, höjd], ['fire', x, y]]
           say('pipwick', '[sad]They lost their homes because of us.'),
           say('reeve', 'I know.'),
           say('pipwick', "They won't care who gave the orders."),
