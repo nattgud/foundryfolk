@@ -35,7 +35,7 @@
       CityBuilder.Sound?.syncPause();   // fryser det som låter nu innan läsvyns egna ljud startar, annars fryses också de (och hörs inte)
       let page = 0, typing = null, scened = false;
 
-      const close = () => { overlay.remove(); Game.paused = !!UI.mainMenuOpen; if (scened) CityBuilder.Sound?.scene(null); done?.(); };
+      const close = () => { overlay.remove(); Game.paused = !!UI.mainMenuOpen; if (scened) CityBuilder.Sound?.scene(null); CityBuilder.Sound?.duck(false); done?.(); };
       const next = () => { page++; show(); };
 
       // Trycker upp en text tecken för tecken; ett klick eller finish() visar resten
@@ -66,6 +66,7 @@
         const current = pages[page], last = page === pages.length - 1;
         const song = current.music || this.dialogMusic(current);
         if (song) { scened = true; CityBuilder.Sound?.scene(song); }   // sidans egen musik (prolog, epilog) eller kapitlets dialogMusic för dess del, tills läsvyn stängs
+        CityBuilder.Sound?.duck(current.type === 'dialogue');   // musiken sänks bara under dialoger, inte brev
         if (current.type !== 'dialogue') CityBuilder.Sound?.play('message', { defer: true });   // ett ljud per sida (dialog: ett per replik, se advance)
         const text = make('div', 'story-text');
         const action = button(last ? t('Continue') : t('Next'), null, 'story-next');

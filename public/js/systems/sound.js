@@ -171,6 +171,7 @@
   const AMBIENT_MS = 100;         // hur ofta loopar anpassas efter väder, tid på dygnet och kamera
   const spec = value => typeof value === 'string' ? { file: value } : Array.isArray(value) ? { files: value } : value;   // en fil, flera filer (en slumpas varje gång) eller { file | files, volume, maxVoices }
   const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+  const DUCK = 0.3;   // musikens volym under dialoger (andel av inställd volym)
   const perceived = volume => volume * volume; // gain som känns jämn mot reglaget
 
   const Sound = {
@@ -746,8 +747,15 @@
       if (!this.context) return;
       const { sfxOn, sfxVolume, musicOn, musicVolume } = this.settings;
       this.sfxGain.gain.value = sfxOn ? perceived(sfxVolume) : 0;
-      this.musicGain.gain.value = musicOn ? perceived(musicVolume) : 0;
+      this.musicGain.gain.setTargetAtTime(musicOn ? perceived(musicVolume) * (this.ducked ? DUCK : 1) : 0, this.context.currentTime, 0.15);
       this.updateMusic();
+    },
+
+    // Musiken sänks under dialoger så rösterna hörs (oavsett vilken musik som spelas)
+    duck(on) {
+      if (!!on === !!this.ducked) return;
+      this.ducked = !!on;
+      this.applySettings();
     },
 
     set(name, value) {
