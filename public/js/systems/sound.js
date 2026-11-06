@@ -295,7 +295,7 @@
       if (definition.file || definition.files || definition.synth) merged.buffer = null; // ny källa: bygg om bufferten
       if (definition.files) { merged.file = null; merged.variants = definition.files.map(file => ({ file, loading: false, fileBuffer: null, buffer: null })); }
       else if (definition.file) merged.variants = null;
-      if (definition.file) { merged.loading = false; merged.fileBuffer = null; }
+      if (definition.file) { merged.loading = false; merged.fileBuffer = null; merged.failed = false; }
       this.sounds.set(id, merged);
       if (this.context) for (const source of merged.variants || [merged]) if (source.file) this.bufferFor(source);
     },
@@ -310,7 +310,7 @@
     // annars (eller tills någon fil laddats) det vanliga: filen, eller det inbyggda syntetljudet.
     pickBuffer(definition) {
       const ready = (definition.variants || []).filter(variant => this.bufferFor(variant));
-      if (!ready.length) return this.bufferFor(definition);
+      if (!ready.length) return definition.variants && !definition.variants.every(variant => variant.failed) ? null : this.bufferFor(definition);   // filerna laddas: tyst tills någon är klar (syntetljudet bara om alla misslyckats)
       const choices = ready.length > 1 ? ready.filter(variant => variant !== definition.lastVariant) : ready;
       definition.lastVariant = choices[Math.floor(Math.random() * choices.length)];
       return definition.lastVariant.buffer;
@@ -325,14 +325,15 @@
           .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.arrayBuffer(); })
           .then(data => context.decodeAudioData(data))
           .then(buffer => { definition.fileBuffer = buffer; definition.buffer = buffer; })
-          .catch(error => { if (!definition.quiet) console.warn(`Could not load the sound file ${definition.file} (${error.message ?? error}): using the built-in sound`); });
+          .catch(error => { definition.failed = true; if (!definition.quiet) console.warn(`Could not load the sound file ${definition.file} (${error.message ?? error}): using the built-in sound`); });
       }
       if (definition.synth && !definition.synthBuffer) {
         const samples = definition.synth(context.sampleRate);
         definition.synthBuffer = context.createBuffer(1, samples.length, context.sampleRate);
         definition.synthBuffer.copyToChannel(samples, 0);
       }
-      return definition.fileBuffer || definition.synthBuffer || null;
+      if (definition.fileBuffer) return definition.fileBuffer;
+      return definition.file && !definition.failed ? null : definition.synthBuffer || null;   // reservljudet bara om filen saknas eller inte gick att ladda, aldrig medan den laddas
     },
 
     // Var på skärmen en ruta ligger. null = utanför bild.
