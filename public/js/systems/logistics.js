@@ -392,7 +392,7 @@
       for (const building of this.visitOrder(this.cursor % Math.max(1, count))) {
         if (building.definition.isStorage || building.buildProgress < 1) continue;
         const job = building.definition.job, produced = job && job.outputs ? Utils.sumValues(job.outputs) : 1, sum = Utils.sumValues(building.outputStock);
-        const pressure = sum >= bufferLimit * 0.5 || sum + produced > bufferLimit; // halvfull, eller kan inte producera mer = töm allt
+        const pressure = sum >= bufferLimit * 0.5 || sum + produced > bufferLimit || job?.kind === 'garrison'; // halvfull, eller kan inte producera mer = töm allt (garnisonens utlager är överflödigt material: allt hämtas)
         for (const resourceId in building.outputStock) {
           const surplus = building.outputStock[resourceId] - (building.outputReserved[resourceId] || 0) - (pressure ? 0 : threshold);
           for (let n = 0; n < surplus; n++) {

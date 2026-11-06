@@ -144,15 +144,23 @@
   Behaviors.register('garrison', {
     onDemolished: building => Garrison.onDemolished(building),
 
-    // Samma buffert som craft, men bara för vald soldattyp och inte alls när byggnaden är full
+    // Samma buffert som craft, men bara för vald soldattyp, och aldrig mer än det som behövs för de lediga platserna (inget alls när byggnaden är full)
     inputCapacities(building) {
-      if (Garrison.slotsFree(building) <= 0) return {};
+      const free = Garrison.slotsFree(building);
+      if (free <= 0) return {};
       const { inputs } = Config.units[Garrison.trainingType(building)].training;
-      return Object.fromEntries(Object.entries(inputs).map(([resourceId, amount]) => [resourceId, Behaviors.inputBuffer(amount)]));
+      return Object.fromEntries(Object.entries(inputs).map(([resourceId, amount]) => [resourceId, Math.min(Behaviors.inputBuffer(amount), free * amount)]));
     },
 
     update(building, deltaSeconds) {
       Garrison.ensure(building);
+
+      // Material som inte behövs (byggnaden full, eller en annan soldattyp vald) går ut i utlagret och hämtas av bärarna
+      const needed = Behaviors.requiredResources(building);
+      for (const resourceId in building.inputStock) {
+        const extra = building.inputStock[resourceId] - (needed[resourceId] || 0);
+        if (extra > 0) { building.inputStock[resourceId] -= extra; building.outputStock[resourceId] = (building.outputStock[resourceId] || 0) + extra; }
+      }
 
       if (building.paused) {
         building.status = 'Paused';
