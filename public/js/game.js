@@ -8,7 +8,7 @@
   // av capture() och läggs tillbaka på plats av resetWorld(). Det som hör till spelaren och sidan (grafik, ljud, inställningar, gränssnittets
   // knappar) rörs inte. Moduler med egen reset() (Vision, Weather ...) nollställs av World.init.
   const WORLD_STATE = {
-    World: ['chunks', 'buildingsByTile', 'scenery', 'buildings', 'units', 'headquarters', 'hqs', 'nextBuildingId', 'animalsByChunk'],
+    World: ['chunks', 'buildingsByTile', 'scenery', 'sceneryList', 'buildings', 'units', 'headquarters', 'hqs', 'nextBuildingId', 'animalsByChunk'],
     Players: ['active', 'team', 'race'],
     Economy: ['playerStats', 'flows'],
     Logistics: ['tasks', 'planningTimer', 'cursor', 'pileLoad', 'load', 'lost', 'busyAt', 'unreachable', 'round', 'orders', 'soft', 'time'],

@@ -12,6 +12,7 @@
   const World = {
     chunks: new Map(),          // chunkNyckel -> lista av rutor
     buildingsByTile: new Map(), // rutnyckel -> byggnad
+    sceneryList: [],            // alla kulisser sorterade efter lager (ritordningen)
     scenery: new Map(),         // rutnyckel -> kuliss { type, x, y } (ruiner, eld; Config.story.sceneryTypes). Bara bilder: ingen byggnad, går att gå över, men inget kan byggas där
     buildings: [],
     units: [],
@@ -59,7 +60,7 @@
     },
 
     buildingAt: (x, y) => World.buildingsByTile.get(Utils.tileKey(x, y)),
-    sceneryAt: (x, y) => World.scenery.get(Utils.tileKey(x, y)),
+    sceneryAt: (x, y) => World.scenery.get(Utils.tileKey(x, y))?.[0],   // varje ruta kan ha flera kulisser
 
     // Byggnad på rutan som spelaren ser: andras byggnader i dimman finns inte för spelaren (klick, markering och verktygstips)
     seenBuildingAt(x, y) {
@@ -95,11 +96,17 @@
       await this.warm(step);
     },
 
-    // Kapitlets kulisser (chapter.scenery: [typ, x, y, bredd, höjd], de två sista valfria), på exakta rutor. Spelarens bas ligger alltid på 0, 0.
+    // Kapitlets kulisser (chapter.scenery: [typ, x, y, bredd, höjd, lager], de tre sista valfria; null/false/undefined = standard), på exakta rutor. Spelarens bas ligger alltid på 0, 0.
     placeScenery() {
       this.scenery.clear();
-      for (const [type, x, y, width = 1, height = 1] of CityBuilder.Levels?.current?.story?.scenery || [])
-        for (let dy = 0; dy < height; dy++) for (let dx = 0; dx < width; dx++) this.scenery.set(Utils.tileKey(x + dx, y + dy), { type, x: x + dx, y: y + dy });
+      this.sceneryList = [];
+      for (const [type, x, y, width, height, layer] of CityBuilder.Levels?.current?.story?.scenery || [])
+        for (let dy = 0; dy < (height || 1); dy++) for (let dx = 0; dx < (width || 1); dx++) {
+          const item = { type, x: x + dx, y: y + dy, layer: layer || 0 }, key = Utils.tileKey(item.x, item.y);
+          if (!this.scenery.has(key)) this.scenery.set(key, []);
+          this.scenery.get(key).push(item); this.sceneryList.push(item);
+        }
+      this.sceneryList.sort((a, b) => a.layer - b.layer);   // stabil sortering: samma lager behåller den ordning de skrevs i
     },
 
     // Genererar marken runt varje bas medan laddningsstapeln visas. Annars sker det mitt i spelet, när datorspelarna börjar bygga

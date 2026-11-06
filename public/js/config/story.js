@@ -29,8 +29,8 @@
      events       [{ at (sekunder), goal, when, tell: dialog | give: { vara: antal, ... } (läggs i spelarens huvudlager) | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]. En händelse sker en gång, när alla
                   villkor den har slår till. at: sekunder in i kapitlet. goal: målet med det numret (1 = första målet) är klart. whileFog: true = bara så länge dimman ligger (en händelse som kommer för sent hoppas över). when: { resource, amount } (har så mycket av en vara)
                   eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { goal: n, left: k } = mål nummer n har högst k kvar (t.ex. näst sista yxan, utan att upprepa målets siffror); { resource, made: n } = n har tillverkats eller samlats i kapitlet, oavsett vart varan tog vägen (också direkt till nästa hus, utan att passera lagret); { resource, more: n } = lagret har n fler än man började med; { sees: 'rival' } = man har sett någon av fiendens byggnader. T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
-     scenery      [[typ, x, y, bredd, höjd], ...] kulisser på exakta rutor (bredd och höjd valfria: fyller en rektangel). Bara bilder, ingen byggnad: går att gå över, men inget kan byggas där.
-                  Typerna står i sceneryTypes. Spelarens bas ligger på 0, 0. Exempel: scenery: [['ruin', 4, -3], ['ruin', 5, -3, 3, 2], ['fire', 6, -2]]
+     scenery      [[typ, x, y, bredd, höjd, lager], ...] kulisser på exakta rutor (bredd, höjd och lager valfria, null/false hoppar över: fyller en rektangel; lager 0 är standard, högre ritas ovanpå, negativa under). Bara bilder, ingen byggnad: går att gå över, men inget kan byggas där.
+                  Typerna står i sceneryTypes. Spelarens bas ligger på 0, 0. Exempel: scenery: [['ruin', 4, -3], ['ruin', 5, -3, 3, 2], ['fire', 6, -2, null, null, 1]]
      meteorProof  enhetstyper som meteorer inte skadar */
 (function (CityBuilder) {
   'use strict';

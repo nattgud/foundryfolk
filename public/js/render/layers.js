@@ -595,9 +595,9 @@
 
   // Kulisser (World.scenery, Config.story.sceneryTypes): ruiner och eld. Bara bilder under byggnaderna. Saknas bilden ritas en enkel reserv: skräp, eller lågor om typen lyser.
   Renderer.addLayer('scenery', (context, renderer) => {
-    if (!World.scenery.size) return;
+    if (!World.sceneryList.length) return;
     const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize), types = Config.story.sceneryTypes || {}, now = performance.now() / 1000;
-    for (const item of World.scenery.values()) {
+    for (const item of World.sceneryList) {
       const x = item.x * tileSize, y = item.y * tileSize;
       if (outside(view, x, y)) continue;
       const kind = types[item.type] || {}, seed = CityBuilder.Utils.hash(item.x, item.y, 31);
@@ -874,7 +874,7 @@
       } else { mask.fillStyle = '#000'; mask.beginPath(); mask.arc(x, y, radius + fade / 2, 0, Math.PI * 2); mask.fill(); }   // enkel jämn cirkel
     };
     for (const building of World.buildings) if (building.player === Players.HUMAN && !building.definition.pile) light(building.x + .5, building.y + .5, buildingLight);
-    for (const item of World.scenery.values()) { const radius = Config.story.sceneryTypes?.[item.type]?.light; if (radius) light(item.x + .5, item.y + .5, radius); }   // eld lyser
+    for (const item of World.sceneryList) { const radius = Config.story.sceneryTypes?.[item.type]?.light; if (radius) light(item.x + .5, item.y + .5, radius); }   // eld lyser
     if (gfx.nightUnits) for (const unit of World.units) if (unit.player === Players.HUMAN) light(shownX(unit), shownY(unit), unitLight);
     context.imageSmoothingEnabled = true;
     context.drawImage(dusk, left * size, top * size, cols * size, rows * size);
