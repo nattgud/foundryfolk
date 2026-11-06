@@ -88,7 +88,7 @@
 
     walk(unit, step, deltaSeconds) {
       if (!step.path) {
-        const path = Pathfinder.findPath(Math.floor(unit.x), Math.floor(unit.y), step.targetX, step.targetY, step.stopBeforeTarget);
+        const path = Pathfinder.findPath(Math.floor(unit.x), Math.floor(unit.y), step.targetX, step.targetY, step.stopBeforeTarget, unit.definition.isSoldier ? 1 : 0);   // en soldat som inte hittar vägen söker om med större fönster: den ska inte stå still för att omvägen är lång
         if (path === undefined) return;             // sökbudgeten slut, försök igen nästa bildruta
         if (!path) return this.handlePathFailure(unit);
         step.path = path; step.pathIndex = 0;

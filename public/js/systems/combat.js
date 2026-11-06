@@ -32,6 +32,8 @@
   const ATTACKED_SECONDS = 4;        // blev soldaten slagen så nyligen försvarar den sig i stället för att slå det som stänger vägen
   const MELEE_RANGE = 2;              // attackRange upp till detta är närstrid, över det en projektil
   const GRID_CELL = 8, GRID_KEY = 100003, GRID_SECONDS = 0.25, GRID_MARGIN = 3;   // rutnätet för sökningen efter fiender (se targets)
+  const RETRY_UNREACHABLE_SECONDS = 8;    // så länge ett mål som inte gick att nå får vara i fred efter att något byggts eller rivits (annars försöker soldaten hela tiden och hinner aldrig gå tillbaka till sin post)
+  const STUCK_SECONDS = 12;          // en soldat som varken rört sig eller slagit så länge, och inte står där den ska, är fast (se watchStuck)
   const BUILDING_REACH = 0.6;         // en byggnad är en hel ruta: räckhållet räknas från kanten, inte mitten
 
   // Mål är enheter (x, y = mitten) eller byggnader (x, y = rutan). Mittpunkt och prioritet (lägre = angrips först):
@@ -59,6 +61,7 @@
     effects: [],                      // korta slag för renderingen: { x1, y1, x2, y2, life }
     projectiles: [],                  // pilar i luften: { x, y, fromX, fromY, toX, toY, target, attacker, damage, time, duration }
     time: 0,                          // simuleringstid i sekunder
+    unstuck: 0,                       // hur många gånger vakten (watchStuck) behövt rensa en fast soldat; ska helst stå still
     fightAt: -Infinity,               // när något av spelarens senast slogs med en fiende eller träffades av en (Sound väljer stridsmusik efter det)
     targetCache: null,                // kandidater med rutnät (se targets)
     gridTime: -Infinity,
@@ -108,6 +111,7 @@
     // ---- Skada ---------------------------------------------------------------------------------
 
     attack(attacker, target) {
+      attacker.lastAttackAt = this.time;
       const definition = attacker.definition, amount = Math.max(1, definition.attackDamage - (target.definition.armor || 0));
       attacker.attackCooldownLeft = definition.attackCooldown;
       if (definition.attackRange <= MELEE_RANGE) {
@@ -327,7 +331,7 @@
       for (const timer of TIMERS) unit[timer] = Math.max(0, unit[timer] - deltaSeconds);
 
       const monster = unit.definition.isMonster;
-      if (monster) Monsters.growl(unit);
+      if (monster) Monsters.growl(unit); else this.watchStuck(unit);
       const anchor = this.anchorOf(unit);
       if (unit.target && !this.isValidTarget(unit, anchor)) unit.target = null;
       // Anfaller någon soldaten försvarar den sig mot den, också utanför vaktområdet och före det som stänger vägen
@@ -352,6 +356,23 @@
 
       if (unit.mode === 'chase') { unit.stepQueue.length = 0; unit.mode = 'idle'; } // målet försvann: sluta jaga
       this.standDown(unit);
+    },
+
+    // Vakt mot en soldat som står still utan skäl: varken rört sig eller slagit på STUCK_SECONDS och inte står vid sin post eller flagga. Något den minns hindrar den då
+    // (ett mål den gett upp, något som stänger vägen, en byggnad den inte kom fram till, ett gammalt "ingen väg"-svar): allt det glöms och vägarna räknas om, så den prövar på nytt.
+    // Gick det inte ens då (andra gången i följd) släpps byggnaden den är knuten till.
+    watchStuck(unit) {
+      const watch = unit.watch ||= { x: unit.x, y: unit.y, since: this.time, strikes: 0 };
+      if (Math.hypot(unit.x - watch.x, unit.y - watch.y) > .3) { watch.x = unit.x; watch.y = unit.y; watch.since = this.time; watch.strikes = 0; return; }
+      if (this.time - watch.since < STUCK_SECONDS || this.time - (unit.lastAttackAt ?? -Infinity) < STUCK_SECONDS) return;
+      const home = unit.quarters && !unit.quarters.removed ? unit.quarters : null, flag = home ? Garrison.flagOf(home) : null;
+      if (flag ? Utils.distance(unit.x - flag.x - .5, unit.y - flag.y - .5) <= POST_TOLERANCE : !home && unit.post && Utils.distance(unit.x - unit.post.x, unit.y - unit.post.y) <= POST_TOLERANCE) { watch.since = this.time; return; }   // står där den ska
+      watch.since = this.time;
+      watch.strikes++;
+      this.unstuck++;
+      unit.ignoreUntil = 0; unit.ignore = null; unit.unreachable?.clear(); unit.blocker = null; unit.target = null; unit.orderCooldown = 0; unit.stepQueue.length = 0; unit.mode = 'idle'; unit.goal = null;
+      if (watch.strikes >= 2 && home && !flag) Garrison.reject(unit, home);
+      if (this.time - (this.clearedAt ?? -Infinity) >= 8) { this.clearedAt = this.time; CityBuilder.Pathfinder.clearCache(); CityBuilder.Pathfinder.failures.clear(); }   // högst var 8:e sekund: många fasta soldater ska inte tvinga fram nya sökningar hela tiden
     },
 
     // Platsen soldaten vaktar och hur långt därifrån den upptäcker fiender: flaggan (på väg dit: där soldaten står, så att fiender på vägen
@@ -460,17 +481,22 @@
     // Står något i vägen? En fientlig mur eller byggnad som stänger vägen blir soldatens mål (blocker). Går vägen inte att öppna (berg, vatten, egna byggnader) går
     // soldaten till närmaste ruta den kan nå och väntar där, och struntar i målet så länge inget ändrats (isUnreachable).
     onPathFailure(unit, step) {
+      const wasGoal = unit.goal;
       unit.orderCooldown = settings().retrySeconds;
       unit.mode = 'idle';
       unit.goal = null;
+      // En soldat som inte kommer till sin garnison, och där inget fientligt stänger vägen, ger upp den (och söker en annan eller vaktar där den står), i stället för att stå kvar och misslyckas för alltid
+      const wasHome = !unit.definition.isMonster && unit.quarters && wasGoal === unit.quarters;
+      const giveUpHome = () => { Garrison.reject(unit, unit.quarters); unit.orderCooldown = 0; };
       const target = unit.target;
       if (target) {
         unit.ignore = target;
         unit.ignoreUntil = this.time + settings().retrySeconds * 2;
         unit.target = null;
       }
-      if (unit.definition.isMonster || !step || step.targetX === undefined || step.toNear) return;   // en gång: misslyckas gången till närmaste ruta stannar soldaten där den står
+      if (unit.definition.isMonster || !step || step.targetX === undefined || step.toNear) { if (wasHome) giveUpHome(); return; }   // en gång: misslyckas gången till närmaste ruta stannar soldaten där den står
       const found = CityBuilder.Pathfinder.assess(Math.floor(unit.x), Math.floor(unit.y), step.targetX, step.targetY, unit.player);
+      if (wasHome && !found.blocker) { giveUpHome(); return; }
       if (target) {
         const map = unit.unreachable ||= new Map();
         for (const [other] of map) if (other.removed) map.delete(other);
@@ -489,7 +515,7 @@
     isUnreachable(unit, target) {
       const entry = unit.unreachable?.get(target);
       if (!entry) return false;
-      const moved = Utils.distance(target.x - entry.x, target.y - entry.y) > 4, changed = entry.epoch !== CityBuilder.Pathfinder.epoch && this.time - entry.at >= 2;
+      const moved = Utils.distance(target.x - entry.x, target.y - entry.y) > 4, changed = entry.epoch !== CityBuilder.Pathfinder.epoch && this.time - entry.at >= RETRY_UNREACHABLE_SECONDS;
       if (target.removed || moved || changed) { unit.unreachable.delete(target); return false; }
       return true;
     },

@@ -14,6 +14,7 @@
   const DIAGONAL = Math.SQRT2;
   const INSIDE_COST = 6;   // kostnad för en blockerad ruta när enheten redan står i en (så att den helst går direkt ut)
   const MAX_WEAR = 2; // samma tak som i units.js
+  const ESCALATED_NODES = 60000;   // nodgräns för ett större fönster (escalate)
 
   const Pathfinder = {
     DIRECTIONS: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]],
@@ -73,7 +74,8 @@
 
     // Väg (lista av rutor), null (ingen väg) eller undefined (väntar på sökning, fråga igen nästa bildruta).
     // stopBeforeGoal = sluta på rutan före målet.
-    findPath(startX, startY, goalX, goalY, stopBeforeGoal) {
+    // maxLevel (soldater: 2): hur många gånger en sökning som misslyckats får göras om med ett större fönster (se escalate) innan "ingen väg" gäller.
+    findPath(startX, startY, goalX, goalY, stopBeforeGoal, maxLevel = 0) {
       if (startX === goalX && startY === goalY) return [];
       const key = this.keyOf(startX, startY, goalX, goalY, stopBeforeGoal);
       const hit = this.cached(key);
@@ -82,7 +84,8 @@
       if (failure && failure.epoch === this.epoch && failure.until > this.time) return null;
 
       let request = this.pending.get(key);
-      if (!request) this.pending.set(key, request = { key, startX, startY, goalX, goalY, stopBeforeGoal: !!stopBeforeGoal, asked: 0 });
+      if (!request) this.pending.set(key, request = { key, startX, startY, goalX, goalY, stopBeforeGoal: !!stopBeforeGoal, asked: 0, maxLevel });
+      request.maxLevel = Math.max(request.maxLevel || 0, maxLevel);
       request.asked = this.frame;
       return undefined;
     },
@@ -111,7 +114,7 @@
       if (this.assessCache.size > 400) this.assessCache.clear();
       this.assessCache.set(key, { result, epoch: this.epoch, until: this.time + (this.settings().noPathSeconds ?? 8) });
 
-      const margin = 24, minX = Math.min(startX, goalX) - margin, minY = Math.min(startY, goalY) - margin;
+      const margin = 40, minX = Math.min(startX, goalX) - margin, minY = Math.min(startY, goalY) - margin;
       const width = Math.abs(startX - goalX) + 2 * margin + 1, height = Math.abs(startY - goalY) + 2 * margin + 1, count = width * height;
       if (count > this.settings().maxCells) return result;
       const cost = new Float32Array(count).fill(Infinity), parent = new Int32Array(count).fill(-1), closed = new Uint8Array(count);
@@ -149,7 +152,7 @@
           if (closed[next]) continue;
           const k = kind(nx, ny, next);
           if (k === 2) continue;
-          if (d >= 4 && (kind(x + DX[d], y, index + DX[d]) === 2 || kind(x, y + DY[d], index + DY[d] * width) === 2)) continue;   // inte diagonalt förbi ett hörn
+          if (d >= 4 && (kind(x + DX[d], y, index + DX[d]) !== 0 || kind(x, y + DY[d], index + DY[d] * width) !== 0)) continue;   // inte diagonalt förbi ett hörn (en byggnad, också en fientlig, stänger hörnet: som i sökningen)
           const tile = World.getTile(nx, ny), terrain = tile ? Config.terrain[tile.terrainType].walkCost : 1;
           const total = c + (d >= 4 ? DIAGONAL : 1) * terrain + (k === 1 ? 15 : 0);
           if (total < cost[next]) { cost[next] = total; parent[next] = index; push(total, next); }
@@ -197,15 +200,18 @@
     },
 
     // Äldsta förfrågan som någon fortfarande väntar på
+    // Sökningar som växt till större fönster (level > 0, se escalate) är tunga och får vänta tills alla vanliga sökningar är besvarade
     nextRequest() {
+      let heavy = null;
       for (const [key, request] of this.pending) {
+        if (this.frame - request.asked > 3) { this.pending.delete(key); continue; }   // ingen frågar längre
+        if (this.cached(key) !== undefined) { this.pending.delete(key); continue; }   // redan besvarad
+        if (request.level) { heavy ||= request; continue; }
         this.pending.delete(key);
-        if (this.frame - request.asked > 3) continue;                // ingen frågar längre
-        const hit = this.cached(key);
-        if (hit !== undefined) continue;                              // redan besvarad
         return request;
       }
-      return null;
+      if (heavy) this.pending.delete(heavy.key);
+      return heavy;
     },
 
     // Ta bort några gamla poster per bildruta och håll storleken nere
@@ -240,7 +246,7 @@
 
     // Förbered en sökning: fönster runt start och mål, återanvända typade arrayer
     begin(request) {
-      const settings = this.settings(), margin = settings.margin;
+      const settings = this.settings(), level = request.level || 0, margin = settings.margin * (level === 0 ? 1 : 3);   // ett nytt försök (escalate) söker i ett större fönster
       const { startX, startY, goalX, goalY } = request;
       const minX = Math.min(startX, goalX) - margin, minY = Math.min(startY, goalY) - margin;
       const width = Math.abs(startX - goalX) + 2 * margin + 1;
@@ -273,12 +279,12 @@
 
       this.searchId++;
       const s = this.s = {
-        request, minX, minY, width, height, expanded: 0,
+        request, minX, minY, width, height, expanded: 0, edge: false, limited: false,
         startIndex: (startY - minY) * width + (startX - minX),
         goalIndex: (goalY - minY) * width + (goalX - minX),
         heuristicScale: cheapest * wearFactor * (settings.heuristicWeight ?? 1.3),
         // Långa vägar behöver fler noder (kring sjöar och berg): gränsen växer med avståndet, annars blir fjärran utposter onåbara
-        nodeLimit: Math.max(settings.nodeLimit, (Math.abs(startX - goalX) + Math.abs(startY - goalY)) * (settings.nodeLimitPerTile ?? 80)),
+        nodeLimit: level ? ESCALATED_NODES : Math.max(settings.nodeLimit, (Math.abs(startX - goalX) + Math.abs(startY - goalY)) * (settings.nodeLimitPerTile ?? 80)),   // ett större fönster söks igenom helt
       };
       this.gCost[s.startIndex] = 0; this.gStamp[s.startIndex] = this.searchId; this.parent[s.startIndex] = -1;
       if (this.isWall(startX, startY)) this.insideStamp[s.startIndex] = this.searchId;   // enheten står på en mur (som byggts under den)
@@ -319,13 +325,13 @@
           this.finish(request, path);
           return budget;
         }
-        if (++s.expanded > nodeLimit) break;
+        if (++s.expanded > nodeLimit) { s.limited = true; break; }
 
         const x = minX + index % width, y = minY + ((index / width) | 0), g = gCost[index];
         const inside = insideStamp[index] === id;   // står på en blockerad ruta och har bara gått över blockerade: ignorerar blockeringen tills en vanlig ruta nås
         for (let d = 0; d < 8; d++) {
           const nextX = x + DX[d], nextY = y + DY[d];
-          if (nextX < minX || nextY < minY || nextX >= maxX || nextY >= maxY) continue;
+          if (nextX < minX || nextY < minY || nextX >= maxX || nextY >= maxY) { s.edge = true; continue; }
           const nextIndex = index + DY[d] * width + DX[d];
           if (closed[nextIndex] === id) continue;
           const nextCost = this.cost(nextX, nextY, nextIndex);
@@ -341,6 +347,14 @@
             this.push(newCost + this.heuristic(s, nextX, nextY), nextIndex);
           }
         }
+      }
+      // Ingen väg i fönstret. Nådde sökningen fönstrets kant (eller nodgränsen) kan vägen gå utanför det (en omväg runt en sjö, en lång mur): sök om med ett större fönster.
+      // Bara när hela området innanför kanten sökts igenom utan att nå den, finns ingen väg.
+      if ((s.edge || s.limited) && (request.level || 0) < (request.maxLevel || 0)) {
+        request.level = (request.level || 0) + 1;
+        this.pending.set(request.key, request);   // köas om, efter de vanliga sökningarna (nextRequest)
+        this.active = null;
+        return budget;
       }
       this.finish(request, null);
       return budget;

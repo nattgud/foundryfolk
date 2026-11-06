@@ -18,6 +18,7 @@
 (function (CityBuilder) {
   'use strict';
   const { Config, World, Behaviors, Utils } = CityBuilder;
+  const HOME_REJECT_SECONDS = 60;   // så länge en soldat som inte kom fram till en byggnad inte söker den igen (se reject)
 
   const Garrison = {
     isGarrison: building => building.definition.job?.kind === 'garrison',
@@ -109,11 +110,18 @@
       Behaviors.removeUnit(unit);
     },
 
+    // Soldaten kommer inte till byggnaden (ingen väg): den släpps och söker inte just den byggnaden igen på en stund (annars står den kvar och försöker för alltid)
+    reject(unit, building, seconds = HOME_REJECT_SECONDS) {
+      this.release(unit);
+      (unit.rejectedHomes ||= new Map()).set(building, CityBuilder.Combat.time + seconds);
+    },
+
     // Närmaste egna garnison med ledig plats för soldattypen (eller null)
     findHome(unit) {
       let best = null, bestDistance = Infinity;
       for (const building of World.buildings) {
         if (building.buildProgress < 1 || building.player !== unit.player || !this.isGarrison(building)) continue;
+        if (unit.rejectedHomes?.get(building) > CityBuilder.Combat.time) continue;
         if (!this.trains(building).includes(unit.kind) || this.slotsFree(building) <= 0) continue;
         const distance = Utils.manhattanDistance(building, unit);
         if (distance < bestDistance) { bestDistance = distance; best = building; }
