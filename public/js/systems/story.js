@@ -178,6 +178,7 @@
     // Har villkoret slagit till? goal: n, left: k = målet n har högst k kvar; made: n = n har tillverkats eller samlats i kapitlet (oavsett vart varan tog vägen); annars har man amount, eller more fler än man startade med
     reached(need, chapter) {
       if (need.sees === 'rival') return World.buildings.some(building => Players.isAI(building.player) && CityBuilder.Vision.explored(Players.HUMAN, building.x + .5, building.y + .5));   // sees: 'rival' = man har sett någon av fiendens byggnader (dimma eller inte)
+      if (need.sees === 'soldier') return World.units.some(unit => !unit.removed && unit.definition.isSoldier && !unit.definition.isMonster && Players.isAI(unit.player) && CityBuilder.Vision.sees(Players.HUMAN, unit));   // sees: 'soldier' = någon av datorns soldater syns just nu (t.ex. en anfallsvåg)
       if (need.goal !== undefined) { const item = CityBuilder.Levels.progress()[need.goal - 1]; return !!item && item.have >= item.amount - (need.left || 0); }   // goal: n, left: k = målet med det numret har högst k kvar (följer målets egna siffror)
       if (need.made !== undefined) return CityBuilder.Levels.made(need.resource) >= need.made;
       return CityBuilder.Levels.have(need) >= this.needed(need, chapter);
@@ -193,7 +194,7 @@
       // Kapitlets musik (chapter.music), annars standardmusiken; en händelse med music byter den (den senast utlösta i listan gäller, och den följer med i sparningen
       // eftersom händelsen är markerad som gjord). Läsvyns sidor har sin egen (scene).
       let music = chapter?.music;
-      (chapter?.events || []).forEach((event, i) => { if (event.music !== undefined && CityBuilder.Levels.told('event:' + i)) music = event.music; });
+      (chapter?.events || []).forEach((event, i) => { if (event.music !== undefined && CityBuilder.Levels.told('fired:' + i)) music = event.music; });
       CityBuilder.Sound?.chapterMusic(music);
       if (!chapter) return;
       // Berättelsen i ordning: prolog (bara i kapitel 1), brev, dialog
@@ -215,6 +216,7 @@
         if (event.goal && !Levels.progress()[event.goal - 1]?.done) return;
         if ([].concat(event.when || []).some(need => !this.reached(need, chapter))) return;   // when kan vara flera villkor som alla ska gälla
         Levels.markTold('event:' + i);
+        Levels.markTold('fired:' + i);   // utlöst på riktigt (en hoppad händelse är bara 'event:'), bara en utlöst händelse byter musik
         this.fire(event);
       });
 
