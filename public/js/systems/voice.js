@@ -2,7 +2,7 @@
    Inställningarna ligger i Config.story: story.voice (grundljudet och tonlägena) och story.speakers[id].voice (talarens röst).
    I texten byter [mood] tonläge från och med den platsen (calm, happy, angry, sad, question, whisper, scared).
    Voice.parse(text) -> [{ mood, text }], Voice.speak(speaker, char, mood, progress), Voice.delay(speaker, mood, char) (ms till nästa tecken) */
-(() => {
+(CityBuilder => {   // namnrymden skickas in: index.html tar bort window.CityBuilder efter start, och Voice använder den först när en dialog skrivs ut
   'use strict';
   const PLAIN = { pitch: 1, dark: 1, stretch: 1, slide: 0, detune: 0 };
   const VOWELS = { a: [800, 1200], e: [450, 2000], i: [320, 2300], o: [500, 900], u: [350, 700] };   // vokalens två första formanter (Hz)
@@ -95,4 +95,4 @@
       for (const osc of oscillators) { osc.start(t); osc.stop(t + d + 0.05); }
     },
   };
-})();
+})(window.CityBuilder);
