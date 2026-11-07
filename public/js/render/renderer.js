@@ -26,14 +26,20 @@
       if (window.ResizeObserver) { const observer = new ResizeObserver(measure); ['top', 'bottom'].forEach(id => CityBuilder.byId(id) && observer.observe(CityBuilder.byId(id))); }
       addEventListener('resize', measure);
       measure();
-      this.camera.x = -innerWidth / 2 + this.tileSize / 2;
-      this.camera.y = -innerHeight / 2 + this.tileSize / 2;
+      this.centerOnHeadquarters();
+    },
+
+    // Kameran så att HQ (annars rutan 0,0) hamnar mitt på skärmen, vid vilken zoom det än är
+    centerOnHeadquarters() {
+      const hq = CityBuilder.World?.headquarters, x = hq ? hq.x + (hq.width || 1) / 2 : 0.5, y = hq ? hq.y + (hq.height || 1) / 2 : 0.5;
+      this.camera.x = x * this.tileSize - innerWidth / this.zoom / 2;
+      this.camera.y = y * this.tileSize - innerHeight / this.zoom / 2;
     },
 
     // Ny värld (Game.restart): kameran tillbaka till basen och de cachade bilderna av den gamla världen släpps
     reset() {
-      this.camera.x = -innerWidth / 2 + this.tileSize / 2;
-      this.camera.y = -innerHeight / 2 + this.tileSize / 2;
+      if (CityBuilder.Game) CityBuilder.Game.scrollToken = null;   // en pågående mjuk rullning från förra världen får inte flytta kameran
+      this.centerOnHeadquarters();
       this.hoverTile = null;
       for (const clear of this.caches) clear();
     },
