@@ -1107,7 +1107,7 @@
     const planned = new Set(tiles.map(tile => tile.x + ',' + tile.y)), existing = isOwnWall(type, Players.HUMAN);
     const isWall = (x, y) => planned.has(x + ',' + y) || existing(x, y);
     for (const { x, y } of tiles) {
-      const px = x * size, py = y * size, { image, turns } = wallPiece(definition, wallMask(x, y, isWall));
+      const px = x * size, py = y * size, { image, turns } = wallPiece(definition, wallMask(x, y, isWall), Players.raceOf(Players.HUMAN));
       context.fillStyle = `rgba(${color},.22)`;
       context.fillRect(px, py, size, size);
       context.globalAlpha = .65;
@@ -1129,7 +1129,7 @@
     const { x, y } = renderer.hoverTile;
     const isValid = !CityBuilder.Construction.isHidden(x, y, Players.HUMAN) && World.canPlace(placingType, x, y) && !CityBuilder.Construction.isUniqueTaken(placingType, Players.HUMAN) && CityBuilder.Construction.isNearOwnBuilding(x, y, CityBuilder.Players.HUMAN) && Economy.canAfford(Config.buildings[placingType].buildCost);
     // Den valda byggnaden syns genomskinlig på rutan. En svag färgton och en ram visar om den får plats (grön) eller inte (röd).
-    const size = renderer.tileSize, px = x * size, py = y * size, definition = Config.buildings[placingType], image = Assets.get(definition.image);
+    const size = renderer.tileSize, px = x * size, py = y * size, definition = Config.buildings[placingType], image = Assets.get(definition.image, Players.raceOf(Players.HUMAN));   // spelarens rasbild
     const color = isValid ? '95,181,95' : '217,83,79';
     context.fillStyle = `rgba(${color},.22)`;
     context.fillRect(px, py, size, size);
