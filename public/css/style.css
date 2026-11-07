@@ -1,4 +1,4 @@
-:root {
+:root, .main-menu {   /* huvudmenyn (och berättelsens läsvy) behåller alltid de vanliga färgerna */
   --bg: #14181c;
   --panel: rgba(22, 27, 32, .92);
   --line: #2c343c;
@@ -7,15 +7,46 @@
   --accent: #5fb55f;
   --bad-line: #b4443d;       /* knappar som inte går att använda just nu (för dyra, låsta, inaktiverade) */
   --bad-bg: rgb(180 68 61 / 20%);
+  --bad-solid: #35201f;
+  --button: #252d34;         /* knappar, valda knappar, rutor och rullningslister */
+  --button-active: #313b44;
+  --on-bg: #26402b;
+  --selected: #2d5a36;
+  --glow: rgb(95 181 95 / 55%);
+  --field: #1b2127;
+  --scroll: #3a444d;
+  --minimap-line: #2d3943;
+  --minimap-bg: #0d1115;
+}
+/* Spelaren är en demon (Players.race, se UI.applyRace): menyerna i spelet får demonfärger. Huvudmenyn ovan påverkas inte. */
+body.race-demon {
+  --bg: #170d0e;
+  --panel: rgba(34, 17, 19, .93);
+  --line: #5a2226;
+  --text: #f1e3de;
+  --dim: #a38580;
+  --accent: #e8643c;
+  --bad-line: #8f6aa8;
+  --bad-bg: rgb(143 106 168 / 22%);
+  --bad-solid: #2a1a32;
+  --button: #31191c;
+  --button-active: #432227;
+  --on-bg: #55231a;
+  --selected: #7a2c1c;
+  --glow: rgb(232 100 60 / 60%);
+  --field: #1f1012;
+  --scroll: #6a2f2f;
+  --minimap-line: #5a2226;
+  --minimap-bg: #120808;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font: 13px system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
 canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
-* { scrollbar-width: thin; scrollbar-color: #3a444d transparent; }   /* smala, mörka rullningslister som passar panelerna */
-button { background: #252d34; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
-button:active { background: #313b44; }
-button.on { border-color: var(--accent); background: #26402b; }
+* { scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }   /* smala, mörka rullningslister som passar panelerna */
+button { background: var(--button); color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
+button:active { background: var(--button-active); }
+button.on { border-color: var(--accent); background: var(--on-bg); }
 button.tool-toggle, button.choice-radio { display: inline-flex; align-items: center; gap: 4px; }
 button.choice-radio.locked { opacity: .55; filter: grayscale(.6); }
 .choice-group { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
@@ -35,7 +66,7 @@ button.focus-icon .focus-lock { position: absolute; right: 1px; bottom: -1px; fo
 button.icon-button { display: inline-flex; padding: 5px; }
 button.icon-button .stance-icon { width: 34px; height: 34px; pointer-events: none; }
 button#stanceButton.on { box-shadow: 0 0 0 2px #ff7a6b; }   /* anfallsläge */
-button:disabled, button.unavailable { border-color: var(--bad-line); background: #35201f; background-image: linear-gradient(var(--bad-bg), var(--bad-bg)); cursor: not-allowed; }
+button:disabled, button.unavailable { border-color: var(--bad-line); background: var(--bad-solid); background-image: linear-gradient(var(--bad-bg), var(--bad-bg)); cursor: not-allowed; }
 
 #top { position: fixed; top: 0; left: 0; right: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .res { display: flex; align-items: center; gap: 4px; }

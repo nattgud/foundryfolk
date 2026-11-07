@@ -241,8 +241,8 @@
           position: fixed;
           z-index: 20;
           border-radius: 50%;
-          border: 3px solid #2d3943;
-          background: #0d1115;
+          border: 3px solid var(--minimap-line);
+          background: var(--minimap-bg);
           box-shadow: 0 2px 10px rgb(0 0 0 / 55%);
           touch-action: none;
         }
@@ -272,7 +272,7 @@
           flex-wrap: wrap;
           gap: 2px 10px;
           padding: 4px 7px;
-          border: 1px solid #2d3943;
+          border: 1px solid var(--minimap-line);
           border-radius: 6px;
           background: rgb(13 17 21 / 85%);
           font-size: 11px;

@@ -81,6 +81,7 @@
       CityBuilder.Weather.reset();
       Players.team = { ...CityBuilder.Levels?.current?.teams };
       Players.race = { ...CityBuilder.Levels?.current?.races };
+      CityBuilder.UI?.applyRace?.();   // byggmenyns bilder och menyernas färger följer spelarens ras
       this.addPlayer(Players.HUMAN, 0, 0);
       this.placeScenery();
       const rivals = CityBuilder.Levels?.current?.rivals ?? 1, total = rivals * RIVAL_STEPS + warmCount(Players.HUMAN) + rivals * warmCount(Players.ENEMY);

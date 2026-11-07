@@ -1864,7 +1864,8 @@
             icon: {
               image: building.image,
               symbol: building.symbol,
-              color: building.color
+              color: building.color,
+              race: CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN)
             },
             tooltip: () => this.tooltipContent(
               this.buildingName(buildingId),
@@ -2123,7 +2124,7 @@
       return button;
     },
 
-    createIcon({ image, symbol, color }) {
+    createIcon({ image, symbol, color, race }) {
       const icon = document.createElement('span');
       icon.className = 'icon';
 
@@ -2141,11 +2142,27 @@
         picture.alt = '';
         picture.draggable = false;
         picture.onload = () => icon.classList.add('has-image');
-        picture.src = image;
+        // En ras har egna bilder (images/buildings/demon/farm.png): saknas den används originalet
+        if (race) { picture.onerror = () => { picture.onerror = null; picture.src = image; }; picture.src = image.replace(/[^/]+$/, `${race}/$&`); }
+        else picture.src = image;
         icon.appendChild(picture);
       }
 
       return icon;
+    },
+
+    // Spelarens ras har ändrats (ny bana, laddat spel): byggmenyn får rasens bilder och menyerna rasens färger (CSS: body.race-demon)
+    applyRace() {
+      const race = CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN) || null;
+      document.body.classList.toggle('race-demon', race === 'demon');
+      if (race === this.menuRace) return;
+      this.menuRace = race;
+      const bottom = document.getElementById('bottom');
+      if (!bottom || !this.categoryToggles) return;
+      const open = this.openCategoryId;
+      this.buildBuildMenu(bottom);
+      if (open && this.categorySubmenus.has(open)) this.setOpenCategory(open);
+      else this.openCategoryId = null;
     },
 
     // ---- Tooltip -----------------------------------------------------------------------------
@@ -2312,27 +2329,27 @@
 
         #bottom .build-category-toggle[aria-expanded="true"] {
           border-color: var(--accent);
-          background: #2d5a36;
-          box-shadow: 0 0 0 1px var(--accent), 0 0 10px rgb(95 181 95 / 55%);
+          background: var(--selected);
+          box-shadow: 0 0 0 1px var(--accent), 0 0 10px var(--glow);
         }
         /* Vald byggnad: bara ramen markerar valet, så att en ruta som är röd för att den är för dyr förblir röd */
         #bottom .icon-button.building-option.on {
           border-color: var(--accent);
-          box-shadow: 0 0 0 1px var(--accent), 0 0 10px rgb(95 181 95 / 55%);
+          box-shadow: 0 0 0 1px var(--accent), 0 0 10px var(--glow);
         }
-        #bottom .icon-button.building-option.on:not(.unaffordable):not(.locked) { background: #252d34; }
+        #bottom .icon-button.building-option.on:not(.unaffordable):not(.locked) { background: var(--button); }
 
         #bottom .building-option.unaffordable .icon {
           opacity: .4;
         }
         #bottom .building-option.unaffordable {
           border-color: var(--bad-line);
-          background: #35201f linear-gradient(var(--bad-bg), var(--bad-bg));
+          background: var(--bad-solid) linear-gradient(var(--bad-bg), var(--bad-bg));
         }
         /* Låst är inte samma sak som för dyrt: grått, streckad ram, överstruken och med hänglås (för dyrt är rött) */
         #bottom .building-option.locked {
           border: 1px dashed #66717a;
-          background: #1a1f24;
+          background: var(--field);
         }
         #bottom .building-option.locked::before {
           content: '';
@@ -2356,7 +2373,7 @@
         }
         .map-flag[hidden] { display: none; }
         .map-flag .icon { width: 72%; height: 72%; }
-        .map-flag.on { border-color: var(--accent); background: #2d5a36; box-shadow: 0 0 0 1px var(--accent), 0 0 10px rgb(95 181 95 / 55%); }
+        .map-flag.on { border-color: var(--accent); background: var(--selected); box-shadow: 0 0 0 1px var(--accent), 0 0 10px var(--glow); }
 
         .icon {
           position: relative;
@@ -2371,7 +2388,7 @@
           display: grid;
           place-items: center;
           border-radius: 6px;
-          background: #3a444d;
+          background: var(--scroll);
           color: #111;
           font-size: 20px;
           font-weight: 700;
@@ -2406,7 +2423,7 @@
           padding: 6px 9px;
           border: 1px solid var(--line);
           border-radius: 6px;
-          background: #1b2127;
+          background: var(--field);
           color: var(--text);
           font-size: 12px;
           line-height: 1.35;
@@ -2439,7 +2456,7 @@
           border: 1px solid #5b6670;
           border-bottom-width: 2px;
           border-radius: 4px;
-          background: #252d34;
+          background: var(--button);
           text-align: center;
           font: inherit;
           font-weight: 600;
@@ -2616,7 +2633,7 @@
           flex: 0 0 22px;
           overflow: hidden;
           border-radius: 4px;
-          background: #3a444d;
+          background: var(--scroll);
         }
 
         .resource-icon img {
@@ -2663,7 +2680,7 @@
           overflow: hidden;
           border: 1px solid var(--line);
           border-radius: 10px;
-          background: #1b2127;
+          background: var(--field);
           color: var(--text);
           box-shadow: 0 12px 40px rgb(0 0 0 / 40%);
         }
