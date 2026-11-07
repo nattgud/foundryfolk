@@ -9,35 +9,22 @@
      3. Ställ in menyernas färger nedan (valfritt: utan colors används de vanliga).
 
    name    visas i Custom game (översätts med t()).
-   colors  menyerna i spelet när SPELAREN har rasen (huvudmenyn ändras aldrig). Allt är valfritt: det som saknas behåller standardfärgen.
-           Exempel på färgerna i standardutseendet står i kommentaren efter varje rad.
+   base    en mörk grundton: bakgrund, paneler, knappar och fält blandas fram ur den. (standard #252d34)
+   accent  accentfärgen: markerade och valda knappar, glöd och linjer blandas fram ur den. (standard #5fb55f)
+   colors  valfritt: skriv över en enskild färg exakt, t.ex. colors: { line: '#5a2226' }. Det som anges här går före det som räknas fram
+           ur base och accent. Alla namn: bg panel line text dim accent button buttonActive onBg selected glow field scroll badLine badBg
+           badSolid minimapLine minimapBg (se UI.raceColors i js/ui.js för vad var och en blir och hur de räknas fram).
+   Menyerna får rasens färger när SPELAREN har rasen. Huvudmenyn ändras aldrig. En ras utan base, accent och colors använder standardfärgerna.
    human är standardrasen (inga egna bilder eller färger) och ska finnas kvar. */
 CityBuilder.Config.races = {
   human: { name: 'Human' },
 
   demon: {
     name: 'Demon',
-    colors: {
-      bg: '#170d0e',                       // spelets bakgrund                           (standard #14181c)
-      panel: 'rgba(34, 17, 19, .93)',      // paneler: resursfältet, byggmenyn, infopanelen, tooltip (rgba(22, 27, 32, .92))
-      line: '#5a2226',                     // ramar och linjer                           (#2c343c)
-      text: '#f1e3de',                     // text                                       (#e8ecef)
-      dim: '#a38580',                      // dämpad text                                (#7b858e)
-      accent: '#e8643c',                   // markerad knapp och kant                    (#5fb55f)
-      button: '#31191c',                   // vanliga knappar                            (#252d34)
-      buttonActive: '#432227',             // knapp medan du trycker                     (#313b44)
-      onBg: '#55231a',                     // påslagen knapp (bakgrund)                  (#26402b)
-      selected: '#7a2c1c',                 // vald byggnad/knapp (bakgrund)              (#2d5a36)
-      glow: 'rgb(232 100 60 / 60%)',       // glöden runt valda knappar                  (rgb(95 181 95 / 55%))
-      field: '#1f1012',                    // inmatningsfält och listor                  (#1b2127)
-      scroll: '#6a2f2f',                   // rullningslister                            (#3a444d)
-      badLine: '#8f6aa8',                  // ram på knappar som inte går att använda    (#b4443d)
-      badBg: 'rgb(143 106 168 / 22%)',     // ...och deras ton                           (rgb(180 68 61 / 20%))
-      badSolid: '#2a1a32',                 // ...och deras bakgrund                      (#35201f)
-      minimapLine: '#5a2226',              // minimapens ram                             (#2d3943)
-      minimapBg: '#120808',                // minimapens bakgrund                        (#0d1115)
-    },
+    base: '#31191c',      // mörk blodröd grundton
+    accent: '#e8643c',    // glödande orangeröd
+    colors: {},           // t.ex. { line: '#5a2226', text: '#f1e3de' } om en färg inte blir som du vill
   },
 
-  // elf: { name: 'Elf', colors: { accent: '#7fd6a2', panel: 'rgba(16, 30, 24, .92)' } },
+  // elf: { name: 'Elf', base: '#16241c', accent: '#7fd6a2' },
 };

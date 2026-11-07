@@ -2151,14 +2151,42 @@
       return icon;
     },
 
+    // Alla menyfärger ur två: base (mörk grundton: bakgrund, paneler, knappar) och accent (markering, glöd, linjer). Formlerna är CSS color-mix, så ändra procenten här om
+    // en blandning inte passar. Namnen är samma som i races.js colors (och blir CSS-variabler: buttonActive -> --button-active). Standard: base #252d34, accent #5fb55f.
+    raceColors(base = '#252d34', accent = '#5fb55f') {
+      const mix = (color, percent, other) => `color-mix(in srgb, ${color} ${percent}%, ${other})`, violet = '#a07bb8';
+      const line = mix(accent, 30, base);
+      return {
+        bg: mix(base, 55, 'black'),
+        panel: mix(mix(base, 78, 'black'), 93, 'transparent'),
+        field: mix(base, 70, 'black'),
+        button: base,
+        buttonActive: mix('white', 8, base),
+        line,
+        minimapLine: line,
+        minimapBg: mix(base, 45, 'black'),
+        scroll: mix(accent, 25, base),
+        onBg: mix(accent, 22, base),
+        selected: mix(accent, 38, base),
+        accent,
+        glow: mix(accent, 60, 'transparent'),
+        text: mix('white', 88, base),
+        dim: mix('white', 45, base),
+        badLine: mix(violet, 70, base),
+        badBg: mix(violet, 22, 'transparent'),
+        badSolid: mix(violet, 14, base),
+      };
+    },
+
     // Spelarens ras har ändrats (ny bana, laddat spel): byggmenyn får rasens bilder och menyerna rasens färger (CSS: body.race-demon)
     applyRace() {
       const race = CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN) || null, races = Config.races || {};
       for (const name of Object.keys(races)) document.body.classList.toggle('race-' + name, name === race);
-      // Rasens färger (config/races.js, colors) sätts som CSS-variabler på body. Allt som inte anges behåller standardfärgen.
+      // Rasens färger (config/races.js: base och accent, och colors för enskilda) sätts som CSS-variabler på body. Allt som inte anges behåller standardfärgen.
       for (const variable of this.raceVariables || []) document.body.style.removeProperty(variable);
       this.raceVariables = [];
-      for (const [key, value] of Object.entries(races[race]?.colors || {})) {
+      const definition = races[race] || {};
+      for (const [key, value] of Object.entries({ ...(definition.base || definition.accent ? this.raceColors(definition.base, definition.accent) : {}), ...definition.colors })) {
         const variable = '--' + key.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase());
         document.body.style.setProperty(variable, value);
         this.raceVariables.push(variable);
