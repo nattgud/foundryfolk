@@ -2153,8 +2153,16 @@
 
     // Spelarens ras har ändrats (ny bana, laddat spel): byggmenyn får rasens bilder och menyerna rasens färger (CSS: body.race-demon)
     applyRace() {
-      const race = CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN) || null;
-      document.body.classList.toggle('race-demon', race === 'demon');
+      const race = CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN) || null, races = Config.races || {};
+      for (const name of Object.keys(races)) document.body.classList.toggle('race-' + name, name === race);
+      // Rasens färger (config/races.js, colors) sätts som CSS-variabler på body. Allt som inte anges behåller standardfärgen.
+      for (const variable of this.raceVariables || []) document.body.style.removeProperty(variable);
+      this.raceVariables = [];
+      for (const [key, value] of Object.entries(races[race]?.colors || {})) {
+        const variable = '--' + key.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase());
+        document.body.style.setProperty(variable, value);
+        this.raceVariables.push(variable);
+      }
       if (race === this.menuRace) return;
       this.menuRace = race;
       const bottom = document.getElementById('bottom');

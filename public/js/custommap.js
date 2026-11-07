@@ -97,6 +97,9 @@
         timer = setTimeout(() => { try { draw(); } catch (error) { console.error(error); } }, PREVIEW_DELAY);
       };
 
+      // Raser: alla i config/races.js (ett nytt alternativ visas av sig självt)
+      const raceChoices = Levels.CUSTOM.races.map(([id, name]) => [id, t(name)]);
+
       // Antal datorspelare
       const count = make('div', 'custom-count');
       const enemyRows = make('div', 'custom-enemies');
@@ -105,7 +108,7 @@
           const choice = make('button', 'options-toggle' + (settings.enemies.length === n ? ' is-on' : ''), String(n));
           choice.type = 'button';
           choice.onclick = () => {
-            while (settings.enemies.length < n) settings.enemies.push({ difficulty: 2, team: 'own' });
+            while (settings.enemies.length < n) settings.enemies.push({ difficulty: 2, team: 'own', race: 'human' });
             settings.enemies.length = n;
             paintEnemies(); refresh();
           };
@@ -117,6 +120,7 @@
           const title = make('div', 'custom-enemy-title'); title.append(swatch, document.createTextNode(t('Enemy {n}', { n: i + 1 })));
           group.append(
             title,
+            ...(raceChoices.length > 1 ? [row(t('Race'), select(raceChoices, enemy.race, value => { enemy.race = value; refresh(); }))] : []),
             row(t('Strength'), select(DIFFICULTY_NAMES.map((name, value) => [value, t(name)]), enemy.difficulty, value => { enemy.difficulty = Number(value); refresh(); })),
             ...(settings.enemies.length > 1 ? [row(t('Team'), select(Levels.CUSTOM.teams.map(team => [team, t(TEAM_NAMES[team])]), enemy.team, value => { enemy.team = value; refresh(); paintEnemies(); }))] : [])
           );
@@ -149,6 +153,7 @@
       const side = make('div', 'custom-side'), main = make('div', 'custom-main'), layout = make('div', 'custom-layout');
       side.append(canvas, legend, caption, replaces);
       main.append(
+        ...(raceChoices.length > 1 ? [make('div', 'stats-heading', t('You')), row(t('Race'), select(raceChoices, settings.race, value => { settings.race = value; refresh(); }))] : []),
         make('div', 'stats-heading', t('Enemies')), row(t('Number of enemies'), count), enemyRows,
         make('div', 'stats-heading', t('Land')),
         slider('water', t('Water')), slider('mountains', t('Mountains')), slider('forest', t('Forest')), slider('resources', t('Resources')),

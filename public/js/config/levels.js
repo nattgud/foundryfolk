@@ -749,13 +749,15 @@
 
   const normalizeCustom = raw => {
     const given = raw && typeof raw === 'object' ? raw : {};
+    const races = CityBuilder.Config.races || {}, race = value => value in races ? value : 'human';   // en ras som inte finns (längre) blir human
     const enemies = (Array.isArray(given.enemies) && given.enemies.length ? given.enemies : [{}]).slice(0, MAX_CUSTOM_ENEMIES).map(enemy => ({
       difficulty: integer(enemy?.difficulty, 0, DIFFICULTIES.length - 1, 2),
       team: TEAM_CHOICES.includes(enemy?.team) ? enemy.team : 'own',
+      race: race(enemy?.race),
     }));
     if (enemies.every(enemy => enemy.team === 'you')) enemies[enemies.length - 1].team = 'own';   // somebody has to be an enemy
     return {
-      seed: integer(given.seed, 1, 999999, 1), enemies,
+      seed: integer(given.seed, 1, 999999, 1), race: race(given.race), enemies,
       water: integer(given.water, 0, 4, 2), mountains: integer(given.mountains, 0, 4, 2),
       forest: integer(given.forest, 0, 4, 2), resources: integer(given.resources, 0, 4, 2),
     };
@@ -764,9 +766,11 @@
   const customInfo = raw => {
     const settings = normalizeCustom(raw), { HUMAN, ENEMY } = CityBuilder.Players;
     const teamIds = { you: HUMAN, a: 100, b: 101, c: 102 };
-    const teams = {}, aiLevels = {};
+    const teams = {}, aiLevels = {}, races = {};
+    if (settings.race !== 'human') races[HUMAN] = settings.race;
     settings.enemies.forEach((enemy, i) => {
       aiLevels[ENEMY + i] = DIFFICULTIES[enemy.difficulty];
+      if (enemy.race !== 'human') races[ENEMY + i] = enemy.race;
       if (enemy.team !== 'own') teams[ENEMY + i] = teamIds[enemy.team];
     });
     const richness = RICHNESS[settings.resources], keep = {};
@@ -781,7 +785,7 @@
       theme: 'valleys', themeObject: THEMES[0], signature: null,
       tags: [], trial: false, bounty: false, guardian: false,
       difficulty: strongest / MAX_LEVELS,
-      rivals: settings.enemies.length, teams, aiLevels,
+      rivals: settings.enemies.length, teams, aiLevels, races,
       monsters: settings.enemies.length ? { level: Math.max(FIRST_MONSTER, strongest), strength: Math.max(0, strongest - FIRST_MONSTER), raid: 'random' } : null,
       seed: settings.seed,
       keep, twists: [],
@@ -1131,7 +1135,7 @@
     markTold: key => { progress.told[key] = true; },
     onComplete: fn => { completeListeners.push(fn); },
     // ---- Custom map ----
-    CUSTOM: { maxEnemies: MAX_CUSTOM_ENEMIES, difficulties: DIFFICULTIES.length, teams: TEAM_CHOICES, steps: 5 },
+    CUSTOM: { get races() { return Object.entries(CityBuilder.Config.races || {}).map(([id, race]) => [id, race.name || id]); }, maxEnemies: MAX_CUSTOM_ENEMIES, difficulties: DIFFICULTIES.length, teams: TEAM_CHOICES, steps: 5 },
     get custom() { return state.info.custom || null; },           // settings of the current custom map, or null on a level
     isStory: () => !!readStory(),                                   // nyckeln sätts när kapitlet startar, så det gäller också före Levels.start() och efter en omstart
     get mode() { return state.info.custom ? 'custom' : state.info.story ? 'story' : 'free'; },

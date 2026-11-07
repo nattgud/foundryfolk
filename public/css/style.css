@@ -18,27 +18,7 @@
   --minimap-line: #2d3943;
   --minimap-bg: #0d1115;
 }
-/* Spelaren är en demon (Players.race, se UI.applyRace): menyerna i spelet får demonfärger. Huvudmenyn ovan påverkas inte. */
-body.race-demon {
-  --bg: #170d0e;
-  --panel: rgba(34, 17, 19, .93);
-  --line: #5a2226;
-  --text: #f1e3de;
-  --dim: #a38580;
-  --accent: #e8643c;
-  --bad-line: #8f6aa8;
-  --bad-bg: rgb(143 106 168 / 22%);
-  --bad-solid: #2a1a32;
-  --button: #31191c;
-  --button-active: #432227;
-  --on-bg: #55231a;
-  --selected: #7a2c1c;
-  --glow: rgb(232 100 60 / 60%);
-  --field: #1f1012;
-  --scroll: #6a2f2f;
-  --minimap-line: #5a2226;
-  --minimap-bg: #120808;
-}
+/* Rasernas färger i spelets menyer ligger i js/config/races.js (UI.applyRace sätter variablerna ovan på body). Huvudmenyn behåller alltid de vanliga. */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font: 13px system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
 canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }

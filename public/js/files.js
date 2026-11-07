@@ -15,6 +15,7 @@ self.GAME_SCRIPTS = [
   'js/config/resources.js',
   'js/config/terrain.js',
   'js/config/units.js',
+  'js/config/races.js',
   'js/config/buildings.js',
   'js/config/world.js',
   'js/config/ai.js',
