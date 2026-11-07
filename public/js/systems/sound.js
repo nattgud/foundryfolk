@@ -38,7 +38,7 @@
   const MUSIC_KEY = 'citybuilder.music';   // sessionStorage: låt och plats när sidan laddas om
   const MUSIC_RESUME_MS = 60000;           // så färskt måste det sparade läget vara
   // Musiken är avstängd från start på pekskärmar: spelets musik tar ljudfokus och pausar spelarens egen musik (Spotify m.m.). Spelaren kan slå på den i inställningarna.
-  const DEFAULTS = { musicOn: !(typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches), musicVolume: 0.5, sfxOn: true, sfxVolume: 0.7 };
+  const DEFAULTS = { musicOn: !(typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches), musicVolume: 1.0, sfxOn: true, sfxVolume: 0.7 };
   // Ljud som kan loopas medan något pågår: id -> { fade, sources() }. sources() ger det som ska låta nu: [{ key, x, y }]. fade = sekunder in- och utljusning.
   const LOOPING = {
     build: {   // byggen som just nu går framåt (inte de som väntar på material) och som spelaren ser
