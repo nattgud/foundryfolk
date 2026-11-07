@@ -111,6 +111,8 @@ CityBuilder.Config.settings = {
       spell_carriers: 'sounds/sfx/spells/spell_carriers.mp3',
       spell_rain: 'sounds/sfx/spells/spell_rain.mp3',
       spell_break: 'sounds/sfx/spells/spell_break.mp3',
+
+      fire: { file: 'sounds/sfx/fire.mp3', volume: 1 },
     },
     // Byggnadernas arbete. Varje byggnad kan ha tre valfria ljud: start (arbetet börjar), loop (loopas medan det pågår) och done (arbetet är klart).
     // Det som inte anges är tyst. Ett ljud är en fil, en lista (en slumpas varje gång) eller { file, volume }. Exempel:
@@ -153,6 +155,7 @@ CityBuilder.Config.settings = {
     music: ["music/song1.mp3", "music/song2.mp3", "music/song3.mp3"],
     // Väderljud och ljudlandskap (systems/sound.js). Alla filer är valfria: saknas en fil är det tyst. Ta bort // för att slå på en rad.
     battleMusic: ["music/battle1.mp3"],
+    tornadoMusic: ["sounds/weather/tornado.mp3"],   // ersätter musiken så länge en tornado finns (krigsmusik går före). Utbrott och storm har kvar sin katastrofmusik (disasterMusic)
     weather: {
       fade: 2,                                          // sekunder in- och utljusning för alla loopar
       start: {                                          // spelas en gång när vädret börjar
@@ -170,7 +173,7 @@ CityBuilder.Config.settings = {
         rain: 'sounds/weather/rain_loop.mp3',
         storm: { file: 'sounds/weather/warning_bell.mp3', volume: 0.3 },
         // fog: 'sounds/weather/fog_loop.mp3',
-        tornado: { file: 'sounds/weather/warning_bell.mp3', volume: 0.4 },
+        // tornado: 'sounds/weather/tornado.mp3',   // ligger nu som tornadoMusic (ersätter musiken) i stället för att höras vid tornadon
         // supertornado: 'sounds/weather/supertornado_loop.mp3',   // loopas vid varje supertornado som syns
         volcano: { file: 'sounds/weather/warning_bell.mp3', volume: 0.3 },
         meteorstorm: { file: 'sounds/weather/warning_bell.mp3', volume: 0.4 },

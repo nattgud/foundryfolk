@@ -250,7 +250,7 @@ CityBuilder.Config.buildings = {
       sourceUnit: Object.keys(CityBuilder.Config.units).filter(id => CityBuilder.Config.units[id].isAnimal),
       searchRadius: 20,
       workLabel: "Hunting",
-      outputs: { meat: 1, leather: 1 },
+      outputs: { meat: 1, leather: 3 },
       byproducts: { bone: 1, blood: 1 },
       craftSeconds: 1
     },
@@ -819,7 +819,7 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 8, stone: 4 },
     job: {
       kind: 'craft',
-      inputs: { wood: 2, leather: 1 },
+      inputs: { wood: 4 },
       outputs: { bow: 1 },
       craftSeconds: 12
     },
@@ -835,7 +835,7 @@ CityBuilder.Config.buildings = {
     requiredEquipment: { knife: 1 },
     job: {
       kind: 'craft',
-      inputs: { leather: 3 },
+      inputs: { leather: 1 },
       outputs: { leather_armor: 1 },
       craftSeconds: 12
     },
