@@ -217,7 +217,7 @@
         this.define(`${phase}.${type}`, spec(phases[phase]));
         if (phase === 'loop') this.workLoops.add(type);
       }
-      this.channels = { calm: this.channel(custom.music), battle: this.channel(custom.battleMusic), disaster: this.channel(custom.disasterMusic), scene: this.channel([]) };
+      this.channels = { calm: this.channel(custom.music), battle: this.channel(custom.battleMusic), disaster: this.channel(custom.disasterMusic), tornado: this.channel(custom.tornadoMusic), scene: this.channel([]) };
       try {   // sidan har just laddats om (t.ex. en ny bana): den lugna musiken fortsätter där den slutade
         const saved = JSON.parse(sessionStorage.getItem(MUSIC_KEY) || 'null');
         if (saved && Date.now() - saved.at < MUSIC_RESUME_MS && this.channels.calm.tracks.includes(saved.track)) { this.resume = saved; this.ensureContext(); }
@@ -589,11 +589,12 @@
     // Strid så länge något av spelarens slåss (Combat.fightAt) och en stund efter, katastrof en stund efter att en tornado eller ett utbrott börjar
     updateMood() {
       const now = performance.now() / 1000, { Weather, Combat } = CityBuilder;
-      const hazards = Weather ? Weather.tornadoes.length + Weather.volcanoes.filter(volcano => Weather.seen(volcano)).length + (Weather.storm && Weather.seen(Weather.storm) ? 1 : 0) : 0;   // bara det som syns
+      const tornadoMusic = this.channels?.tornado?.tracks.length > 0 && !this.channels.tornado.off;   // tornadomusik (audio.tornadoMusic): spelas medan en tornado finns och ersätter katastrofmusiken för tornados
+      const hazards = Weather ? (tornadoMusic ? 0 : Weather.tornadoes.length) + Weather.volcanoes.filter(volcano => Weather.seen(volcano)).length + (Weather.storm && Weather.seen(Weather.storm) ? 1 : 0) : 0;   // bara det som syns
       if (hazards > this.hazards) this.hazardUntil = now + MOOD.disasterSeconds;
       this.hazards = hazards;
       const off = name => this.channels?.[name]?.off;   // music: { battle: false } i ett kapitel eller en händelse: läget har ingen musik, den lugna musiken fortsätter
-      const mood = this.sceneOn ? 'scene' : Combat && Combat.time - Combat.fightAt < MOOD.battleSeconds && !off('battle') ? 'battle' : hazards && now < this.hazardUntil && !off('disaster') ? 'disaster' : 'calm';   // krigsmusiken går alltid före katastrofmusiken
+      const mood = this.sceneOn ? 'scene' : Combat && Combat.time - Combat.fightAt < MOOD.battleSeconds && !off('battle') ? 'battle' : tornadoMusic && Weather.tornadoes.length ? 'tornado' : hazards && now < this.hazardUntil && !off('disaster') ? 'disaster' : 'calm';   // krigsmusiken går alltid före katastrofmusiken
       if (mood !== this.mood) { this.mood = mood; this.updateMusic(); }
     },
 
@@ -638,8 +639,8 @@
       if (key === this.chapterKey) return;
       this.chapterKey = key;
       const own = spec && typeof spec === 'object' && !Array.isArray(spec) ? spec : spec ? { calm: spec } : {}, custom = Config.settings.audio || {};
-      const standard = { calm: custom.music, battle: custom.battleMusic, disaster: custom.disasterMusic };
-      for (const mood of ['calm', 'battle', 'disaster']) {
+      const standard = { calm: custom.music, battle: custom.battleMusic, disaster: custom.disasterMusic, tornado: custom.tornadoMusic };
+      for (const mood of ['calm', 'battle', 'disaster', 'tornado']) {
         const channel = this.channels[mood], tracks = [].concat((own[mood] !== undefined ? own[mood] : standard[mood]) || []);
         channel.off = own[mood] === false && mood !== 'calm';   // false = läget avstängt (ingen strid- eller katastrofmusik, inte ens den syntetiska)
         if (tracks.join('|') === channel.tracks.join('|')) continue;
