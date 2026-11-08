@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Changing the focus of a gatherer or mine no longer makes the goods its worker is carrying disappear: they are put in the building first',
       'Animals keep away from buildings: they never come closer than 4 tiles, and walk away if a building is placed next to them',
       'Buildings with a problem get a thin frame: red when something is missing (goods, tools, raw material, room), yellow when something is blocking (full storage, no game, no path). Shortages are only counted after a while, and not at all when the delivery is already on its way',
       'The computer players have a new brain: they keep building for the whole game instead of stopping after a dozen buildings. They react to shortages, build warehouses and food chains, pause what they overproduce, and train a real army',

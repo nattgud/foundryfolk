@@ -404,10 +404,11 @@
     // inte behöver blir liggande i byggnaden (de går till en hög om den rivs).
     setFocus(building, type) {
       if (building.type === type || !this.focusesOf(building).includes(type)) return;
+      const worker = building.workerUnit;
+      if (worker && !worker.removed) this.deposit(worker, building);   // det arbetaren bär (gjort med den gamla inriktningen) hamnar i huset i stället för att försvinna
       building.type = type;
       building.definition = Config.buildings[type];
       building.status = ''; building.boostLeft = 0; building.meals = null;
-      const worker = building.workerUnit;
       if (worker && !worker.removed) { worker.stepQueue.length = 0; worker.carriedResource = null; worker.carriedOutputs = null; worker.idleCooldown = 0; }
     },
 
