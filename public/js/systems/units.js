@@ -68,6 +68,9 @@
         else if (Utils.random() < ANIMAL.breedChancePerSecond * (1 + Config.settings.animalBreeding.boost) * surge * deltaSeconds) this.tryAnimalBreed(unit, surge);
       }
 
+      if (unit.fleeing && !unit.stepQueue.length) unit.fleeing = false;
+      if (unit.definition.isAnimal && World.nearBuilding(unit.x, unit.y) && !unit.fleeing) this.fleeBuildings(unit);
+
       const step = unit.stepQueue[0];
       if (!step) return this.handleIdle(unit, deltaSeconds);
 
@@ -114,6 +117,7 @@
       if (step.costTile !== nextTile || step.costEpoch !== Pathfinder.epoch) {
         step.cost = Pathfinder.tileCost(nextTile.x, nextTile.y); step.costTile = nextTile; step.costEpoch = Pathfinder.epoch;
       }
+      if (unit.definition.isAnimal && !unit.fleeing && World.nearBuilding(nextTile.x, nextTile.y)) { Pathfinder.drop(step.path); unit.stepQueue.length = 0; unit.idleCooldown = 0.5; return; }   // djur går inte in i zonen kring byggnader
       const tileCost = step.cost;
       const isTarget = nextTile.x === step.targetX && nextTile.y === step.targetY;
       // Står enheten på en mur (som byggdes under den) ignorerar den blockeringen tills den kommit ut på en vanlig ruta
@@ -318,7 +322,7 @@
           const tile = World.getTile(x, y);
 
           if (!ANIMAL_FOOD_TYPES.has(tile.terrainType) || !animalMayEat(tile.terrainType)) continue;
-          if (tile.remainingAmount <= 0) continue;
+          if (tile.remainingAmount <= 0 || World.nearBuilding(x, y)) continue;
 
           if (distance < nearestDistance) {
             nearestDistance = distance;
@@ -334,6 +338,24 @@
       return nearest;
     },
     
+    // Djuret står närmare en byggnad än det får (byggnaden kom till, eller djuret föddes här): gå till närmaste ruta utanför
+    fleeBuildings(unit) {
+      const cx = Math.floor(unit.x), cy = Math.floor(unit.y);
+      let best = null, bestDistance = Infinity;
+      const radius = Config.settings.animalBuildingDistance + 6;
+      for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+        const distance = dx * dx + dy * dy;
+        if (distance >= bestDistance || World.nearBuilding(cx + dx, cy + dy)) continue;
+        const terrainType = World.getTile(cx + dx, cy + dy).terrainType;
+        if (terrainType !== 'grass' && terrainType !== 'tree') continue;
+        best = { x: cx + dx, y: cy + dy }; bestDistance = distance;
+      }
+      if (!best) return;
+      unit.fleeing = true;
+      unit.stepQueue = [Jobs.walkTo(best.x, best.y), Jobs.run(() => { unit.fleeing = false; })];
+      unit.status = 'Wandering';
+    },
+
     queueAnimalWander(unit, mustMove) {
       const cx = Math.floor(unit.x);
       const cy = Math.floor(unit.y);
@@ -372,6 +394,7 @@
           ) {
             continue;
           }
+          if (World.nearBuilding(x, y)) continue;
 
           candidates.push({ x, y });
         }
@@ -494,10 +517,11 @@
         for (let dx = -dispersal; dx <= dispersal; dx++) {
           if (!dx && !dy) continue;
           const terrainType = World.getTile(cx + dx, cy + dy).terrainType;
-          if (terrainType === 'grass' || terrainType === 'tree') spots.push({ x: cx + dx, y: cy + dy });
+          if ((terrainType === 'grass' || terrainType === 'tree') && !World.nearBuilding(cx + dx, cy + dy)) spots.push({ x: cx + dx, y: cy + dy });
         }
       }
-      const spot = spots.length ? spots[Math.floor(Utils.random() * spots.length)] : { x: cx, y: cy };
+      if (!spots.length) return;
+      const spot = spots[Math.floor(Utils.random() * spots.length)];
       const young = CityBuilder.Animals.spawnYoung(unit.kind, spot.x, spot.y);
       unit.animalBreedCooldown = young.animalBreedCooldown = ANIMAL.breedCooldown;
     },

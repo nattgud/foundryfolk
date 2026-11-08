@@ -234,13 +234,31 @@
       }
       this.buildings.push(building);
       this.buildingsByTile.set(Utils.tileKey(x, y), building);
+      this.buildingVersion++;
       CityBuilder.Pathfinder.clearCache();
       return building;
+    },
+
+    // Rutor där djur inte får vara: närmare än animalBuildingDistance från någon byggnad. Räknas om först när byggnader ändrats.
+    buildingVersion: 0,
+    nearBuilding(x, y) {
+      if (this.zoneVersion !== this.buildingVersion || !this.zone) {
+        const reach = Config.settings.animalBuildingDistance, zone = new Set();
+        for (const building of this.buildings) {
+          if (building.definition.pile) continue;   // varuhögar räknas inte
+          for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
+            if (dx * dx + dy * dy < reach * reach) zone.add(Utils.tileKey(building.x + dx, building.y + dy));
+          }
+        }
+        this.zone = zone; this.zoneVersion = this.buildingVersion;
+      }
+      return this.zone.has(Utils.tileKey(Math.floor(x), Math.floor(y)));
     },
 
     removeBuilding(building) {
       building.removed = true;
       this.buildingsByTile.delete(Utils.tileKey(building.x, building.y));
+      this.buildingVersion++;
       CityBuilder.Pathfinder.clearCache();
       if (this.hqs[building.player] === building) delete this.hqs[building.player];
       this.buildings = this.buildings.filter(other => other !== building);

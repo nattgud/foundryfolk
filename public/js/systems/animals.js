@@ -51,7 +51,7 @@
           if (
             (tile.terrainType === 'grass' ||
              tile.terrainType === 'tree') &&
-            !World.buildingAt(tileX, tileY)
+            !World.buildingAt(tileX, tileY) && !World.nearBuilding(tileX, tileY)
           ) {
             candidates.push({ x: tileX, y: tileY });
           }
