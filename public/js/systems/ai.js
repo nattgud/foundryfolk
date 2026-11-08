@@ -2,9 +2,10 @@
    Construction.build, samma kostnader, samma lager och bärare, samma dimma. Datorn har bara ett beslutsfattande i stället för en meny.
    Den känner bara till platser den ser; hittar den ingen råvara bygger den utkikstorn (lookout) mot nya håll.
 
-   Beslut: Config.ai.build är en ordnad lista med mål. Första målet som inte är uppnått löses med need(), som går bakåt
-   genom kedjan: saknas en insats eller en byggresurs byggs först en byggnad som tillverkar den. Den valda byggnaden
-   placeras sedan nära basen (eller nära resursen, för gatherers och gruvor). */
+   Beslut (decide): underhåll (regulate: pausa överproduktion, riv tömda samlare), lager, flaskhalsar (survey + relieve: byggnader som väntar
+   på en vara), planen (Config.ai.plan) och tillväxten (Config.ai.grow). Varje mål löses med need(), som går bakåt genom kedjan: saknas
+   en insats eller en byggresurs byggs först en byggnad som tillverkar den. Den valda byggnaden placeras sedan nära basen (eller nära
+   resursen, för gatherers och gruvor). Se config/ai.js för hela resonemanget. */
 (function (CityBuilder) {
   'use strict';
   const { Config, World, Players, Economy, Construction, Garrison, Utils, Vision } = CityBuilder;
@@ -41,12 +42,49 @@
   };
 
   const costOf = definition => Utils.sumValues(definition.buildCost);
+  const WAR = new Set(['guard_tower', 'garrison', 'watchtower']);
+
+  // Varornas namn i statustexterna ("Missing: Iron Ore", se Behaviors.eatStatus) -> resurs
+  const RESOURCE_BY_NAME = {};
+  for (const [id, resource] of Object.entries(Config.resources)) RESOURCE_BY_NAME[resource.name] = id;
+
+  // Det en byggnad tillverkar i första hand (biprodukter som aska och tjära räknas inte): första varan i varje recept
+  const primaryOutputs = definition => {
+    const job = definition.job;
+    if (!job) return [];
+    return (job.choices || [job]).map(recipe => recipe.outputs ? Object.keys(recipe.outputs)[0] : recipe.outputResource).filter(Boolean);
+  };
+
+  // Hur många per minut en byggnad tillverkar / förbrukar av en vara när allt fungerar (medel över recepten). Samlare räknas med en promenad
+  // på 12 s (jägare 60 s) per omgång. Soldatutbildning (garnisoner) förbrukar sin utrustning på utbildningstiden.
+  const rateOf = (definition, resourceId, kind) => {
+    const job = definition.job;
+    if (!job) return 0;
+    if (job.kind === 'garrison') {
+      if (kind !== 'in') return 0;
+      return job.trains.reduce((sum, id) => { const training = Config.units[id].training; return sum + (training?.inputs?.[resourceId] || 0) / (training?.seconds || 20) * 60; }, 0) / job.trains.length;
+    }
+    const recipes = job.choices || [job];
+    let total = 0;
+    for (const recipe of recipes) {
+      const seconds = recipe.craftSeconds ?? 10, walk = job.kind === 'gather' ? (job.sourceUnit ? 60 : 12) : 0;
+      if (kind === 'out') total += (recipe.outputs ? (Object.keys(recipe.outputs)[0] === resourceId ? recipe.outputs[resourceId] : 0) : recipe.outputResource === resourceId ? 1 : 0) / (seconds + (recipe.workSeconds ?? 0) + walk) * 60;
+      else total += (recipe.inputs?.[resourceId] || 0) / (seconds + (recipe.workSeconds ?? 0)) * 60;
+    }
+    return total / recipes.length;
+  };
+
+  // Verktyg som byggnader kräver, och soldaternas utrustning: de har egna lagertak (Config.ai.limits)
+  const EQUIPMENT = new Set(Object.values(Config.buildings).flatMap(definition => Object.keys(definition.requiredEquipment || {})));
+  const GEAR = new Set(Object.values(Config.units).flatMap(unit => Object.keys(unit.training?.inputs || {})));
 
   const gameSeconds = () => CityBuilder.Levels?.seconds ?? 0;   // speltid på banan (sparas, så anfallstiden gäller även efter omladdning)
 
   const AI = {
     players: new Map(),      // spelare -> { timer, blocked: { byggnadstyp: tid då den får provas igen }, short: { resurs: { since, seen } } }
     time: 0,
+    over: new WeakSet(),     // byggnader som pausats för att deras vara fyllde lagret (startar igen först när lagret gått ner, se regulate)
+    watch: new WeakMap(),    // ofärdig byggnad -> { progress, since }: hur länge bygget stått still (se reclaim)
     producers: {},           // resurs -> byggnadstyp som tillverkar den billigast (byggs vid första användningen)
 
     // Billigaste byggnaden som tillverkar resursen (eller undefined)
@@ -80,7 +118,7 @@
         let state = this.players.get(player);
         if (!state) {   // slumpad starttid (seedad), så att alla datorspelare inte tänker i samma steg
           this.current = player;
-          this.players.set(player, state = { timer: Utils.random() * this.interval(), blocked: {}, short: {} });
+          this.players.set(player, state = { timer: Utils.random() * this.interval(), blocked: {}, short: {}, relieved: {} });
         }
         this.moveFlag(player, state);
         if ((state.timer -= deltaSeconds) > 0) continue;
@@ -95,17 +133,34 @@
       state.starved = new Set();
       this.observe(player, state);
       this.decide(player, state);
-      this.pauseConsumers(player, state.starved);
+      this.regulate(player, state);
     },
 
-    // Som en människa: saknas en byggresurs pausas de byggnader som förbrukar den (annars hinner den aldrig samlas i lagret)
-    pauseConsumers(player, starved) {
+    // Som en människa: saknas en byggresurs pausas de byggnader som förbrukar den (annars hinner den aldrig samlas i lagret), och
+    // de som tillverkar mer än lagret rymmer pausas tills det går åt (annars äter t.ex. sågverken upp träet som bygget väntar på).
+    // pausedByAI skiljer datorns pauser från andra.
+    regulate(player, state) {
+      const { stored } = Economy.stats(player), { high, resume } = Config.ai.storage;
       for (const building of World.buildings) {
-        if (building.player !== player || !building.definition.job) continue;
-        const consumes = inputsOf(building.definition).some(resourceId => starved.has(resourceId));
-        if (consumes && !building.paused) { building.paused = true; building.pausedByAI = true; }
-        else if (!consumes && building.pausedByAI) { building.paused = false; building.pausedByAI = false; }
+        if (building.player !== player || !building.definition.job || building.buildProgress < 1) continue;
+        if (building.paused && !building.pausedByAI) continue;
+        const consumes = inputsOf(building.definition).some(resourceId => state.starved.has(resourceId));
+        const outputs = primaryOutputs(building.definition);
+        const share = this.over.has(building) ? resume : high;    // en redan pausad byggnad startar först när lagret gått ner en bit
+        const overstocked = outputs.length > 0 && outputs.every(resourceId => (stored[resourceId] || 0) >= this.limit(resourceId, player) * (share / high));
+        if (overstocked) this.over.add(building); else this.over.delete(building);
+        const pause = consumes || overstocked;
+        if (pause && !building.paused) { building.paused = true; building.pausedByAI = true; }
+        else if (!pause && building.pausedByAI) { building.paused = false; building.pausedByAI = false; }
       }
+    },
+
+    // Högsta lager datorn vill ha av en vara: en andel av taket, och för verktyg, utrustning m.m. ett eget tak (Config.ai.limits)
+    limit(resourceId, player) {
+      const { limits, storage } = Config.ai;
+      let own = limits[resourceId] ?? (EQUIPMENT.has(resourceId) ? limits.equipment : GEAR.has(resourceId) ? limits.gear : Infinity);
+      if (Array.isArray(own)) own = own[0] + own[1] * this.sizeOf(player);   // [grund, per byggnad]: behovet växer med staden
+      return Math.max(1, Math.min(own, Economy.capacity(resourceId, player) * storage.high));
     },
 
     decide(player, state) {
@@ -115,29 +170,226 @@
       this.setStance(player, attacking ? 'attack' : 'defend');
       state.flagGoal = attacking ? { x: target.x, y: target.y } : null;
 
+      const view = this.survey(player, state, census);
+      this.reclaim(player, state, census);
+      this.retire(player, state, view);
+
       const [base, every, cap] = Config.ai.maxUnderConstruction;
       if (census.unfinished >= Math.min(cap, base + Math.floor((this.level() - 1) / every))) return;
       if (ready && (!target ? this.explore(player, state, census) : attacking && this.advance(player, state, census))) return;   // spaning går före anfallstiden, utposter mot fienden inte
 
-      const decide = (type, trail = []) => this.need(player, state, census, type, trail);
-      for (const [type, target] of Config.ai.build) {
-        if ((census.count[type] || 0) >= target) continue;
-        const next = decide(type);
-        if (next === WAIT) return;           // spara resurserna åt det viktigaste målet
-        if (next === BLOCKED) continue;
+      // Bärarna hinner inte med: fler producenter hjälper inte. Då byggs bara lager (som ger fler bärare och kortare vägar) och krigsbyggnader.
+      const jammed = view.carriers >= 20 && view.idle / view.carriers < Config.ai.jammed;
+      if (this.expandStorage(player, state, census)) return;
+      state.turn = (state.turn || 0) + 1;
+      const first = state.turn % 2 ? [this.relieve, this.plan] : [this.plan, this.relieve];   // flaskhalsar och planen turas om, så att ingen av dem svälter den andra
+      for (const step of first) if (step.call(this, player, state, census, view, jammed)) return;
+      this.grow(player, state, census, jammed);
+    },
+
+    // Försöker bygga 'type' (med det den kräver). Returnerar true om något byggdes eller om datorn sparar resurser åt det, false om det inte går nu.
+    pursue(player, state, census, type) {
+      const next = this.need(player, state, census, type, []);
+      if (next === WAIT) return true;          // spara resurserna åt det viktigaste målet
+      if (next === BLOCKED) return false;
+      if (this.place(player, state, next) === UNSEEN) this.lookout(player, state, census);
+      return true;
+    },
+
+    // ---- Det datorn ser: vad byggnaderna saknar (samma signaler som spelaren har i byggnadspanelen) ---------------
+
+    // types: byggnadstyp -> { count, starved (summa av andel av tiden som står och väntar), missing: { vara(r): andel } }
+    // pain: vara(r) -> hur många byggnader (heltidsekvivalenter) som väntar på den. Flera alternativ skrivs "meat|fish|bread|meal".
+    // blocked: hur många byggnader som står stilla för att lagret är fullt. exhausted: samlare som inte hittar något att samla.
+    survey(player, state, census) {
+      const view = { types: {}, pain: {}, blocked: 0, waiting: 0, jobs: 0, carriers: 0, idle: 0, exhausted: [] };
+      for (const unit of World.units) if (unit.player === player && unit.definition.isHauler) { view.carriers++; if (CityBuilder.Logistics.isIdle(unit)) view.idle++; }
+      for (const building of World.buildings) {
+        if (building.player !== player || !building.definition.job || building.buildProgress < 1) continue;
+        const entry = view.types[building.type] ||= { count: 0, starved: 0, missing: {} };
+        entry.count++;
+        view.jobs++;
+        const summary = building.eff?.summary;
+        if (!summary || building.paused) continue;
+        for (const [reason, fraction] of summary.reasons) {
+          if (reason.startsWith('Missing: ')) {
+            for (const name of reason.slice(9).split(', ')) {
+              const ids = name.split(' / ').map(part => RESOURCE_BY_NAME[part]).filter(Boolean);
+              if (!ids.length) continue;
+              const key = ids.join('|');
+              entry.missing[key] = (entry.missing[key] || 0) + fraction;
+              view.pain[key] = (view.pain[key] || 0) + fraction;
+            }
+            entry.starved += fraction;
+          } else if (reason === 'Central storage full' || reason === 'Local stock full') { view.blocked += fraction; if (reason === 'Local stock full') view.waiting += fraction; }
+          else if ((reason === 'No resources' || reason === 'No animals in range') && fraction >= .7 && building.eff.time >= 180 && building.definition.job.kind === 'gather') view.exhausted.push(building);
+        }
+      }
+      // Byggplatser som väntar på varor som inte finns i lagret
+      for (const site of World.buildings) {
+        if (site.player !== player || !site.needsMaterials || site.buildProgress >= 1) continue;
+        for (const resourceId in Construction.missing(site)) if (Economy.freeAmount(resourceId, player) <= 0) view.pain[resourceId] = (view.pain[resourceId] || 0) + .5;
+      }
+      return view;
+    },
+
+    // Ett konkret val bland alternativ (kött, fisk, bröd, måltid): den vars producent finns i minst antal, helst i den ordning de står
+    pick(ids, state, census) {
+      for (const [id, most] of Config.ai.food) {   // maten följer Config.ai.food: först det som är billigt att börja med, sedan det som går att bygga ut
+        const producer = ids.includes(id) && this.producerOf(id);
+        if (producer && (census.count[producer] || 0) < most && (state.blocked[producer] || 0) <= this.time) return id;
+      }
+      let best, bestScore = Infinity;
+      ids.forEach((id, i) => {
+        const producer = this.producerOf(id);
+        if (!producer) return;
+        const score = (census.count[producer] || 0) * 4 + i * 3 + ((state.blocked[producer] || 0) > this.time ? 100 : 0);
+        if (score < bestScore) { best = id; bestScore = score; }
+      });
+      return best ?? ids[0];
+    },
+
+    // Grundorsaken: väntar byggnader på järn men gruvan själv väntar på mat är det maten som saknas
+    root(resourceId, view, state, census, depth = 0) {
+      const producer = this.producerOf(resourceId), entry = producer && view.types[producer];
+      if (depth < MAX_CHAIN && entry && entry.starved / entry.count >= .5) {
+        const worst = Object.entries(entry.missing).sort((a, b) => b[1] - a[1])[0];
+        if (worst) return this.root(this.pick(worst[0].split('|'), state, census), view, state, census, depth + 1);
+      }
+      return resourceId;
+    },
+
+    // Flaskhals: bygger en producent av den vara som flest byggnader väntar på. Returnerar true om något gjordes (eller sparas till).
+    relieve(player, state, census, view, jammed) {
+      if (jammed) return false;
+      const { threshold, cooldown } = Config.ai.pain;
+      for (const [key, weight] of Object.entries(view.pain).sort((a, b) => b[1] - a[1])) {
+        if (weight < threshold) break;
+        const resourceId = this.root(this.pick(key.split('|'), state, census), view, state, census), producer = this.producerOf(resourceId);
+        if (!producer || this.time - (state.relieved[resourceId] ?? -1e9) < cooldown) continue;
+        if (Economy.freeAmount(resourceId, player) >= Config.ai.pain.stock) continue;   // finns i lagret: det är bärarna som inte hinner, fler producenter hjälper inte
+        if (census.building[producer] || (census.count[producer] || 0) >= this.cap(producer, census)) continue;   // redan på väg, eller nog
+        const next = this.need(player, state, census, producer, []);
+        if (next === BLOCKED) { state.blocked[producer] ||= this.time + Config.ai.blockedSeconds; continue; }   // går inte att bygga nu: pick() väljer nästa sorts mat
+        state.relieved[resourceId] = this.time;
+        if (next === WAIT) return true;
         if (this.place(player, state, next) === UNSEEN) this.lookout(player, state, census);
-        return;
+        return true;
+      }
+      return false;
+    },
+
+    // Lager: (1) när det börjar bli fullt, (2) när en producent ligger för långt från närmaste lager (alla bärare går då långa vägar och varorna
+    // hinner inte fram): ett lager bredvid den. Varje lager ger också fler bärare.
+    expandStorage(player, state, census) {
+      if (census.building.warehouse || census.building.large_warehouse || census.building.great_depot) return false;
+      const { stored } = Economy.stats(player), { build } = Config.ai.storage, { far } = Config.ai.warehouses;
+      const storages = (census.count.warehouse || 0) + (census.count.large_warehouse || 0) + (census.count.great_depot || 0);
+      if (storages >= Config.ai.warehouses.base + census.total / Config.ai.warehouses.perBuildings) return false;   // tillräckligt många för stadens storlek
+      const full = Config.ai.storage.watch.some(resourceId => stored[resourceId] >= Economy.capacity(resourceId, player) * build);   // bara varor datorn behöver (inte aska och tjära som ingen förbrukar)
+      let remote, remoteDistance = far;
+      if (this.time >= (state.storageAt || 0)) {
+        for (const building of World.buildings) {
+          if (building.player !== player || building.buildProgress < 1 || !building.definition.job) continue;
+          const distance = Math.min(...Economy.storages(player).map(storage => Utils.manhattanDistance(storage, building)));
+          if (distance > remoteDistance) { remote = building; remoteDistance = distance; }
+        }
+      }
+      if (!full && !remote) return false;
+      const type = storages >= 3 && !remote && this.need(player, state, census, 'large_warehouse', []) === 'large_warehouse' ? 'large_warehouse' : 'warehouse';
+      if (!remote) return this.pursue(player, state, census, type);
+      const next = this.need(player, state, census, type, []);
+      if (next === WAIT) return false;                   // lagret är inte det viktigaste: spara inte resurserna åt det
+      if (next === BLOCKED) return false;
+      if (next !== type) return this.place(player, state, next), true;
+      state.storageAt = this.time + Config.ai.warehouses.cooldown;
+      this.place(player, state, type, this.free(remote, Config.buildings[type], 7));
+      return true;
+    },
+
+    // Planen: första målet som inte nått sitt antal
+    plan(player, state, census, view, jammed) {
+      const level = this.level();
+      for (const stage of Config.ai.plan) {
+        if (level < stage.from) continue;
+        for (const [type, target] of stage.goals) {
+          if ((census.count[type] || 0) >= target || (jammed && !WAR.has(type))) continue;
+          const next = this.need(player, state, census, type, []);
+          if (next === WAIT) return true;
+          if (next === BLOCKED) continue;
+          if (this.place(player, state, next) === UNSEEN) this.lookout(player, state, census);
+          return true;
+        }
+      }
+      return false;
+    },
+
+    // När planen är klar: fortsätter växa med den typ som har minst antal i förhållande till sin vikt, tills storleken för banan är nådd
+    grow(player, state, census, jammed) {
+      const { size, grow, warLevel, warMin, warMax } = Config.ai, level = this.level();
+      if (census.total >= Math.min(size.cap, size.start + size.perLevel * level + size.perMinute * gameSeconds() / 60)) return false;   // större med banan och med tiden
+      const war = Math.max(warMin, Math.min(warMax, level / warLevel));
+      const soldiersFull = ['guard_tower', 'garrison'].every(type => this.garrisonsFull(player, type));
+      const ranked = grow
+        .map(([type, weight, kind]) => ({ type, ratio: (census.count[type] || 0) / (weight * (kind === 'war' ? war : 1)), skip: (census.count[type] || 0) >= this.cap(type, census) || (kind === 'war' ? !soldiersFull : jammed) }))
+        .filter(item => !item.skip).sort((a, b) => a.ratio - b.ratio);
+      for (const { type } of ranked) {
+        const next = this.need(player, state, census, type, []);
+        if (next === BLOCKED) continue;
+        if (next === WAIT) return true;
+        if (this.place(player, state, next) === UNSEEN) this.lookout(player, state, census);
+        return true;
+      }
+      return false;
+    },
+
+    // Högsta antal av en byggnadstyp: grundantal + byggnader / per (Config.ai.scale), annars maxPerType
+    cap(type, census) {
+      const scale = Config.ai.scale[type];
+      let cap = scale ? scale[0] + Math.floor(census.total / scale[1]) : Config.ai.maxPerType;
+      if (Config.ai.chain.includes(type)) {          // led i en tillverkningskedja: aldrig fler än det som förbrukar det de tillverkar (byggs bara för att något annat står och väntar)
+        const definition = Config.buildings[type], resourceId = primaryOutputs(definition)[0], supply = rateOf(definition, resourceId, 'out');
+        let demand = 0;
+        for (const [other, count] of Object.entries(census.count)) if (other !== type) demand += count * rateOf(Config.buildings[other], resourceId, 'in');
+        if (supply > 0) cap = Math.min(cap, Math.max(1, Math.ceil(demand / supply * Config.ai.chainShare)));
+      }
+      return cap;
+    },
+
+    // Är alla garnisoner av sorten fulla (eller finns inga)? Då hjälper det att bygga fler; annars saknas utrustning eller mat, vilket flaskhalsen löser
+    garrisonsFull(player, type) {
+      return World.buildings.every(building => building.player !== player || building.type !== type || building.buildProgress < 1 || CityBuilder.I18n.canonicalStatus(building.status || '') === 'Garrison full');
+    },
+
+    // Samlare som inte hittar något mer att samla rivs (halva kostnaden tillbaka) så att en ny kan byggas där råvaran finns
+    retire(player, state, view) {
+      if (!view.exhausted.length || this.time < (state.retireAt || 0)) return;
+      state.retireAt = this.time + 60;
+      Construction.dismantle(view.exhausted[0], true);
+    },
+
+    // Byggplatser som stått stilla för länge (varor som aldrig kommer) rivs, så att de inte blockerar alla nya bygge
+    reclaim(player, state, census) {
+      for (const site of World.buildings) {
+        if (site.player !== player || site.buildProgress >= 1 || site.definition.pile) continue;
+        const record = this.watch.get(site);
+        if (!record || record.progress !== site.buildProgress) { this.watch.set(site, { progress: site.buildProgress, since: this.time }); continue; }
+        if (this.time - record.since >= Config.ai.stuckSeconds) {
+          state.blocked[site.type] = this.time + Config.ai.blockedSeconds * 3;
+          Construction.dismantle(site, true);
+        }
       }
     },
 
     // Vad spelaren har: antal per typ (även ofärdiga), vad som tillverkas, antal ofärdiga byggnader
     census(player) {
-      const census = { count: {}, produces: new Set(), unfinished: 0 };
+      const census = { count: {}, building: {}, produces: new Set(), unfinished: 0, total: 0 };
       for (const building of World.buildings) {
-        if (building.player !== player) continue;
+        if (building.player !== player || building.definition.pile) continue;
         census.count[building.type] = (census.count[building.type] || 0) + 1;
+        census.total++;
         for (const resourceId of outputsOf(building.definition)) census.produces.add(resourceId);
-        if (building.buildProgress < 1) census.unfinished++;
+        if (building.buildProgress < 1) { census.unfinished++; census.building[building.type] = (census.building[building.type] || 0) + 1; }
       }
       return census;
     },
@@ -328,6 +580,19 @@
       state.lookouts = (state.lookouts || 0) + 1;
     },
 
+    // Det färdiga lager (basen räknas) med färst byggnader inom några rutor
+    quietest(player, hq) {
+      let best = hq, bestCount = Infinity;
+      for (const storage of Economy.storages(player)) {
+        let count = 0;
+        for (const building of World.buildings) if (building.player === player && Utils.distance(building.x - storage.x, building.y - storage.y) <= Config.ai.warehouses.crowd) count++;
+        if (count < bestCount) { best = storage; bestCount = count; }
+      }
+      return best;
+    },
+
+    sizeOf: player => World.buildings.reduce((sum, building) => sum + (building.player === player ? 1 : 0), 0),
+
     // Kandidatplatser för en byggnad, bästa först
     * sites(player, type) {
       const hq = World.hqOf(player), definition = Config.buildings[type], job = definition.job;
@@ -340,7 +605,10 @@
         const node = this.nearestNode(hq, job.sourceTerrain);
         if (node) yield* emit(this.free(node, definition, Math.max(2, job.searchRadius - 3)));
       } else {
-        yield* emit(this.free(hq, definition, BASE_RADIUS));
+        // Staden byggs runt flera lager: nästa byggnad hamnar vid det lager som har färst byggnader omkring sig (korta bärarvägar), annars runt basen
+        const centre = this.quietest(player, hq);
+        if (centre !== hq) yield* emit(this.free(centre, definition, 10));
+        yield* emit(this.free(hq, definition, Math.min(MAX_SEARCH, BASE_RADIUS + this.sizeOf(player) / 4)));   // staden växer utåt
       }
     },
 
