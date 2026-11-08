@@ -4,6 +4,8 @@
   'use strict';
   const { Config, World, Utils, Jobs } = CityBuilder;
 
+  const resourceByName = {};   // varans engelska namn (som i statustexterna) -> id
+  for (const [id, resource] of Object.entries(Config.resources)) resourceByName[resource.name] = id;
   const statusClass = new WeakMap();   // byggnad -> { text, counted, reason } (se trackEfficiency)
 
   const Behaviors = {
@@ -234,6 +236,21 @@
     // Statusar som räknas som stillestånd; allt annat (Working, Walking, Gathering, ...) räknas som arbete.
     // Byggnader som spelaren pausat räknas inte alls.
     IDLE_STATUSES: new Set(['Local stock full', 'Central storage full', 'No resources', 'No animals in range', 'Tools missing', "Can't reach", 'No room to plant', 'Missing outputResource']),
+    // Felens färg runt byggnaden (building.eff.problem): röd = något som saknas eller inte finns (varor, verktyg, råvara, plats), gul = något som hindrar för tillfället
+    // (fullt, inget byte, ingen väg). 'Missing: ...' är alltid röd.
+    RED_STATUSES: new Set(['Tools missing', 'No resources', 'No room to plant']),
+    problemColor(reason) {
+      return reason.startsWith('Missing:') || this.RED_STATUSES.has(reason) ? 'red' : 'yellow';
+    },
+    // Det som saknas som grupper av alternativ ("Meat / Fish" = en grupp): av 'Missing: Iron Ore (1), Meat / Fish' eller av verktygen som fattas. Resultatet sparas per statustext.
+    missingGroups(building, status) {
+      if (status === 'Tools missing') return Object.entries(building.definition.requiredEquipment || {}).filter(([id, amount]) => (building.inputStock[id] || 0) < amount).map(([id]) => [id]);
+      return status.slice(8).replace(/\s*\(\d+\)/g, '').split(',').map(part => part.split('/').map(name => resourceByName[name.trim()]).filter(Boolean)).filter(group => group.length);
+    },
+    // Är allt som saknas redan på väg hit (en bärare har ett uppdrag att leverera det)? Då är det ingen brist, bara en leverans som inte hunnit fram.
+    onTheWay(building, groups) {
+      return groups.length > 0 && groups.every(group => group.some(id => (building.incomingCount[id] || 0) > 0));
+    },
     idleReason(building) {
       const status = CityBuilder.I18n.canonicalStatus(building.status || '');
       return status.startsWith('Missing:') ? status.replace(/\s*\(\d+\)/g, '') : this.IDLE_STATUSES.has(status) ? status : null;
@@ -250,13 +267,26 @@
       let known = statusClass.get(building);
       if (!known || known.text !== building.status) {
         const status = CityBuilder.I18n.canonicalStatus(building.status || '');
-        known = { text: building.status, counted: Boolean(status) && status !== 'Searching...', reason: null };
+        known = { text: building.status, status, counted: Boolean(status) && status !== 'Searching...', reason: null };
         if (known.counted) known.reason = this.idleReason(building);
         statusClass.set(building, known);
       }
-      if (known.counted) {
+      // Brist på varor och verktyg räknas först när den hållit i sig en stund (efficiency.missingSeconds) och bara om inget av det som saknas är på väg hit.
+      // Övriga fel har en kort frist (efficiency.graceSeconds). Under fristen räknas tiden varken som arbete eller stillestånd.
+      let counted = known.counted, reason = counted ? known.reason : null;
+      const limits = Config.settings.efficiency || {};
+      if (reason) {
+        const status = known.status, isMissing = status.startsWith('Missing:') || status === 'Tools missing';
+        const key = isMissing ? 'Missing' : reason;
+        if (eff.heldKey !== key) { eff.heldKey = key; eff.held = 0; }
+        eff.held += deltaSeconds;
+        if (isMissing && this.onTheWay(building, this.missingGroups(building, status))) { eff.held = 0; counted = false; }
+        else if (eff.held < (isMissing ? limits.missingSeconds ?? 30 : limits.graceSeconds ?? 5)) counted = false;
+      } else { eff.heldKey = null; eff.held = 0; }
+      eff.problem = counted && reason ? this.problemColor(reason) : null;   // 'red' / 'yellow' / null: ramen runt byggnaden
+      if (counted) {
         bucket.total += deltaSeconds;
-        if (known.reason) bucket.reasons[known.reason] = (bucket.reasons[known.reason] || 0) + deltaSeconds; else bucket.work += deltaSeconds;
+        if (reason) bucket.reasons[reason] = (bucket.reasons[reason] || 0) + deltaSeconds; else bucket.work += deltaSeconds;
       }
       if ((eff.timer -= deltaSeconds) > 0) return;
       eff.timer = 1; // sammanfattningen uppdateras en gång per sekund

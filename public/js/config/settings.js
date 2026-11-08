@@ -61,7 +61,7 @@ CityBuilder.Config.settings = {
     pileShare: 0.5, pileRecent: 10,
     lowStock: 20
   },
-  efficiency: { windowSeconds: 60, minSeconds: 5, minAge: 45, warnBelow: .6, badBelow: .3 },
+  efficiency: { windowSeconds: 60, minSeconds: 5, minAge: 45, warnBelow: .6, badBelow: .3, graceSeconds: 5, missingSeconds: 30 },   // graceSeconds: ett fel räknas först när det hållit i sig så här länge. missingSeconds: samma för brist på varor och verktyg (och bara om inget är på väg hit)
   zoom: { min: .5, max: 2.5 },
   toastDurationMs: 3500,
   useImages: true,

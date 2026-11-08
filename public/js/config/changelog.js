@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Buildings with a problem get a thin frame: red when something is missing (goods, tools, raw material, room), yellow when something is blocking (full storage, no game, no path). Shortages are only counted after a while, and not at all when the delivery is already on its way',
       'The computer players have a new brain: they keep building for the whole game instead of stopping after a dozen buildings. They react to shortages, build warehouses and food chains, pause what they overproduce, and train a real army',
       'In the story, everyone who speaks now has a round portrait next to their lines',
       'Walls are now drawn as a straight line: tap where the wall starts and where it ends, and the whole line is built at once (all or nothing: if the stone is not enough, the whole wall turns red). Cancel with the button or Esc. A wall now changes its picture to match its neighbours, with ends, bends, T-junctions and crossings',

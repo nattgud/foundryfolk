@@ -664,6 +664,11 @@
         context.fillStyle = '#000'; context.fillRect(x + 2, y, tileSize - 4, 3);
         context.fillStyle = '#d65a4a'; context.fillRect(x + 3, y + 1, (tileSize - 6) * Math.max(0, building.hp) / building.maxHp, 1);
       }
+      const problem = isFinished && !building.paused && building.player === CityBuilder.Players.HUMAN ? building.eff?.problem : null;
+      if (problem) {   // fel (se Behaviors.problemColor): 1 px ram ytterst, röd eller gul
+        context.strokeStyle = problem === 'red' ? '#ff3b30' : '#ffb020'; context.lineWidth = 1;
+        context.strokeRect(x + .5, y + .5, tileSize - 1, tileSize - 1);
+      }
       if (building.prioritized) {   // prioriterad: tunn guldram (tar ingen plats från ikonerna)
         context.strokeStyle = '#ffd23f'; context.lineWidth = 1;
         context.strokeRect(x + 1.5, y + 1.5, tileSize - 3, tileSize - 3);
