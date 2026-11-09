@@ -327,7 +327,7 @@
 				letter: letter([
 					"Demons are attacking Farael and burning our border villages. I cannot ask you to take up a sword, only an axe.",
 					"Send me thirty timber and thirty stone, quickly. Every contribution matters.",
-				]),
+				], false), // false = signaturen "In service of the realm"
 				dialogue: [
 					say("pipwick", "Thirty timber and thirty stone. A modest request, by royal standards."),
 					say("reeve", "The border settlements need repairs before the next supply convoy."),
@@ -361,7 +361,7 @@
 				letter: letter([
 					"My thanks. Your carriers have reached the camps, and the men speak your name.",
 					"Now they need food. Send berries and fish, as much as you can find. A hungry soldier is of little use to anyone.",
-				]),
+				], false), // false = signaturen "In service of the realm"
 				dialogue: [
 					say("pipwick", "Food for the soldiers. Excellent. A hungry guard is an invitation to trouble."),
 					say("reeve", "You sound unusually pleased."),
@@ -397,7 +397,7 @@
 				letter: letter([
 					"The camps are fed, thanks to you. The passes must now be walled before the demons return.",
 					"Could you send brick and planks? I know I ask a great deal of you, but the safety of our people depends on it.",
-				]),
+				], false), // false = signaturen "In service of the realm"
 				dialogue: [
 					say("pipwick", "Brick and plank. At last, a task that does not involve carrying something that leaks."),
 					say("reeve", "The king wants the border walls reinforced."),
