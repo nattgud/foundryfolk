@@ -77,7 +77,7 @@
           text.append(
             make('p', 'story-greeting', t(letter.greeting || story.greeting, { village: t(story.village) })),
             ...letter.lines.map(line => make('p', '', t(line))),
-            make('p', 'story-signature', t(letter.throne ? sign.throne : sign.realm) + ','),
+            make('p', 'story-signature', t(letter.signature || (letter.throne ? sign.throne : sign.realm)) + ','),
             make('p', 'story-signature story-name', t(sign.name)));
           action.onclick = next;
         } else if (current.type === 'dialogue') {

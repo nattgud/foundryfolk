@@ -14,7 +14,7 @@
    chapters:  ett per bana, i ordning. Alla fält utom name är valfria:
      name         kapitlets namn
      music        egen musik i kapitlet: en fil eller lista (lugn musik), t.ex. 'music/chapter9.mp3', eller { calm, battle, disaster } med en lista per läge (false = det läget har ingen musik: { battle: false } stänger av stridsmusiken i kapitlet, den lugna fortsätter). Fungerar som standardmusiken (blandad ordning, strid och katastrof byter låt); ett läge som inte anges behåller standardmusiken
-     letter       { lines: [stycken], throne, greeting } från kungen, visas före banan (throne: signaturen är "In service of the throne"; greeting: egen hälsning i stället för standardens)
+     letter       letter([stycken], signatur, hälsning) från kungen, visas före banan (signatur: texten under brevet, t.ex. "In service of the realm"; true = throne-signaturen, utan = realm; hälsning: egen i stället för standardens)
      dialogue     [{ who, text }] tryckt dialog som visas efter brevet
      lifted       dialog som visas när dimman lyfter (Eye of Shades förstörd)
      after        dialog som visas när kapitlet är klart
@@ -38,7 +38,7 @@
 (function (CityBuilder) {
   'use strict';
 
-  const letter = (lines, throne, greeting) => ({ lines, throne: !!throne, greeting });
+  const letter = (lines, signature, greeting) => ({ lines, signature: typeof signature === "string" ? signature : undefined, throne: signature === true, greeting });
   const say = (who, text) => ({ who, text });
   const more = (resource, n) => ({ resource, more: n });
 
@@ -327,7 +327,7 @@
 				letter: letter([
 					"Demons are attacking Farael and burning our border villages. I cannot ask you to take up a sword, only an axe.",
 					"Send me thirty timber and thirty stone, quickly. Every contribution matters.",
-				], false), // false = signaturen "In service of the realm"
+				], "In service of the realm"),
 				dialogue: [
 					say("pipwick", "Thirty timber and thirty stone. A modest request, by royal standards."),
 					say("reeve", "The border settlements need repairs before the next supply convoy."),
@@ -361,7 +361,7 @@
 				letter: letter([
 					"My thanks. Your carriers have reached the camps, and the men speak your name.",
 					"Now they need food. Send berries and fish, as much as you can find. A hungry soldier is of little use to anyone.",
-				], false), // false = signaturen "In service of the realm"
+				], "In service of the realm"),
 				dialogue: [
 					say("pipwick", "Food for the soldiers. Excellent. A hungry guard is an invitation to trouble."),
 					say("reeve", "You sound unusually pleased."),
@@ -397,7 +397,7 @@
 				letter: letter([
 					"The camps are fed, thanks to you. The passes must now be walled before the demons return.",
 					"Could you send brick and planks? I know I ask a great deal of you, but the safety of our people depends on it.",
-				], false), // false = signaturen "In service of the realm"
+				], "In service of the realm"),
 				dialogue: [
 					say("pipwick", "Brick and plank. At last, a task that does not involve carrying something that leaks."),
 					say("reeve", "The king wants the border walls reinforced."),
@@ -433,7 +433,7 @@
 						"War is costly. The smiths need you to deliver iron and tools.",
 						"My counsellors, Thordram and Albertha, will help you see to it. They have my full confidence.",
 					],
-					true,
+					"In service of the throne",
 				),
 				dialogue: [
 					say("thordram", "Reeve. By order of the crown, future military requisitions will pass through us."),
@@ -527,7 +527,7 @@
 						"My counsellors will place an Eye of Shades at the border. It will watch the surrounding lands and shield your village from the demons.",
 						"You need only continue your work.",
 					],
-					true,
+					"In service of the throne",
 				),
 				dialogue: [
 					say("albertha", "The king requires a clear view of the border. The Eye of Shade will provide it."),
@@ -574,7 +574,7 @@
 						"The soldiers at the border grow uneasy, and uneasy soldiers do not hold a line.",
 						"My counsellors have devised a draught to steady their courage. Send it, together with leather armour so that fewer need mending.",
 						"Albertha says it is only honey and rosemary. I pray she is right.",
-					], true),
+					], "In service of the throne"),
 				dialogue: [
 					say("albertha", "The garrison needs a steadier nerve. These draughts will help."),
 					say("reeve", "What is in them?"),
@@ -625,7 +625,7 @@
 						"My counsellors speak of relics and fallen stars, old magic that might turn the war.",
 						"Find what you can. I do not pretend to understand all of it, but I trust those who do.",
 					],
-					true,
+					"In service of the throne",
 				),
 				dialogue: [
 					say("reeve", "Two ancient relics and two fallen stars. That is a strange requisition."),
@@ -681,7 +681,7 @@
 						"The supply convoys fail and the border camps are short of hands.",
 						"My counsellors will need a hundred and twenty carriers for a protected transfer. I must also have steel for the smiths before the cold sets in.",
 						"The crown cannot afford further delays.",
-					], true),
+					], "In service of the throne"),
 				dialogue: [
 					say("albertha", "The next order requires one hundred and twenty carriers."),
 					say("reeve", "For what shipment?"),
@@ -750,7 +750,7 @@
 						"Numbjar has gathered armed men near our border and will not answer my letters.",
 						"My counsellors believe they are preparing to strike. We cannot wait for them to cross.",
 						"Take their border fortress in my name. The safety of Farael must come first.",
-					], true),
+					], "In service of the throne"),
 				dialogue: [
 					say("reeve", "The order says Numbjar is preparing to strike our border."),
 					say("albertha", "Their forces have gathered near the settlements."),
@@ -809,7 +809,7 @@
 						"Vedahast now. Its commanders have begun to act with Numbjar, and they have sent no answer to my letters either.",
 						"My counsellors say they share an interest in resisting the crown. We cannot allow it to spread.",
 						"I trust you understand the urgency. The crown has no time left for hesitation.",
-					], true),
+					], "In service of the throne"),
 				dialogue: [
 					say("reeve", "Now Vedahast?"),
 					say("thordram", "Their commanders have begun coordinating with Numbjar."),
@@ -1169,7 +1169,7 @@
 						"The Eye must remain intact. Hold your village. Hold it until the fog lifts, whatever you hear.",
 						"Do not leave your position. Do not question the Eye.",
 						"This is an order.",
-					], true),
+					], "In service of the throne"),
 				dialogue: [
 					say("reeve", "Numbjar and Vedahast. They are attacking the Eye."),
 					say("albertha", "They have come to destroy the one thing keeping this border secure."),
@@ -1293,7 +1293,7 @@
 						"The castle has fallen. The enemy is inside the inner halls, and I do not expect to survive what comes next.",
 						"My seal is in danger of being taken. If orders arrive bearing it, do not trust the seal alone. Verify the messenger. Verify the command. I fear my name will be used when I can no longer speak for it.",
 						"The crown must not be mistaken for the king. Remember that.",
-					], false, "To whoever finds this,"),
+					], "In service of the realm", "To whoever finds this,"),
 				dialogue: [
 					say("narrator", "Half of what is left of the village is still burning. Water to douse the fires, sand to smother the embers."),
 					say("pipwick", "Reeve. I was beginning to think I would have to repair this entire place alone."),
