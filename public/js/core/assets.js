@@ -10,13 +10,18 @@
 
     load(source) {
       let image = this.imageCache[source];
-      if (!image) { image = new Image(); image.src = source+"?v="+version; this.imageCache[source] = image; }
+      if (!image) { image = new Image(); image.onerror = () => { image.failed = true; }; image.src = source+"?v="+version; this.imageCache[source] = image; }
       return image.complete && image.naturalWidth ? image : null;
     },
 
     get(source, race) {
       if (!source || CityBuilder.Config.settings.useImages === false) return null;
-      return (race && this.load(source.replace(/[^/]+$/, `${race}/$&`))) || this.load(source);
+      if (!race) return this.load(source);
+      const raceSource = source.replace(/[^/]+$/, `${race}/$&`), raceImage = this.load(raceSource), entry = this.imageCache[raceSource];
+      if (raceImage) return raceImage;
+      // Rasbilden laddas fortfarande: originalet visas bara om det redan är laddat. Det börjar inte hämtas förrän rasbilden visat sig saknas (annars blir det ett onödigt 404 för enheter som bara finns för en ras)
+      if (entry && !entry.failed) { const original = this.imageCache[source]; return original && original.complete && original.naturalWidth ? original : null; }
+      return this.load(source);
     },
 
     getVariant(sourceOrList, tileX, tileY) {
