@@ -38,6 +38,7 @@
     recipe: onFinished((target, { index }) => { CityBuilder.Behaviors.toggleRecipe(target, index); return null; }),
     flag: (player, { x, y, clear }) => CityBuilder.Flags.set(player, x, y, clear),
     stance: onFinished((target, { stance }) => { CityBuilder.Garrison.setStance(target, stance); return null; }),
+    order: onFinished((target, { kind, on }) => { CityBuilder.Garrison.setOrdered(target, kind, on); return null; }),
     train: onFinished((target, { kind }) => { CityBuilder.Garrison.setTrainingType(target, kind); return null; }),
     trade: (player, { mode, resource, amount }) => (mode === 'buy' || mode === 'sell') ? CityBuilder.Economy[mode](resource, amount, player) : 0,
   };

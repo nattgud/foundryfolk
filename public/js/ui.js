@@ -3539,15 +3539,23 @@
           : '';
 
         const stanceButton = active && CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton" class="icon-button"></button>' : '';
+        const orderButton = active && CityBuilder.Garrison.isGarrison(building) && building.definition.job.trains.some(kind => Config.units[kind].manual) ? '<button id="orderButton"></button>' : '';
 
         panel.innerHTML =
           `<div><b id="infoName">${this.buildingName(building.definition)}</b><span id="infoTools"></span><br><span id="infoStatus"></span></div>` +
-          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${marketButton}${trainButtons}${spellButtons}${stanceButton}${choiceButton}${boostButton}${priorityButton}${pauseButton}${demolishButton}</div>`;
+          `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${marketButton}${trainButtons}${orderButton}${spellButtons}${stanceButton}${choiceButton}${boostButton}${priorityButton}${pauseButton}${demolishButton}</div>`;
 
         if (byId('stanceButton')) {
           byId('stanceButton').onclick = () => {
             const Garrison = CityBuilder.Garrison;
             CityBuilder.Commands.issue('stance', { building: building.id, stance: Garrison.isAttacking(building) ? 'defend' : 'attack' });
+          };
+        }
+
+        if (byId('orderButton')) {
+          byId('orderButton').onclick = () => {
+            const Garrison = CityBuilder.Garrison, kind = Garrison.trainingType(building);
+            CityBuilder.Commands.issue('order', { building: building.id, kind, on: !Garrison.isOrdered(building, kind) || !Config.units[kind].manual });
           };
         }
 
@@ -3733,6 +3741,16 @@
         const boost = CityBuilder.Behaviors.boostOf(building);
         setButton('boostButton', `${this.resourceChip(boost.resource)} ${t(building.boostOn ? 'Boost on' : 'Boost off')}`, building.boostOn);
         byId('boostButton').title = t('Uses {item} to make this building more productive', { item: this.resourceName(boost.resource) });
+      }
+
+      if (byId('orderButton')) {
+        // Beställningsknappen: bara för enheter som måste beställas (katapult, stor demon). Ett tryck beställer, ett till avbeställer.
+        const Garrison = CityBuilder.Garrison, kind = Garrison.trainingType(building), manual = Config.units[kind].manual;
+        const ordered = manual && building.ordered === kind, busy = building.isCrafting || !Garrison.mayTrain(building, kind);
+        byId('orderButton').hidden = !manual;
+        byId('orderButton').disabled = busy;
+        byId('orderButton').textContent = ordered ? t('Cancel order') : t('Build {unit}', { unit: this.unitName(kind) });
+        byId('orderButton').classList.toggle('glow', !!ordered);
       }
 
       if (byId('stanceButton')) {

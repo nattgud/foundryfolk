@@ -545,6 +545,7 @@
       'Boosts all your buildings within {n} tiles: output +{yield}%, soldiers train {training}% faster': 'Förstärker alla dina byggnader inom {n} rutor: produktion +{yield} %, soldater tränas {training} % snabbare',
       'Only one can be built': 'Bara en kan byggas',
       'You can only build one': 'Du kan bara bygga en',
+      'Build {unit}': 'Bygg {unit}', 'Cancel order': 'Avbeställ', 'Waiting for your order': 'Väntar på din beställning',
       'Not available to your race': 'Inte tillgänglig för ditt folk', 'Only one at a time': 'Bara en åt gången', 'Souls': 'Själar',
       'building.inventors_workshop': 'Uppfinnarverkstad', 'building.soul_altar': 'Själsaltare', 'unit.catapult': 'Katapult', 'unit.greater_demon': 'Stor demon',
       'Choose what it makes in the info panel': 'Välj vad den gör i infopanelen',

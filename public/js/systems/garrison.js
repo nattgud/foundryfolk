@@ -72,6 +72,9 @@
       if (World.units.some(unit => !unit.removed && unit.kind === kind && unit.player === player)) return true;
       return World.buildings.some(building => building.player === player && ((building.garrison?.[kind] || 0) > 0 || (building.isCrafting && building.trainingUnit === kind)));
     },
+    // Soldater med definition.manual tränas bara efter en beställning (knappen i infopanelen): building.ordered = soldattypen som beställts. Ingen utrustning hämtas och inget dras innan dess.
+    isOrdered: (building, kind) => !Config.units[kind].manual || building.ordered === kind,
+    setOrdered(building, kind, on) { building.ordered = on && this.trains(building).includes(kind) && Config.units[kind].manual ? kind : null; },
     mayTrain(building, kind) { return !Config.units[kind].unique || !this.hasUnique(building.player, kind); },
 
     // Själar (Altar of Souls, definition.soulCounter): varje fientlig soldat spelaren dödar läggs till i altarets räknare. Se Combat.kill.
@@ -161,7 +164,7 @@
     // Samma buffert som craft, men bara för vald soldattyp, och aldrig mer än det som behövs för de lediga platserna (inget alls när byggnaden är full)
     inputCapacities(building) {
       const free = Garrison.slotsFree(building), chosen = Garrison.trainingType(building);
-      if (free <= 0 || !Garrison.mayTrain(building, chosen)) return {};   // en unik soldat som redan finns behöver ingen ny utrustning
+      if (free <= 0 || !Garrison.mayTrain(building, chosen) || !Garrison.isOrdered(building, chosen)) return {};   // en unik soldat som redan finns behöver ingen ny utrustning
       const { inputs } = Config.units[chosen].training;
       return Object.fromEntries(Object.entries(inputs).map(([resourceId, amount]) => [resourceId, Math.min(Behaviors.inputBuffer(amount), free * amount)]));
     },
@@ -189,7 +192,8 @@
 
         const kind = Garrison.trainingType(building);
         const { inputs, seconds, souls = 0 } = Config.units[kind].training;
-        if (!Garrison.mayTrain(building, kind)) { building.status = 'Only one at a time'; return; }
+        if (!Garrison.mayTrain(building, kind)) { building.status = 'Only one at a time'; building.ordered = null; return; }
+        if (!Garrison.isOrdered(building, kind)) { building.status = 'Waiting for your order'; return; }
         const missing = Object.entries(inputs)
           .filter(([resourceId, amount]) => (building.inputStock[resourceId] || 0) < amount)
           .map(([resourceId, amount]) => `${Config.resources[resourceId].name} (${amount - (building.inputStock[resourceId] || 0)})`);
@@ -204,6 +208,7 @@
         if (souls) building.souls -= souls;
         building.isCrafting = true;
         building.trainingUnit = kind;
+        building.ordered = null;   // en beställning gäller en enhet
         // Talisman (boost) och monumentets aura gör träningen snabbare
         const boost = Behaviors.boostOf(building), boosted = Behaviors.useBoost(building);
         const speed = 1 + (boosted ? boost.speed || 0 : 0) + Behaviors.auraBonus(building, 'training');

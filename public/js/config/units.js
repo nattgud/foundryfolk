@@ -163,6 +163,7 @@ CityBuilder.Config.units = {
   // Uppfinning (Inventor's Workshop, bara människor): en åt gången per spelare (unique). Skjuter långsamt och långt, och skottet lämnar en eld (fire)
   // på rutan där det landar: den bränner fiendens soldater där i några sekunder (de kan gå ur den). projectileSpeed/projectileMaxSeconds: långsammare flygning än pilarna.
   catapult: {
+    manual: true,   // tränas bara på uttryckligt beställning (knappen i garnisonspanelen), så att inget material slösas av misstag
     isSoldier: true,
     unique: true,
     maxHp: 40,
@@ -185,6 +186,7 @@ CityBuilder.Config.units = {
   // Stor demon (Altar of Souls, bara demoner): en åt gången per spelare. Närstrid som slår alla fiender nära målet på en gång (sweep = radie i rutor).
   // training.souls = vad den kostar i själar (altarets räknare, se Garrison.addSouls).
   greater_demon: {
+    manual: true,
     isSoldier: true,
     unique: true,
     maxHp: 160,
