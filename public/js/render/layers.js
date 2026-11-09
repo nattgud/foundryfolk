@@ -515,6 +515,21 @@
   // och får raka, hårda kanter. Rutorna läggs i en bild med en bildpunkt per ruta som sträcks ut över kartan utan utjämning, under byggnaderna men över terrängen.
   const districtCanvas = document.createElement('canvas'), districtRgb = {};
   Renderer.addLayer('districts', (context, renderer) => {
+    // Soldaternas lagfärg: en halvgenomskinlig skiva under enheten (på samma lager som distrikten, alltså under resurser, byggnader och enheter)
+    {
+      const tileSize = renderer.tileSize, colors = Config.settings.playerColors, view = renderer.viewBounds(tileSize * 2);
+      context.globalAlpha = 0.5;
+      for (const unit of World.units) {
+        if (!unit.definition.isSoldier) continue;
+        const pixelX = shownX(unit) * tileSize, pixelY = shownY(unit) * tileSize;
+        if (outside(view, pixelX, pixelY) || hidden(unit)) continue;
+        context.beginPath();
+        context.arc(pixelX, pixelY, unit.definition.imageSize / 2 + 1, 0, Math.PI * 2);
+        context.fillStyle = colors[unit.player] || '#fff';
+        context.fill();
+      }
+      context.globalAlpha = 1;
+    }
     if (!CityBuilder.Game.showDistricts) return;
     const { radius, alpha, colors } = Config.settings.districts, tileSize = renderer.tileSize, view = renderer.viewBounds(radius * tileSize), names = Object.keys(colors);
     const left = Math.floor(view.left / tileSize), top = Math.floor(view.top / tileSize);   // hela rutor: distrikten står stilla när kartan rullar
@@ -771,14 +786,6 @@
     for (const unit of World.units) {
       const definition = unit.definition, pixelX = shownX(unit) * tileSize, pixelY = shownY(unit) * tileSize;
       if (outside(view, pixelX, pixelY) || hidden(unit)) continue;
-
-      if (definition.isSoldier) {
-        context.beginPath();
-        context.arc(pixelX, pixelY, definition.imageSize / 2 + 1, 0, Math.PI * 2);
-        context.lineWidth = 1;
-        context.strokeStyle = colors[unit.player] || '#fff';
-        context.stroke();
-      }
 
       if (unit.hp != null && unit.hp < definition.maxHp) {
         const width = 14, top = pixelY - definition.imageSize / 2 - 5;
