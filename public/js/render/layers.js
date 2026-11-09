@@ -820,6 +820,31 @@
       context.fillStyle = glow;
       context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
     }
+    // Flaggläget: alla synliga soldater lyser upp (egna, lagkamraters och fienders) med en pulserande ring i sin spelares färg, så att man ser vilka som påverkas och var motståndet står
+    if (CityBuilder.Game.flagging) {
+      const pulse = 0.65 + 0.35 * Math.sin(performance.now() / 260), colors = Config.settings.playerColors;
+      for (const unit of World.units) {
+        if (!unit.definition.isSoldier || hidden(unit)) continue;
+        const x = shownX(unit) * tileSize, y = shownY(unit) * tileSize, radius = unit.definition.imageSize * 0.9;
+        if (outside(view, x, y)) continue;
+        const glow = context.createRadialGradient(x, y, 0, x, y, radius);
+        glow.addColorStop(0, `rgba(255, 235, 170, ${0.5 * pulse})`);
+        glow.addColorStop(1, 'rgba(255, 200, 90, 0)');
+        context.fillStyle = glow;
+        context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+      }
+      context.globalCompositeOperation = 'source-over';
+      context.lineWidth = 2;
+      for (const unit of World.units) {
+        if (!unit.definition.isSoldier || hidden(unit)) continue;
+        const x = shownX(unit) * tileSize, y = shownY(unit) * tileSize;
+        if (outside(view, x, y)) continue;
+        context.strokeStyle = colors[unit.player] || '#fff';
+        context.globalAlpha = 0.6 + 0.4 * pulse;
+        context.beginPath(); context.arc(x, y, unit.definition.imageSize / 2 + 3, 0, Math.PI * 2); context.stroke();
+      }
+      context.globalAlpha = 1;
+    }
     context.globalCompositeOperation = 'source-over';
 
     context.lineWidth = 2;
