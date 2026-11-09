@@ -1295,6 +1295,7 @@
 						"The crown must not be mistaken for the king. Remember that.",
 					], false, "To whoever finds this,"),
 				dialogue: [
+					say("narrator", "Half of what is left of the village is still burning. Water to douse the fires, sand to smother the embers."),
 					say("pipwick", "Reeve. I was beginning to think I would have to repair this entire place alone."),
 					say("reeve", "You were at the capital."),
 					say("pipwick", "I was. The signalworks were not functioning. They were not even standing by the time I reached them."),
@@ -1354,6 +1355,7 @@
 				name: "What the Ruins Remember",
 				goals: [more("wood", 40), more("stone", 30)],
 				dialogue: [
+					say("narrator", "Timber and stone: the ruined homes must be rebuilt, and the records among them are still waiting."),
 					say("pipwick", "These marks are not cargo marks. They are counting marks."),
 					say("reeve", "Counting what?"),
 					say("pipwick", "People. One mark for each carrier. The list matches the roster."),
@@ -1522,7 +1524,7 @@
 				rivals: 1,
 				ai: 34,
 				races: { 2: "demon" },
-				end: "hq",
+				goals: [more("stone", 60), { key: "m:destroy:any", type: "destroy", id: "any", amount: 3 }],
 				dialogue: [
 					say("pipwick", "Prototype ready."),
 					say("reeve", "You sound confident."),
@@ -1556,10 +1558,7 @@
 			// 17
 			{
 				name: "The People Left Behind",
-				rivals: 1,
-				ai: 38,
-				races: { 2: "demon" },
-				end: "hq",
+				goals: [more("bread", 30), more("potion", 8)],
 				dialogue: [
 					say("survivor", "Keep the soldiers back."),
 					say("reeve", "We are not here to take your supplies."),
@@ -1597,7 +1596,7 @@
 				rivals: 1,
 				ai: 45,
 				races: { 2: "demon" },
-				end: "hq",
+				goals: [{ key: "m:soldiers", type: "soldiers", amount: 8 }, { key: "m:kills", type: "kills", amount: 10 }],
 				dialogue: [
 					say("pipwick", "There are two groups trapped beyond the inner barricade."),
 					say("reeve", "How many can we reach?"),
@@ -1660,7 +1659,8 @@
 				name: "The Debt of the Living",
 				rivals: 1,
 				ai: 55,
-				end: "hq",
+				races: { 2: "demon" },
+				goals: [more("bread", 40), more("plank", 40)],
 				waves: {
 					from: 90,
 					every: 60,
