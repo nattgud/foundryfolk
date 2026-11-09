@@ -425,11 +425,11 @@
           }
           const buttons = document.createElement('div');
           buttons.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end';
-          const labels = trade ? [] : garrison ? [[this.unitName('swordsman'), false], [this.unitName('archer'), false], [this.stanceIcon(false), true, t('Defence mode')]] : [[t('Pause'), true], [t('Demolish'), false]];
+          const labels = trade ? [] : garrison ? [[this.unitChip('swordsman'), false, this.unitName('swordsman')], [this.unitChip('archer'), false, this.unitName('archer')], [this.stanceIcon(false), true, t('Defence mode')]] : [[t('Pause'), true], [t('Demolish'), false]];
           for (const [text, glow, icon] of labels) {
             const element = document.createElement('button');
             element.type = 'button'; element.tabIndex = -1;
-            if (icon) { element.innerHTML = text; element.className = 'icon-button'; element.setAttribute('aria-label', icon); } else element.textContent = text;
+            if (icon) { element.innerHTML = text; element.className = text.includes('info-res') ? 'focus-icon' : 'icon-button'; element.setAttribute('aria-label', icon); } else element.textContent = text;
             if (glow) element.className = 'glow';
             buttons.append(element);
           }
@@ -1904,9 +1904,9 @@
     // väljer byggnad nummer 1-10 i den öppna kategorin (Esc backar ett steg). Siffrorna läses från tangentens läge (event.code) och
     // bokstäverna från tecknet, så det som står i tipset är det som står på tangenten. Den elfte kategorin har - (minus).
     // Bokstäver gäller i stället den markerade byggnaden så länge en är markerad: P paus, B boost, R byt recept, T handla, S attack/försvar,
-    // Z X C V utbilda soldattyp, Delete riv (trycks två gånger).
+    // Z X C V N M utbilda soldattyp, Delete riv (trycks två gånger).
     HOTKEYS: { pauseButton: 'p', boostButton: 'b', choiceButton: 'r', marketButton: 't', stanceButton: 's', demolishButton: 'Delete' },
-    TRAIN_KEYS: ['z', 'x', 'c', 'v'],
+    TRAIN_KEYS: ['z', 'x', 'c', 'v', 'n', 'm'],
     CATEGORY_KEYS: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-'],
     BUILD_KEYS: ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
 
@@ -2049,7 +2049,7 @@
         const key = this.HOTKEYS[id];
         button.title = (base ? base + ' ' : '') + `[${key.length === 1 ? key.toUpperCase() : key}]`;
       }
-      panel.querySelectorAll('.train-button').forEach((button, index) => { if (this.TRAIN_KEYS[index]) button.title = `[${this.TRAIN_KEYS[index].toUpperCase()}]`; });
+      panel.querySelectorAll('.train-button').forEach((button, index) => { if (this.TRAIN_KEYS[index]) button.title = `${this.unitName(button.dataset.kind)} [${this.TRAIN_KEYS[index].toUpperCase()}]`; });
     },
 
     setOpenCategory(categoryId) {
@@ -3140,6 +3140,15 @@
       return `<span class="info-res ${className}" title="${name}">${icon}${amount === undefined ? '' : amount}</span>`;
     },
 
+    // Soldatens bild (som resourceChip): knappar för vilken soldattyp en garnison tränar. Saknas bilden visas enhetens färgruta
+    unitChip(unitId) {
+      const unit = Config.units[unitId] || {}, name = this.unitName(unitId).replace(/"/g, '&quot;'), color = unit.color || '#3a444d';
+      const icon = unit.image && Config.settings.useImages !== false
+        ? `<img class="info-res-icon" src="${unit.image}" alt="${name}" draggable="false" style="background:${color}" onerror="this.removeAttribute('src');this.removeAttribute('alt')">`
+        : `<span class="info-res-icon" style="background:${color}"></span>`;
+      return `<span class="info-res" title="${name}">${icon}</span>`;
+    },
+
     // { wood: 2 } -> ikoner med antal (infopanelen, verktygstips). Antal 0 hoppas över.
     // Vad byggnaden importerar (hämtar från lagret) och exporterar (levererar till lagret), alltid, även när lagret är tomt.
     // Import: mängd i huset / mest huset håller (röd när det saknas). Alternativa varor (äter kött / fisk / bröd) visas som en grupp.
@@ -3523,7 +3532,7 @@
 
         // Garnisoner: en knapp per soldattyp som byggnaden kan träna
         const trainButtons = active && CityBuilder.Garrison.isGarrison(building)
-          ? building.definition.job.trains.map(kind => `<button class="train-button" data-kind="${kind}">${this.unitName(kind)}</button>`).join('')
+          ? `<div class="choice-group">${building.definition.job.trains.map(kind => `<button class="train-button focus-icon" data-kind="${kind}" aria-label="${this.unitName(kind)}" title="${this.unitName(kind)}">${this.unitChip(kind)}</button>`).join('')}</div>`
           : '';
 
         const stanceButton = active && CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton" class="icon-button"></button>' : '';
