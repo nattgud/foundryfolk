@@ -71,9 +71,9 @@ CityBuilder.Config.units = {
   },
   swordsman: {
     isSoldier: true,
-    maxHp: 30,
+    maxHp: 25,
     armor: 1,
-    attackDamage: 5,
+    attackDamage: 6,
     attackRange: 1,
     attackCooldown: 1,
     searchRadius: 20,
@@ -87,9 +87,9 @@ CityBuilder.Config.units = {
   // Soldatnivåer (billigast först): Clubman (bara trä), Footman (järnsvärd, ingen rustning), Swordsman (järnsvärd + läderrustning), Blademaster (stålsvärd + läderrustning)
   clubman: {
     isSoldier: true,
-    maxHp: 24,
+    maxHp: 10,
     armor: 0,
-    attackDamage: 3,
+    attackDamage: 2,
     attackRange: 1,
     attackCooldown: 1,
     searchRadius: 20,
@@ -102,9 +102,9 @@ CityBuilder.Config.units = {
   },
   footman: {
     isSoldier: true,
-    maxHp: 26,
+    maxHp: 10,
     armor: 0,
-    attackDamage: 5,
+    attackDamage: 6,
     attackRange: 1,
     attackCooldown: 1,
     searchRadius: 20,
@@ -117,9 +117,9 @@ CityBuilder.Config.units = {
   },
   blademaster: {
     isSoldier: true,
-    maxHp: 34,
+    maxHp: 30,
     armor: 1,
-    attackDamage: 7,
+    attackDamage: 10,
     attackRange: 1,
     attackCooldown: 1,
     searchRadius: 20,
