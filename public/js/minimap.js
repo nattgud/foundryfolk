@@ -44,7 +44,7 @@
     salt_ore: '#F6C9D0', sulfur: '#C6E21E', gemstone: '#D43CFF', crystal: '#19D98B', moonstone: '#9FB4FF', fallen_star: '#FFF3A0', ruins: '#B8A58C',
   };
   const SELECT_SAME = '#0f0', SELECT_OTHER = '#fa0', SELECT_RESOURCE = '#f00';   // vald byggnad: samma inriktning, annan inriktning, det den hämtar
-  const OWN_COLOR = '#00f0ff', ENEMY_COLOR = '#ff2d2d', STORM_COLOR = '#ff4fd8', ALLY_COLOR = '#5fd35f';
+  const OWN_COLOR = '#00f0ff', ENEMY_COLOR = '#ff2d2d', STORM_COLOR = '#ff4fd8', OWN_SOLDIER_COLOR = '#5fd35f', ALLY_COLOR = '#4aa3ff';   // dina soldater gröna, lagkamraters blå (fiender alltid röda)
   const isFoe = player => player === Players.NEUTRAL || Players.isHostile(Players.HUMAN, player);   // monster (ingens spelare) räknas som fiender, lagkamrater inte   // egna byggnader (ingen annan markering är turkos), fiender (alltid röda), meteorstormens mitt
   const LEGEND_MAX = 10;         // högst så många rader i teckenförklaringen
   const CHUNK = 16;              // rutor per bricka
@@ -673,7 +673,7 @@
           if (!unit.definition.isSoldier || (unit.player !== Players.HUMAN && !Vision.sees(Players.HUMAN, unit))) continue;
           const x = toX(unit.x), y = toY(unit.y);
           if (Math.hypot(x - radius, y - radius) > radius) continue;
-          const color = unit.player === Players.HUMAN ? '#4aa3ff' : isFoe(unit.player) ? ENEMY_COLOR : ALLY_COLOR;
+          const color = unit.player === Players.HUMAN ? OWN_SOLDIER_COLOR : isFoe(unit.player) ? ENEMY_COLOR : ALLY_COLOR;
           context.globalAlpha = .4; context.fillStyle = color;
           context.beginPath(); context.arc(x, y, dot + 4, 0, Math.PI * 2); context.fill();
           context.globalAlpha = .9; context.strokeStyle = color;
@@ -682,9 +682,9 @@
         context.globalAlpha = 1;
       }
 
-      // Dina soldater: små blå cirklar (inte när en byggnad är vald)
+      // Dina soldater: små gröna cirklar (inte när en byggnad är vald)
       if (!selection) {
-        context.fillStyle = '#4aa3ff';
+        context.fillStyle = OWN_SOLDIER_COLOR;
         for (const unit of World.units) {
           if (!unit.definition.isSoldier || unit.player !== Players.HUMAN) continue;
           const x = toX(unit.x), y = toY(unit.y);
@@ -716,7 +716,7 @@
         if (!unit.definition.isSoldier || unit.player === Players.HUMAN || !Vision.sees(Players.HUMAN, unit)) continue;
         const x = toX(unit.x), y = toY(unit.y);
         if (Math.hypot(x - radius, y - radius) > radius) continue;
-        context.fillStyle = isFoe(unit.player) ? ENEMY_COLOR : ALLY_COLOR;   // lagkamrater (inte fiender) är gröna
+        context.fillStyle = isFoe(unit.player) ? ENEMY_COLOR : ALLY_COLOR;   // lagkamrater är blå, fiender röda
         context.beginPath();
         context.arc(x, y, dot + 1, 0, Math.PI * 2);
         context.fill();

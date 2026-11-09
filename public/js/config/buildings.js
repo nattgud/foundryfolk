@@ -1178,7 +1178,7 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 15, stone: 10, iron: 6, brick: 6 },
     job: {
       kind: 'garrison',
-      capacity: 4,
+      capacity: 1,
       trains: ['catapult'],
       defaultTrain: 'catapult',
       searchRadius: 16
@@ -1200,7 +1200,7 @@ CityBuilder.Config.buildings = {
     buildCost: { stone: 25, brick: 10, sulfur: 5, gemstone: 2 },
     job: {
       kind: 'garrison',
-      capacity: 4,
+      capacity: 1,
       trains: ['greater_demon'],
       defaultTrain: 'greater_demon',
       searchRadius: 20
