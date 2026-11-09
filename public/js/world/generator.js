@@ -177,16 +177,19 @@
     baseTypeAt(x, y) {
       const worldConfig = CityBuilder.Config.world;
       const distanceFromOrigin = Math.hypot(x, y);
+      // Avstånd till närmaste bas (spelarens eller en datorspelares): startlandskapet (inget berg, vatten och sjöar, mer skog och sten) gäller runt alla baser, inte bara 0, 0
+      let distanceFromBase = distanceFromOrigin;
+      for (const base of worldConfig.meadows) distanceFromBase = Math.min(distanceFromBase, Math.hypot(x - base.x, y - base.y));
       this.context = null;
       if (distanceFromOrigin < worldConfig.clearRadius) return 'grass';
       for (const clearing of worldConfig.clearings) if (Math.hypot(x - clearing.x, y - clearing.y) < clearing.radius) return 'grass';
 
       const context = {
-        x, y, distanceFromOrigin,
+        x, y, distanceFromOrigin, distanceFromBase,
         fractalNoise: Utils.fractalNoise,
         hash: Utils.hash,
-        elevation: Utils.fractalNoise(x / 30, y / 30, 1) + Math.max(0, 1 - distanceFromOrigin / 20) * .35,
-        moisture: Utils.fractalNoise(x / 12, y / 12, 2) + (distanceFromOrigin > 4 && distanceFromOrigin < 18 ? .08 : 0),
+        elevation: Utils.fractalNoise(x / 30, y / 30, 1) + Math.max(0, 1 - distanceFromBase / 20) * .35,
+        moisture: Utils.fractalNoise(x / 12, y / 12, 2) + (distanceFromBase > 4 && distanceFromBase < 18 ? .08 : 0),
       };
 
       this.context = context;

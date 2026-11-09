@@ -97,7 +97,7 @@
     let model = modelCache.get(context);
     if (model) return model;
 
-    const { x, y, distanceFromOrigin: origin } = context;
+    const { x, y } = context, origin = context.distanceFromBase ?? context.distanceFromOrigin;   // startlandskapet följer närmaste bas, inte bara 0, 0
     const startArea = clamp01(1 - origin / 28); // 1 vid huvudlagret, 0 långt bort
 
     // Förvrängning av koordinaterna: ger slingrande kuster, dalar och floder

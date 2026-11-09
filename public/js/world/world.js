@@ -184,6 +184,7 @@
       }
       Config.world.clearings.push({ x: best.x, y: best.y, radius: clear });
       Config.world.meadows.push({ x: best.x, y: best.y });
+      CityBuilder.Generator.reset();   // marken runt basen ändras nu (startlandskap, se Generator.baseTypeAt): glöm det som mättes förut
       Config.world.roads.push({ x1: 0, y1: 0, x2: best.x, y2: best.y, width: 4, wobble: 10, wavelength: 9, phase: Utils.hash(player, 14, salt) * 6.28 });
       if (player === Players.ENEMY) this.endow(Players.HUMAN, 0, 0, salt); // spelarens start, en gång
       await step(t('Placing rivals'));
@@ -196,7 +197,7 @@
     // så att varje spelare kan klara banan oavsett kartans tur. Små fyndigheter, aldrig sällsynta.
     endow(player, x, y, salt) {
       const { fairRadius, rivalClearRadius: clear } = Config.world;
-      const needs = CityBuilder.Levels?.current?.needs ?? ['iron_ore'];
+      const needs = [...new Set([...(CityBuilder.Levels?.current?.needs ?? ['iron_ore']), 'tree', 'rock'])];   // skog och sten ska alltid finnas nära en bas
       const { nearest } = this.survey(x, y, needs);
       needs.forEach((type, index) => {
         if (nearest[type] <= fairRadius * .7) return;
