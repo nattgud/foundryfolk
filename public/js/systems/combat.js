@@ -385,9 +385,12 @@
       // Det som stänger vägen (en fientlig mur eller byggnad, se onPathFailure) slås sönder, om inte någon anfaller soldaten under tiden
       if (unit.blocker && (unit.blocker.removed || this.time > unit.blockerUntil)) { if (unit.blocker.removed) unit.unreachable?.clear(); unit.blocker = null; }
       if (unit.blocker && !attacked && unit.target !== unit.blocker) { unit.target = unit.blocker; unit.mode = 'idle'; }
+      // Flaggan står på en fientlig byggnad: full fokus på den (inget annat mål, förutom det som stänger vägen dit)
+      const focus = !unit.blocker && this.flagTarget(unit);
+      if (focus) unit.target = focus;
       // Utan mål söker soldaten ett, och med ett sämre mål än en soldat (byggnad, bärare) letar den vidare efter något bättre
       const rank = monster ? priority : this.rankFor(unit);
-      if (!(unit.blocker && unit.target === unit.blocker && !attacked) && (!unit.target || rank(unit.target) > 0) && unit.scanTimer <= 0) {
+      if (!focus && !(unit.blocker && unit.target === unit.blocker && !attacked) && (!unit.target || rank(unit.target) > 0) && unit.scanTimer <= 0) {
         unit.scanTimer = settings().scanIntervalSeconds;
         // Murar slås bara när de stänger vägen (blocker), inte bara för att de står nära; mål som inte går att nå ignoreras (se onPathFailure)
         const ignored = monster ? (unit.ignoreUntil > this.time ? unit.ignore : null)
@@ -447,6 +450,13 @@
       if (unit.wave) return { x: unit.x, y: unit.y, radius: unit.definition.searchRadius ?? settings().searchRadius };   // vågsoldat: ser det som är i vägen där den står (torn, hus), inte bara runt posten den är på väg till
       unit.post = unit.post || { x: unit.x, y: unit.y };
       return { x: unit.post.x, y: unit.post.y, radius: unit.definition.searchRadius ?? settings().searchRadius };
+    },
+
+    // Byggnaden som soldatens flagga står på, om den är fientlig (annars null)
+    flagTarget(unit) {
+      const home = unit.quarters, flag = home && !home.removed ? Garrison.flagOf(home) : null;
+      const building = flag && World.buildingAt(flag.x, flag.y);
+      return building && !building.removed && Players.isHostile(unit.player, building.player) ? building : null;
     },
 
     // Målet gäller så länge det lever, fortfarande är en fiende och inte tagit sig för långt från vaktplatsen

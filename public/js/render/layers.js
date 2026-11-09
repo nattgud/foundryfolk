@@ -1262,7 +1262,7 @@
   // Flaggläget: rutan under pekaren, grön där flaggan får stå och röd där den inte får det
   Renderer.addLayer('flagGhost', (context, renderer) => {
     if (!CityBuilder.Game.flagging || !renderer.hoverTile) return;
-    const { x, y } = renderer.hoverTile, size = renderer.tileSize, ok = !CityBuilder.Flags.siteProblem(Players.HUMAN, x, y) ? '95,181,95' : '217,83,79';
+    const { x, y } = renderer.hoverTile, size = renderer.tileSize, ok = !CityBuilder.Flags.siteProblem(Players.HUMAN, x, y, true) ? '95,181,95' : '217,83,79';
     context.fillStyle = `rgba(${ok},.35)`; context.strokeStyle = `rgba(${ok},.9)`; context.lineWidth = 2;
     context.fillRect(x * size, y * size, size, size); context.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2);
     context.setLineDash([6, 6]); context.strokeStyle = 'rgba(255,255,255,.35)';

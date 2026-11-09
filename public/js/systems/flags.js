@@ -23,23 +23,30 @@
     radius: () => settings().flagRadius,
 
     // Orsaken till att flaggan inte får stå på rutan (x, y) av skäl som syns på rutan själv: 'unexplored' eller 'terrain'. Billig nog att fråga varje bildruta.
-    siteProblem(player, x, y) {
+    // allowTarget: en synlig fientlig byggnad på rutan är tillåten (spelarens flagga på en byggnad: soldaterna slår den med full fokus, se Combat.flagTarget)
+    siteProblem(player, x, y, allowTarget = false) {
       if (!Vision.explored(player, x, y)) return 'unexplored';
       const tile = World.getTile(x, y);
-      return !tile || !Number.isFinite(Config.terrain[tile.terrainType].walkCost) || World.buildingAt(x, y) ? 'terrain' : null;
+      if (!tile || !Number.isFinite(Config.terrain[tile.terrainType].walkCost)) return 'terrain';
+      const building = World.buildingAt(x, y);
+      return building && !(allowTarget && this.isTarget(player, building)) ? 'terrain' : null;
     },
+    isTarget: (player, building) => !building.removed && building.type !== 'wall' && CityBuilder.Players.isHostile(player, building.player) && Vision.sees(player, building),
 
     // Som siteProblem, och dessutom 'unreachable' om soldaterna inte kan gå dit från 'from' (standard: basen). Null om flaggan får stå där.
-    problem(player, x, y, from = World.hqOf(player)) {
-      const problem = this.siteProblem(player, x, y);
+    problem(player, x, y, from = World.hqOf(player), allowTarget = false) {
+      const problem = this.siteProblem(player, x, y, allowTarget);
       if (problem) return problem;
-      return !from || CityBuilder.Pathfinder.findPathNow(from.x, from.y, x, y) === null ? 'unreachable' : null;
+      if (!from) return 'unreachable';
+      // Byggnaden själv går inte att gå till: det räcker att en ruta intill den går att nå
+      const spots = World.buildingAt(x, y) ? [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]] : [[x, y]];
+      return spots.some(([spotX, spotY]) => !World.buildingAt(spotX, spotY) && CityBuilder.Pathfinder.findPathNow(from.x, from.y, spotX, spotY) !== null) ? null : 'unreachable';
     },
 
     // Kommandot 'flag': sätter eller flyttar flaggan, eller tar bort den (clear). Returnerar en orsak vid avslag, annars null.
     set(player, x, y, clear = false) {
       if (clear) { this.byPlayer.delete(player); this.routes.delete(player); return null; }
-      const problem = this.problem(player, x, y);
+      const problem = this.problem(player, x, y, undefined, true);
       if (!problem) { this.byPlayer.set(player, { x, y }); this.routes.delete(player); }
       return problem;
     },
