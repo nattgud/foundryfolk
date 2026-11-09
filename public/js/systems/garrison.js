@@ -67,6 +67,20 @@
       if (this.trains(building).includes(kind)) building.trainingType = kind;
     },
 
+    // Unika soldater (definition.unique: katapulten, den stora demonen): bara en av varje slag per spelare, i världen, inne i en byggnad eller på väg att bli klar
+    hasUnique(player, kind) {
+      if (World.units.some(unit => !unit.removed && unit.kind === kind && unit.player === player)) return true;
+      return World.buildings.some(building => building.player === player && ((building.garrison?.[kind] || 0) > 0 || (building.isCrafting && building.trainingUnit === kind)));
+    },
+    mayTrain(building, kind) { return !Config.units[kind].unique || !this.hasUnique(building.player, kind); },
+
+    // Själar (Altar of Souls, definition.soulCounter): varje fientlig soldat spelaren dödar läggs till i altarets räknare. Se Combat.kill.
+    altarOf: player => World.buildings.find(building => building.player === player && building.definition.soulCounter && building.buildProgress >= 1),
+    addSouls(player, amount = 1) {
+      const altar = this.altarOf(player);
+      if (altar) altar.souls = (altar.souls || 0) + amount;
+    },
+
     addSoldier(building, kind) {
       const garrison = this.ensure(building).garrison;
       garrison[kind] = (garrison[kind] || 0) + 1;
@@ -146,9 +160,9 @@
 
     // Samma buffert som craft, men bara för vald soldattyp, och aldrig mer än det som behövs för de lediga platserna (inget alls när byggnaden är full)
     inputCapacities(building) {
-      const free = Garrison.slotsFree(building);
-      if (free <= 0) return {};
-      const { inputs } = Config.units[Garrison.trainingType(building)].training;
+      const free = Garrison.slotsFree(building), chosen = Garrison.trainingType(building);
+      if (free <= 0 || !Garrison.mayTrain(building, chosen)) return {};   // en unik soldat som redan finns behöver ingen ny utrustning
+      const { inputs } = Config.units[chosen].training;
       return Object.fromEntries(Object.entries(inputs).map(([resourceId, amount]) => [resourceId, Math.min(Behaviors.inputBuffer(amount), free * amount)]));
     },
 
@@ -174,10 +188,12 @@
         }
 
         const kind = Garrison.trainingType(building);
-        const { inputs, seconds } = Config.units[kind].training;
+        const { inputs, seconds, souls = 0 } = Config.units[kind].training;
+        if (!Garrison.mayTrain(building, kind)) { building.status = 'Only one at a time'; return; }
         const missing = Object.entries(inputs)
           .filter(([resourceId, amount]) => (building.inputStock[resourceId] || 0) < amount)
           .map(([resourceId, amount]) => `${Config.resources[resourceId].name} (${amount - (building.inputStock[resourceId] || 0)})`);
+        if ((building.souls || 0) < souls) missing.push(`Souls (${souls - (building.souls || 0)})`);
 
         if (missing.length) {
           building.status = `Missing: ${missing.join(', ')}`;
@@ -185,6 +201,7 @@
         }
 
         for (const resourceId in inputs) { building.inputStock[resourceId] -= inputs[resourceId]; Behaviors.note(building, 'use', resourceId, inputs[resourceId]); }
+        if (souls) building.souls -= souls;
         building.isCrafting = true;
         building.trainingUnit = kind;
         // Talisman (boost) och monumentets aura gör träningen snabbare

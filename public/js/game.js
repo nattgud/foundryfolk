@@ -12,7 +12,7 @@
     Players: ['active', 'team', 'race'],
     Economy: ['playerStats', 'flows'],
     Logistics: ['tasks', 'planningTimer', 'cursor', 'pileLoad', 'load', 'lost', 'busyAt', 'unreachable', 'round', 'orders', 'soft', 'time'],
-    Combat: ['effects', 'projectiles', 'time', 'fightAt', 'targetCache', 'gridTime', 'alarm'],
+    Combat: ['effects', 'fires', 'projectiles', 'time', 'fightAt', 'targetCache', 'gridTime', 'alarm'],
     AI: ['players', 'time'],
     Story: ['queue', 'reading'],
     Commands: ['log'],
@@ -245,6 +245,7 @@
           return t('Not enough {name}: {have} of {need} free', { name: UI.resourceName(lacking.resourceId), have: lacking.have, need: lacking.need }) + (reserved > 0 ? ' · ' + t('Reserved: {amount}', { amount: reserved }) : '');
         },
         unique: () => t('You can only build one'),
+        race: () => t('Not available to your race'),
       }[problem]();
     },
 

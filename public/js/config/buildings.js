@@ -822,8 +822,8 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'craft',
       choices: [
-        { inputs: { wood: 4 }, outputs: { bow: 1 } },
-        { inputs: { wood: 1 }, outputs: { club: 1 } }
+        { inputs: { wood: 1 }, outputs: { club: 1 } },
+        { inputs: { wood: 4 }, outputs: { bow: 1 } }
       ],
       craftSeconds: 12
     },
@@ -1158,13 +1158,56 @@ CityBuilder.Config.buildings = {
       kind: 'garrison',
       capacity: 4,
       trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer'],
-      defaultTrain: 'swordsman',   // vald från början (och det datorn tränar)
+      defaultTrain: 'clubman',   // vald från början (och det datorn tränar)
       aiTrains: ['swordsman', 'archer'],
       searchRadius: 20
     },
     vision: 18,
     maxHp: 200,
     buildDuration: 40
+  },
+
+  // Uppfinningar: bara människor, en per spelare. Bygger en uppfinning åt gången (en katapult, se units.js), som styrs med flaggan som soldater. unique på enheten: bara en av varje slag.
+  inventors_workshop: {
+    name: "Inventor's Workshop",
+    category: 'war',
+    symbol: 'IW',
+    color: '#c79a3b',
+    race: 'human',
+    unique: true,
+    buildCost: { plank: 15, stone: 10, iron: 6, brick: 6 },
+    job: {
+      kind: 'garrison',
+      capacity: 4,
+      trains: ['catapult'],
+      defaultTrain: 'catapult',
+      searchRadius: 16
+    },
+    vision: 14,
+    maxHp: 200,
+    buildDuration: 60
+  },
+
+  // Själsaltare: bara demoner, en per spelare. Varje fientlig soldat som spelaren dödar ger en själ (building.souls), som köper demoner (units.js: training.souls).
+  soul_altar: {
+    name: 'Altar of Souls',
+    category: 'war',
+    symbol: 'AS',
+    color: '#8e2b3c',
+    race: 'demon',
+    unique: true,
+    soulCounter: true,
+    buildCost: { stone: 25, brick: 10, sulfur: 5, gemstone: 2 },
+    job: {
+      kind: 'garrison',
+      capacity: 4,
+      trains: ['greater_demon'],
+      defaultTrain: 'greater_demon',
+      searchRadius: 20
+    },
+    vision: 14,
+    maxHp: 250,
+    buildDuration: 60
   },
 
   // Utkikstorn: ser långt men gör inget annat. Ger synfält så att nya platser går att bygga på.
@@ -1202,7 +1245,7 @@ CityBuilder.Config.buildings = {
       kind: 'garrison',
       capacity: 10,
       trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer', 'knight'],
-      defaultTrain: 'swordsman',
+      defaultTrain: 'clubman',
       aiTrains: ['swordsman', 'archer', 'knight'],
       searchRadius: 20
     },

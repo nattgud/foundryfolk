@@ -63,6 +63,7 @@
     effects: [],                      // korta slag för renderingen: { x1, y1, x2, y2, life }
     hits: new Map(),                  // det som träffats nyligen (enhet eller byggnad) -> sekunder kvar av den röda blinkningen
     glows: new Map(),                 // den som slagit/skjutit nyligen -> sekunder kvar av ljusskenet. Bara för renderingen, sparas inte
+    fires: [],                        // eld på rutor (katapultens skott): { x, y (rutan), left, total, damage, every, tick, player }. Bränner fiendens soldater på rutan (updateFires)
     projectiles: [],                  // pilar i luften: { x, y, fromX, fromY, toX, toY, target, attacker, damage, time, duration }
     time: 0,                          // simuleringstid i sekunder
     unstuck: 0,                       // hur många gånger vakten (watchStuck) behövt rensa en fast soldat; ska helst stå still
@@ -122,16 +123,50 @@
       if (definition.attackRange <= MELEE_RANGE) {
         CityBuilder.Sound?.play(definition.attackSound || 'swing', { x: attacker.x, y: attacker.y });
         this.damage(target, amount, attacker);
+        if (definition.sweep) this.sweep(attacker, target, definition.sweep);
         return;
       }
-      CityBuilder.Sound?.play('arrow', { x: attacker.x, y: attacker.y });
+      CityBuilder.Sound?.play(definition.attackSound || 'arrow', { x: attacker.x, y: attacker.y });
       const { projectileSpeed, projectileMinSeconds, projectileMaxSeconds } = settings();
       const distance = Utils.distance(centreX(target) - attacker.x, centreY(target) - attacker.y);
       this.projectiles.push({
         x: attacker.x, y: attacker.y, fromX: attacker.x, fromY: attacker.y, toX: centreX(target), toY: centreY(target),
-        target, attacker, damage: amount, time: 0,
-        duration: Math.min(projectileMaxSeconds, Math.max(projectileMinSeconds, distance / projectileSpeed)),
+        target, attacker, damage: amount, time: 0, fire: definition.fire, kind: definition.projectile,
+        duration: Math.min(definition.projectileMaxSeconds ?? projectileMaxSeconds, Math.max(projectileMinSeconds, distance / (definition.projectileSpeed ?? projectileSpeed))),
       });
+    },
+
+    // Närstridsslag som träffar fler: alla fiender inom radius rutor från målet får också skada (definition.sweep, den stora demonen). Byggnader slås bara en i taget.
+    sweep(attacker, target, radius) {
+      const x = centreX(target), y = centreY(target), damage = attacker.definition.attackDamage;
+      for (const other of [...World.units]) {
+        if (other === target || other === attacker || other.removed || other.hp == null || other.player === Players.NEUTRAL || !Players.isHostile(attacker.player, other.player)) continue;
+        if (Utils.distance(other.x - x, other.y - y) > radius) continue;
+        this.damage(other, Math.max(1, damage - (other.definition.armor || 0)), attacker);
+      }
+    },
+
+    // Eld på rutan (x, y) i fire.seconds sekunder: varje fire.every sekund tar fiendens soldater på rutan fire.damage skada (rustning hjälper inte). De kan gå därifrån.
+    ignite(x, y, fire, player) {
+      const tileX = Math.floor(x), tileY = Math.floor(y), every = fire.every || 1;
+      const burning = this.fires.find(other => other.x === tileX && other.y === tileY && other.player === player);
+      if (burning) { burning.left = burning.total = Math.max(burning.left, fire.seconds); return; }
+      this.fires.push({ x: tileX, y: tileY, left: fire.seconds, total: fire.seconds, damage: fire.damage, every, tick: every, player });
+    },
+    updateFires(deltaSeconds) {
+      for (const fire of this.fires) {
+        fire.left -= deltaSeconds;
+        fire.tick -= deltaSeconds;
+        if (fire.tick > 0) continue;
+        fire.tick += fire.every;
+        for (const unit of [...World.units]) {
+          if (unit.removed || !unit.definition.isSoldier || unit.hp == null || Math.floor(unit.x) !== fire.x || Math.floor(unit.y) !== fire.y || !Players.isHostile(fire.player, unit.player)) continue;
+          this.hits.set(unit, HIT_SECONDS);
+          unit.hp -= fire.damage;
+          if (unit.hp <= 0) this.kill(unit, { player: fire.player });
+        }
+      }
+      this.fires = this.fires.filter(fire => fire.left > 0);
     },
 
     // Pilarna flyger mot målets aktuella plats och gör skada när de når fram (målet kan ha dött under tiden)
@@ -143,6 +178,7 @@
         shot.x = shot.fromX + (shot.toX - shot.fromX) * progress;
         shot.y = shot.fromY + (shot.toY - shot.fromY) * progress;
         if (progress >= 1 && !shot.target.removed) this.damage(shot.target, shot.damage, shot.attacker);
+        if (progress >= 1 && shot.fire) this.ignite(shot.toX, shot.toY, shot.fire, shot.attacker.player);
       }
       this.projectiles = this.projectiles.filter(shot => shot.time < shot.duration);
     },
@@ -178,6 +214,7 @@
       if (attacker?.player === Players.HUMAN && Players.isPlayer(target.player) && Players.isHostile(Players.HUMAN, target.player)) Levels?.onDefeated?.(target);   // monster räknas inte mot banans mål
       if (isBuilding(target)) return this.destroyBuilding(target);
       const unit = target;
+      if (attacker && unit.definition.isSoldier && !unit.definition.isMonster && Players.isHostile(attacker.player, unit.player)) Garrison.addSouls(attacker.player);   // själar till Altar of Souls
       const Sound = CityBuilder.Sound;
       if (unit.definition.isSoldier) Sound?.play(unit.definition.isMonster ? Sound.known(unit.definition.dieSound, 'monster_die') : 'died', { x: unit.x, y: unit.y });
       if (unit.animalRecordId) CityBuilder.Animals.markDead(unit);   // ett dödat monster kommer inte tillbaka
@@ -260,6 +297,7 @@
 
       this.settle(deltaSeconds);
       this.updateProjectiles(deltaSeconds);
+      this.updateFires(deltaSeconds);
       for (const map of [this.hits, this.glows]) for (const [thing, left] of map) { if (left <= deltaSeconds || thing.removed) map.delete(thing); else map.set(thing, left - deltaSeconds); }
       for (const effect of this.effects) effect.life -= deltaSeconds;
       this.effects = this.effects.filter(effect => effect.life > 0);

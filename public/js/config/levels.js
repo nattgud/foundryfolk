@@ -92,6 +92,7 @@
     glassworks: 29, gemstone_mine: 30, crystal_gatherer: 30, alchemist: 31,
     moonstone_gatherer: 32, fallen_star_collector: 33, relic_hunter: 34, shrine: 35, monument: 36,
     // War comes last: the economy and the magic are learned first, then the army (training starts six levels before the first rival)
+    inventors_workshop: 40, soul_altar: 45,
     wall: 33, bowyer: 34, guard_tower: 34, stables: 35, swordsmith: 38, garrison: 39, armorsmith: 41,
   };
   let storyUnlock = null;   // storyns egen upplåsningstabell medan ett kapitel spelas (se enter), annars banornas
@@ -472,7 +473,7 @@
     const trainers = Object.entries(buildings).filter(([id, definition]) => definition.job?.kind === 'garrison' && unlockLevelOf(id) <= level);
     let best = null;
     for (const [kind, unit] of Object.entries(units)) {
-      if (!unit.isSoldier || !unit.training) continue;
+      if (!unit.isSoldier || !unit.training || unit.unique) continue;
       const trainer = trainers.find(([, definition]) => definition.job.trains.includes(kind));
       if (!trainer) continue;
       const ids = new Set([trainer[0]]);

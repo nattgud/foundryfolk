@@ -127,6 +127,7 @@
       const from = this.nearestOwnBuilding(x, y, player);   // vägen räknas från närmaste egna byggnad, så att utposter långt från basen går att bygga
       if (!from) return 'far';
       if (this.isHidden(x, y, player)) return 'fog';          // före terrängkollen, så att dimman inte avslöjar vad som ligger där
+      if (definition.race && (Players.raceOf(player) || 'human') !== definition.race) return 'race';
       if (this.isUniqueTaken(buildingType, player)) return 'unique';
       if (!World.canPlace(buildingType, x, y)) return definition.placeOnTerrain ? 'terrain' : 'occupied';
       const type = this.variantFor(buildingType, x, y);

@@ -77,7 +77,7 @@
 
   // Verktyg som byggnader kräver, och soldaternas utrustning: de har egna lagertak (Config.ai.limits)
   const EQUIPMENT = new Set(Object.values(Config.buildings).flatMap(definition => Object.keys(definition.requiredEquipment || {})));
-  const GEAR = new Set(Object.values(Config.units).flatMap(unit => Object.keys(unit.training?.inputs || {})));
+  const GEAR = new Set(Object.values(Config.units).filter(unit => !unit.unique).flatMap(unit => Object.keys(unit.training?.inputs || {})));
 
   const gameSeconds = () => CityBuilder.Levels?.seconds ?? 0;   // speltid på banan (sparas, så anfallstiden gäller även efter omladdning)
 

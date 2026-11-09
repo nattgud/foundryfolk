@@ -1754,6 +1754,7 @@
 
       for (const [buildingId, building] of Object.entries(Config.buildings)) {
         if (building.hiddenInMenu) continue;
+        if (building.race && building.race !== (CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN) || 'human')) continue;   // rasbundna byggnader (Inventor's Workshop, Altar of Souls)
 
         const categoryId = groups.has(building.category)
           ? building.category
@@ -3614,8 +3615,10 @@
           .map(([kind, count]) => `${count} ${lower(this.unitName(kind))}`).join(', ');
         const outside = building.deployed.length ? ` (${t('{n} out fighting', { n: building.deployed.length })})` : '';
         const training = building.isCrafting ? `${t('Training: {unit}', { unit: this.unitName(building.trainingUnit) })}<br>` : '';
-        const cost = this.resourceIconsHtml(Config.units[chosen].training.inputs);
-        garrisonHtml =
+        const chosenTraining = Config.units[chosen].training;
+        const cost = this.resourceIconsHtml(chosenTraining.inputs) + (chosenTraining.souls ? ` ${t('Souls')}: ${chosenTraining.souls}` : '');
+        const souls = building.definition.soulCounter ? `<br>${t('Souls')}: ${Math.floor(building.souls || 0)}` : '';
+        garrisonHtml = souls +
           `<br>${t('Soldiers: {n}/{max}', { n: Garrison.count(building), max: Garrison.capacity(building) })}${roster ? ' – ' + roster : ''}${outside}` +
           `<br>${training}${t('Next soldier: {unit}', { unit: this.unitName(chosen) })} ${cost}`;
         for (const button of byId('info').querySelectorAll('.train-button')) button.classList.toggle('on', button.dataset.kind === chosen);

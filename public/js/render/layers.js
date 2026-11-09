@@ -838,6 +838,14 @@
     context.strokeStyle = '#d8b16a'; context.lineWidth = 2; context.lineCap = 'round';
     for (const shot of CityBuilder.Combat.projectiles) {
       if (!Vision.visible(Players.HUMAN, shot.x, shot.y) && !Vision.visible(Players.HUMAN, shot.fromX, shot.fromY)) continue;
+      if (shot.kind === 'stone') {   // katapultens sten: en rund sten i en båge
+        const progress = Math.min(1, shot.time / shot.duration), arc = Math.sin(progress * Math.PI) * 1.2;
+        context.fillStyle = '#6b5a48';
+        context.beginPath();
+        context.arc(shot.x * tileSize, (shot.y - arc) * tileSize, tileSize * 0.22, 0, Math.PI * 2);
+        context.fill();
+        continue;
+      }
       const length = Math.hypot(shot.toX - shot.fromX, shot.toY - shot.fromY) || 1;
       const dx = (shot.toX - shot.fromX) / length * 0.5, dy = (shot.toY - shot.fromY) / length * 0.5; // skaftet är en halv ruta
       context.beginPath();
@@ -846,6 +854,20 @@
       context.stroke();
     }
     context.lineCap = 'butt';
+
+    // Eld på rutor (katapultens skott): en flimrande glöd som bleknar mot slutet
+    const now = performance.now() / 1000;
+    for (const fire of CityBuilder.Combat.fires) {
+      if (!Vision.visible(Players.HUMAN, fire.x + 0.5, fire.y + 0.5)) continue;
+      const cx = (fire.x + 0.5) * tileSize, cy = (fire.y + 0.5) * tileSize;
+      const flicker = 0.75 + 0.25 * Math.sin(now * 14 + fire.x * 3 + fire.y * 5), radius = tileSize * 0.6 * flicker;
+      const gradient = context.createRadialGradient(cx, cy, 0, cx, cy, radius);
+      gradient.addColorStop(0, 'rgba(255,230,120,0.95)'); gradient.addColorStop(0.5, 'rgba(255,120,30,0.7)'); gradient.addColorStop(1, 'rgba(180,30,0,0)');
+      context.globalAlpha = Math.min(1, fire.left / 2);
+      context.fillStyle = gradient;
+      context.beginPath(); context.arc(cx, cy, radius, 0, Math.PI * 2); context.fill();
+    }
+    context.globalAlpha = 1;
 
     context.font = 'bold 10px system-ui';
     context.textAlign = 'right';

@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      "New: the human Inventor's Workshop (one per player) builds a slow catapult that sets the ground on fire where it lands, and the demon Altar of Souls collects the souls of fallen soldiers and buys a Greater Demon. Only one catapult / Greater Demon can exist at a time",
       'The whole story script is rewritten: new dialogue for the prologue, all 21 chapters and the epilogue, with new chapter titles. Onden is now only a voice and never shown with a portrait',
       'Melee soldiers now stand next to what they hit instead of drawing a line. What gets hit flashes red (also for arrows), and whoever attacks lights up for a moment',
       'Soldiers have a half transparent disc in their player colour under them instead of a thin ring',

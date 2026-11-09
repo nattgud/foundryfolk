@@ -287,6 +287,8 @@
 			sulfur_mine: 13,
 			gemstone_mine: 13,
 			shrine: 14,
+			inventors_workshop: 17, // Pipwick får katapulten att fungera i kapitel 17
+			soul_altar: 21,         // Själsaltaret: bara i sista kapitlet
 			monument: 999, // vinstbyggnaden i Free Realm används inte i storyn
 		},
 
@@ -1570,6 +1572,16 @@
 					say("reeve", "Because they are wounded."),
 				],
 				events: [
+					{
+						at: 60,
+						tell: [
+							say("pipwick", "Reeve, the new release mechanism holds. The catapult works."),
+							say("reeve", "Works how?"),
+							say("pipwick", "It throws a burning stone a very long way, slowly, and sets fire to whatever it lands on. Build an Inventor's Workshop and I will show your people how to make one."),
+							say("reeve", "Slowly is acceptable."),
+							say("pipwick", "It is the only speed it has."),
+						],
+					},
 					{
 						at: 150,
 						tell: [
