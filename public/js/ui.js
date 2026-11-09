@@ -3519,7 +3519,7 @@
         const focuses = active ? CityBuilder.Behaviors.focusesOf(building) : [];   // byggnad med inriktning (gruva, samlare): en alternativknapp per upplåst inriktning
         const lockedFocuses = active ? CityBuilder.Behaviors.lockedFocusesOf(building) : [];   // låsta inriktningar visas också, grå med lås
         const choiceButton = focuses.length + lockedFocuses.length > 1
-          ? `<div id="choiceButton" class="choice-group">${[...focuses, ...lockedFocuses].map(type => `<button class="choice-radio focus-icon\${focuses.includes(type) ? '' : ' locked'}" data-type="${type}"></button>`).join('')}</div>`
+          ? `<div id="choiceButton" class="choice-group">${[...focuses, ...lockedFocuses].map(type => `<button class="choice-radio focus-icon${focuses.includes(type) ? '' : ' locked'}" data-type="${type}"></button>`).join('')}</div>`
           : !choices ? '' : building.definition.job.auto
           ? building.definition.job.choices.map((choice, index) => `<button class="tool-toggle" data-index="${index}"></button>`).join('')
           : `<div id="choiceButton" class="choice-group">${building.definition.job.choices.map((choice, index) => `<button class="choice-radio" data-index="${index}"></button>`).join('')}</div>`;
@@ -3564,7 +3564,7 @@
           if (panel.querySelector('.choice-radio[data-type]')) {
             for (const radio of panel.querySelectorAll('.choice-radio')) radio.onclick = event => {
               event.stopPropagation();
-              if (radio.classList.contains('locked')) return this.showToast(t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(radio.dataset.type) }));
+              if (radio.classList.contains('locked')) return this.showToast(t(CityBuilder.Levels.mode === 'story' ? 'Unlocks in chapter {n}' : 'Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(radio.dataset.type) }));
               focus(radio.dataset.type);
             };
             byId('choiceButton').onclick = () => { const list = Behaviors.focusesOf(building); focus(list[(list.indexOf(building.type) + 1) % list.length]); };   // snabbtangenten R
@@ -3691,7 +3691,7 @@
           if (radio.dataset.html !== html) { radio.dataset.html = html; radio.innerHTML = html; }
           radio.classList.toggle('on', selected);
           radio.setAttribute('aria-label', this.resourceName(id));
-          radio.title = locked ? t('Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(radio.dataset.type) }) : t('Gathering: {source} → {output}', { source: this.terrainName(definition.job.sourceTerrain), output: this.resourceName(id) });
+          radio.title = locked ? t(CityBuilder.Levels.mode === 'story' ? 'Unlocks in chapter {n}' : 'Unlocks at level {n}', { n: CityBuilder.Levels.unlockLevel(radio.dataset.type) }) : t('Gathering: {source} → {output}', { source: this.terrainName(definition.job.sourceTerrain), output: this.resourceName(id) });
         });
       } else if (byId('choiceButton')) {
         const choices = building.definition.job.choices, chosen = building.choice || 0;

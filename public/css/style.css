@@ -40,7 +40,8 @@ button.focus-icon { padding: 5px; position: relative; }
 button.focus-icon .info-res { pointer-events: none; margin: 0; }
 button.focus-icon .info-res-icon { width: 34px; height: 34px; }
 button.focus-icon:not(.on) { opacity: .4; filter: grayscale(.7); }
-button.focus-icon.locked { opacity: .35; }
+button.focus-icon.locked { opacity: .3; filter: grayscale(1); border-style: dashed; cursor: not-allowed; }
+button.focus-icon.locked .info-res { opacity: .6; }
 button.focus-icon .focus-lock { position: absolute; right: 1px; bottom: -1px; font-size: 13px; pointer-events: none; }
 /* Garnisonens läge: en bild per läge (images/ui/stance_defence.png, stance_attack.png), 34 px stor */
 button.icon-button { display: inline-flex; padding: 5px; }
