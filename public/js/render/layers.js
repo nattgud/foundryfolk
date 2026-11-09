@@ -796,6 +796,32 @@
       }
     }
 
+    // Den som träffas blinkar rött (enhet eller byggnad, närstrid och pilar lika), och den som slår lyser upp en kort stund
+    const { hits, glows } = CityBuilder.Combat;
+    for (const [thing, left] of hits) {
+      if (thing.removed || hidden(thing)) continue;
+      const alpha = Math.min(1, left / 0.25) * 0.5;
+      context.fillStyle = `rgba(255, 30, 30, ${alpha})`;
+      if (thing.buildProgress !== undefined) { if (!outside(view, thing.x * tileSize, thing.y * tileSize)) context.fillRect(thing.x * tileSize, thing.y * tileSize, tileSize, tileSize); continue; }
+      const x = shownX(thing) * tileSize, y = shownY(thing) * tileSize;
+      if (outside(view, x, y)) continue;
+      context.beginPath();
+      context.arc(x, y, thing.definition.imageSize / 2, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.globalCompositeOperation = 'lighter';
+    for (const [unit, left] of glows) {
+      if (unit.removed || hidden(unit)) continue;
+      const x = shownX(unit) * tileSize, y = shownY(unit) * tileSize, radius = unit.definition.imageSize * 0.9;
+      if (outside(view, x, y)) continue;
+      const glow = context.createRadialGradient(x, y, 0, x, y, radius), strength = Math.min(1, left / 0.3);
+      glow.addColorStop(0, `rgba(255, 235, 170, ${0.55 * strength})`);
+      glow.addColorStop(1, 'rgba(255, 200, 90, 0)');
+      context.fillStyle = glow;
+      context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    }
+    context.globalCompositeOperation = 'source-over';
+
     context.lineWidth = 2;
     for (const effect of CityBuilder.Combat.effects) {
       if (!Vision.visible(Players.HUMAN, effect.x2, effect.y2) && !Vision.visible(Players.HUMAN, effect.x1, effect.y1)) continue;

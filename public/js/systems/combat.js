@@ -15,7 +15,7 @@
    En soldat har dessa fält utöver vanliga enhetsfält (alla sätts i spawnSoldier):
      quarters   byggnaden den hör till (null = fri soldat)    post     fri soldats vaktplats { x, y }
      target     enheten den anfaller                          mode     vad stegkön är till för: 'idle' | 'chase' | 'return'
-   Närstridssoldater (attackRange <= MELEE_RANGE) slår först när de står i samma ruta som en enhet (en byggnad: på angränsande ruta).
+   Närstridssoldater (attackRange <= MELEE_RANGE) ställer sig intill det de slår (en byggnad: på angränsande ruta).
    Bågskyttar skjuter en pil (Combat.projectiles) som flyger i en bråkdels sekund och gör skadan först när den träffar.
    Soldater styrs via stegkön (Jobs) som övriga enheter, så Units.update gör själva förflyttningen. */
 (function (CityBuilder) {
@@ -30,6 +30,7 @@
   const HQ_NEAR = 12;                // rutor: så nära fiendens HQ är HQ målet för datorns soldater (om inget militärt finns)
   const BLOCKER_SECONDS = 90;        // så länge slår en soldat det som stänger vägen (blocker) innan den prövar vägen igen
   const ATTACKED_SECONDS = 4;        // blev soldaten slagen så nyligen försvarar den sig i stället för att slå det som stänger vägen
+  const HIT_SECONDS = 0.25, GLOW_SECONDS = 0.3;   // hur länge den röda blinkningen och ljusskenet syns
   const MELEE_RANGE = 2;              // attackRange upp till detta är närstrid, över det en projektil
   const GRID_CELL = 8, GRID_KEY = 100003, GRID_SECONDS = 0.25, GRID_MARGIN = 3;   // rutnätet för sökningen efter fiender (se targets)
   const RETRY_UNREACHABLE_SECONDS = 8;    // så länge ett mål som inte gick att nå får vara i fred efter att något byggts eller rivits (annars försöker soldaten hela tiden och hinner aldrig gå tillbaka till sin post)
@@ -60,6 +61,8 @@
 
   const Combat = {
     effects: [],                      // korta slag för renderingen: { x1, y1, x2, y2, life }
+    hits: new Map(),                  // det som träffats nyligen (enhet eller byggnad) -> sekunder kvar av den röda blinkningen
+    glows: new Map(),                 // den som slagit/skjutit nyligen -> sekunder kvar av ljusskenet. Bara för renderingen, sparas inte
     projectiles: [],                  // pilar i luften: { x, y, fromX, fromY, toX, toY, target, attacker, damage, time, duration }
     time: 0,                          // simuleringstid i sekunder
     unstuck: 0,                       // hur många gånger vakten (watchStuck) behövt rensa en fast soldat; ska helst stå still
@@ -115,8 +118,8 @@
       attacker.lastAttackAt = this.time;
       const definition = attacker.definition, amount = Math.max(1, definition.attackDamage - (target.definition.armor || 0));
       attacker.attackCooldownLeft = definition.attackCooldown;
+      this.glows.set(attacker, GLOW_SECONDS);
       if (definition.attackRange <= MELEE_RANGE) {
-        this.effects.push({ x1: attacker.x, y1: attacker.y, x2: centreX(target), y2: centreY(target), life: 0.18 });
         CityBuilder.Sound?.play(definition.attackSound || 'swing', { x: attacker.x, y: attacker.y });
         this.damage(target, amount, attacker);
         return;
@@ -165,6 +168,7 @@
       const Sound = CityBuilder.Sound;
       Sound?.play(Sound.known(target.definition?.hitSound, 'hit'), { x: centreX(target), y: centreY(target) });   // monster kan ha ett eget skadeljud
       target.hp -= amount;
+      this.hits.set(target, HIT_SECONDS);
       if (target.hp <= 0) this.kill(target, attacker);
     },
 
@@ -256,6 +260,7 @@
 
       this.settle(deltaSeconds);
       this.updateProjectiles(deltaSeconds);
+      for (const map of [this.hits, this.glows]) for (const [thing, left] of map) { if (left <= deltaSeconds || thing.removed) map.delete(thing); else map.set(thing, left - deltaSeconds); }
       for (const effect of this.effects) effect.life -= deltaSeconds;
       this.effects = this.effects.filter(effect => effect.life > 0);
     },
@@ -414,10 +419,9 @@
         Utils.distance(centreX(target) - anchor.x, centreY(target) - anchor.y) <= anchor.radius * settings().leashFactor;
     },
 
-    // Närstrid mot en enhet kräver att den står i samma ruta, annars räknas avståndet (mot en byggnad från dess kant)
+    // Närstridssoldaten ställer sig intill det den slår (inom attackRange, en byggnad räknas från kanten)
     inReach(unit, target) {
       const range = unit.definition.attackRange;
-      if (range <= MELEE_RANGE && !isBuilding(target) && !unit.definition.isMonster) return Math.floor(target.x) === Math.floor(unit.x) && Math.floor(target.y) === Math.floor(unit.y);
       return Utils.distance(centreX(target) - unit.x, centreY(target) - unit.y) <= range + (isBuilding(target) ? BUILDING_REACH : 0);
     },
 
