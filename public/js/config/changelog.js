@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'The whole story script is rewritten: new dialogue for the prologue, all 21 chapters and the epilogue, with new chapter titles. Onden is now only a voice and never shown with a portrait',
       'Melee soldiers now stand next to what they hit instead of drawing a line. What gets hit flashes red (also for arrows), and whoever attacks lights up for a moment',
       'Soldiers have a half transparent disc in their player colour under them instead of a thin ring',
       'New soldier ranks: Clubman (only a club, made at the Bowyer), Footman (iron sword, no armor), Swordsman (iron sword and leather armor) and Blademaster (steel sword and leather armor, made with the new Steel Sword at the Swordsmith). Pick the one to train in a guard tower or garrison',

@@ -90,7 +90,7 @@
             const row = make('div', speaker.narrator ? 'story-line story-narration' : who === 'reeve' ? 'story-line story-player' : 'story-line'), name = make('b', '', t(speaker.name) + ': '), words = make('span');
             name.style.color = speaker.color;
             if (speaker.narrator) row.append(words);   // berättaren har inget namn och ingen bild och skrivs kursivt
-            else { const body = make('p', 'story-body'); body.append(name, words); row.append(this.portrait(who, speaker), body); }
+            else { const body = make('p', 'story-body'); body.append(name, words); row.append(...(speaker.portrait === false ? [] : [this.portrait(who, speaker)]), body); }   // portrait: false = ingen bild (Onden syns aldrig)
             text.append(row);
             print(words, t(spoken), who);
             action.textContent = line >= current.lines.length && last ? t('Continue') : t('Next');
@@ -183,7 +183,7 @@
         const body = make('div', 'main-menu-body');
         body.append(
           make('div', 'main-menu-level', t('Time: {time}', { time: UI.formatTime(Levels.seconds) })),
-          last ? button(t('Epilogue'), () => { overlay.remove(); this.read([{ type: 'prose', lines: story.epilogue, music: story.music?.epilogue }]); }) : button(t('Next chapter'), () => Levels.advance()),
+          last ? button(t('Epilogue'), () => { overlay.remove(); this.read((typeof story.epilogue[0] === 'string' ? [{ type: 'prose', lines: story.epilogue }] : story.epilogue).map((page, i) => i ? page : { ...page, music: story.music?.epilogue })); }) : button(t('Next chapter'), () => Levels.advance()),
           button(t('Keep playing'), () => overlay.remove()));
         dialog.append(header, body);
         overlay.append(dialog);
