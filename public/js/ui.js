@@ -3144,8 +3144,10 @@
     // Soldatens bild (som resourceChip): knappar för vilken soldattyp en garnison tränar. Saknas bilden visas enhetens färgruta
     unitChip(unitId) {
       const unit = Config.units[unitId] || {}, name = this.unitName(unitId).replace(/"/g, '&quot;'), color = unit.color || '#3a444d';
+      // Spelarens ras har egna bilder i en undermapp (images/units/demon/x.png): den provas först, sedan originalet, och saknas båda visas färgrutan
+      const race = CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN), raceImage = race && unit.image ? unit.image.replace(/[^/]+$/, `${race}/$&`) : unit.image;
       const icon = unit.image && Config.settings.useImages !== false
-        ? `<img class="info-res-icon" src="${unit.image}" alt="${name}" draggable="false" style="background:${color}" onerror="this.removeAttribute('src');this.removeAttribute('alt')">`
+        ? `<img class="info-res-icon" src="${raceImage}" alt="${name}" draggable="false" style="background:${color}" onerror="if(this.dataset.fallback||this.src.endsWith('${unit.image}')){this.removeAttribute('src');this.removeAttribute('alt')}else{this.dataset.fallback=1;this.src='${unit.image}'}">`
         : `<span class="info-res-icon" style="background:${color}"></span>`;
       return `<span class="info-res" title="${name}">${icon}</span>`;
     },
