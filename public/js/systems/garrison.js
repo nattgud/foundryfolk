@@ -60,7 +60,7 @@
     // Vald soldattyp (den första om inget valts eller valet inte längre gäller)
     trainingType(building) {
       const types = this.trains(building);
-      return types.includes(building.trainingType) ? building.trainingType : types[0];
+      return types.includes(building.trainingType) ? building.trainingType : (building.definition.job.defaultTrain ?? types[0]);
     },
 
     setTrainingType(building, kind) {

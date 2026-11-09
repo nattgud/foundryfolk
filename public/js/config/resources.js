@@ -72,7 +72,9 @@ CityBuilder.Config.resources = {
   potion:           { name: 'Potion',               color: '#895ba6' },
 
   // Vapen och rustningar (används för att träna soldater, se config/units.js)
-  sword:            { name: 'Sword',                color: '#d5dbe1' },
+  club:             { name: 'Club',                 color: '#8a5a2b' },
+  sword:            { name: 'Iron Sword',           color: '#d5dbe1' },
+  steel_sword:      { name: 'Steel Sword',          color: '#9fb4d0' },
   bow:              { name: 'Bow',                  color: '#9a6b3c' },
   leather_armor:    { name: 'Leather Armor',        color: '#947046' },
   iron_armor:       { name: 'Iron Armor',           color: '#8f9bb0' },

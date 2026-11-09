@@ -804,8 +804,10 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 8, stone: 8 },
     job: {
       kind: 'craft',
-      inputs: { iron: 2, wood: 1 },
-      outputs: { sword: 1 },
+      choices: [
+        { inputs: { iron: 2, wood: 1 }, outputs: { sword: 1 } },
+        { inputs: { steel: 2, wood: 1 }, outputs: { steel_sword: 1 } }
+      ],
       craftSeconds: 15
     },
     buildDuration: 45
@@ -819,8 +821,10 @@ CityBuilder.Config.buildings = {
     buildCost: { plank: 8, stone: 4 },
     job: {
       kind: 'craft',
-      inputs: { wood: 4 },
-      outputs: { bow: 1 },
+      choices: [
+        { inputs: { wood: 4 }, outputs: { bow: 1 } },
+        { inputs: { wood: 2 }, outputs: { club: 1 } }
+      ],
       craftSeconds: 12
     },
     buildDuration: 35
@@ -1153,7 +1157,9 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'garrison',
       capacity: 4,
-      trains: ['swordsman', 'archer'],
+      trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer'],
+      defaultTrain: 'swordsman',   // vald från början (och det datorn tränar)
+      aiTrains: ['swordsman', 'archer'],
       searchRadius: 20
     },
     vision: 18,
@@ -1195,7 +1201,9 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'garrison',
       capacity: 10,
-      trains: ['swordsman', 'archer', 'knight'],
+      trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer', 'knight'],
+      defaultTrain: 'swordsman',
+      aiTrains: ['swordsman', 'archer', 'knight'],
       searchRadius: 20
     },
     vision: 18,

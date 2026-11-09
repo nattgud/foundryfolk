@@ -36,7 +36,7 @@
     const job = definition.job;
     if (!job) return [];
     const inputs = [...Object.keys(Config.firstInputs(job.choices?.[0] ?? job)), ...Object.keys(definition.requiredEquipment || {})];
-    if (job.kind === 'garrison') inputs.push(...Object.keys(Config.units[job.trains[0]].training.inputs));
+    if (job.kind === 'garrison') inputs.push(...Object.keys(Config.units[job.defaultTrain ?? job.trains[0]].training.inputs));
     for (const group of [].concat(job.eats || [])) inputs.push(group.any[0]);
     return inputs;
   };
@@ -62,12 +62,13 @@
     if (!job) return 0;
     if (job.kind === 'garrison') {
       if (kind !== 'in') return 0;
-      return job.trains.reduce((sum, id) => { const training = Config.units[id].training; return sum + (training?.inputs?.[resourceId] || 0) / (training?.seconds || 20) * 60; }, 0) / job.trains.length;
+      const trains = job.aiTrains ?? job.trains;   // datorn tränar bara dessa (de nya billiga nivåerna är för spelaren)
+      return trains.reduce((sum, id) => { const training = Config.units[id].training; return sum + (training?.inputs?.[resourceId] || 0) / (training?.seconds || 20) * 60; }, 0) / trains.length;
     }
     const recipes = job.choices || [job];
     let total = 0;
     for (const recipe of recipes) {
-      const seconds = recipe.craftSeconds ?? 10, walk = job.kind === 'gather' ? (job.sourceUnit ? 60 : 12) : 0;
+      const seconds = recipe.craftSeconds ?? job.craftSeconds ?? 10, walk = job.kind === 'gather' ? (job.sourceUnit ? 60 : 12) : 0;
       if (kind === 'out') total += (recipe.outputs ? (Object.keys(recipe.outputs)[0] === resourceId ? recipe.outputs[resourceId] : 0) : recipe.outputResource === resourceId ? 1 : 0) / (seconds + (recipe.workSeconds ?? 0) + walk) * 60;
       else total += (recipe.inputs?.[resourceId] || 0) / (seconds + (recipe.workSeconds ?? 0)) * 60;
     }

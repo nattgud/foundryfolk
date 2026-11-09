@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'New soldier ranks: Clubman (only a club, made at the Bowyer), Footman (iron sword, no armor), Swordsman (iron sword and leather armor) and Blademaster (steel sword and leather armor, made with the new Steel Sword at the Swordsmith). Pick the one to train in a guard tower or garrison',
       'Changing the focus of a gatherer or mine no longer makes the goods its worker is carrying disappear: they are put in the building first',
       'Animals keep away from buildings: they never come closer than 4 tiles, and walk away if a building is placed next to them',
       'Buildings with a problem get a thin frame: red when something is missing (goods, tools, raw material, room), yellow when something is blocking (full storage, no game, no path). Shortages are only counted after a while, and not at all when the delivery is already on its way',
