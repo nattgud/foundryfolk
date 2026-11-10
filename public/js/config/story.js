@@ -1358,6 +1358,7 @@
 			{
 				name: "What the Ruins Remember",
 				goals: [more("wood", 40), more("stone", 30)],
+				start: { buildings: [{ type: "soul_altar", dx: 12, dy: -4, dead: true }] },   // död kuliss: flytta dit du vill ha den
 				dialogue: [
 					say("narrator", "Timber and stone: the ruined homes must be rebuilt, and the records among them are still waiting."),
 					say("pipwick", "[sad]These marks are not cargo marks. They are counting marks."),
