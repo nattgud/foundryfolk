@@ -25,6 +25,9 @@
     // Raser: spelare -> ras (t.ex. 2: 'demon'), satt av banan som lagen. Utan ras används de vanliga bilderna (se Assets.get).
     race: {},
     raceOf: player => Players.race[player],
+    // Rasen en bild hämtas för: en rasbunden byggnad eller enhet (definition.race, t.ex. Altar of Souls = demon) har alltid sin rasbild, annars ägarens ras
+    // Människornas bilder ligger i grundmapparna (ingen human-mapp), så för dem blir det ingen rasmapp att prova.
+    imageRace: (definition, player) => { const race = definition?.race || Players.race[player]; return race === 'human' ? undefined : race; },
 
     isHostile: (a, b) => a !== b && a !== Players.NEUTRAL && b !== Players.NEUTRAL && Players.teamOf(a) !== Players.teamOf(b),
 

@@ -638,7 +638,7 @@
       const x = building.x * tileSize, y = building.y * tileSize;
       if (outside(view, x, y) || hidden(building)) continue;
       const isFinished = building.buildProgress >= 1;
-      let image = Assets.get(building.definition.image, Players.raceOf(building.player)), turns = 0;
+      let image = Assets.get(building.definition.image, Players.imageRace(building.definition, building.player)), turns = 0;
       if (building.definition.linePlacement) ({ image, turns } = wallPiece(building.definition, wallMask(building.x, building.y, isOwnWall(building.type, building.player)), Players.raceOf(building.player)));
       context.globalAlpha = isFinished ? (building.paused ? .5 : 1) : .7;
 
@@ -704,7 +704,7 @@
     // Väljer bild (kan vara ett ark, se definition.frame): byggnadsspecifik (med last) -> byggnadsspecifik -> enhetens lastbild -> enhetens bild.
   // Fält som saknas, eller filer som inte laddas, hoppas över. Slutar det med null ritas reservgrafik.
   const findUnitImage = unit => {
-    const definition = unit.definition, isCarrying = !!unit.carriedResource, race = Players.raceOf(unit.player);
+    const definition = unit.definition, isCarrying = !!unit.carriedResource, race = Players.imageRace(definition, unit.player);
     const getImage = source => source ? Assets.get(source, race) : null;
     const forBuilding = unit.homeBuilding && definition.imagesByBuilding && definition.imagesByBuilding[unit.homeBuilding.type];
     return (forBuilding && ((isCarrying && getImage(forBuilding.imageCarrying)) || getImage(forBuilding.image)))
@@ -1230,7 +1230,7 @@
     const { x, y } = renderer.hoverTile;
     const isValid = !CityBuilder.Construction.isHidden(x, y, Players.HUMAN) && World.canPlace(placingType, x, y) && !CityBuilder.Construction.isUniqueTaken(placingType, Players.HUMAN) && CityBuilder.Construction.isNearOwnBuilding(x, y, CityBuilder.Players.HUMAN) && Economy.canAfford(Config.buildings[placingType].buildCost);
     // Den valda byggnaden syns genomskinlig på rutan. En svag färgton och en ram visar om den får plats (grön) eller inte (röd).
-    const size = renderer.tileSize, px = x * size, py = y * size, definition = Config.buildings[placingType], image = Assets.get(definition.image, Players.raceOf(Players.HUMAN));   // spelarens rasbild
+    const size = renderer.tileSize, px = x * size, py = y * size, definition = Config.buildings[placingType], image = Assets.get(definition.image, Players.imageRace(definition, Players.HUMAN));   // spelarens rasbild
     const color = isValid ? '95,181,95' : '217,83,79';
     context.fillStyle = `rgba(${color},.22)`;
     context.fillRect(px, py, size, size);

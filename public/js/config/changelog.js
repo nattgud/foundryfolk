@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Race-bound buildings and units (Soul Altar, Greater Demon, Inventor\'s Workshop, Catapult) always use their own race\'s images, whoever owns them.',
       'Story chapters can now contain dead buildings: decoration such as a Soul Altar that nobody can use, but that can be destroyed.',
       'The Bowyer is now called the Woodsmith, since it makes both clubs and bows from wood.',
       'Mountains (and the ore and stone close to them) are always dark, day and night, with a soft shadow around. Your buildings keep their light on inside them. Strength: weather.mountainDarkness in settings.js (0 = off)',
