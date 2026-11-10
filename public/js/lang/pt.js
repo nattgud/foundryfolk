@@ -539,7 +539,7 @@
       'building.fallen_star_collector': 'Coletor de estrelas',
       'building.monument': 'Monumento da Ressonância',
       'building.swordsmith': 'Ferreiro de espadas',
-      'building.bowyer': 'Arqueiro-artesão',
+      'building.bowyer': 'Armeiro de madeira',
       'building.leatherworker': 'Curtidor',
       'building.armorsmith': 'Ferreiro de armaduras',
       'building.horse_breeder': 'Criador de cavalos',

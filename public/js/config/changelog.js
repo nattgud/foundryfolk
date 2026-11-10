@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'The Bowyer is now called the Woodsmith, since it makes both clubs and bows from wood.',
       'Mountains (and the ore and stone close to them) are always dark, day and night, with a soft shadow around. Your buildings keep their light on inside them. Strength: weather.mountainDarkness in settings.js (0 = off)',
       'The dialogue voice has a sentence melody (the pitch rises and falls over each phrase, rises on questions) and the syllables glide into each other instead of separate blips. Tune with voice.melody and voice.legato in story.js (0 = as before)',
       'Placing your flag directly on a visible enemy building makes your soldiers focus fully on that building and ignore everything else (except what blocks the way)',

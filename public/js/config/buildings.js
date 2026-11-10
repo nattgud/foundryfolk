@@ -814,7 +814,7 @@ CityBuilder.Config.buildings = {
   },
 
   bowyer: {
-    name: 'Bowyer',
+    name: 'Woodsmith',
     category: 'war',
     symbol: 'BY',
     color: '#a8784a',

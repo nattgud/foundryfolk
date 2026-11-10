@@ -539,7 +539,7 @@
       'building.fallen_star_collector': 'جامع النجوم الساقطة',
       'building.monument': 'النصب التذكاري',
       'building.swordsmith': 'حدّاد السيوف',
-      'building.bowyer': 'صانع الأقواس',
+      'building.bowyer': 'صانع الأسلحة الخشبية',
       'building.leatherworker': 'دبّاغ الجلود',
       'building.armorsmith': 'حدّاد الدروع',
       'building.horse_breeder': 'مربّي الخيول',

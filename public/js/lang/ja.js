@@ -538,7 +538,7 @@
       'building.fallen_star_collector': '星の採集所',
       'building.monument': '共鳴の記念碑',
       'building.swordsmith': '剣鍛冶',
-      'building.bowyer': '弓職人',
+      'building.bowyer': '木工武具師',
       'building.leatherworker': '革職人',
       'building.armorsmith': '鎧鍛冶',
       'building.horse_breeder': '馬の育成所',

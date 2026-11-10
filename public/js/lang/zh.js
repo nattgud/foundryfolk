@@ -538,7 +538,7 @@
       'building.fallen_star_collector': '坠星采集所',
       'building.monument': '共鸣纪念碑',
       'building.swordsmith': '剑匠',
-      'building.bowyer': '弓匠',
+      'building.bowyer': '木器匠',
       'building.leatherworker': '皮匠',
       'building.armorsmith': '甲匠',
       'building.horse_breeder': '马场',

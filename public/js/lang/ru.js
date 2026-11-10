@@ -539,7 +539,7 @@
       'building.fallen_star_collector': 'Сборщик звёзд',
       'building.monument': 'Монумент резонанса',
       'building.swordsmith': 'Кузнец мечей',
-      'building.bowyer': 'Лучник-мастер',
+      'building.bowyer': 'Мастер деревянного оружия',
       'building.leatherworker': 'Кожевник',
       'building.armorsmith': 'Кузнец доспехов',
       'building.horse_breeder': 'Конный двор',
