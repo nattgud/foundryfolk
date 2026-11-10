@@ -18,19 +18,38 @@
   const moodOf = name => settings().moods[name] || settings().moods.calm;
 
   const STOPS = '.,!?;:';
-  // Frasen som tecknet i står i (från förra skiljetecknet till nästa) och var i frasen stavelsen ligger: position 0-1, stavelsens nummer och antal, slutskiljetecknet.
-  // Stavelser räknas som vokalgrupper, precis som i speak().
-  const phraseAt = (text, i) => {
-    let start = i, end = i;
+  const WORD = /[\p{L}'’]+/gu;
+
+  // Stavelsernas vokaler i ett ord, en per stavelse (engelsk uppskattning, "så nära som möjligt"): vokalgrupper, där tyst e i slutet (name, were), tyst -ed och -es (walked, makes),
+  // y som konsonant först i ordet (you) och qu inte räknas. Ord utan vokal (hmm, Mr) får en stavelse.
+  const syllableVowels = word => {
+    const w = word.toLowerCase().replace(/['’]/g, '').replace(/^y(?=[aeiouåäö])/, 'j').replace(/qu/g, 'kw');
+    const groups = [...w.matchAll(/[aeiouyåäöæø]+/g)].filter(group => !(group[0] === 'e' && (/^som$/.test(w.slice(0, group.index)) || (/[aeiou][^aeiouy]$/.test(w.slice(0, group.index)) && /^(?:ment|ful|less|ly|ness)$/.test(w.slice(group.index + 1))))));   // tyst e: some-, hope-ful, move-ment
+    if (groups.length > 1) {
+      const lastGroup = groups[groups.length - 1], at = lastGroup.index, length = w.length;
+      const silent = lastGroup[0] === 'e' && (
+        (at === length - 1 && !/[^aeiouy]le$/.test(w)) ||                                      // name, were (men inte people, table)
+        (at === length - 2 && w.endsWith('ed') && !/[td]ed$/.test(w)) ||                       // walked (men inte wanted)
+        (at === length - 2 && w.endsWith('es') && !/(?:[sxzcgh])es$/.test(w)));                // makes (men inte boxes)
+      if (silent) groups.pop();
+    }
+    return groups.length ? groups.map(group => group[0][0]) : ['e'];
+  };
+
+  // Frasen som ordet i står i (från förra skiljetecknet till nästa) och var i frasen stavelsen ligger: position 0-1, stavelsens nummer (1-) och antal, slutskiljetecknet.
+  // wordIndex: ordets första tecken i texten, syllable: stavelsens nummer i ordet (0-).
+  const phraseAt = (text, wordIndex, syllable = 0) => {
+    let start = wordIndex, end = wordIndex;
     while (start > 0 && !STOPS.includes(text[start - 1])) start--;
     while (end < text.length - 1 && !STOPS.includes(text[end])) end++;
-    let number = 0, total = 0;
-    for (let k = start; k <= end; k++) {
-      if (!isLetter(text[k]) || !isVowel(text[k]) || (k > start && isLetter(text[k - 1]) && isVowel(text[k - 1]))) continue;
-      total++;
-      if (k <= i) number = total;
+    let before = 0, total = 0;
+    for (const found of text.slice(start, end + 1).matchAll(WORD)) {
+      const count = syllableVowels(found[0]).length;
+      if (start + found.index < wordIndex) before += count;
+      total += count;
     }
-    total = Math.max(total, 1); number = Math.max(number, 1);
+    total = Math.max(total, 1);
+    const number = Math.min(total, before + syllable + 1);
     return { position: total > 1 ? (number - 1) / (total - 1) : STOPS.includes(text[end]) ? 1 : 0.5, number, total, stop: STOPS.includes(text[end]) ? text[end] : '' };
   };
 
@@ -52,18 +71,33 @@
     },
 
     // Ett ljud för tecknet (vart annat bokstavs- eller skiljetecken); progress 0-1: hur långt in i meningen tecknet står
-    // text + index (valfria): hela texten och tecknets plats i den. Med dem får frasen en melodi (se phraseAt) i stället för slumpad tonhöjd.
+    // text + index (valfria): hela texten och tecknets plats i den. Med dem låter ordet (när det börjar skrivas) lika många ljud som det har stavelser, jämnt fördelade över
+    // den tid ordet tar att skriva, och frasen får en melodi (se phraseAt). Utan dem (och för andra alfabet än det latinska) ett ljud per vokalgrupp eller var 'every':e bokstav.
     speak(speaker, char, mood, progress, count, text, index) {
-      const Sound = CityBuilder.Sound, context = Sound?.context, S = settings();
-      const previous = count > 1 ? this.previous : '';
+      const S = settings(), previous = count > 1 ? this.previous : '';
       this.previous = char;
-      // Bara bokstäver ger ljud (inte skiljetecken). syllables: ett ljud per vokalgrupp, alltså per stavelse (skriv med andra alfabet än det latinska: en bokstav, ett ljud)
       if (!isLetter(char)) return;
+      if (text && S.syllables && /\p{Script=Latin}/u.test(char)) {
+        if (index > 0 && /[\p{L}'’]/u.test(text[index - 1])) return;   // inte ordets början: ordet ljuder redan
+        const word = /^[\p{L}'’]+/u.exec(text.slice(index))[0], vowels = syllableVowels(word);
+        let span = 0;
+        for (const letter of word) span += this.delay(speaker, mood, letter) / 1000;
+        const step = span / vowels.length;
+        vowels.forEach((vowel, k) => this.blip(speaker, vowel, mood, progress, count, text, index, { delay: k * step, step, syllable: k, syllables: vowels.length }));
+        return;
+      }
       if (S.syllables) { const latin = /\p{Script=Latin}/u.test(char); if (latin && (!isVowel(char) || (previous && isVowel(previous)))) return; }
       else if (count % S.every) return;
+      this.blip(speaker, char, mood, progress, count, text, index, null);
+    },
+
+    // Ett ljud: char är bokstaven (vokalen) som formar klangen. word: { delay (s), step (s till nästa stavelse), syllable, syllables } när ett ord ljuder stavelse för stavelse.
+    blip(speaker, char, mood, progress, count, text, index, word) {
+      const Sound = CityBuilder.Sound, context = Sound?.context, S = settings();
       if (!context || context.state !== 'running' || !Sound.settings.sfxOn || Sound.settings.sfxVolume <= 0) return;
-      const who = speakerOf(speaker), m = moodOf(mood), t = context.currentTime, legatoSeconds = (S.legato ?? 50) / 100;
+      const who = speakerOf(speaker), m = moodOf(mood), t = context.currentTime + (word?.delay || 0), legatoSeconds = (S.legato ?? 50) / 100;
       let d = S.dur / 1000 * who.stretch * (1 + 0.4 * legatoSeconds * (text ? 1 : 0));
+      if (word) d = Math.min(d, Math.max(0.07, word.step * (1 + 0.5 * legatoSeconds)));   // ljuden följer ordets takt (en snabb stavelse ger ett kort ljud), men går in i nästa
       const vowel = S.syllables && VOWEL_PITCH[baseOf(char)];   // ett ljud per vokalgrupp: tonhöjden följer gruppens första vokal
       const flatten = text ? 1 - 0.65 * (S.melody ?? 60) / 100 : 1;   // med melodi styr frasens kurva tonhöjden mer än vokalen (som annars gör varje stavelse hoppig)
       const letter = !S.byLetter ? 1 : 1 + ((vowel || 1 + ((char.toLowerCase().charCodeAt(0) % 12) - 6) / 24) - 1) * flatten;   // annars a-z: ±25 %
@@ -72,13 +106,13 @@
       const melody = text ? (S.melody ?? 60) / 100 : 0, legato = (S.legato ?? 50) / 100;
       let contour = 1, last = 1, accent = 1;
       if (melody) {
-        const { position, number, stop } = phraseAt(text, index);
+        const { position, number, stop } = phraseAt(text, index, word?.syllable || 0);
         contour = 1 + melody * (0.2 * Math.sin(Math.PI * position) * (number % 2 ? 1 : 0.7) - 0.1 * position);
         if (stop === '?' || m.slope > 0.3) contour += melody * 0.35 * Math.max(0, (position - 0.55) / 0.45);
         else if (stop === '.' || stop === '!') contour -= melody * 0.14 * Math.max(0, (position - 0.65) / 0.35);
         else if (stop === ',' || stop === ';') contour += melody * 0.06 * position;
         if (stop && position >= 0.99) last = 1 + 0.5 * legato;   // frasens sista stavelse dras ut
-        if (index === 0 || /[\s—-]/.test(text[index - 1])) accent = 1 + 0.05 * melody;
+        if (!word?.syllable && (index === 0 || /[\s—-]/.test(text[index - 1]))) accent = 1 + 0.05 * melody;
       }
       const jitter = 1 + (Math.random() * 2 - 1) * S.vary * m.vary / 100 * (1 - 0.65 * melody), bend = 1 + m.slope * (progress - 0.5);
       const freq = S.pitch * who.pitch * m.pitch * bend * letter * jitter * contour * accent, level = S.volume * m.volume / 100;
