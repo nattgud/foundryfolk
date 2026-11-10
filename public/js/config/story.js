@@ -133,6 +133,8 @@
 			noise: 23,
 			voice: 100,
 			vibrato: 97,
+			melody: 60,   // meningsmelodi %: tonen stiger och faller över frasen, stiger vid frågor (0 = av, då som förut)
+			legato: 50,   // % ljuden går in i varandra och glider mellan stavelserna (0 = separata pip)
 			moods: {
 				calm: { pitch: 1, vary: 1, speed: 1.15, volume: 1, slope: 0 },
 				happy: {

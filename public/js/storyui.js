@@ -47,7 +47,7 @@
           while (offset >= segments[segment].text.length) { segment++; offset = 0; }
           const { mood, text: part } = segments[segment], char = part[offset++];
           element.textContent = text.slice(0, ++shown);
-          CityBuilder.Voice.speak(speaker, char, mood, offset / part.length, shown);
+          CityBuilder.Voice.speak(speaker, char, mood, offset / part.length, shown, text, shown - 1);
           if (shown >= text.length) return stop();
           timer = setTimeout(tick, CityBuilder.Voice.delay(speaker, mood, char));
         };
@@ -77,7 +77,7 @@
           text.append(
             make('p', 'story-greeting', t(letter.greeting || story.greeting, { village: t(story.village) })),
             ...letter.lines.map(line => make('p', '', t(line))),
-            make('p', 'story-signature', t(letter.signature || (letter.throne ? sign.throne : sign.realm)) + ','),
+            make('p', 'story-signature', t(letter.throne ? sign.throne : sign.realm) + ','),
             make('p', 'story-signature story-name', t(sign.name)));
           action.onclick = next;
         } else if (current.type === 'dialogue') {
