@@ -536,7 +536,7 @@
 				dialogue: [
 					say("albertha", "The king requires a clear view of the border. The Eye of Shade will provide it."),
 					say("reeve", "[question]What does it see?"),
-					say("thordram", "Movement. Muster points. Anything approaching the settlements."),
+					say("thordram", "Movement, the players browser history, anything approaching the settlements, etc."),
 					say("reeve", "[question]Can it distinguish soldiers from civilians?"),
 					say("albertha", "It can distinguish a threat from an ordinary presence."),
 					say("reeve", "[angry]That is not the same thing."),
