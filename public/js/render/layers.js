@@ -674,7 +674,7 @@
         context.fillStyle = '#000'; context.fillRect(x + 2, y + tileSize - 5, tileSize - 4, 3);
         context.fillStyle = '#b88cf0'; context.fillRect(x + 2, y + tileSize - 5, (tileSize - 4) * (1 - building.spellCooldown / (building.spellTotal || building.spellCooldown)), 3);
       }
-      if (building.player !== CityBuilder.Players.HUMAN) { // andra spelares byggnader: ram i spelarens färg
+      if (building.player !== CityBuilder.Players.HUMAN && !building.dead) { // andra spelares byggnader: ram i spelarens färg (döda byggnader tillhör ingen: ingen ram)
         context.strokeStyle = CityBuilder.Config.settings.playerColors[building.player] || '#fff'; context.lineWidth = 2;
         context.strokeRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
       }
