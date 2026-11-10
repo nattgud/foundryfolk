@@ -44,7 +44,7 @@
     salt_ore: '#F6C9D0', sulfur: '#C6E21E', gemstone: '#D43CFF', crystal: '#19D98B', moonstone: '#9FB4FF', fallen_star: '#FFF3A0', ruins: '#B8A58C',
   };
   const SELECT_SAME = '#0f0', SELECT_OTHER = '#fa0', SELECT_RESOURCE = '#f00';   // vald byggnad: samma inriktning, annan inriktning, det den hämtar
-  const OWN_COLOR = '#00f0ff', ENEMY_COLOR = '#ff2d2d', STORM_COLOR = '#ff4fd8', OWN_SOLDIER_COLOR = '#5fd35f', ALLY_COLOR = '#4aa3ff';   // dina soldater gröna, lagkamraters blå (fiender alltid röda)
+  const OWN_COLOR = '#00f0ff', ENEMY_COLOR = '#ff2d2d', STORM_COLOR = '#ff4fd8', OWN_SOLDIER_COLOR = '#5fd35f', ALLY_COLOR = '#4aa3ff', DEAD_COLOR = '#8a8a8a';   // dina soldater gröna, lagkamraters blå (fiender alltid röda)
   const isFoe = player => player === Players.NEUTRAL || Players.isHostile(Players.HUMAN, player);   // monster (ingens spelare) räknas som fiender, lagkamrater inte   // egna byggnader (ingen annan markering är turkos), fiender (alltid röda), meteorstormens mitt
   const LEGEND_MAX = 10;         // högst så många rader i teckenförklaringen
   const CHUNK = 16;              // rutor per bricka
@@ -616,7 +616,7 @@
         const x = toX(building.x + 0.5), y = toY(building.y + 0.5);
         if (Math.hypot(x - radius, y - radius) > radius + marker) continue;
         context.globalAlpha = building.buildProgress >= 1 ? 1 : 0.55;
-        context.fillStyle = !own ? ENEMY_COLOR : match || OWN_COLOR;
+        context.fillStyle = building.dead ? DEAD_COLOR : !own ? ENEMY_COLOR : match || OWN_COLOR;   // döda byggnader tillhör ingen: grå
         context.fillRect(Math.round(x - block / 2), Math.round(y - block / 2), block, block);
       }
       context.globalAlpha = 1;
