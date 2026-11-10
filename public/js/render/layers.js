@@ -645,8 +645,11 @@
       if (building.definition.pile) { // hög på marken: en jordhög, varorna ritas som ikoner nedan
         context.fillStyle = 'rgb(70 50 30 / 70%)';
         context.beginPath(); context.ellipse(x + tileSize / 2, y + tileSize * .62, tileSize * .38, tileSize * .24, 0, 0, Math.PI * 2); context.fill();
-      } else if (image) drawTurned(context, image, x, y, tileSize, turns);
-      else {
+      } else if (image) {
+        if (building.dead) context.filter = 'grayscale(.55) brightness(.72)';   // död byggnad: mörk och grå kuliss
+        drawTurned(context, image, x, y, tileSize, turns);
+        if (building.dead) context.filter = 'none';
+      } else {
         context.fillStyle = building.definition.color;
         context.fillRect(x + 3, y + 3, tileSize - 6, tileSize - 6);
         context.fillStyle = '#111'; context.font = 'bold 16px system-ui';

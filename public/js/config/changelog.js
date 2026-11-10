@@ -7,6 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Story chapters can now contain dead buildings: decoration such as a Soul Altar that nobody can use, but that can be destroyed.',
       'The Bowyer is now called the Woodsmith, since it makes both clubs and bows from wood.',
       'Mountains (and the ore and stone close to them) are always dark, day and night, with a soft shadow around. Your buildings keep their light on inside them. Strength: weather.mountainDarkness in settings.js (0 = off)',
       'The dialogue voice has a sentence melody (the pitch rises and falls over each phrase, rises on questions) and the syllables glide into each other instead of separate blips. Tune with voice.melody and voice.legato in story.js (0 = as before)',

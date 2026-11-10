@@ -39,34 +39,39 @@
       return building;
     },
 
-    place(type, x, y) {
+    place(type, x, y, dead) {
       const spot = this.freeSpot(type, x, y);
       if (!spot) return null;
-      const building = World.placeBuilding(CityBuilder.Construction.variantFor(type, spot.x, spot.y) || type, spot.x, spot.y, true, Players.HUMAN);   // en samlare eller gruva får inriktningen som passar rutan
-      return this.ready(building);
+      const building = World.placeBuilding(CityBuilder.Construction.variantFor(type, spot.x, spot.y) || type, spot.x, spot.y, true, dead ? this.deadOwner() : Players.HUMAN);   // en samlare eller gruva får inriktningen som passar rutan
+      return dead ? World.makeDead(building) : this.ready(building);
     },
 
+    // Döda byggnader (dead: true i start.buildings): kulisser som ingen kan använda. De ägs av första fienden, så spelarens soldater kan slå sönder dem
+    // men fienden aldrig använder eller försvarar dem. Se World.makeDead.
+    deadOwner() { return Players.hostileAI()[0] ?? Players.ENEMY; },
+
     // Placerar en byggnad på exakt plats (dx, dy rutor från HQ). Går det inte (vatten, berg, upptaget) skrivs en varning och den närmaste lediga rutan används.
-    placeAt(type, dx, dy) {
+    placeAt(type, dx, dy, dead) {
       const hq = World.headquarters, x = hq.x + dx, y = hq.y + dy;
       type = CityBuilder.Construction.variantFor(type, x, y) || type;   // 'gatherer' eller 'mine' ger inriktningen som passar rutan; ett variant-id (berry_gatherer ...) behålls
       if (!World.canPlace(type, x, y)) {
         console.warn(`Story: ${type} cannot stand at dx ${dx}, dy ${dy} in chapter ${this.chapter.number}; using the nearest free spot`);
-        return this.place(type, x, y);
+        return this.place(type, x, y, dead);
       }
-      const building = World.placeBuilding(type, x, y, true, Players.HUMAN);
-      return this.ready(building);
+      const building = World.placeBuilding(type, x, y, true, dead ? this.deadOwner() : Players.HUMAN);
+      return dead ? World.makeDead(building) : this.ready(building);
     },
 
     // Kapitlets start: byggnaderna från föregående mål står redo och Eye of Shades står mot fienden.
     // En byggnad i start.buildings är antingen { type, dx, dy } (exakt plats, mätt i rutor från HQ) eller bara ett id (automatisk plats runt HQ).
+    // { type, dx, dy, dead: true } är en död byggnad: bara en kuliss som ingen kan använda (se deadOwner).
     // Inriktningen är själva typen: layout() skriver t.ex. 'herb_gatherer' eller 'copper_mine'. Ett 'gatherer' eller 'mine' får den inriktning som passar platsen.
     // eye: true placerar Eye of Shades automatiskt mot fienden, eye: { reach } längre eller kortare dit (andel av avståndet mellan baserna), eye: { dx, dy } på en bestämd plats.
     begin() {
       const chapter = this.chapter, hq = World.headquarters;
       if (!chapter || !hq) return;
       (chapter.start?.buildings || []).forEach((entry, i) => {
-        if (entry.type) return this.placeAt(entry.type, entry.dx, entry.dy);
+        if (entry.type) return this.placeAt(entry.type, entry.dx, entry.dy, entry.dead);
         const angle = i * 2.4 + chapter.number, distance = 6 + (i % 4) * 2;
         this.place(entry, hq.x + Math.cos(angle) * distance, hq.y + Math.sin(angle) * distance);
       });

@@ -240,6 +240,7 @@
           }
 
           restoreFields(building, saved.fields);
+          if (building.dead) World.makeDead(building);
           if (tool) building.recipesOff = building.definition.job.choices.reduce((mask, choice, index) => (tool in choice.outputs ? mask : mask | (1 << index)), 0);
         } catch (error) {
           failed++;

@@ -386,7 +386,7 @@
     census(player) {
       const census = { count: {}, building: {}, produces: new Set(), unfinished: 0, total: 0 };
       for (const building of World.buildings) {
-        if (building.player !== player || building.definition.pile) continue;
+        if (building.player !== player || building.definition.pile || building.dead) continue;
         census.count[building.type] = (census.count[building.type] || 0) + 1;
         census.total++;
         for (const resourceId of outputsOf(building.definition)) census.produces.add(resourceId);

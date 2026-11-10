@@ -240,6 +240,15 @@
       return building;
     },
 
+    // Död byggnad: syns och kan förstöras men gör ingenting. Definitionen byts mot en kopia utan jobb, så produktion, bärare, datorn och träning ser en byggnad
+    // utan uppgift. Fältet dead sparas, och save.js kallar detta igen vid inläsning.
+    makeDead(building) {
+      building.dead = true;
+      building.definition = { ...building.definition, job: undefined, soulCounter: undefined, requiredEquipment: undefined, isStorage: false, boost: null };
+      building.inputStock = {}; building.outputStock = {};
+      return building;
+    },
+
     // Rutor där djur inte får vara: närmare än animalBuildingDistance från någon byggnad. Räknas om först när byggnader ändrats.
     buildingVersion: 0,
     nearBuilding(x, y) {
