@@ -913,14 +913,51 @@
   // Väder och dygn: nattens blå dunkel, regn, dimma, blixtar och tornados. Ritas över allt i världen men före dimman och gränssnittet.
   const frac = value => value - Math.floor(value);
   // Nattens dunkel ritas i låg upplösning (4 px per ruta) med mjuka ljusfläckar urgröpta runt spelarens byggnader och människor
-  const dusk = document.createElement('canvas');
+  const dusk = document.createElement('canvas'), rockMask = document.createElement('canvas');
+  let rockKey = '', rockAny = false;
   function drawNight(context, renderer, view, alpha) {
     const gfx = CityBuilder.Options.gfx, scale = gfx.nightScale, { building: buildingLight, unit: unitLight, fade } = Config.settings.weather.nightLight, size = renderer.tileSize, Players = CityBuilder.Players, World = CityBuilder.World;
     const left = Math.floor(view.left / size) - 4, top = Math.floor(view.top / size) - 4, cols = Math.ceil((view.right - view.left) / size) + 8, rows = Math.ceil((view.bottom - view.top) / size) + 8;
     if (dusk.width !== cols * scale || dusk.height !== rows * scale) { dusk.width = cols * scale; dusk.height = rows * scale; }
     const mask = dusk.getContext('2d');
     mask.setTransform(1, 0, 0, 1, 0, 0); mask.globalCompositeOperation = 'source-over'; mask.clearRect(0, 0, dusk.width, dusk.height);
-    mask.fillStyle = `rgba(8,14,44,${alpha})`; mask.fillRect(0, 0, dusk.width, dusk.height);
+    if (alpha > 0) { mask.fillStyle = `rgba(8,14,44,${alpha})`; mask.fillRect(0, 0, dusk.width, dusk.height); }
+    // Berg och grottor är alltid mörka (dag som natt): bergsrutorna målas i en egen mask (bara när vyn flyttats) som läggs ovanpå, mjukt avrundad. Ljusen nedan skär hål i båda.
+    const rockAlpha = Config.settings.weather.mountainDarkness || 0;
+    if (rockAlpha > 0) {
+      const key = `${left},${top},${cols},${rows},${scale}`;
+      if (key !== rockKey) {
+        rockKey = key; rockAny = false;
+        if (rockMask.width !== dusk.width || rockMask.height !== dusk.height) { rockMask.width = dusk.width; rockMask.height = dusk.height; }
+        const rock = rockMask.getContext('2d'), weather = Config.settings.weather, dark = new Set(weather.darkTerrain || ['mountain']), near = new Set(weather.darkNear || []), reach = weather.darkNearTiles ?? 2;
+        rock.setTransform(1, 0, 0, 1, 0, 0); rock.clearRect(0, 0, rockMask.width, rockMask.height);
+        rock.setTransform(scale, 0, 0, scale, -left * scale, -top * scale); rock.fillStyle = 'rgb(8,14,44)';
+        // Först bergsrutorna (med marginal för grannar), sedan malm och sten som ligger nära ett berg
+        const w = cols + reach * 2, mountain = new Uint8Array(w * (rows + reach * 2)), types = new Array(cols * rows);
+        for (let j = -reach; j < rows + reach; j++) for (let i = -reach; i < cols + reach; i++) {
+          const type = World.getTile(left + i, top + j)?.terrainType;
+          if (i >= 0 && j >= 0 && i < cols && j < rows) types[j * cols + i] = type;
+          if (dark.has(type)) mountain[(j + reach) * w + i + reach] = 1;
+        }
+        for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+          const type = types[j * cols + i];
+          let lit = mountain[(j + reach) * w + i + reach] === 1, size = .8;
+          if (!lit && near.has(type)) {
+            for (let dj = -reach; dj <= reach && !lit; dj++) for (let di = -reach; di <= reach; di++) if (mountain[(j + dj + reach) * w + i + di + reach]) { lit = true; break; }
+            size = .5;
+          }
+          if (lit) { rock.fillRect(left + i - size, top + j - size, 1 + size * 2, 1 + size * 2); rockAny = true; }
+        }
+      }
+      if (rockAny) {
+        mask.globalAlpha = rockAlpha;
+        if ('filter' in mask) mask.filter = `blur(${scale * .7}px)`;   // mjuka kanter (utan stöd för filter blir de bara kantigare)
+        mask.drawImage(rockMask, 0, 0);
+        if ('filter' in mask) mask.filter = 'none';
+        mask.globalAlpha = 1;
+      }
+    }
+    if (alpha <= 0 && !rockAny) return;
     mask.setTransform(scale, 0, 0, scale, -left * scale, -top * scale); mask.globalCompositeOperation = 'destination-out';
     const light = (x, y, radius) => {
       const reach = radius + fade;
@@ -942,7 +979,7 @@
     const Weather = CityBuilder.Weather, view = renderer.viewBounds(0), width = view.right - view.left, height = view.bottom - view.top, zoom = renderer.zoom;
     const night = Weather.darkness(), now = performance.now() / 1000;
     context.save();
-    if (night > 0) drawNight(context, renderer, view, Config.settings.weather.nightDarkness * night);
+    if (night > 0 || Config.settings.weather.mountainDarkness > 0) drawNight(context, renderer, view, Config.settings.weather.nightDarkness * night);
     const type = Weather.type;
     if (type === 'rain' || type === 'storm') {   // grått dunkel och diagonala streck
       const storm = type === 'storm';

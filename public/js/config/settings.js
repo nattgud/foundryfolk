@@ -198,12 +198,12 @@ CityBuilder.Config.settings = {
     projectileSpeed: 16,       // pilens fart (rutor per sekund); flygtiden hålls mellan min och max
     projectileMinSeconds: 0.2,
     projectileMaxSeconds: 0.5,
-    workerRespawnSeconds: 60,  // tid innan en dödad arbetare ersätts
+    workerRespawnSeconds: 15,  // tid innan en dödad arbetare ersätts
     carrierRespawnSeconds: 5,  // tid mellan att dödade bärare ersätts (en i taget per spelare). Kort nog att basen inte står utan bärare, men så lång att soldaterna inte fastnar i att jaga dem
   },
   // Fog of war (systems/vision.js). Radier i rutor, tider i sekunder speltid.
   vision: {
-    ttl: 45,                   // så länge en ruta syns kvar efter att den sista byggnaden eller enheten lämnat den
+    ttl: 30,                   // så länge en ruta syns kvar efter att den sista byggnaden eller enheten lämnat den
     interval: 1,               // hur ofta synfältet räknas om
     fade: 5,                   // de sista sekunderna bleknar dimman in
     building: 12, unit: 8, soldier: 10,  // standardräckvidd (definition.vision åsidosätter)
@@ -214,7 +214,11 @@ CityBuilder.Config.settings = {
   // growth: vad som växer ur marken (terräng -> vara). Skanningen sker var scanSeconds i de chunkar spelaren ser.
   weather: {
     nightDarkness: 0.35,                   // hur mörk natten blir som mest (0-1)
-    nightLight: { building: 2.5, unit: 1, fade: 1 },   // ljust som på dagen på så många rutor runt spelarens byggnader och människor (djur lyser inte), sedan mjuk övergång på 'fade' rutor
+    mountainDarkness: 0.5,                 // hur mörka berg och grottor alltid är, dag som natt (0-1, 0 = av). Byggnader i dem har sitt ljus på hela tiden (nightLight)
+    darkTerrain: ['mountain'],             // terrängtyper som alltid är mörka, med en mjuk skugga runt (dragen över gångarna och grottorna i berget)
+    darkNear: ['iron_ore', 'copper_ore', 'tin_ore', 'silver_ore', 'coal', 'gold_ore', 'salt_ore', 'sulfur', 'gemstone', 'limestone', 'rock'],   // och dessa, men bara när de ligger inom darkNearTiles rutor från ett berg (inte malm ute på gräset)
+    darkNearTiles: 2,
+    nightLight: { building: 2, unit: 1, fade: 1 },   // ljust som på dagen på så många rutor runt spelarens byggnader och människor (djur lyser inte), sedan mjuk övergång på 'fade' rutor
     dayLength: 480, startFraction: 0.12,   // ett dygn i speltid, och var i dygnet ett nytt spel börjar (0 = gryning)
     minSeconds: 30, maxSeconds: 180,
     lightning: [15, 35],                   // sekunder mellan blixtarna i en storm
@@ -225,8 +229,8 @@ CityBuilder.Config.settings = {
     rain: { chance: 0.1, cap: 2 },        // chans per skanning att en växt får +1 mängd, högst cap gånger terrängens normala mängd
     flood: {                               // stormen: översvämning (se systems/weather.js)
       reach: 3,                            // så många rutor från vattnet når den som mest
-      riseSeconds: 6,                      // tid per ring när vattnet stiger
-      fallSeconds: 4,                      // och när det sjunker undan
+      riseSeconds: 4,                      // tid per ring när vattnet stiger
+      fallSeconds: 8,                      // och när det sjunker undan
       washUp: 0.04,                        // chans per ruta som sjunker undan att vattnet lämnat en resurs
       amount: 0.5,                         // fyndets mängd som andel av terrängens normala
       finds: { salt_ore: 4, silver_ore: 3, gold_ore: 2, gemstone: 1, crystal: 1 },   // vilka fynd, och hur ofta (bara sådant spelaren låst upp en byggnad för)
