@@ -166,7 +166,8 @@
           console.log('CityBuilder.Game.init() started.');
           // Spelets objekt tas bort från den globala namnrymden: modulerna har redan sina egna referenser, men från konsolen går det inte längre att
           // nå ekonomi, värld och inställningar. Med ?debug i adressen finns det kvar (för utveckling och tester).
-          if (!/[?&]debug\b/.test(location.search)) delete window.CityBuilder;
+          if (!/[?&](debug|editor)\b/.test(location.search)) delete window.CityBuilder;   // EDITOR: ?editor behåller också spelobjektet
+          if (/[?&]editor\b/.test(location.search)) document.head.appendChild(Object.assign(document.createElement('script'), { src: 'js/dev/storyeditor.js' }));   // EDITOR: laddar utvecklarverktyget (ta bort raden och js/dev/)
         } else {
           console.warn('Initialization failed: CityBuilder.Game.init() is not defined.');
           GameLoading.fail(new Error('Game.init is not defined'));
