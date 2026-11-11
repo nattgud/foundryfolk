@@ -26,7 +26,7 @@
      { read: 'händelse-id' }  dialogen i händelsen med id: 'händelse-id' är läst
      { told: 'nyckel' }   en nyckel i Levels.told
 
-   I kapitlets events: spawn: { id, image, frame, size, speed, at, script: [...] } (eller en lista av dem) skapar skådespelare, act: { id: [manus] } byter manus. */
+   I kapitlets events: spawn: { id, image, race ('demon' = demonernas version av bilden), frame, size, speed, at, script: [...] } (eller en lista av dem) skapar skådespelare, act: { id: [manus] } byter manus. */
 (function (CityBuilder) {
   'use strict';
   const { World, Config, Players, Utils, Jobs } = CityBuilder;
@@ -86,7 +86,7 @@
       if (!from) { console.warn(`Actors: spawn ${spec.id} has no valid position`); return null; }
       const at = from.kind === 'building' ? { x: from.x, y: from.y + 1 } : from;
       const data = {
-        id: spec.id, image: spec.image, frame: spec.frame, size: spec.size, speed: spec.speed, faces: spec.faces,
+        id: spec.id, image: spec.image, race: spec.race, frame: spec.frame, size: spec.size, speed: spec.speed, faces: spec.faces,
         x: at.x + .5, y: at.y + .5, script: spec.script || [], index: 0, act: null, arrived: false, gone: false, killed: false,
       };
       const list = state().list.filter(item => item.id !== spec.id);   // en gammal, försvunnen med samma id ersätts
@@ -101,6 +101,7 @@
       unit.x = data.x; unit.y = data.y; unit.actor = data.id; unit.px = unit.x; unit.py = unit.y;
       unit.definition = { ...Config.units.actor };
       if (data.image) unit.definition.image = data.image;
+      if (data.race) unit.definition.race = data.race;   // 'demon': samma bildfil hämtas ur demonmappen (images/units/demon/...)
       if (data.frame) unit.definition.frame = data.frame;
       if (data.size) unit.definition.imageSize = data.size;
       if (data.speed) unit.definition.speedMultiplier = data.speed;

@@ -6,7 +6,10 @@
      Skådespelare - bygg en skådespelare (id, bild, startruta) och ett manus genom att klicka på kartan: välj vad ett klick gör (start, gå dit, teleportera dit; ett
                     klick på en byggnad använder byggnadens id som mål), lägg till wait/vanish/kill/tell med knappen. Spela upp visar det i spelet. Spara skådespelare
                     lägger den i listan som följer med exporten (spawn: [...] att klistra in i en händelse).
-     Exportera - ger raderna scenery: [...], start: { buildings: [...] } och spawn: [...] att klistra in i kapitlet i config/story.js.
+                    Ras: Demon ger demonernas version av bilden. Alla enheter (soldater, arbetare, djur, monster) finns i bildlistan.
+     Händelser    - bygg händelser med villkor (when/at/goal: tid, resurser, byggnader, skådespelare framme/sedda/borta, dialog läst ...) och effekter
+                    (skapa en sparad skådespelare, ge skådespelaren ett nytt manus, dialog, ge varor). Kör nu testar effekterna direkt.
+     Exportera - ger raderna scenery: [...], start: { buildings: [...] }, events: [...] och spawn: [...] att klistra in i kapitlet i config/story.js.
    Ta bort verktyget: radera den här filen och de två raderna märkta EDITOR i index.html. Inget annat i spelet beror på den. */
 (function () {
   'use strict';
@@ -30,17 +33,31 @@
     panel.innerHTML = `<b>Story-editor</b> <span id="seChapter"></span><br>
       <label><input type="radio" name="seMode" value="place" checked> Placera</label>
       <label><input type="radio" name="seMode" value="move"> Flytta / ta bort</label>
-      <label><input type="radio" name="seMode" value="actor"> Skådespelare</label><br>
+      <label><input type="radio" name="seMode" value="actor"> Skådespelare</label>
+      <label><input type="radio" name="seMode" value="event"> Händelser</label><br>
       <select id="seType" style="width:100%;margin:4px 0">${typeOptions}</select>
       Lager: <input id="seLayer" type="number" style="width:50px" placeholder="auto"> <label><input id="sePause" type="checkbox"> Pausa spelet</label><br>
       <div id="seActor" style="display:none;border-top:1px solid #555;margin-top:4px;padding-top:4px">
-        Id: <input id="aeId" value="baker" style="width:70px"> Bild: <select id="aeImage" style="width:120px"></select><br>
+        Id: <input id="aeId" value="baker" list="seIds" style="width:70px"> Ras: <select id="aeRace"><option value="">människa</option><option value="demon">demon</option></select><br>
+        Bild: <select id="aeImage" style="width:100%"></select><br>
         Ett klick på kartan: <select id="aeClick"><option value="start">sätter start</option><option value="walk">gå dit</option><option value="teleport">teleportera dit</option></select><br>
         Steg: <select id="aeStep"><option value="wait">wait (sekunder)</option><option value="vanish">vanish</option><option value="kill">kill (id)</option><option value="tell">tell (text)</option></select>
         <input id="aeValue" style="width:80px" placeholder="värde"> <button id="aeAdd">Lägg till</button>
         <div id="aeList" style="margin:4px 0;font:11px monospace;white-space:pre-wrap"></div>
         <button id="aeUndo">Ångra steg</button> <button id="aePlay">Spela upp</button> <button id="aeStop">Rensa uppspelning</button><br>
         <button id="aeSave" style="margin-top:3px">Spara skådespelare</button> <span id="aeSaved"></span>
+      </div>
+      <datalist id="seIds"></datalist>
+      <div id="seEvent" style="display:none;border-top:1px solid #555;margin-top:4px;padding-top:4px">
+        Händelse-id (valfritt): <input id="evId" style="width:80px"><br>
+        <b>Villkor</b> <select id="evCond" style="width:150px"></select><br>
+        <input id="evC1" style="width:70px"> <input id="evC2" style="width:70px"> <input id="evC3" style="width:40px"> <button id="evAddCond">Lägg till</button>
+        <div id="evWhen" style="font:11px monospace;white-space:pre-wrap;margin:3px 0"></div>
+        <b>Effekter</b> <select id="evEff" style="width:150px"></select><br>
+        <input id="evE1" style="width:100px"> <input id="evE2" style="width:70px"> <button id="evAddEff">Lägg till</button>
+        <div id="evDo" style="font:11px monospace;white-space:pre-wrap;margin:3px 0"></div>
+        <button id="evUndo">Ångra senaste</button> <button id="evRun">Kör nu</button> <button id="evSave">Spara händelse</button>
+        <div id="evList" style="font:11px monospace;white-space:pre-wrap;margin:3px 0"></div>
       </div>
       <button id="seExport" style="margin:4px 0">Exportera</button> <button id="seClear" title="Tar bort alla kulisser i kapitlet">Rensa kulisser</button>
       <div id="seHover" style="color:#999"></div><div id="seInfo" style="color:#9ad;min-height:1.4em"></div>
@@ -51,7 +68,7 @@
     $('seType').value = 's:' + state.type;
     $('seType').onchange = event => { state.type = event.target.value; };
     $('seLayer').oninput = event => { state.layer = event.target.value === '' ? null : +event.target.value; };
-    for (const radio of panel.querySelectorAll('input[name=seMode]')) radio.onchange = () => { state.mode = radio.value; $('seActor').style.display = state.mode === 'actor' ? 'block' : 'none'; };
+    for (const radio of panel.querySelectorAll('input[name=seMode]')) radio.onchange = () => { state.mode = radio.value; $('seActor').style.display = state.mode === 'actor' ? 'block' : 'none'; $('seEvent').style.display = state.mode === 'event' ? 'block' : 'none'; };
     $('sePause').onchange = event => { C.Game.paused = event.target.checked; };
     const refreshChapter = () => { $('seChapter').textContent = Story.chapter ? `– kapitel ${Story.chapter.number}: ${Story.chapter.name}` : '(ingen story pågår)'; };
     refreshChapter(); setInterval(refreshChapter, 1500);
@@ -99,6 +116,7 @@
       if (!mine(event)) return;
       event.stopImmediatePropagation(); event.preventDefault();
       const tile = tileOf(event);
+      if (state.mode === 'event') return;
       if (state.mode === 'actor') { if (event.button === 2) actorUndo(); else actorClick(tile); return; }
       if (event.button === 2) { removeAt(tile); return; }
       if (state.mode === 'place') { state.painting = true; state.last = keyOf(tile.x, tile.y); put(tile); return; }
@@ -128,7 +146,7 @@
     }, true);
     window.addEventListener('contextmenu', event => { if (event.target === canvas && !event.shiftKey) event.preventDefault(); }, true);
     window.addEventListener('keydown', event => {
-      if ((event.key === 'Delete' || event.key === 'Backspace') && state.mode !== 'actor' && state.hover && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) { removeAt(state.hover); event.stopImmediatePropagation(); }
+      if ((event.key === 'Delete' || event.key === 'Backspace') && state.mode === 'place' && state.hover && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) { removeAt(state.hover); event.stopImmediatePropagation(); }
     }, true);
     // pekaren över panelen ska inte nå spelet
     for (const type of ['pointerdown', 'pointerup', 'wheel']) panel.addEventListener(type, event => event.stopPropagation());
@@ -149,12 +167,12 @@
     })();
 
     // ---- skådespelare ----
-    const A = C.Actors, aeImages = [...new Set([
-      ...Object.values(Config.units.worker?.imagesByBuilding || {}).flatMap(entry => [entry.image]),
-      ...Object.values(Config.units).filter(unit => unit.isAnimal && unit.image).map(unit => unit.image),
-      Config.units.carrier?.image,
-    ].filter(Boolean))].sort();
-    $('aeImage').innerHTML = aeImages.map(path => `<option value="${path}">${path.replace('images/units/', '').replace('.png', '')}</option>`).join('');
+    const A = C.Actors, strip = path => path.replace(/\?.*$/, '');
+    const aeImages = [];   // { path, size, label }: alla enhetsbilder; storleken följer enhetstypen
+    for (const [id, unit] of Object.entries(Config.units)) if (id !== 'actor' && unit.image) aeImages.push({ path: strip(unit.image), size: unit.imageSize, label: id });
+    for (const [building, entry] of Object.entries(Config.units.worker?.imagesByBuilding || {})) if (entry.image && !aeImages.some(item => item.path === strip(entry.image))) aeImages.push({ path: strip(entry.image), size: Config.units.worker.imageSize, label: 'worker: ' + strip(entry.image).replace('images/units/', '').replace('.png', '') });
+    aeImages.sort((x, y) => x.label.localeCompare(y.label));
+    $('aeImage').innerHTML = aeImages.map((item, i) => `<option value="${i}">${item.label}</option>`).join('');
     const actor = { at: null, script: [] }, defs = [], marks = [];
     const targetOf = tile => {   // ett klick på en byggnad ger byggnadens id (hq = 'hq'), annars en ruta relativt basen
       const building = World.buildingAt(tile.x, tile.y);
@@ -181,7 +199,12 @@
       else if (type === 'tell') { if (value) actor.script.push({ tell: [{ who: 'narrator', text: value }] }); }
       showActor();
     };
-    const current = () => ({ id: $('aeId').value.trim() || 'actor', image: $('aeImage').value, at: actor.at, script: actor.script.map(step => ({ ...step })) });
+    const current = () => {
+      const image = aeImages[+$('aeImage').value] || aeImages[0], def = { id: $('aeId').value.trim() || 'actor', image: image?.path };
+      if ($('aeRace').value && !/\/(animals|monster)\//.test(image?.path || '')) def.race = $('aeRace').value;
+      if (image?.size && image.size !== 16) def.size = image.size;
+      return { ...def, at: actor.at, script: actor.script.map(step => ({ ...step })) };
+    };
     const previews = []; let previewBase = 0;
     function stopPreview() {   // tar bort uppspelade skådespelare, deras blodpölar och att dialogerna lästs, så att inget följer med en sparning
       const progress = C.Levels.progressRef(), saved = progress.actors;
@@ -206,7 +229,7 @@
     $('aeSave').onclick = () => {
       const def = current(); if (!def.at) { info('Välj en start först'); return; }
       const index = defs.findIndex(other => other.id === def.id); if (index >= 0) defs[index] = def; else defs.push(def);
-      $('aeSaved').textContent = `Sparade: ${defs.map(other => other.id).join(', ')}`;
+      $('aeSaved').textContent = `Sparade: ${defs.map(other => other.id).join(', ')}`; refreshIds();
       actor.at = null; actor.script = []; $('aeId').value = ''; showActor();
     };
     showActor();
@@ -228,6 +251,77 @@
       });
     }
     (function loop() { drawMarks(); requestAnimationFrame(loop); })();
+
+    // ---- händelser ----
+    const ser = value => value && typeof value === 'object'
+      ? (Array.isArray(value) ? '[' + value.map(ser).join(', ') + ']'
+        : value.who !== undefined && value.text !== undefined ? `say(${JSON.stringify(value.who)}, ${JSON.stringify(value.text)})`
+        : '{ ' + Object.entries(value).map(([key, item]) => `${/^[a-z_]\w*$/i.test(key) ? key : JSON.stringify(key)}: ${ser(item)}`).join(', ') + ' }')
+      : JSON.stringify(value);
+    const refreshIds = () => { $('seIds').innerHTML = [...defs.map(def => def.id), ...events.filter(event => event.id).map(event => event.id)].map(id => `<option value="${id}">`).join(''); };
+    // Villkor: hur fälten blir en del av händelsen. top = fält på händelsen själv (at, goal), annars en post i when.
+    const CONDS = {
+      'at (sekunder in i kapitlet)': { f: ['sekunder'], top: ([n]) => ({ at: +n }) },
+      'goal (målet klart, nummer)': { f: ['målnummer'], top: ([n]) => ({ goal: +n }) },
+      'made (resurs tillverkad)': { f: ['resurs', 'antal'], when: ([r, n]) => ({ resource: r, made: +n }) },
+      'have (har resurs)': { f: ['resurs', 'antal'], when: ([r, n]) => ({ resource: r, amount: +n }) },
+      'build (byggt)': { f: ['byggnad', 'antal'], when: ([id, n]) => ({ type: 'build', id, amount: +n || 1 }) },
+      'arrived (skådespelare framme)': { f: ['skådespelar-id'], when: ([id]) => ({ arrived: id }) },
+      'arrivedSeen (framme och sedd)': { f: ['skådespelar-id'], when: ([id]) => ({ arrivedSeen: id }) },
+      'seen (sedd)': { f: ['skådespelar-id'], when: ([id]) => ({ seen: id }) },
+      'gone (borta)': { f: ['skådespelar-id'], when: ([id]) => ({ gone: id }) },
+      'killed (dödad)': { f: ['skådespelar-id'], when: ([id]) => ({ killed: id }) },
+      'near (nära ett mål)': { f: ['skådespelar-id', 'mål (byggnad/hq)', 'radie'], when: ([id, target, radius]) => ({ near: id, of: target, radius: +radius || 3 }) },
+      'read (dialog läst)': { f: ['händelse-id'], when: ([id]) => ({ read: id }) },
+      'told (nyckel)': { f: ['nyckel'], when: ([key]) => ({ told: key }) },
+    };
+    // Effekter: spawn (sparad skådespelare), act (nytt manus), tell, give
+    const EFFS = {
+      'spawn (sparad skådespelare)': { f: ['skådespelar-id'], apply: (event, [id]) => { const def = defs.find(other => other.id === id) || (current().id === id ? current() : null); if (!def || !def.at) { info(`Ingen sparad skådespelare '${id}' med startruta`); return false; } (event.spawn ||= []).push({ ...def, script: def.script.map(step => ({ ...step })) }); event.used = [...(event.used || []), id]; return true; } },
+      'act (aktuellt manus till id)': { f: ['skådespelar-id'], apply: (event, [id]) => { (event.act ||= {})[id] = actor.script.map(step => ({ ...step })); return true; } },
+      'tell (dialograd)': { f: ['text', 'talare'], apply: (event, [text, who]) => { (event.tell ||= []).push({ who: who || 'narrator', text }); return true; } },
+      'give (varor)': { f: ['resurs', 'antal'], apply: (event, [r, n]) => { (event.give ||= {})[r] = +n; return true; } },
+    };
+    const events = [], draft = { when: [], top: {}, effects: [], parts: {} };
+    $('evCond').innerHTML = Object.keys(CONDS).map(label => `<option>${label}</option>`).join('');
+    $('evEff').innerHTML = Object.keys(EFFS).map(label => `<option>${label}</option>`).join('');
+    const fields = (select, table, ids) => { const spec = table[select.value]; ids.forEach((id, i) => { const input = $(id); input.style.display = spec.f[i] ? 'inline-block' : 'none'; input.placeholder = spec.f[i] || ''; input.value = ''; }); };
+    $('evCond').onchange = () => fields($('evCond'), CONDS, ['evC1', 'evC2', 'evC3']); $('evCond').onchange();
+    $('evEff').onchange = () => fields($('evEff'), EFFS, ['evE1', 'evE2']); $('evEff').onchange();
+    const compose = () => {   // händelsen av det som är valt just nu
+      const event = { ...draft.top }; if ($('evId').value.trim()) event.id = $('evId').value.trim();
+      if (draft.when.length) event.when = draft.when.length === 1 ? draft.when[0] : draft.when.map(item => ({ ...item }));
+      for (const effect of draft.effects) EFFS[effect.label].apply(event, effect.values);
+      return event;
+    };
+    const clean = event => { const { used, ...rest } = event; return rest; };
+    const showEvent = () => {
+      $('evWhen').textContent = [...Object.entries(draft.top).map(([key, value]) => `${key}: ${value}`), ...draft.when.map(item => ser(item))].join('\n') || '(inga villkor: händelsen sker direkt)';
+      $('evDo').textContent = draft.effects.map(effect => effect.label.split(' ')[0] + ': ' + effect.values.filter(value => value !== '').join(', ')).join('\n') || '(inga effekter)';
+      $('evList').textContent = events.map((event, i) => `${i + 1}. ${ser(clean(event)).slice(0, 160)}`).join('\n');
+      refreshIds();
+    };
+    $('evAddCond').onclick = () => {
+      const spec = CONDS[$('evCond').value], values = ['evC1', 'evC2', 'evC3'].map(id => $(id).value.trim()).slice(0, spec.f.length);
+      if (values.some(value => value === '')) { info('Fyll i alla fält'); return; }
+      if (spec.top) Object.assign(draft.top, spec.top(values)); else draft.when.push(spec.when(values));
+      showEvent();
+    };
+    $('evAddEff').onclick = () => {
+      const spec = EFFS[$('evEff').value], values = ['evE1', 'evE2'].map(id => $(id).value.trim());
+      if (values.slice(0, spec.f.length).some((value, i) => value === '' && !(spec.f[i] === 'talare'))) { info('Fyll i alla fält'); return; }
+      draft.effects.push({ label: $('evEff').value, values: values.slice(0, spec.f.length) }); showEvent();
+    };
+    $('evUndo').onclick = () => { if (draft.effects.length) draft.effects.pop(); else if (draft.when.length) draft.when.pop(); else draft.top = {}; showEvent(); };
+    $('evRun').onclick = () => {   // testa effekterna nu (skådespelare som skapas rensas av Rensa uppspelning)
+      const event = compose(); if (event.spawn) for (const spec of event.spawn) { stopPreview(); previewBase = C.Levels.progressRef().actors.leftovers.length; break; }
+      C.Story.fire(clean(event)); for (const spec of event.spawn || []) previews.push(spec.id); info('Effekterna kördes');
+    };
+    $('evSave').onclick = () => {
+      const event = compose(); events.push(event);
+      draft.when = []; draft.top = {}; draft.effects = []; $('evId').value = ''; showEvent();
+    };
+    showEvent();
 
     // ---- export ----
     // Kulisser slås ihop till rektanglar per typ och lager: [typ, x, y, bredd, höjd, lager] (lager 0 utelämnas)
@@ -262,10 +356,9 @@
       text += `start: { buildings: [\n${list.filter(building => building !== eye).map(building => '\t' + row(building) + ',').join('\n')}\n] },`;
       if (eye) text += `\neye: { dx: ${eye.x - base.x}, dy: ${eye.y - base.y} },`;
       const all = [...defs]; { const open = current(); if (open.at && !all.some(other => other.id === open.id)) all.push(open); }
-      if (all.length) {
-        const step = item => { const [type, arg] = Object.entries(item)[0]; return type === 'tell' ? `{ tell: [${arg.map(line => `say(${JSON.stringify(line.who)}, ${JSON.stringify(line.text)})`).join(', ')}] }` : `{ ${type}: ${arg === true ? 'true' : JSON.stringify(arg)} }`; };
-        text += `\n// Skådespelare: klistra in som spawn i en händelse\nspawn: [\n${all.map(def => `\t{ id: ${JSON.stringify(def.id)}, image: ${JSON.stringify(def.image)}, at: ${JSON.stringify(def.at)}, script: [${def.script.map(step).join(', ')}] },`).join('\n')}\n],`;
-      }
+      const used = new Set(events.flatMap(event => event.used || [])), loose = all.filter(def => !used.has(def.id));
+      if (events.length) text += `\nevents: [\n${events.map(event => '\t' + ser(clean(event)) + ',').join('\n')}\n],`;
+      if (loose.length) text += `\n// Skådespelare som inte används i en händelse: klistra in som spawn i en händelse\nspawn: [\n${loose.map(def => '\t' + ser(def) + ',').join('\n')}\n],`;
       return text;
     }
     $('seExport').onclick = () => {
@@ -274,6 +367,6 @@
       console.log(`Chapter ${Story.chapter?.number}:\n${text}`);
     };
     $('seClear').onclick = () => { World.scenery.clear(); World.sceneryList = []; info('Alla kulisser borttagna (ladda om kapitlet för att få tillbaka dem)'); };
-    window.StoryEditor = { export: exportText, state };
+    window.StoryEditor = { export: exportText, state, defs, events };
   }
 })();
