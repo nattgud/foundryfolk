@@ -62,7 +62,7 @@ CityBuilder.Config.ai = {
   // Soldater. Datorn väljer själv vad garnisonerna tränar (systems/ai.js, chooseTraining), bland de typer den har utrustning för i lagret.
   //   from     lägsta datornivå (Config.ai-nivån, se AI.level) för att träna typen.   weight   grundvikt (hur ofta typen väljs när inget annat styr).
   //   counters vad som kontrar vad: motståndarens typ -> { egen typ: hur bra den kontrar, 0-1 }. Bygger på dueller med lika råkostnad.
-  //   learn    datorn lär sig hur spelaren spelar: var sampleSeconds:e sekund (minst minSoldiers soldater) sparas spelarens arméblandning som ett glidande
+  //   learn    datorn lär sig hur spelaren spelar: var sampleSeconds:e sekund (minst minSoldiers soldater) sparas spelarens arméblandning (bara de soldater datorn ser, fog of war gäller) som ett glidande
   //            medelvärde i webbläsaren (localStorage, key), alltså för alla lägen och banor. Säkerheten växer med antalet prov (fullt vid fullSamples).
   //            Datorns vikt för en typ = grundvikten * (1 + styrka * säkerhet * boost * hur väl typen kontrar det spelaren brukar ha).
   //   adapt    styrkan 0-1 = (datornivå - from) / span. I storyn gäller storyFactor tills datornivån nått hardFrom (de sista kapitlen är lika skarpa som annars).
@@ -78,7 +78,7 @@ CityBuilder.Config.ai = {
       knight: { blademaster: 1, swordsman: 0.5, clubman: 0.5 },
     },
     clubmanShare: 0.25,   // clubmannens vikt när datorn har utrustning till andra soldater (den är billigast och bara en reserv)
-    learn: { key: 'foundryfolk.aiProfile', sampleSeconds: 25, minSoldiers: 4, fullSamples: 24, boost: 3 },
+    learn: { key: 'foundryfolk.aiProfile', sampleSeconds: 25, minSoldiers: 3, fullSamples: 24, boost: 3 },
     adapt: { from: 10, span: 60, storyFactor: 0.65, hardFrom: 50 },
   },
   plan: [

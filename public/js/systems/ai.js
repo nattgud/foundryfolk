@@ -95,7 +95,8 @@
 
   const gameSeconds = () => CityBuilder.Levels?.seconds ?? 0;   // speltid på banan (sparas, så anfallstiden gäller även efter omladdning)
 
-  // Spelarens profil: hur hens armé brukar se ut (andel per soldattyp, glidande medelvärde), sparad i webbläsaren och därmed gemensam för alla lägen och banor.
+  // Spelarens profil: hur hens armé brukar se ut för datorn (andel per soldattyp av det den sett, glidande medelvärde), sparad i webbläsaren och därmed gemensam för alla
+  // lägen och banor. Den går inte att nollställa.
   // Datorn använder den för att välja soldater som kontrar det spelaren brukar ha (AI.weightOf). Se Config.ai.army.learn.
   const Profile = {
     mix: {}, samples: 0, timer: 0, saved: 0, dirty: false, loaded: false,
@@ -113,13 +114,16 @@
       this.dirty = false;
       try { localStorage.setItem(Config.ai.army.learn.key, JSON.stringify({ mix: this.mix, samples: this.samples })); } catch (error) { /* ingen lagring */ }
     },
-    reset() { this.mix = {}; this.samples = 0; this.dirty = true; this.save(); },
 
-    // Spelarens soldater per typ: ute i världen och inne i garnisoner
+    // Spelarens soldater per typ som en fientlig datorspelare faktiskt ser just nu (fog of war gäller datorn som alla andra). Det som är
+    // inne i garnisoner, bakom dimman eller utom synhåll lär den sig ingenting av.
     counts() {
-      const counts = {};
-      for (const unit of World.units) if (unit.definition.isSoldier && !unit.definition.isMonster && unit.player === Players.HUMAN) counts[unit.kind] = (counts[unit.kind] || 0) + 1;
-      for (const building of World.buildings) if (building.player === Players.HUMAN && building.garrison) for (const [kind, count] of Object.entries(building.garrison)) counts[kind] = (counts[kind] || 0) + count;
+      const counts = {}, watchers = Players.hostileAI();
+      if (!watchers.length) return counts;
+      for (const unit of World.units) {
+        if (!unit.definition.isSoldier || unit.definition.isMonster || unit.player !== Players.HUMAN || unit.dead) continue;
+        if (watchers.some(player => Vision.sees(player, unit))) counts[unit.kind] = (counts[unit.kind] || 0) + 1;
+      }
       return counts;
     },
 
