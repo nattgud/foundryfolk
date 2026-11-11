@@ -751,7 +751,7 @@ CityBuilder.Config.buildings = {
       kind: 'craft',
       choices: [
         { inputs: { wood: 1 }, outputs: { club: 1 } },
-        { inputs: { wood: 6 }, outputs: { bow: 1 } },
+        { inputs: { wood: 1 }, outputs: { bow: 1 } },
         { inputs: { plank: 3, iron: 1 }, outputs: { shield: 1 } }
       ],
       craftSeconds: 12
