@@ -7,7 +7,7 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
-      'Soldier costs rebalanced: Footman 20 HP / 6 damage, Archer 12 HP / 4 damage / slower shots and a bow now costs 6 wood.',
+      'Soldier costs rebalanced: Footman 20 HP / 6 damage, Archer 10 HP / 3 damage / slower shots and a bow now costs just 1 wood (it used to be 6), so the Archer was scaled down to match.',
       'Races can now have their own names and equipment (config/races.js): demon gear and buildings have demon names, and the demons\' Woodsmith (Bonecarver) and Armorsmith (Plate Forge) make Bone Shields and Hellplate for their Hellblade and Hell Knight.',
       'The Swordsman now carries an iron sword and a shield (made by the Woodsmith from planks and iron) instead of leather armor, and takes only half the damage from arrows.',
       'Combat balance: arrows are weak against Swordsmen and Knights; the Blademaster\'s steel sword pierces 2 armor; Archers, Footmen and Clubmen were retuned.',
