@@ -25,12 +25,14 @@
     #loading.error .fill { background: #c0392b; }
     /* "Klicka för att börja": visas efter laddningen när webbläsaren inte fått någon användaråtgärd än (oftast vid omladdning), så att ljudet kan startas */
     #loading.ready .track, #loading.ready .text { display: none; }
+    #loading.ready .logo { width: auto; max-width: min(500px, 60vw); max-height: 38vh; }   /* plats för knappen även på låga skärmar */
     /* Knappen är bilden images/ui/start_button.png (eller start_button_<språkkod>.png, t.ex. start_button_sv.png, om texten står i bilden). Saknas bilderna
        blir det en vanlig guldknapp med text. Glöden följer bildens form (drop-shadow) och pulserar; hover/tryck och ingången går på opacity och skala. */
     #startButton { appearance: none; border: 0; padding: 0; margin: 0; background: none; cursor: pointer; color: inherit; font: inherit; border-radius: 12px;
       opacity: .94; animation: startIn .6s ease-out .15s backwards; transition: opacity .2s, transform .2s, filter .2s; -webkit-tap-highlight-color: transparent; }
-    #startButton img { display: block; width: min(420px, 72vw); height: auto; user-select: none; -webkit-user-drag: none; pointer-events: none;
+    #startButton img { display: block; width: auto; height: auto; max-width: min(420px, 72vw); max-height: min(30vh, 300px); user-select: none; -webkit-user-drag: none; pointer-events: none;
       filter: drop-shadow(0 0 1px rgba(255,244,214,.9)) drop-shadow(0 0 6px rgba(224,165,58,.45)); animation: startGlow 2.4s ease-in-out .8s infinite; }
+    #startButton.round { border-radius: 50%; }   /* en rund bild: bara cirkeln går att klicka på */
     #startButton.plain { padding: 16px 46px; border-radius: 999px; background: #e0a53a; color: #1b1510; font: 700 20px/1 system-ui, sans-serif; letter-spacing: .04em; box-shadow: 0 6px 24px rgba(0,0,0,.45); }
     #startButton.plain::before { content: '\25B6'; margin-right: .6em; font-size: .8em; }
     #startButton:hover { transform: scale(1.04); filter: brightness(1.12); }
@@ -123,7 +125,7 @@
           const picture = new Image(); picture.alt = label; picture.draggable = false;
           const candidates = [`images/ui/start_button_${language}.png`, 'images/ui/start_button.png'].map(file => file + '?v=' + version);
           picture.onerror = () => { const next = candidates.shift(); if (next) picture.src = next; else plain(); };
-          picture.onload = () => { button.textContent = ''; button.appendChild(picture); };
+          picture.onload = () => { button.textContent = ''; button.appendChild(picture); const ratio = picture.naturalWidth / picture.naturalHeight; if (ratio > .9 && ratio < 1.12) button.classList.add('round'); };
           picture.onerror();
           box.classList.add('ready'); box.appendChild(button);
           button.addEventListener('click', go);
