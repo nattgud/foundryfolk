@@ -623,6 +623,14 @@
           const frame = Math.floor(now * (kind.fps || 6) + seed * kind.frames) % kind.frames, width = image.width / kind.frames;
           context.drawImage(image, frame * width, 0, width, image.height, x, y, tileSize, tileSize);
         } else context.drawImage(image, x, y, tileSize, tileSize);
+      } else if (kind.fallback === 'corpse') {   // reservbild: en liggande figur, vriden olika för varje ruta
+        context.save(); context.translate(x + tileSize / 2, y + tileSize / 2); context.rotate(seed * Math.PI * 2);
+        context.fillStyle = '#3d3530'; context.beginPath(); context.ellipse(0, 0, tileSize * .3, tileSize * .1, 0, 0, Math.PI * 2); context.fill();
+        context.fillStyle = '#b89a82'; context.beginPath(); context.arc(tileSize * .3, 0, tileSize * .08, 0, Math.PI * 2); context.fill();
+        context.fillStyle = '#6b1f1f'; context.fillRect(-tileSize * .05, -tileSize * .02, tileSize * .12, tileSize * .1);
+        context.restore();
+      } else if (kind.fallback === 'blood') {   // reservbild: en mörk fläck
+        context.fillStyle = 'rgb(90 15 15 / 75%)'; context.beginPath(); context.ellipse(x + tileSize * (.4 + seed * .2), y + tileSize * .55, tileSize * (.2 + seed * .1), tileSize * .12, seed * 3, 0, Math.PI * 2); context.fill();
       } else {   // reservskräp
         context.fillStyle = '#4a4540';
         context.fillRect(x + tileSize * .15, y + tileSize * (.45 + seed * .1), tileSize * .35, tileSize * .3);

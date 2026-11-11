@@ -224,6 +224,9 @@
 		sceneryTypes: {
 			ruin: { variants: 5 },
 			fire: { frames: 16, fps: 8, light: 3 },
+			// walkable: ligger bara på marken. Alla går över den och man kan bygga över den (då försvinner den). Ritas under byggnader och enheter.
+			corpse: { variants: 6, walkable: true, fallback: 'corpse' },
+			blood: { variants: 3, walkable: true, fallback: 'blood' },
 		},
 
 		unlock: {

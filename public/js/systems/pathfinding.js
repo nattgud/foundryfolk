@@ -39,7 +39,7 @@
 
     // Gångkostnad för en ruta (slitna rutor är snabbare, byggnader blockerar)
     tileCost(x, y) {
-      if (this.blocks(World.buildingAt(x, y)) || World.sceneryAt(x, y)) return Infinity;   // kulisser (ruiner, eld) går inte att gå igenom
+      if (this.blocks(World.buildingAt(x, y)) || World.blockingSceneryAt(x, y)) return Infinity;   // kulisser (ruiner, eld) går inte att gå igenom, men lik och blod gör det
       const tile = World.getTile(x, y);
       return Config.terrain[tile.terrainType].walkCost * (1 - Config.settings.maxWearSpeedBonus * tile.wear);
     },
@@ -133,7 +133,7 @@
         if (index === goalIndex) return 0;
         const building = World.buildingAt(x, y);
         if (this.blocks(building)) return building.hp != null && Players.isHostile(player, building.player) ? 1 : 2;
-        if (World.sceneryAt(x, y)) return 2;
+        if (World.blockingSceneryAt(x, y)) return 2;
         const tile = World.getTile(x, y);
         return tile && Number.isFinite(Config.terrain[tile.terrainType].walkCost) ? 0 : 2;
       };

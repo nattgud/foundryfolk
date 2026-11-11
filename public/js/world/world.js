@@ -61,6 +61,8 @@
 
     buildingAt: (x, y) => World.buildingsByTile.get(Utils.tileKey(x, y)),
     sceneryAt: (x, y) => World.scenery.get(Utils.tileKey(x, y))?.[0],   // varje ruta kan ha flera kulisser
+    // Kulisser som blockerar gång och byggande (ruiner, eld). Kulisser med walkable (lik, blod) blockerar inget: man går över dem och bygger över dem
+    blockingSceneryAt: (x, y) => World.scenery.get(Utils.tileKey(x, y))?.find(item => !Config.story.sceneryTypes?.[item.type]?.walkable),
 
     // Byggnad på rutan som spelaren ser: andras byggnader i dimman finns inte för spelaren (klick, markering och verktygstips)
     seenBuildingAt(x, y) {
@@ -212,11 +214,23 @@
     },
 
     canPlace(buildingType, x, y) {
-      return !this.buildingAt(x, y) && !this.sceneryAt(x, y) && this.buildsOn(Config.buildings[buildingType], this.getTile(x, y).terrainType);
+      return !this.buildingAt(x, y) && !this.blockingSceneryAt(x, y) && this.buildsOn(Config.buildings[buildingType], this.getTile(x, y).terrainType);
     },
 
     // player = vem byggnaden tillhör (se core/players.js)
+    // Det som ligger på marken (lik, blod) försvinner när något byggs ovanpå
+    clearGroundScenery(x, y) {
+      const key = Utils.tileKey(x, y), items = this.scenery.get(key);
+      if (!items) return;
+      const gone = items.filter(item => Config.story.sceneryTypes?.[item.type]?.walkable);
+      if (!gone.length) return;
+      const rest = items.filter(item => !gone.includes(item));
+      if (rest.length) this.scenery.set(key, rest); else this.scenery.delete(key);
+      this.sceneryList = this.sceneryList.filter(item => !gone.includes(item));
+    },
+
     placeBuilding(buildingType, x, y, isInstant, player = Players.HUMAN) {
+      this.clearGroundScenery(x, y);
       const building = {
         id: this.nextBuildingId++, type: buildingType, definition: Config.definitionOf(buildingType, Players.raceOf(player)), x, y, player,
         buildProgress: isInstant ? 1 : 0, paused: false, removed: false,
