@@ -8,7 +8,8 @@
      walk: mål            går dit (teleporterar efter en tidsgräns eller om vägen saknas, så att berättelsen aldrig fastnar)
      wait: sekunder       väntar
      teleport: mål        flyttar direkt
-     vanish: true         försvinner
+     vanish: true         försvinner direkt
+     leave: true          går mot närmaste ruta som spelaren inte ser (dimman) och försvinner när den inte syns längre
      kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
      tell: [dialograder]  visar en dialog och väntar tills den lästs
@@ -199,6 +200,32 @@
     },
     vanish: {
       start(data) { Actors.remove(data); },
+    },
+    // Lämnar scenen: går mot närmaste ruta utom spelarens synfält och försvinner så snart den inte syns (eller är framme, eller inte kommer fram)
+    leave: {
+      start(data, arg, act, unit) {
+        const Vision = CityBuilder.Vision, cx = Math.floor(unit.x), cy = Math.floor(unit.y);
+        let best = null;
+        for (let radius = 2; radius <= 80 && !best; radius += 2) {
+          for (let step = 0; step < 32 && !best; step++) {
+            const angle = step / 32 * Math.PI * 2, x = Math.round(cx + Math.cos(angle) * radius), y = Math.round(cy + Math.sin(angle) * radius);
+            if (!Vision.visible(Players.HUMAN, x + .5, y + .5) && Number.isFinite(CityBuilder.Pathfinder.tileCost(x, y))) best = { x, y, kind: 'tile' };
+          }
+        }
+        if (!best) {   // allt syns: gå bort från basen
+          const hq = Actors.hq(), away = hq ? Math.atan2(unit.y - hq.y, unit.x - hq.x) : 0;
+          best = { x: Math.round(cx + Math.cos(away) * 70), y: Math.round(cy + Math.sin(away) * 70), kind: 'tile' };
+        }
+        act.tile = best; act.limit = STUCK_BASE + Utils.distance(best.x - unit.x, best.y - unit.y) * STUCK_PER_TILE;
+        unit.pathFailed = false; data.arrived = false;
+        unit.stepQueue = [Jobs.walkTo(best.x, best.y, false)];
+      },
+      update(data, arg, dt, act, unit) {
+        if (!act.tile) { Actions.leave.start(data, arg, act, unit); return false; }
+        const hidden = !CityBuilder.Vision.sees(Players.HUMAN, unit);
+        if (hidden || !unit.stepQueue.length || unit.pathFailed || act.elapsed > act.limit) { Actors.remove(data); return true; }
+        return false;
+      },
     },
     kill: {
       start(data, arg) {
