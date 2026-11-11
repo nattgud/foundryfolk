@@ -2,72 +2,7 @@
 const MEAL_BASES = [{ berries: 1 }, { mushrooms: 1 }, { meat: 1 }, { fish: 1 }, { apples: 1 }, { flour: 1, water: 1 }];
 
 CityBuilder.Config.buildings = {
-// Lagring
-  hq: {
-    name: 'Base',
-    category: 'trade',
-    symbol: 'B',
-    color: '#c9a227',
-    buildCost: {},
-    hiddenInMenu: true,
-    isStorage: true,
-    vision: 18,
-    maxHp: 400,
-    buildDuration: 5
-  },
-
-  // Det som blir kvar när en byggnad rivs ligger här på marken tills bärarna hämtat det (Construction.dismantle). Går inte att bygga eller välja i menyn.
-  pile: {
-    name: 'Pile of goods',
-    category: 'trade',
-    symbol: '•',
-    color: '#8a6a43',
-    buildCost: {},
-    hiddenInMenu: true,
-    pile: true,
-    carriers: 0,
-    maxHp: null,
-    vision: 0,
-    buildDuration: 0
-  },
-
-  warehouse: {
-    name: 'Warehouse',
-    category: 'trade',
-    symbol: 'W',
-    color: '#a88a2a',
-    buildCost: { wood: 3, plank: 1 },
-    isStorage: true,
-    capacity: 60,
-    carriers: 5,        // så många bärare ger ett färdigt lager (annars carriersPerStorage)
-    buildDuration: 10
-  },
- 
-  large_warehouse: {
-    name: 'Large Warehouse',
-    category: 'trade',
-    symbol: 'LW',
-    color: '#b89a35',
-    buildCost: { plank: 8, stone: 6, brick: 4, hammer: 1 },
-    isStorage: true,
-    capacity: 200,
-    carriers: 10,
-    buildDuration: 20
-  },
- 
-  great_depot: {
-    name: 'Great Depot',
-    category: 'trade',
-    symbol: 'GW',
-    color: '#c9ab40',
-    buildCost: { plank: 20, stone: 20, brick: 12, steel: 4, limestone: 8, bronze: 4, hammer: 2 },
-    isStorage: true,
-    capacity: 600,
-    carriers: 25,
-    buildDuration: 45
-  },
-
-  // Skogsbruk
+  // ===== Construction (menyordning: kategori, sedan upplåsningsnivå i levels.js) =====
   woodcutter: {
     name: 'Woodcutter',
     category: 'construction',
@@ -99,6 +34,53 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 15
   },
+  quarry: {
+    name: 'Quarry',
+    category: 'construction',
+    symbol: 'Q',
+    color: '#7d8790',
+    buildCost: { plank: 5, wood: 4 },
+    requiredEquipment: { pickaxe: 1 },
+    job: {
+      kind: 'gather',
+      sourceTerrain: 'rock',
+      searchRadius: 14,
+      outputResource: 'stone',
+      workSeconds: 5
+    },
+    buildDuration: 15
+  },
+  clay_pit: {
+    name: 'Clay Pit',
+    category: 'construction',
+    symbol: 'CP',
+    color: '#946b58',
+    buildCost: { plank: 4, stone: 3 },
+    requiredEquipment: { shovel: 1 },
+    job: {
+      kind: 'gather',
+      sourceTerrain: 'clay',
+      searchRadius: 20,
+      outputResource: 'clay',
+      workSeconds: 6
+    },
+    buildDuration: 30
+  },
+  charcoal_burner: {
+    name: 'Charcoal Burner',
+    category: 'construction',
+    symbol: 'CB',
+    color: '#45454a',
+    buildCost: { wood: 5, stone: 4 },
+    job: {
+      kind: 'craft',
+      inputs: { wood: 1 },
+      outputs: { charcoal: 1 },
+      byproducts: { tar: 1, ash: 2 },
+      craftSeconds: 10
+    },
+    buildDuration: 30
+  },
   // Planterar träd: en frö och lite vatten ger ett nytt träd med 5-10 trä på en slumpad ledig gräsruta 5-10 rutor bort
   planter: {
     name: 'Planter',
@@ -118,8 +100,86 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 30
   },
+  brickworks: {
+    name: 'Brickworks',
+    category: 'construction',
+    symbol: 'BW',
+    color: '#b97a45',
+    buildCost: { plank: 7, stone: 6 },
+    job: {
+      kind: 'craft',
+      inputs: { clay: 2, straw: 1 },
+      outputs: { brick: 2 },
+      craftSeconds: 10
+    },
+    buildDuration: 40
+  },
+  sand_collector: {
+    name: 'Sand Collector',
+    category: 'construction',
+    symbol: 'SC',
+    color: '#c9b887',
+    buildCost: { plank: 4 },
+    requiredEquipment: { shovel: 1 },
+    job: {
+      kind: 'gather',
+      sourceTerrain: 'sand',
+      searchRadius: 20,
+      outputResource: 'sand',
+      workSeconds: 5
+    },
+    buildDuration: 30
+  },
+  limestone_quarry: {
+    name: 'Limestone Quarry',
+    category: 'construction',
+    symbol: 'LQ',
+    color: '#b8b4a5',
+    buildCost: { plank: 4, stone: 4 },
+    requiredEquipment: { pickaxe: 1 },
+    job: {
+      kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 4 },
+      sourceTerrain: 'limestone',
+      searchRadius: 20,
+      outputResource: 'limestone',
+      workSeconds: 6
+    },
+    buildDuration: 40
+  },
+  rock_crusher: {
+    name: 'Rock crusher',
+    category: 'construction',
+    symbol: 'RC',
+    color: '#5d6368',
+    buildCost: { plank: 8 },
+    requiredEquipment: { pickaxe: 1 },
+    job: {
+      kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 4 },
+      digFor: 'deposits',     // gräver den kortaste tunneln genom berget till närmaste fyndighet som berget stänger inne
+      searchRadius: 25,
+      outputResource: 'sand',
+      workSeconds: 15
+    },
+    buildDuration: 45
+  },
+  glassworks: {
+    name: 'Glassworks',
+    category: 'construction',
+    symbol: 'GL',
+    color: '#7fb8c4',
+    buildCost: { plank: 8, stone: 8, brick: 4 },
+    job: {
+      kind: 'craft',
+      inputs: { sand: 3, ash: 1 },
+      outputs: { glass: 2 },
+      craftSeconds: 12
+    },
+    buildDuration: 45
+  },
 
-  // Jordbruk och mat
+  // ===== Food (menyordning: kategori, sedan upplåsningsnivå i levels.js) =====
   // Samlare med inriktning: ett enda bygge i menyn. Inriktningen (bär, örter, svamp, äpplen) väljs i infopanelen och bestämmer vilken
   // byggnadstyp (variant) det är. Nya samlare får den inriktning som har mest att samla från närmast. Varianterna har group: 'gatherer'.
   gatherer: {
@@ -132,25 +192,6 @@ CityBuilder.Config.buildings = {
     hint: 'Starts with the focus that has the most to gather nearby. Change it in the info panel',
     buildDuration: 15
   },
-
-  apple_gatherer: {
-    name: 'Apple Gatherer',
-    group: 'gatherer',            // inriktning av byggnaden 'gatherer'; syns inte i menyn (se Construction.variantFor)
-    hiddenInMenu: true,
-    category: 'food',
-    symbol: 'AG',
-    color: '#536c38',
-    buildCost: { plank: 4, wood: 4 },
-    job: {
-      kind: 'gather',
-      sourceTerrain: 'apple_tree',
-      searchRadius: 20,
-      outputResource: 'apples',
-      workSeconds: 5
-    },
-    buildDuration: 15
-  },
-
   berry_gatherer: {
     name: 'Berry Gatherer',
     group: 'gatherer',            // inriktning av byggnaden 'gatherer'; syns inte i menyn (se Construction.variantFor)
@@ -168,7 +209,21 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 15
   },
-
+  well: {
+    name: 'Well',
+    category: 'food',
+    symbol: 'WE',
+    color: '#00aaff',
+    buildCost: { plank: 3, stone: 7 },
+    job: {
+      kind: 'gather',
+      sourceTerrain: 'water',
+      searchRadius: 2,
+      outputResource: 'water',
+      workSeconds: 15
+    },
+    buildDuration: 25
+  },
   herb_gatherer: {
     name: 'Herb Gatherer',
     group: 'gatherer',            // inriktning av byggnaden 'gatherer'; syns inte i menyn (se Construction.variantFor)
@@ -186,57 +241,6 @@ CityBuilder.Config.buildings = {
       workSeconds: 5
     },
     buildDuration: 15
-  },
-
-  mushroom_gatherer: {
-    name: 'Mushroom Gatherer',
-    group: 'gatherer',            // inriktning av byggnaden 'gatherer'; syns inte i menyn (se Construction.variantFor)
-    hiddenInMenu: true,
-    category: 'food',
-    symbol: 'MG',
-    color: '#7a5c80',
-    buildCost: { plank: 4, wood: 4 },
-    requiredEquipment: { knife: 1 },
-    job: {
-      kind: 'gather',
-      sourceTerrain: 'mushrooms',
-      searchRadius: 20,
-      outputResource: 'mushrooms',
-      workSeconds: 5
-    },
-    buildDuration: 15
-  },
-
-  farm: {
-    name: 'Farm',
-    category: 'food',
-    symbol: 'F',
-    color: '#b8a22e',
-    buildCost: { plank: 6, wood: 5, stone: 4 },
-    requiredEquipment: { scythe: 1 },
-    job: {
-      kind: 'craft',
-      choices: [
-        { outputs: { grain: 2, straw: 1, seeds: 1 } },
-        { inputs: { grain: 2, water: 1 }, outputs: { animal: 2 } }
-      ],
-      craftSeconds: 8
-    },
-    buildDuration: 20
-  },
-  stables: {
-    name: 'Stables',
-    category: 'war',
-    symbol: 'HB',
-    color: '#8b5e3c',
-    buildCost: { plank: 8, wood: 6, stone: 4 },
-    job: {
-      kind: 'craft',
-      inputs: { animal: 1, grain: 3, water: 1 },
-      outputs: { horse: 1 },
-      craftSeconds: 40
-    },
-    buildDuration: 40
   },
   hunters_cottage: {
     name: 'Hunters Cottage',
@@ -256,6 +260,23 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 15
   },
+  farm: {
+    name: 'Farm',
+    category: 'food',
+    symbol: 'F',
+    color: '#b8a22e',
+    buildCost: { plank: 6, wood: 5, stone: 4 },
+    requiredEquipment: { scythe: 1 },
+    job: {
+      kind: 'craft',
+      choices: [
+        { outputs: { grain: 2, straw: 1, seeds: 1 } },
+        { inputs: { grain: 2, water: 1 }, outputs: { animal: 2 } }
+      ],
+      craftSeconds: 8
+    },
+    buildDuration: 20
+  },
   fishing_hut: {
     name: 'Fishing Hut',
     category: 'food',
@@ -271,112 +292,91 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 20
   },
-
-  // Insamling av grundmaterial
-  well: {
-    name: 'Well',
+  mill: {
+    name: 'Mill',
     category: 'food',
-    symbol: 'WE',
-    color: '#00aaff',
-    buildCost: { plank: 3, stone: 7 },
+    symbol: 'M',
+    color: '#d6d6d6',
+    buildCost: { plank: 7, stone: 7 },
     job: {
-      kind: 'gather',
-      sourceTerrain: 'water',
-      searchRadius: 2,
-      outputResource: 'water',
-      workSeconds: 15
+      kind: 'craft',
+      choices: [
+        { inputs: { grain: 2 }, outputs: { flour: 1 } },
+        { inputs: { salt_ore: 2 }, outputs: { salt: 2 } }
+      ],
+      craftSeconds: 8
     },
-    buildDuration: 25
+    buildDuration: 20
   },
-
-  sand_collector: {
-    name: 'Sand Collector',
-    category: 'construction',
-    symbol: 'SC',
-    color: '#c9b887',
-    buildCost: { plank: 4 },
-    requiredEquipment: { shovel: 1 },
+  apple_gatherer: {
+    name: 'Apple Gatherer',
+    group: 'gatherer',            // inriktning av byggnaden 'gatherer'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
+    category: 'food',
+    symbol: 'AG',
+    color: '#536c38',
+    buildCost: { plank: 4, wood: 4 },
     job: {
       kind: 'gather',
-      sourceTerrain: 'sand',
+      sourceTerrain: 'apple_tree',
       searchRadius: 20,
-      outputResource: 'sand',
-      workSeconds: 5
-    },
-    buildDuration: 30
-  },
-
-  clay_pit: {
-    name: 'Clay Pit',
-    category: 'construction',
-    symbol: 'CP',
-    color: '#946b58',
-    buildCost: { plank: 4, stone: 3 },
-    requiredEquipment: { shovel: 1 },
-    job: {
-      kind: 'gather',
-      sourceTerrain: 'clay',
-      searchRadius: 20,
-      outputResource: 'clay',
-      workSeconds: 6
-    },
-    buildDuration: 30
-  },
-
-  limestone_quarry: {
-    name: 'Limestone Quarry',
-    category: 'construction',
-    symbol: 'LQ',
-    color: '#b8b4a5',
-    buildCost: { plank: 4, stone: 4 },
-    requiredEquipment: { pickaxe: 1 },
-    job: {
-      kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 4 },
-      sourceTerrain: 'limestone',
-      searchRadius: 20,
-      outputResource: 'limestone',
-      workSeconds: 6
-    },
-    buildDuration: 40
-  },
-
-  // Gruvbrytning och stenbrott
-  quarry: {
-    name: 'Quarry',
-    category: 'construction',
-    symbol: 'Q',
-    color: '#7d8790',
-    buildCost: { plank: 5, wood: 4 },
-    requiredEquipment: { pickaxe: 1 },
-    job: {
-      kind: 'gather',
-      sourceTerrain: 'rock',
-      searchRadius: 14,
-      outputResource: 'stone',
+      outputResource: 'apples',
       workSeconds: 5
     },
     buildDuration: 15
   },
-  // Gruvbrytning och stenbrott
-  rock_crusher: {
-    name: 'Rock crusher',
-    category: 'construction',
-    symbol: 'RC',
-    color: '#5d6368',
-    buildCost: { plank: 8 },
-    requiredEquipment: { pickaxe: 1 },
+  mushroom_gatherer: {
+    name: 'Mushroom Gatherer',
+    group: 'gatherer',            // inriktning av byggnaden 'gatherer'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
+    category: 'food',
+    symbol: 'MG',
+    color: '#7a5c80',
+    buildCost: { plank: 4, wood: 4 },
+    requiredEquipment: { knife: 1 },
     job: {
       kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 4 },
-      digFor: 'deposits',     // gräver den kortaste tunneln genom berget till närmaste fyndighet som berget stänger inne
-      searchRadius: 25,
-      outputResource: 'sand',
-      workSeconds: 15
+      sourceTerrain: 'mushrooms',
+      searchRadius: 20,
+      outputResource: 'mushrooms',
+      workSeconds: 5
     },
-    buildDuration: 45
+    buildDuration: 15
+  },
+  bakery: {
+    name: 'Bakery',
+    category: 'food',
+    symbol: 'B',
+    color: '#d98a3d',
+    buildCost: { plank: 7, stone: 7 },
+    job: {
+      kind: 'craft',
+      inputs: { flour: 1, water: 1 },
+      outputs: { bread: 2 },
+      craftSeconds: 10
+    },
+    buildDuration: 30
+  },
+  kitchen: {
+    name: 'Kitchen',
+    category: 'food',
+    symbol: 'KI',
+    color: '#c9784a',
+    buildCost: { plank: 7, stone: 6 },
+    job: {
+      kind: 'craft',
+      choices: [
+        { any: MEAL_BASES, outputs: { meal: 1 } },
+        { any: MEAL_BASES, inputs: { herbs: 1 }, outputs: { meal: 2 } },
+        { any: MEAL_BASES, inputs: { salt: 1 }, outputs: { meal: 3 } },
+        { any: MEAL_BASES, inputs: { herbs: 1, salt: 1 }, outputs: { meal: 5 } }
+      ],
+      craftSeconds: 12
+    },
+    buildDuration: 30
   },
 
+  // ===== Metalwork (menyordning: kategori, sedan upplåsningsnivå i levels.js) =====
   // Gruva med inriktning: ett enda bygge i menyn, som placeras på en fyndighet och blir gruvan för just den malmen (variant med
   // group: 'mine'). Inriktningen byts sedan i infopanelen. variants: terräng -> varianttyp.
   mine: {
@@ -390,70 +390,6 @@ CityBuilder.Config.buildings = {
     variants: { iron_ore: 'iron_mine', copper_ore: 'copper_mine', tin_ore: 'tin_mine', coal: 'coal_mine', gold_ore: 'gold_mine', silver_ore: 'silver_mine', gemstone: 'gemstone_mine', salt_ore: 'salt_mine', sulfur: 'sulfur_mine' },
     buildDuration: 30
   },
-
-  iron_mine: {
-    name: 'Iron Mine',
-    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
-    hiddenInMenu: true,
-    category: 'metalwork',
-    symbol: 'IM',
-    color: '#7b6f6a',
-    buildCost: { plank: 6, stone: 5 },
-    placeOnTerrain: 'iron_ore',
-    requiredEquipment: { pickaxe: 1 },
-    job: {
-      kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 2 },
-      sourceTerrain: 'iron_ore',
-      searchRadius: 10,
-      outputResource: 'iron_ore',
-      workSeconds: 20
-    },
-    buildDuration: 30
-  },
-
-  copper_mine: {
-    name: 'Copper Mine',
-    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
-    hiddenInMenu: true,
-    category: 'metalwork',
-    symbol: 'CM',
-    color: '#c87f35',
-    buildCost: { plank: 6, stone: 5 },
-    placeOnTerrain: 'copper_ore',
-    requiredEquipment: { pickaxe: 1 },
-    job: {
-      kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 2 },
-      sourceTerrain: 'copper_ore',
-      searchRadius: 10,
-      outputResource: 'copper_ore',
-      workSeconds: 20
-    },
-    buildDuration: 30
-  },
-
-  tin_mine: {
-    name: 'Tin Mine',
-    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
-    hiddenInMenu: true,
-    category: 'metalwork',
-    symbol: 'TM',
-    color: '#9ba3a5',
-    buildCost: { plank: 6, stone: 5 },
-    placeOnTerrain: 'tin_ore',
-    requiredEquipment: { pickaxe: 1 },
-    job: {
-      kind: 'gather',
-      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 2 },
-      sourceTerrain: 'tin_ore',
-      searchRadius: 10,
-      outputResource: 'tin_ore',
-      workSeconds: 30
-    },
-    buildDuration: 30
-  },
-
   coal_mine: {
     name: 'Coal Mine',
     group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
@@ -474,28 +410,193 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 30
   },
+  iron_mine: {
+    name: 'Iron Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
+    category: 'metalwork',
+    symbol: 'IM',
+    color: '#7b6f6a',
+    buildCost: { plank: 6, stone: 5 },
+    placeOnTerrain: 'iron_ore',
+    requiredEquipment: { pickaxe: 1 },
+    job: {
+      kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 2 },
+      sourceTerrain: 'iron_ore',
+      searchRadius: 10,
+      outputResource: 'iron_ore',
+      workSeconds: 20
+    },
+    buildDuration: 30
+  },
+  iron_smelter: {
+    name: 'Iron Smelter',
+    category: 'metalwork',
+    symbol: 'IS',
+    color: '#6b7fa6',
+    buildCost: { plank: 7, stone: 8 },
+    job: {
+      kind: 'craft',
+      inputs: { iron_ore: 1, charcoal: 1 },
+      outputs: { iron: 1 },
+      craftSeconds: 10
+    },
+    buildDuration: 45
+  },
+  // Verktygstillverkning. 'auto': byggnaden gör det påslagna verktyg som det finns minst av (spelaren slår av/på verktyg i infopanelen)
+  toolsmith: {
+    name: 'Toolsmith',
+    category: 'metalwork',
+    symbol: 'TO',
+    color: '#9a8f7a',
+    buildCost: { plank: 8, stone: 8 },
+    job: {
+      kind: 'craft',
+      auto: true,
+      choices: ['hammer', 'pickaxe', 'axe', 'scythe', 'shovel', 'saw', 'knife'].map(tool => ({ inputs: { iron: 1, wood: 1 }, outputs: { [tool]: 1 } })),
+      craftSeconds: 12
+    },
+    buildDuration: 45
+  },
+  steelworks: {
+    name: 'Steelworks',
+    category: 'metalwork',
+    symbol: 'ST',
+    color: '#7c8ba0',
+    buildCost: { plank: 8, stone: 8, brick: 4 },
+    job: {
+      kind: 'craft',
+      inputs: { iron: 1, coal: 1 },
+      outputs: { steel: 1 },
+      craftSeconds: 15
+    },
+    buildDuration: 45
+  },
+  copper_mine: {
+    name: 'Copper Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
+    category: 'metalwork',
+    symbol: 'CM',
+    color: '#c87f35',
+    buildCost: { plank: 6, stone: 5 },
+    placeOnTerrain: 'copper_ore',
+    requiredEquipment: { pickaxe: 1 },
+    job: {
+      kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 2 },
+      sourceTerrain: 'copper_ore',
+      searchRadius: 10,
+      outputResource: 'copper_ore',
+      workSeconds: 20
+    },
+    buildDuration: 30
+  },
+  tin_mine: {
+    name: 'Tin Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
+    category: 'metalwork',
+    symbol: 'TM',
+    color: '#9ba3a5',
+    buildCost: { plank: 6, stone: 5 },
+    placeOnTerrain: 'tin_ore',
+    requiredEquipment: { pickaxe: 1 },
+    job: {
+      kind: 'gather',
+      eats: { any: ['meat', 'fish', 'bread', 'meal'], every: 2 },
+      sourceTerrain: 'tin_ore',
+      searchRadius: 10,
+      outputResource: 'tin_ore',
+      workSeconds: 30
+    },
+    buildDuration: 30
+  },
+  copper_smelter: {
+    name: 'Copper Smelter',
+    category: 'metalwork',
+    symbol: 'CS',
+    color: '#d08a3a',
+    buildCost: { plank: 7, stone: 8 },
+    job: {
+      kind: 'craft',
+      inputs: { copper_ore: 1, charcoal: 1 },
+      outputs: { copper: 1 },
+      craftSeconds: 10
+    },
+    buildDuration: 45
+  },
+  tin_smelter: {
+    name: 'Tin Smelter',
+    category: 'metalwork',
+    symbol: 'TS',
+    color: '#aeb8bb',
+    buildCost: { plank: 7, stone: 8 },
+    job: {
+      kind: 'craft',
+      inputs: { tin_ore: 1, charcoal: 1 },
+      outputs: { tin: 1 },
+      craftSeconds: 10
+    },
+    buildDuration: 45
+  },
+  bronze_foundry: {
+    name: 'Bronze Foundry',
+    category: 'metalwork',
+    symbol: 'BF',
+    color: '#a87949',
+    buildCost: { plank: 8, stone: 8 },
+    job: {
+      kind: 'craft',
+      inputs: { copper: 2, tin: 1 },
+      outputs: { bronze: 3 },
+      craftSeconds: 12
+    },
+    buildDuration: 45
+  },
 
-  gold_mine: {
-    name: 'Gold Mine',
+  // ===== Valuables (menyordning: kategori, sedan upplåsningsnivå i levels.js) =====
+  salt_mine: {
+    name: 'Salt Mine',
     group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
     hiddenInMenu: true,
     category: 'valuables',
-    symbol: 'GM',
-    color: '#827044',
-    buildCost: { plank: 8, stone: 6 },
-    placeOnTerrain: 'gold_ore',
+    symbol: 'SM',
+    color: '#d6d0bd',
+    buildCost: { plank: 6, stone: 6 },
+    placeOnTerrain: 'salt_ore',
     requiredEquipment: { pickaxe: 1 },
     job: {
       kind: 'gather',
       eats: { any: ['meal', 'bread', 'fish'], every: 3 },
-      sourceTerrain: 'gold_ore',
+      sourceTerrain: 'salt_ore',
       searchRadius: 10,
-      outputResource: 'gold_ore',
+      outputResource: 'salt_ore',
       workSeconds: 30
     },
-    buildDuration: 40
+    buildDuration: 20
   },
-
+  sulfur_mine: {
+    name: 'Sulfur Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
+    category: 'valuables',
+    symbol: 'SU',
+    color: '#d6c83f',
+    buildCost: { plank: 6, stone: 6 },
+    placeOnTerrain: 'sulfur',
+    requiredEquipment: { pickaxe: 1 },
+    job: {
+      kind: 'gather',
+      eats: { any: ['meal', 'bread', 'fish'], every: 3 },
+      sourceTerrain: 'sulfur',
+      searchRadius: 10,
+      outputResource: 'sulfur',
+      workSeconds: 30
+    },
+    buildDuration: 45
+  },
   silver_mine: {
     name: 'Silver Mine',
     group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
@@ -516,7 +617,54 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 40
   },
-
+  silver_smelter: {
+    name: 'Silver Smelter',
+    category: 'valuables',
+    symbol: 'SI',
+    color: '#9fb6c9',
+    buildCost: { plank: 7, stone: 8 },
+    job: {
+      kind: 'craft',
+      inputs: { silver_ore: 1, charcoal: 1 },
+      outputs: { silver: 1 },
+      craftSeconds: 12
+    },
+    buildDuration: 45
+  },
+  gold_mine: {
+    name: 'Gold Mine',
+    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
+    hiddenInMenu: true,
+    category: 'valuables',
+    symbol: 'GM',
+    color: '#827044',
+    buildCost: { plank: 8, stone: 6 },
+    placeOnTerrain: 'gold_ore',
+    requiredEquipment: { pickaxe: 1 },
+    job: {
+      kind: 'gather',
+      eats: { any: ['meal', 'bread', 'fish'], every: 3 },
+      sourceTerrain: 'gold_ore',
+      searchRadius: 10,
+      outputResource: 'gold_ore',
+      workSeconds: 30
+    },
+    buildDuration: 40
+  },
+  gold_smelter: {
+    name: 'Gold Smelter',
+    category: 'valuables',
+    symbol: 'GS',
+    color: '#d1a93a',
+    buildCost: { plank: 7, stone: 8 },
+    job: {
+      kind: 'craft',
+      inputs: { gold_ore: 1, charcoal: 1 },
+      outputs: { gold: 1 },
+      craftSeconds: 14
+    },
+    buildDuration: 45
+  },
   gemstone_mine: {
     name: 'Gemstone Mine',
     group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
@@ -538,281 +686,61 @@ CityBuilder.Config.buildings = {
     buildDuration: 50
   },
 
-  salt_mine: {
-    name: 'Salt Mine',
-    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
-    hiddenInMenu: true,
-    category: 'valuables',
-    symbol: 'SM',
-    color: '#d6d0bd',
-    buildCost: { plank: 6, stone: 6 },
-    placeOnTerrain: 'salt_ore',
-    requiredEquipment: { pickaxe: 1 },
-    job: {
-      kind: 'gather',
-      eats: { any: ['meal', 'bread', 'fish'], every: 3 },
-      sourceTerrain: 'salt_ore',
-      searchRadius: 10,
-      outputResource: 'salt_ore',
-      workSeconds: 30
-    },
-    buildDuration: 20
-  },
-
-  sulfur_mine: {
-    name: 'Sulfur Mine',
-    group: 'mine',            // inriktning av byggnaden 'mine'; syns inte i menyn (se Construction.variantFor)
-    hiddenInMenu: true,
-    category: 'valuables',
-    symbol: 'SU',
-    color: '#d6c83f',
-    buildCost: { plank: 6, stone: 6 },
-    placeOnTerrain: 'sulfur',
-    requiredEquipment: { pickaxe: 1 },
-    job: {
-      kind: 'gather',
-      eats: { any: ['meal', 'bread', 'fish'], every: 3 },
-      sourceTerrain: 'sulfur',
-      searchRadius: 10,
-      outputResource: 'sulfur',
-      workSeconds: 30
-    },
-    buildDuration: 45
-  },
-
-  // Förädling och materialproduktion
-
-  mill: {
-    name: 'Mill',
-    category: 'food',
-    symbol: 'M',
-    color: '#d6d6d6',
-    buildCost: { plank: 7, stone: 7 },
-    job: {
-      kind: 'craft',
-      choices: [
-        { inputs: { grain: 2 }, outputs: { flour: 1 } },
-        { inputs: { salt_ore: 2 }, outputs: { salt: 2 } }
-      ],
-      craftSeconds: 8
-    },
-    buildDuration: 20
-  },
-
-  bakery: {
-    name: 'Bakery',
-    category: 'food',
-    symbol: 'B',
-    color: '#d98a3d',
-    buildCost: { plank: 7, stone: 7 },
-    job: {
-      kind: 'craft',
-      inputs: { flour: 1, water: 1 },
-      outputs: { bread: 2 },
-      craftSeconds: 10
-    },
-    buildDuration: 30
-  },
-
-  brickworks: {
-    name: 'Brickworks',
-    category: 'construction',
-    symbol: 'BW',
-    color: '#b97a45',
-    buildCost: { plank: 7, stone: 6 },
-    job: {
-      kind: 'craft',
-      inputs: { clay: 2, straw: 1 },
-      outputs: { brick: 2 },
-      craftSeconds: 10
-    },
-    buildDuration: 40
-  },
-
-  iron_smelter: {
-    name: 'Iron Smelter',
-    category: 'metalwork',
-    symbol: 'IS',
-    color: '#6b7fa6',
-    buildCost: { plank: 7, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { iron_ore: 1, charcoal: 1 },
-      outputs: { iron: 1 },
-      craftSeconds: 10
-    },
-    buildDuration: 45
-  },
-
-  copper_smelter: {
-    name: 'Copper Smelter',
-    category: 'metalwork',
-    symbol: 'CS',
-    color: '#d08a3a',
-    buildCost: { plank: 7, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { copper_ore: 1, charcoal: 1 },
-      outputs: { copper: 1 },
-      craftSeconds: 10
-    },
-    buildDuration: 45
-  },
-
-  tin_smelter: {
-    name: 'Tin Smelter',
-    category: 'metalwork',
-    symbol: 'TS',
-    color: '#aeb8bb',
-    buildCost: { plank: 7, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { tin_ore: 1, charcoal: 1 },
-      outputs: { tin: 1 },
-      craftSeconds: 10
-    },
-    buildDuration: 45
-  },
-
-  silver_smelter: {
-    name: 'Silver Smelter',
-    category: 'valuables',
-    symbol: 'SI',
-    color: '#9fb6c9',
-    buildCost: { plank: 7, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { silver_ore: 1, charcoal: 1 },
-      outputs: { silver: 1 },
-      craftSeconds: 12
-    },
-    buildDuration: 45
-  },
-
-  gold_smelter: {
-    name: 'Gold Smelter',
-    category: 'valuables',
-    symbol: 'GS',
-    color: '#d1a93a',
-    buildCost: { plank: 7, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { gold_ore: 1, charcoal: 1 },
-      outputs: { gold: 1 },
-      craftSeconds: 14
-    },
-    buildDuration: 45
-  },
-
-  bronze_foundry: {
-    name: 'Bronze Foundry',
-    category: 'metalwork',
-    symbol: 'BF',
-    color: '#a87949',
-    buildCost: { plank: 8, stone: 8 },
-    job: {
-      kind: 'craft',
-      inputs: { copper: 2, tin: 1 },
-      outputs: { bronze: 3 },
-      craftSeconds: 12
-    },
-    buildDuration: 45
-  },
-
-  charcoal_burner: {
-    name: 'Charcoal Burner',
-    category: 'construction',
-    symbol: 'CB',
-    color: '#45454a',
-    buildCost: { wood: 5, stone: 4 },
-    job: {
-      kind: 'craft',
-      inputs: { wood: 1 },
-      outputs: { charcoal: 1 },
-      byproducts: { tar: 1, ash: 2 },
-      craftSeconds: 10
-    },
-    buildDuration: 30
-  },
-
-  kitchen: {
-    name: 'Kitchen',
-    category: 'food',
-    symbol: 'KI',
-    color: '#c9784a',
-    buildCost: { plank: 7, stone: 6 },
-    job: {
-      kind: 'craft',
-      choices: [
-        { any: MEAL_BASES, outputs: { meal: 1 } },
-        { any: MEAL_BASES, inputs: { herbs: 1 }, outputs: { meal: 2 } },
-        { any: MEAL_BASES, inputs: { salt: 1 }, outputs: { meal: 3 } },
-        { any: MEAL_BASES, inputs: { herbs: 1, salt: 1 }, outputs: { meal: 5 } }
-      ],
-      craftSeconds: 12
-    },
-    buildDuration: 30
-  },
-  glassworks: {
-    name: 'Glassworks',
-    category: 'construction',
-    symbol: 'GL',
-    color: '#7fb8c4',
-    buildCost: { plank: 8, stone: 8, brick: 4 },
-    job: {
-      kind: 'craft',
-      inputs: { sand: 3, ash: 1 },
-      outputs: { glass: 2 },
-      craftSeconds: 12
-    },
-    buildDuration: 45
-  },
-  steelworks: {
-    name: 'Steelworks',
-    category: 'metalwork',
-    symbol: 'ST',
-    color: '#7c8ba0',
-    buildCost: { plank: 8, stone: 8, brick: 4 },
-    job: {
-      kind: 'craft',
-      inputs: { iron: 1, coal: 1 },
-      outputs: { steel: 1 },
-      craftSeconds: 15
-    },
-    buildDuration: 45
-  },
-  // Verktygstillverkning. 'auto': byggnaden gör det påslagna verktyg som det finns minst av (spelaren slår av/på verktyg i infopanelen)
-  toolsmith: {
-    name: 'Toolsmith',
-    category: 'metalwork',
-    symbol: 'TO',
-    color: '#9a8f7a',
-    buildCost: { plank: 8, stone: 8 },
-    job: {
-      kind: 'craft',
-      auto: true,
-      choices: ['hammer', 'pickaxe', 'axe', 'scythe', 'shovel', 'saw', 'knife'].map(tool => ({ inputs: { iron: 1, wood: 1 }, outputs: { [tool]: 1 } })),
-      craftSeconds: 12
-    },
-    buildDuration: 45
-  },
-  swordsmith: {
-    name: 'Swordsmith',
+  // ===== War (menyordning: kategori, sedan upplåsningsnivå i levels.js) =====
+  // Storymode: rådgivarna sätter ut den. Den står inte i byggmenyn och kan inte byggas; i kapitlet med konstant dimma lyfter dimman när den förstörs
+  eye_of_shades: {
+    name: 'Eye of Shades',
     category: 'war',
-    symbol: 'SW',
-    color: '#9aa4b2',
-    buildCost: { plank: 8, stone: 8 },
+    symbol: 'EY',
+    color: '#7b4fa3',
+    buildCost: {},
+    hiddenInMenu: true,
+    vision: 14,
+    maxHp: 400,
+    buildDuration: 1
+  },
+  // Utkikstorn: ser långt men gör inget annat. Ger synfält så att nya platser går att bygga på.
+  watchtower: {
+    name: 'Watchtower',
+    category: 'war',
+    symbol: 'WT',
+    color: '#8fc1ad',
+    buildCost: { plank: 2, stone: 3 },
+    vision: 30,
+    maxHp: 120,
+    buildDuration: 8
+  },
+  leatherworker: {
+    name: 'Leatherworker',
+    category: 'war',
+    symbol: 'LT',
+    color: '#7a5632',
+    buildCost: { plank: 6, stone: 4 },
+    requiredEquipment: { knife: 1 },
     job: {
       kind: 'craft',
-      choices: [
-        { inputs: { iron: 2, wood: 1 }, outputs: { sword: 1 } },
-        { inputs: { steel: 2, wood: 1 }, outputs: { steel_sword: 1 } }
-      ],
-      craftSeconds: 15
+      inputs: { leather: 1 },
+      outputs: { leather_armor: 1 },
+      craftSeconds: 12
     },
-    buildDuration: 45
+    buildDuration: 30
   },
-
+  // Mur: ett block som ingen enhet kan gå igenom (byggnader blockerar all gång). Fienden måste slå sig igenom den.
+  // linePlacement: muren ritas som ett rakt streck, ett tryck för början och ett för slutet (Game.placeLine); hela muren byggs eller ingen del.
+  // repeatPlacement: placeringsläget stannar kvar efter varje bygge, så att nästa mur kan läggas direkt.
+  // Bilderna följer grannmurarna (render/layers.js): wall.png ensam, wall_end ände, wall_straight rak, wall_corner hörn, wall_t trevägs, wall_cross fyrvägs.
+  wall: {
+    name: 'Wall',
+    category: 'war',
+    symbol: 'W',
+    color: '#8a8f98',
+    buildCost: { stone: 3 },
+    maxHp: 250,
+    carriers: 0,        // en mur ger inga bärare (och räknas inte heller med när bärare per byggnad växer)
+    repeatPlacement: true,
+    linePlacement: true,
+    buildDuration: 6
+  },
   bowyer: {
     name: 'Woodsmith',
     category: 'war',
@@ -830,23 +758,92 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 35
   },
-
-  leatherworker: {
-    name: 'Leatherworker',
+  guard_tower: {
+    name: 'Guard Tower',
     category: 'war',
-    symbol: 'LT',
-    color: '#7a5632',
-    buildCost: { plank: 6, stone: 4 },
-    requiredEquipment: { knife: 1 },
+    symbol: 'GT',
+    color: '#46a083',
+    buildCost: { wood: 5, plank: 6, stone: 10 },
+    job: {
+      kind: 'garrison',
+      capacity: 4,
+      trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer'],
+      defaultTrain: 'clubman',   // vald från början (och det datorn tränar)
+      aiTrains: ['swordsman', 'archer'],
+      searchRadius: 20
+    },
+    vision: 18,
+    maxHp: 200,
+    buildDuration: 40
+  },
+  stables: {
+    name: 'Stables',
+    category: 'war',
+    symbol: 'HB',
+    color: '#8b5e3c',
+    buildCost: { plank: 8, wood: 6, stone: 4 },
     job: {
       kind: 'craft',
-      inputs: { leather: 1 },
-      outputs: { leather_armor: 1 },
-      craftSeconds: 12
+      inputs: { animal: 1, grain: 3, water: 1 },
+      outputs: { horse: 1 },
+      craftSeconds: 40
     },
-    buildDuration: 30
+    buildDuration: 40
   },
-
+  swordsmith: {
+    name: 'Swordsmith',
+    category: 'war',
+    symbol: 'SW',
+    color: '#9aa4b2',
+    buildCost: { plank: 8, stone: 8 },
+    job: {
+      kind: 'craft',
+      choices: [
+        { inputs: { iron: 2, wood: 1 }, outputs: { sword: 1 } },
+        { inputs: { steel: 2, wood: 1 }, outputs: { steel_sword: 1 } }
+      ],
+      craftSeconds: 15
+    },
+    buildDuration: 45
+  },
+  garrison: {
+    name: 'Garrison',
+    category: 'war',
+    symbol: 'GA',
+    color: '#357a65',
+    buildCost: { plank: 15, stone: 20, brick: 8, hammer: 2 },
+    job: {
+      kind: 'garrison',
+      capacity: 10,
+      trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer', 'knight'],
+      defaultTrain: 'clubman',
+      aiTrains: ['swordsman', 'archer', 'knight'],
+      searchRadius: 20
+    },
+    vision: 18,
+    maxHp: 300,
+    buildDuration: 80
+  },
+  // Uppfinningar: bara människor, en per spelare. Bygger en uppfinning åt gången (en katapult, se units.js), som styrs med flaggan som soldater. unique på enheten: bara en av varje slag.
+  inventors_workshop: {
+    name: "Inventor's Workshop",
+    category: 'war',
+    symbol: 'IW',
+    color: '#c79a3b',
+    race: 'human',
+    unique: true,
+    buildCost: { plank: 15, stone: 10, iron: 6, brick: 6 },
+    job: {
+      kind: 'garrison',
+      capacity: 1,
+      trains: ['catapult'],
+      defaultTrain: 'catapult',
+      searchRadius: 16
+    },
+    vision: 14,
+    maxHp: 200,
+    buildDuration: 60
+  },
   armorsmith: {
     name: 'Armorsmith',
     category: 'war',
@@ -861,135 +858,29 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 45
   },
-
-
-  // Handel. 'choices': byggnaden gör ett val åt gången, spelaren väljer i infopanelen (building.choice).
-  mint: {
-    name: 'Mint',
-    category: 'trade',
-    symbol: 'MI',
-    color: '#cdbb6a',
-    buildCost: { plank: 8, stone: 10, brick: 6, limestone: 4, bronze: 4, hammer: 1 },
-    boost: null,
+  // Själsaltare: bara demoner, en per spelare. Varje fientlig soldat som spelaren dödar ger en själ (building.souls), som köper demoner (units.js: training.souls).
+  soul_altar: {
+    name: 'Altar of Souls',
+    category: 'war',
+    symbol: 'AS',
+    color: '#8e2b3c',
+    race: 'demon',
+    unique: true,
+    soulCounter: true,
+    buildCost: { stone: 25, brick: 10, sulfur: 5, gemstone: 2 },
     job: {
-      kind: 'craft',
-      choices: [
-        { inputs: { silver: 1 }, outputs: { coins: 6 } },
-        { inputs: { gold: 1 }, outputs: { coins: 20 } }
-      ],
-      craftSeconds: 8
+      kind: 'garrison',
+      capacity: 1,
+      trains: ['greater_demon'],
+      defaultTrain: 'greater_demon',
+      searchRadius: 20
     },
+    vision: 14,
+    maxHp: 250,
     buildDuration: 60
   },
 
-  // Handelsplats: klickar man på den öppnas ett fönster där varor köps och säljs för mynt direkt (Economy.buy och Economy.sell).
-  // Priserna (mynt per styck) gör att marknaden är en nödventil för sällsynta varor, inte ett sätt att slippa gruvorna.
-  // Försäljning ger sellFactor av priset. Silver och guld handlas inte: de blir mynt i myntverket.
-  market: {
-    name: 'Market',
-    category: 'trade',
-    symbol: 'MK',
-    color: '#d98f3a',
-    buildCost: { plank: 10, stone: 8, brick: 6, limestone: 4, hammer: 1 },
-    isMarket: true,
-    market: {
-      sellFactor: 0.5,
-      prices: {
-        wood: 2, plank: 3, stone: 3, clay: 3, sand: 2, limestone: 4, brick: 5, charcoal: 4, coal: 4,
-        grain: 2, flour: 3, bread: 5, meat: 3, fish: 3, leather: 6, salt: 6,
-        iron_ore: 6, copper_ore: 6, tin_ore: 6, iron: 8, copper: 10, tin: 10, bronze: 14,
-        straw: 2, apples: 2, berries: 2, mushrooms: 3, herbs: 4, glass: 6, meal: 6,
-        crystal: 25, gemstone: 30, moonstone: 40,
-      },
-    },
-    buildDuration: 60
-  },
-
-  // Magiska och forntida fynd
-  crystal_gatherer: {
-    name: 'Crystal Gatherer',
-    category: 'magic',
-    symbol: 'CG',
-    color: '#675080',
-    buildCost: { plank: 10, stone: 10 },
-    job: {
-      kind: 'gather',
-      sourceTerrain: 'crystal',
-      searchRadius: 50,
-      outputResource: 'crystal',
-      workSeconds: 10
-    },
-    buildDuration: 60
-  },
-
-  moonstone_gatherer: {
-    name: 'Moonstone Gatherer',
-    category: 'magic',
-    symbol: 'MO',
-    color: '#8b91b8',
-    buildCost: { plank: 10, stone: 10 },
-    job: {
-      kind: 'gather',
-      sourceTerrain: 'moonstone',
-      searchRadius: 50,
-      outputResource: 'moonstone',
-      workSeconds: 11
-    },
-    buildDuration: 70
-  },
-
-  relic_hunter: {
-    name: 'Relic Hunter',
-    category: 'magic',
-    symbol: 'RH',
-    color: '#625b61',
-    buildCost: { plank: 10, stone: 10 },
-    job: {
-      kind: 'gather',
-      sourceTerrain: 'ruins',
-      searchRadius: 100,
-      outputResource: 'ancient_relic',
-      workSeconds: 12
-    },
-    buildDuration: 80
-  },
-
-  fallen_star_collector: {
-    name: 'Fallen Star Collector',
-    category: 'magic',
-    symbol: 'FS',
-    color: '#8d6b9c',
-    buildCost: { plank: 12, stone: 11 },
-    job: {
-      kind: 'gather',
-      sourceTerrain: 'fallen_star',
-      searchRadius: 100,
-      outputResource: 'fallen_star',
-      workSeconds: 35
-    },
-    buildDuration: 90
-  },
-
-
-  // Slutvaror: boost som spelaren väljer per byggnad (se settings.boosts). Potion ger samlarna mer, förtrollat trä ger förädlarna mer,
-  // en talisman får garnisonerna att träna dubbelt så fort.
-  alchemist: {
-    name: 'Alchemist',
-    category: 'magic',
-    symbol: 'AL',
-    color: '#6f4fa8',
-    buildCost: { plank: 10, stone: 10, brick: 6, hammer: 1 },
-    job: {
-      kind: 'craft',
-      choices: [
-        { inputs: { crystal: 1, herbs: 2, mushrooms: 1, glass: 1, salt: 1 }, outputs: { potion: 2 } },
-        { inputs: { bone: 2, sulfur: 1 }, outputs: { cursed_ash: 1 } }
-      ],
-      craftSeconds: 15
-    },
-    buildDuration: 60
-  },
-
+  // ===== Magic (menyordning: kategori, sedan upplåsningsnivå i levels.js) =====
   enchanter: {
     name: 'Enchanter',
     category: 'magic',
@@ -1133,7 +1024,85 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 70
   },
-
+  // Magiska och forntida fynd
+  crystal_gatherer: {
+    name: 'Crystal Gatherer',
+    category: 'magic',
+    symbol: 'CG',
+    color: '#675080',
+    buildCost: { plank: 10, stone: 10 },
+    job: {
+      kind: 'gather',
+      sourceTerrain: 'crystal',
+      searchRadius: 50,
+      outputResource: 'crystal',
+      workSeconds: 10
+    },
+    buildDuration: 60
+  },
+  // Slutvaror: boost som spelaren väljer per byggnad (se settings.boosts). Potion ger samlarna mer, förtrollat trä ger förädlarna mer,
+  // en talisman får garnisonerna att träna dubbelt så fort.
+  alchemist: {
+    name: 'Alchemist',
+    category: 'magic',
+    symbol: 'AL',
+    color: '#6f4fa8',
+    buildCost: { plank: 10, stone: 10, brick: 6, hammer: 1 },
+    job: {
+      kind: 'craft',
+      choices: [
+        { inputs: { crystal: 1, herbs: 2, mushrooms: 1, glass: 1, salt: 1 }, outputs: { potion: 2 } },
+        { inputs: { bone: 2, sulfur: 1 }, outputs: { cursed_ash: 1 } }
+      ],
+      craftSeconds: 15
+    },
+    buildDuration: 60
+  },
+  moonstone_gatherer: {
+    name: 'Moonstone Gatherer',
+    category: 'magic',
+    symbol: 'MO',
+    color: '#8b91b8',
+    buildCost: { plank: 10, stone: 10 },
+    job: {
+      kind: 'gather',
+      sourceTerrain: 'moonstone',
+      searchRadius: 50,
+      outputResource: 'moonstone',
+      workSeconds: 11
+    },
+    buildDuration: 70
+  },
+  fallen_star_collector: {
+    name: 'Fallen Star Collector',
+    category: 'magic',
+    symbol: 'FS',
+    color: '#8d6b9c',
+    buildCost: { plank: 12, stone: 11 },
+    job: {
+      kind: 'gather',
+      sourceTerrain: 'fallen_star',
+      searchRadius: 100,
+      outputResource: 'fallen_star',
+      workSeconds: 35
+    },
+    buildDuration: 90
+  },
+  relic_hunter: {
+    name: 'Relic Hunter',
+    category: 'magic',
+    symbol: 'RH',
+    color: '#625b61',
+    buildCost: { plank: 10, stone: 10 },
+    job: {
+      kind: 'gather',
+      sourceTerrain: 'ruins',
+      searchRadius: 100,
+      outputResource: 'ancient_relic',
+      workSeconds: 12
+    },
+    buildDuration: 80
+  },
   shrine: {
     name: 'Shrine',
     category: 'magic',
@@ -1148,131 +1117,6 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 80
   },
-
-
-  guard_tower: {
-    name: 'Guard Tower',
-    category: 'war',
-    symbol: 'GT',
-    color: '#46a083',
-    buildCost: { wood: 5, plank: 6, stone: 10 },
-    job: {
-      kind: 'garrison',
-      capacity: 4,
-      trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer'],
-      defaultTrain: 'clubman',   // vald från början (och det datorn tränar)
-      aiTrains: ['swordsman', 'archer'],
-      searchRadius: 20
-    },
-    vision: 18,
-    maxHp: 200,
-    buildDuration: 40
-  },
-
-  // Uppfinningar: bara människor, en per spelare. Bygger en uppfinning åt gången (en katapult, se units.js), som styrs med flaggan som soldater. unique på enheten: bara en av varje slag.
-  inventors_workshop: {
-    name: "Inventor's Workshop",
-    category: 'war',
-    symbol: 'IW',
-    color: '#c79a3b',
-    race: 'human',
-    unique: true,
-    buildCost: { plank: 15, stone: 10, iron: 6, brick: 6 },
-    job: {
-      kind: 'garrison',
-      capacity: 1,
-      trains: ['catapult'],
-      defaultTrain: 'catapult',
-      searchRadius: 16
-    },
-    vision: 14,
-    maxHp: 200,
-    buildDuration: 60
-  },
-
-  // Själsaltare: bara demoner, en per spelare. Varje fientlig soldat som spelaren dödar ger en själ (building.souls), som köper demoner (units.js: training.souls).
-  soul_altar: {
-    name: 'Altar of Souls',
-    category: 'war',
-    symbol: 'AS',
-    color: '#8e2b3c',
-    race: 'demon',
-    unique: true,
-    soulCounter: true,
-    buildCost: { stone: 25, brick: 10, sulfur: 5, gemstone: 2 },
-    job: {
-      kind: 'garrison',
-      capacity: 1,
-      trains: ['greater_demon'],
-      defaultTrain: 'greater_demon',
-      searchRadius: 20
-    },
-    vision: 14,
-    maxHp: 250,
-    buildDuration: 60
-  },
-
-  // Utkikstorn: ser långt men gör inget annat. Ger synfält så att nya platser går att bygga på.
-  watchtower: {
-    name: 'Watchtower',
-    category: 'war',
-    symbol: 'WT',
-    color: '#8fc1ad',
-    buildCost: { plank: 2, stone: 3 },
-    vision: 30,
-    maxHp: 120,
-    buildDuration: 8
-  },
-
-  // Storymode: rådgivarna sätter ut den. Den står inte i byggmenyn och kan inte byggas; i kapitlet med konstant dimma lyfter dimman när den förstörs
-  eye_of_shades: {
-    name: 'Eye of Shades',
-    category: 'war',
-    symbol: 'EY',
-    color: '#7b4fa3',
-    buildCost: {},
-    hiddenInMenu: true,
-    vision: 14,
-    maxHp: 400,
-    buildDuration: 1
-  },
-
-  garrison: {
-    name: 'Garrison',
-    category: 'war',
-    symbol: 'GA',
-    color: '#357a65',
-    buildCost: { plank: 15, stone: 20, brick: 8, hammer: 2 },
-    job: {
-      kind: 'garrison',
-      capacity: 10,
-      trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer', 'knight'],
-      defaultTrain: 'clubman',
-      aiTrains: ['swordsman', 'archer', 'knight'],
-      searchRadius: 20
-    },
-    vision: 18,
-    maxHp: 300,
-    buildDuration: 80
-  },
-
-  // Mur: ett block som ingen enhet kan gå igenom (byggnader blockerar all gång). Fienden måste slå sig igenom den.
-  // linePlacement: muren ritas som ett rakt streck, ett tryck för början och ett för slutet (Game.placeLine); hela muren byggs eller ingen del.
-  // repeatPlacement: placeringsläget stannar kvar efter varje bygge, så att nästa mur kan läggas direkt.
-  // Bilderna följer grannmurarna (render/layers.js): wall.png ensam, wall_end ände, wall_straight rak, wall_corner hörn, wall_t trevägs, wall_cross fyrvägs.
-  wall: {
-    name: 'Wall',
-    category: 'war',
-    symbol: 'W',
-    color: '#8a8f98',
-    buildCost: { stone: 3 },
-    maxHp: 250,
-    carriers: 0,        // en mur ger inga bärare (och räknas inte heller med när bärare per byggnad växer)
-    repeatPlacement: true,
-    linePlacement: true,
-    buildDuration: 6
-  },
-
   // Slutbyggnad: alla egna byggnader inom radien producerar mer och soldater tränas snabbare. Bara ett per spelare.
   monument: {
     name: 'Resonance Monument',
@@ -1284,5 +1128,106 @@ CityBuilder.Config.buildings = {
     unique: true,
     aura: { radius: 30, yield: 0.1, training: 0.25 },
     buildDuration: 300
-  }
+  },
+
+  // ===== Trade (menyordning: kategori, sedan upplåsningsnivå i levels.js) =====
+  hq: {
+    name: 'Base',
+    category: 'trade',
+    symbol: 'B',
+    color: '#c9a227',
+    buildCost: {},
+    hiddenInMenu: true,
+    isStorage: true,
+    vision: 18,
+    maxHp: 400,
+    buildDuration: 5
+  },
+  // Det som blir kvar när en byggnad rivs ligger här på marken tills bärarna hämtat det (Construction.dismantle). Går inte att bygga eller välja i menyn.
+  pile: {
+    name: 'Pile of goods',
+    category: 'trade',
+    symbol: '•',
+    color: '#8a6a43',
+    buildCost: {},
+    hiddenInMenu: true,
+    pile: true,
+    carriers: 0,
+    maxHp: null,
+    vision: 0,
+    buildDuration: 0
+  },
+  warehouse: {
+    name: 'Warehouse',
+    category: 'trade',
+    symbol: 'W',
+    color: '#a88a2a',
+    buildCost: { wood: 3, plank: 1 },
+    isStorage: true,
+    capacity: 60,
+    carriers: 5,        // så många bärare ger ett färdigt lager (annars carriersPerStorage)
+    buildDuration: 10
+  },
+  large_warehouse: {
+    name: 'Large Warehouse',
+    category: 'trade',
+    symbol: 'LW',
+    color: '#b89a35',
+    buildCost: { plank: 8, stone: 6, brick: 4, hammer: 1 },
+    isStorage: true,
+    capacity: 200,
+    carriers: 10,
+    buildDuration: 20
+  },
+  great_depot: {
+    name: 'Great Depot',
+    category: 'trade',
+    symbol: 'GW',
+    color: '#c9ab40',
+    buildCost: { plank: 20, stone: 20, brick: 12, steel: 4, limestone: 8, bronze: 4, hammer: 2 },
+    isStorage: true,
+    capacity: 600,
+    carriers: 25,
+    buildDuration: 45
+  },
+  // Handel. 'choices': byggnaden gör ett val åt gången, spelaren väljer i infopanelen (building.choice).
+  mint: {
+    name: 'Mint',
+    category: 'trade',
+    symbol: 'MI',
+    color: '#cdbb6a',
+    buildCost: { plank: 8, stone: 10, brick: 6, limestone: 4, bronze: 4, hammer: 1 },
+    boost: null,
+    job: {
+      kind: 'craft',
+      choices: [
+        { inputs: { silver: 1 }, outputs: { coins: 6 } },
+        { inputs: { gold: 1 }, outputs: { coins: 20 } }
+      ],
+      craftSeconds: 8
+    },
+    buildDuration: 60
+  },
+  // Handelsplats: klickar man på den öppnas ett fönster där varor köps och säljs för mynt direkt (Economy.buy och Economy.sell).
+  // Priserna (mynt per styck) gör att marknaden är en nödventil för sällsynta varor, inte ett sätt att slippa gruvorna.
+  // Försäljning ger sellFactor av priset. Silver och guld handlas inte: de blir mynt i myntverket.
+  market: {
+    name: 'Market',
+    category: 'trade',
+    symbol: 'MK',
+    color: '#d98f3a',
+    buildCost: { plank: 10, stone: 8, brick: 6, limestone: 4, hammer: 1 },
+    isMarket: true,
+    market: {
+      sellFactor: 0.5,
+      prices: {
+        wood: 2, plank: 3, stone: 3, clay: 3, sand: 2, limestone: 4, brick: 5, charcoal: 4, coal: 4,
+        grain: 2, flour: 3, bread: 5, meat: 3, fish: 3, leather: 6, salt: 6,
+        iron_ore: 6, copper_ore: 6, tin_ore: 6, iron: 8, copper: 10, tin: 10, bronze: 14,
+        straw: 2, apples: 2, berries: 2, mushrooms: 3, herbs: 4, glass: 6, meal: 6,
+        crystal: 25, gemstone: 30, moonstone: 40,
+      },
+    },
+    buildDuration: 60
+  },
 };
