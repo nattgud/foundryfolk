@@ -711,6 +711,18 @@
         context.beginPath(); context.moveTo(px, py - h); context.lineTo(px + h, py - h / 2); context.lineTo(px, py); context.closePath(); context.fill();
       }
 
+      // Fiendens arbetare (inte bärare eller djur) som syns: lite mindre, halvgenomskinliga röda prickar med mörk kant, under soldaterna
+      context.strokeStyle = '#05080a'; context.lineWidth = 1; context.fillStyle = ENEMY_COLOR;
+      for (const unit of World.units) {
+        const definition = unit.definition;
+        if (definition.isSoldier || definition.isHauler || definition.isAnimal || !Players.isPlayer(unit.player) || !isFoe(unit.player) || !Vision.sees(Players.HUMAN, unit)) continue;
+        const x = toX(unit.x), y = toY(unit.y);
+        if (Math.hypot(x - radius, y - radius) > radius) continue;
+        context.globalAlpha = .85;
+        context.beginPath(); context.arc(x, y, Math.max(2, dot - 0.5), 0, Math.PI * 2); context.fill(); context.stroke();
+      }
+      context.globalAlpha = 1;
+
       // Fiender (andra spelares soldater och monster) som syns: alltid lite större röda prickar med mörk kant, överst och i alla lägen
       context.strokeStyle = '#05080a'; context.lineWidth = 1;
       for (const unit of World.units) {
