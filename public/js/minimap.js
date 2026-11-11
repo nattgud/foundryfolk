@@ -190,6 +190,7 @@
     loadZoom() {
       const [storedLevel, storedZoom] = String(safe(() => localStorage.getItem(ZOOM_KEY))).split(':').map(Number);
       this.scale = storedLevel === currentLevel() && ZOOM_STEPS.includes(storedZoom) ? storedZoom : settings().pixelsPerTile;
+      if (this.zoomInButton) this.updateZoomButtons();   // knapparna ska följa den nya zoomen (annars står "kan inte zooma ut" kvar från förra banan)
     },
 
     // Ny värld (Game.restart): de ritade kartbitarna av den gamla världen släpps
