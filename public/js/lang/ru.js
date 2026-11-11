@@ -759,6 +759,7 @@
       'Map number': 'Номер карты',
       'Start custom map': 'Начать свою карту',
       'Construction': 'Строительство',
+      'Click to start': 'Нажмите, чтобы начать',
       'Kills': 'Побеждённые враги',
       'Click a resource to see where it goes.': 'Нажмите на ресурс, чтобы увидеть, куда он идёт.',
       '/min': '/мин',

@@ -759,6 +759,7 @@
       'Map number': 'رقم الخريطة',
       'Start custom map': 'ابدأ الخريطة المخصصة',
       'Construction': 'البناء',
+      'Click to start': 'انقر للبدء',
       'Kills': 'الأعداء المهزومون',
       'Click a resource to see where it goes.': 'اضغط على مورد لترى إلى أين يذهب.',
       '/min': '/د',

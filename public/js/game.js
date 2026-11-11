@@ -59,7 +59,17 @@
         this.installFocusPause();
         L.set(1, t('Almost ready'));
         this.loading = false;
-        requestAnimationFrame(time => { this.lastFrameTime = time; this.frame(time); L.done(); });
+        requestAnimationFrame(async time => {
+          this.lastFrameTime = time; this.frame(time);
+          if (L.needsClick?.()) {   // ingen användaråtgärd än (omladdning): en knapp över allt, så att ljudet kan låsas upp. Spelet står still tills den tryckts
+            const wasPaused = this.paused;
+            this.paused = true;
+            await L.waitForClick(t('Click to start'));
+            this.paused = wasPaused;
+            this.lastFrameTime = performance.now();
+          }
+          L.done();
+        });
       } catch (error) { Errors.report(error, 'start'); L.fail(error); throw error; }
     },
 

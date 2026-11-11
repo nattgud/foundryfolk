@@ -758,6 +758,7 @@
       'Map number': '地图编号',
       'Start custom map': '开始自定义地图',
       'Construction': '建造',
+      'Click to start': '点击开始',
       'Kills': '击败的敌人',
       'Click a resource to see where it goes.': '点击一种资源查看它的去向。',
       '/min': '/分钟',

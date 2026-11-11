@@ -758,6 +758,7 @@
       'Map number': 'マップ番号',
       'Start custom map': 'カスタムマップを開始',
       'Construction': '建設',
+      'Click to start': 'クリックして開始',
       'Kills': '倒した敵',
       'Click a resource to see where it goes.': '資源をクリックすると、その行き先が見られます。',
       '/min': '/分',

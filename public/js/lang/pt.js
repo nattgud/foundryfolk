@@ -759,6 +759,7 @@
       'Map number': 'Número do mapa',
       'Start custom map': 'Iniciar mapa personalizado',
       'Construction': 'Construção',
+      'Click to start': 'Clique para começar',
       'Kills': 'Inimigos derrotados',
       'Click a resource to see where it goes.': 'Clique num recurso para ver para onde ele vai.',
       '/min': '/min',

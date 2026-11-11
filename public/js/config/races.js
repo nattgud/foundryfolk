@@ -60,18 +60,21 @@ CityBuilder.Config.races = {
   // elf: { name: 'Elf', base: '#16241c', accent: '#7fd6a2' },
 };
 
-// En soldats utbildning för en ras: rasens egen (races[ras].training) annars den vanliga (units.js)
-CityBuilder.Config.trainingOf = (kind, race) => CityBuilder.Config.races?.[race]?.training?.[kind] ?? CityBuilder.Config.units[kind]?.training;
+// (I en egen funktion: CityBuilder tas bort från den globala namnrymden när spelet startat, så funktionerna får sin egen referens.)
+(function (CityBuilder) {
+  // En soldats utbildning för en ras: rasens egen (races[ras].training) annars den vanliga (units.js)
+  CityBuilder.Config.trainingOf = (kind, race) => CityBuilder.Config.races?.[race]?.training?.[kind] ?? CityBuilder.Config.units[kind]?.training;
 
-// En byggnads definition för en ras: rasens egen version (races[ras].buildings[id]) om det finns en, annars den vanliga. Versionen sparas så att samma ras alltid får samma objekt,
-// och den vet sitt id (baseId). Nya byggnader får sin definition härifrån (World.placeBuilding).
-CityBuilder.Config.definitionOf = (() => {
-  const cache = new Map();
-  return (id, race) => {
-    const base = CityBuilder.Config.buildings[id], make = CityBuilder.Config.races?.[race]?.buildings?.[id];
-    if (!base || !make) return base;
-    const key = race + ':' + id;
-    if (!cache.has(key)) cache.set(key, Object.assign(make(base), { baseId: id, variantRace: race }));
-    return cache.get(key);
-  };
-})();
+  // En byggnads definition för en ras: rasens egen version (races[ras].buildings[id]) om det finns en, annars den vanliga. Versionen sparas så att samma ras alltid får samma objekt,
+  // och den vet sitt id (baseId). Nya byggnader får sin definition härifrån (World.placeBuilding).
+  CityBuilder.Config.definitionOf = (() => {
+    const cache = new Map();
+    return (id, race) => {
+      const base = CityBuilder.Config.buildings[id], make = CityBuilder.Config.races?.[race]?.buildings?.[id];
+      if (!base || !make) return base;
+      const key = race + ':' + id;
+      if (!cache.has(key)) cache.set(key, Object.assign(make(base), { baseId: id, variantRace: race }));
+      return cache.get(key);
+    };
+  })();
+})(window.CityBuilder);

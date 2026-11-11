@@ -23,6 +23,17 @@
     #loading .fill { height: 100%; width: 0; background: #e0a53a; border-radius: 6px; transition: width .25s ease-out; }
     #loading .text { font-size: 13px; opacity: .75; min-height: 1.2em; text-align: center; padding: 0 16px; }
     #loading.error .fill { background: #c0392b; }
+    /* "Klicka för att börja": visas efter laddningen när webbläsaren inte fått någon användaråtgärd än (oftast vid omladdning), så att ljudet kan startas */
+    #loading.ready .track, #loading.ready .text { display: none; }
+    #startButton { appearance: none; border: 0; cursor: pointer; padding: 16px 46px; border-radius: 999px; background: #e0a53a; color: #1b1510;
+      font: 700 20px/1 system-ui, sans-serif; letter-spacing: .04em; box-shadow: 0 6px 24px rgba(0,0,0,.45); transition: transform .15s, background .15s;
+      animation: startPulse 2.2s ease-out infinite; }
+    #startButton::before { content: '\25B6'; margin-right: .6em; font-size: .8em; }
+    #startButton:hover { background: #f0b84c; transform: scale(1.05); }
+    #startButton:active { transform: scale(.98); }
+    #startButton:focus-visible { outline: 3px solid #fff4d6; outline-offset: 4px; }
+    @keyframes startPulse { 0% { box-shadow: 0 0 0 0 rgba(224,165,58,.55), 0 6px 24px rgba(0,0,0,.45); } 70%, 100% { box-shadow: 0 0 0 24px rgba(224,165,58,0), 0 6px 24px rgba(0,0,0,.45); } }
+    @media (prefers-reduced-motion: reduce) { #startButton { animation: none; } }
   </style>
 </head>
 <body onload="loadAllGameComponents()">
@@ -34,7 +45,7 @@
   <div id="toast"></div>
 
   <script>
-    var version = "0.9.294";
+    var version = "0.9.292";
     // Musiken fortsätter över en omladdning (ny bana, uppdatering). Systems/sound.js sparar låten och platsen (sessionStorage) när sidan stängs;
     // den startas här, direkt i ett <audio>-element och långt före spelets skript (som laddas först när sidan laddat klart). Sound tar över
     // elementet (window.resumedMusic) när ljudet är igång. Platsen räknas upp med tiden som gått, så att musiken inte hoppar bakåt.
@@ -75,6 +86,27 @@
         const box = document.getElementById('loading');
         box.classList.add('hide');
         setTimeout(() => { if (box.classList.contains('hide')) box.style.display = 'none'; }, 500);
+      },
+      // Webbläsare tillåter inte ljud förrän användaren gjort något på sidan. Har hon inte det än (omladdning) och ljudet inte är avstängt visas en knapp
+      // över allt (game.js väntar på den, med spelet pausat); första klicket (eller tangenttrycket) låser upp ljudet (Sound lyssnar på det).
+      needsClick() {
+        try {
+          if (!navigator.userActivation || navigator.userActivation.hasBeenActive) return false;
+          const audio = JSON.parse(localStorage.getItem('citybuilder.audio') || '{}');
+          return !(audio.musicOn === false && audio.sfxOn === false);
+        } catch (error) { return false; }
+      },
+      waitForClick(label) {
+        return new Promise(resolve => {
+          const box = document.getElementById('loading'), button = document.createElement('button');
+          button.id = 'startButton'; button.type = 'button'; button.textContent = label;
+          box.classList.add('ready'); box.appendChild(button);
+          const go = () => { removeEventListener('keydown', onKey, true); button.remove(); box.classList.remove('ready'); resolve(); };
+          const onKey = event => { if (['Tab', 'Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) return; event.preventDefault(); event.stopImmediatePropagation(); go(); };
+          button.addEventListener('click', go);
+          addEventListener('keydown', onKey, true);
+          button.focus();
+        });
       },
       // Visas igen när en ny bana byggs (Game.restart)
       show() {
