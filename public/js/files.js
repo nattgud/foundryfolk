@@ -55,6 +55,7 @@ self.GAME_SCRIPTS = [
   'js/systems/weather.js',
   'js/systems/combat.js',
   'js/systems/story.js',
+  'js/systems/actors.js',
   'js/systems/ai.js',
   // 6. Rendering, indata, UI
   'js/render/shapes.js',

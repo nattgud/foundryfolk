@@ -942,16 +942,16 @@
 
   /* ---------- Goal progress ---------- */
   const Economy = () => CityBuilder.Economy;
-  const progress = { run: null, level: null, latched: {}, told: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, made: {}, destroyed: {}, rivalsDown: 0, won: false };
+  const progress = { run: null, level: null, latched: {}, told: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, made: {}, destroyed: {}, rivalsDown: 0, won: false, actors: { list: [], leftovers: [] } };
   const completeListeners = [];
   let checkTimer = 0;
 
   // Framstegen hör bara till en sparning (se restoreProgress): varje bana och varje nytt spel börjar med tomma mål.
   const applyProgress = saved => {
     const same = saved && (state.info.custom || state.info.story || saved.run === runSeed) && saved.level === state.info.key;   // en egen karta hör inte till banornas körning: ett nytt spel på banorna ska inte nollställa den
-    Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, told: same ? saved.told || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, casts: same ? saved.casts || 0 : 0, made: same ? saved.made || {} : {}, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false });
+    Object.assign(progress, { run: runSeed, level: state.info.key, latched: same ? saved.latched || {} : {}, told: same ? saved.told || {} : {}, seconds: same ? saved.seconds || 0 : 0, complete: same ? !!saved.complete : false, stars: same ? saved.stars || 0 : 0, kills: same ? saved.kills || 0 : 0, casts: same ? saved.casts || 0 : 0, made: same ? saved.made || {} : {}, destroyed: same ? saved.destroyed || {} : {}, rivalsDown: same ? saved.rivalsDown || 0 : 0, won: same ? !!saved.won : false, actors: same && saved.actors ? saved.actors : { list: [], leftovers: [] } });
   };
-  const resetProgress = () => Object.assign(progress, { latched: {}, told: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, made: {}, destroyed: {}, rivalsDown: 0, won: false });
+  const resetProgress = () => Object.assign(progress, { latched: {}, told: {}, seconds: 0, complete: false, stars: 0, kills: 0, casts: 0, made: {}, destroyed: {}, rivalsDown: 0, won: false, actors: { list: [], leftovers: [] } });
 
   // Finished buildings of the player: of one kind (id), or all of them except the headquarters
   const countBuilt = id => {
@@ -1119,6 +1119,7 @@
 
     // Framstegen följer med sparningen (annars kan en äldre sparning få mål som redan är gröna). hold(true) medan en sparning återställs.
     snapshot: () => JSON.parse(JSON.stringify(progress)),
+    progressRef: () => progress,   // för Actors: skådespelarnas tillstånd ligger i framstegen och följer med sparningen
     restoreProgress(saved) { applyProgress(saved || null); },
     hold(value) { held = !!value; },
     // Glömmer framstegen i den gamla världen, som vid en ny sidladdning (Game.restart); en sparning ger dem tillbaka via Save.prepareStart

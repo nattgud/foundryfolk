@@ -337,5 +337,5 @@ CityBuilder.Config.settings = {
       sweepRadius: 24,                     // väl framme letar raiders efter byggnader och fiender så här långt från huvudlagret
     },
   },
-  systemOrder: ['ai', 'construction', 'production', 'spells', 'logistics', 'monsters', 'combat', 'units', 'weather', 'story', 'vision'],
+  systemOrder: ['ai', 'construction', 'production', 'spells', 'logistics', 'monsters', 'combat', 'units', 'weather', 'story', 'actors', 'vision'],
 };

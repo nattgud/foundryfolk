@@ -527,6 +527,7 @@
     },
 
     handlePathFailure(unit) {
+      if (unit.actor) { unit.stepQueue.length = 0; unit.pathFailed = true; return; }   // skådespelaren teleporteras av Actors
       const step = unit.stepQueue[0];
       unit.stepQueue.length = 0; unit.idleCooldown = 1; unit.status = "Can't reach";
       Logistics.failTask(unit);
