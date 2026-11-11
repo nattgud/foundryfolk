@@ -768,8 +768,7 @@ CityBuilder.Config.buildings = {
       kind: 'garrison',
       capacity: 4,
       trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer'],
-      defaultTrain: 'clubman',   // vald från början (och det datorn tränar)
-      aiTrains: ['swordsman', 'archer'],
+      defaultTrain: 'clubman',   // vald från början (datorn väljer själv bland soldaterna, se Config.ai.army)
       searchRadius: 20
     },
     vision: 18,
@@ -817,7 +816,6 @@ CityBuilder.Config.buildings = {
       capacity: 10,
       trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer', 'knight'],
       defaultTrain: 'clubman',
-      aiTrains: ['swordsman', 'archer', 'knight'],
       searchRadius: 20
     },
     vision: 18,

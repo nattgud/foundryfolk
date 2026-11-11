@@ -34,12 +34,21 @@
   // Soldatens utbildning för den datorspelare som tänker just nu (rasen kan ha egen utrustning, se config/races.js)
   const trainingNow = id => Config.trainingOf(id, Players.raceOf(AI.current));
 
+  // Byggnadens definition för datorspelaren som tänker just nu (rasen kan ha egna recept, se config/races.js)
+  const defOf = type => Config.definitionOf(type, Players.raceOf(AI.current));
+
+  // Soldattyperna en garnison får träna för den här datorn: de som byggnaden kan träna, som datorns nivå räcker till och som inte är manuella eller unika
+  const armyTypes = (definition, level) => (definition.job.trains || []).filter(id => {
+    const unit = Config.units[id];
+    return unit && !unit.manual && !unit.unique && (Config.ai.army.from[id] ?? Infinity) <= level;
+  });
+
   // Det en byggnad behöver få levererat: insatser, utrustning, mat (en av alternativen) och för garnisoner soldatens utrustning
   const inputsOf = definition => {
     const job = definition.job;
     if (!job) return [];
     const inputs = [...Object.keys(Config.firstInputs(job.choices?.[0] ?? job)), ...Object.keys(definition.requiredEquipment || {})];
-    if (job.kind === 'garrison') inputs.push(...Object.keys(trainingNow(job.defaultTrain ?? job.trains[0]).inputs));
+    if (job.kind === 'garrison') inputs.push(...armyTypes(definition, AI.level()).flatMap(id => Object.keys(trainingNow(id).inputs)));
     for (const group of [].concat(job.eats || [])) inputs.push(group.any[0]);
     return inputs;
   };
@@ -65,7 +74,8 @@
     if (!job) return 0;
     if (job.kind === 'garrison') {
       if (kind !== 'in') return 0;
-      const trains = job.aiTrains ?? job.trains;   // datorn tränar bara dessa (de nya billiga nivåerna är för spelaren)
+      const trains = armyTypes(definition, AI.level());   // det datorn kan träna på sin nivå
+      if (!trains.length) return 0;
       return trains.reduce((sum, id) => { const training = trainingNow(id); return sum + (training?.inputs?.[resourceId] || 0) / (training?.seconds || 20) * 60; }, 0) / trains.length;
     }
     const recipes = job.choices || [job];
@@ -85,24 +95,73 @@
 
   const gameSeconds = () => CityBuilder.Levels?.seconds ?? 0;   // speltid på banan (sparas, så anfallstiden gäller även efter omladdning)
 
+  // Spelarens profil: hur hens armé brukar se ut (andel per soldattyp, glidande medelvärde), sparad i webbläsaren och därmed gemensam för alla lägen och banor.
+  // Datorn använder den för att välja soldater som kontrar det spelaren brukar ha (AI.weightOf). Se Config.ai.army.learn.
+  const Profile = {
+    mix: {}, samples: 0, timer: 0, saved: 0, dirty: false, loaded: false,
+
+    load() {
+      this.loaded = true;
+      try {
+        const data = JSON.parse(localStorage.getItem(Config.ai.army.learn.key) || 'null');
+        if (data && data.mix) { this.mix = data.mix; this.samples = data.samples || 0; }
+      } catch (error) { /* ingen sparad profil */ }
+      addEventListener('pagehide', () => this.save());
+    },
+    save() {
+      if (!this.dirty) return;
+      this.dirty = false;
+      try { localStorage.setItem(Config.ai.army.learn.key, JSON.stringify({ mix: this.mix, samples: this.samples })); } catch (error) { /* ingen lagring */ }
+    },
+    reset() { this.mix = {}; this.samples = 0; this.dirty = true; this.save(); },
+
+    // Spelarens soldater per typ: ute i världen och inne i garnisoner
+    counts() {
+      const counts = {};
+      for (const unit of World.units) if (unit.definition.isSoldier && !unit.definition.isMonster && unit.player === Players.HUMAN) counts[unit.kind] = (counts[unit.kind] || 0) + 1;
+      for (const building of World.buildings) if (building.player === Players.HUMAN && building.garrison) for (const [kind, count] of Object.entries(building.garrison)) counts[kind] = (counts[kind] || 0) + count;
+      return counts;
+    },
+
+    update(deltaSeconds) {
+      if (!this.loaded) this.load();
+      const { sampleSeconds, minSoldiers } = Config.ai.army.learn;
+      if ((this.timer += deltaSeconds) < sampleSeconds) return;
+      this.timer = 0;
+      const counts = this.counts(), total = Utils.sumValues(counts);
+      if (total >= minSoldiers) {
+        const rate = Math.max(0.08, 1 / (this.samples + 1));   // de första proven väger tungt, sedan följer profilen spelaren långsamt
+        for (const kind of Object.keys(Config.ai.army.from)) this.mix[kind] = (this.mix[kind] ?? (counts[kind] || 0) / total) * (1 - rate) + (counts[kind] || 0) / total * rate;
+        this.samples++; this.dirty = true;
+      }
+      if (this.dirty && (this.saved += sampleSeconds) >= 60) { this.saved = 0; this.save(); }
+    },
+
+    // 0-1: hur säker profilen är (växer med antalet prov)
+    confidence() { return Math.min(1, this.samples / Config.ai.army.learn.fullSamples); },
+  };
+
   const AI = {
+    profile: Profile,
     players: new Map(),      // spelare -> { timer, blocked: { byggnadstyp: tid då den får provas igen }, short: { resurs: { since, seen } } }
     time: 0,
     over: new WeakSet(),     // byggnader som pausats för att deras vara fyllde lagret (startar igen först när lagret gått ner, se regulate)
     watch: new WeakMap(),    // ofärdig byggnad -> { progress, since }: hur länge bygget stått still (se reclaim)
     producers: {},           // resurs -> byggnadstyp som tillverkar den billigast (byggs vid första användningen)
 
-    // Billigaste byggnaden som tillverkar resursen (eller undefined)
+    // Billigaste byggnaden som tillverkar resursen (eller undefined), med rasens egna recept (Bensköld görs av demonernas Woodsmith)
     producerOf(resourceId) {
-      if (!(resourceId in this.producers)) {
+      const cache = this.producers[Players.raceOf(this.current) || 'human'] ||= {};
+      if (!(resourceId in cache)) {
         let best;
-        for (const [type, definition] of Object.entries(Config.buildings)) {
+        for (const type of Object.keys(Config.buildings)) {
+          const definition = defOf(type);
           if (!outputsOf(definition).includes(resourceId) || definition.isWinBuilding) continue;
-          if (!best || costOf(definition) < costOf(Config.buildings[best])) best = type;
+          if (!best || costOf(definition) < costOf(defOf(best))) best = type;
         }
-        this.producers[resourceId] = best;
+        cache[resourceId] = best;
       }
-      return this.producers[resourceId];
+      return cache[resourceId];
     },
 
     // Datorns styrka som en banas nummer. På en egen bana har varje datorspelare sin egen (Levels.current.aiLevels). Gäller AI.current.
@@ -118,6 +177,7 @@
 
     update(deltaSeconds) {
       this.time += deltaSeconds;
+      Profile.update(deltaSeconds);
       for (const player of Players.active) {
         if (!Players.isAI(player) || !World.hqOf(player)) continue;
         let state = this.players.get(player);
@@ -139,6 +199,73 @@
       this.observe(player, state);
       this.decide(player, state);
       this.regulate(player, state);
+      this.trainArmy(player);
+    },
+
+    // ---- Soldater: vad garnisonerna tränar, och vilken utrustning hantverkarna gör --------------------------------------------------
+
+    // 0-1: hur mycket datorn anpassar sig efter spelaren. Växer med datornivån; i storyn mildare, utom i de sista kapitlen (Config.ai.army.adapt)
+    adaptation() {
+      const { from, span, storyFactor, hardFrom } = Config.ai.army.adapt, level = this.level();
+      let strength = Math.max(0, Math.min(1, (level - from) / span));
+      if (CityBuilder.Levels?.mode === 'story' && level < hardFrom) strength *= storyFactor;
+      return strength;
+    },
+
+    // Datorns vikt för en soldattyp: grundvikten, uppräknad efter hur väl typen kontrar det spelaren brukar ha
+    weightOf(kind) {
+      const { weight, counters, learn } = Config.ai.army;
+      let score = 0;
+      for (const [theirs, share] of Object.entries(Profile.mix)) score += share * (counters[theirs]?.[kind] || 0);
+      return (weight[kind] ?? 1) * (1 + this.adaptation() * Profile.confidence() * learn.boost * score);
+    },
+
+    // Datorns egna garnisoner
+    garrisonsOf: player => World.buildings.filter(building => building.player === player && building.buildProgress >= 1 && Garrison.isGarrison(building)),
+
+    // Vad varje vara är värd för armén: summan av vikterna för de soldater som behöver den (styr vad hantverkarna gör)
+    gearNeed(player) {
+      const need = {}, kinds = new Set();
+      for (const building of this.garrisonsOf(player)) for (const id of armyTypes(building.definition, this.level())) kinds.add(id);
+      for (const id of kinds) for (const [resourceId, amount] of Object.entries(trainingNow(id).inputs)) need[resourceId] = (need[resourceId] || 0) + this.weightOf(id) * amount;
+      return need;
+    },
+
+    // Finns insatserna (lagret och byggnadens egna) så att något kan tillverkas eller tränas nu?
+    hasInputs: (building, inputs, player) => Object.entries(inputs).every(([resourceId, amount]) => (building.inputStock?.[resourceId] || 0) + Economy.freeAmount(resourceId, player) >= amount),
+
+    // Garnisonerna väljer soldat bland de typer utrustningen finns till (annars står de och väntar), slumpat efter vikterna.
+    // Typer datorn redan har många av väljs lite mer sällan, så att armén blir blandad. Hantverkare med flera varor väljer den vara armén har minst av.
+    trainArmy(player) {
+      const own = {};
+      for (const building of this.garrisonsOf(player)) for (const [kind, count] of Object.entries(building.garrison || {})) own[kind] = (own[kind] || 0) + count;
+      const total = Utils.sumValues(own) || 1;
+      for (const building of this.garrisonsOf(player)) {
+        if (building.isCrafting) continue;   // en påbörjad träning får bli klar
+        const types = armyTypes(building.definition, this.level());
+        const ready = types.filter(id => this.hasInputs(building, trainingNow(id).inputs, player));
+        if (!ready.length) continue;
+        // Full garnison av clubmen men utrustning till bättre soldater finns: en clubman lämnar en plats (datorn byter ut sina sämsta mot bättre, ett byte per beslut)
+        if (Garrison.slotsFree(building) <= 0 && building.garrison?.clubman && ready.some(id => id !== 'clubman')) { building.garrison.clubman--; if (!building.garrison.clubman) delete building.garrison.clubman; }
+        // Clubman är billigast och finns alltid: har datorn utrustning till bättre soldater väljs den bara sällan (en reserv, så att garnisonen aldrig står still)
+        const weights = ready.map(id => this.weightOf(id) / (1 + 1.5 * (own[id] || 0) / total) * (id === 'clubman' && ready.length > 1 ? Config.ai.army.clubmanShare : 1));
+        let roll = Utils.random() * weights.reduce((a, b) => a + b, 0), pick = ready[ready.length - 1];
+        for (let i = 0; i < ready.length; i++) if ((roll -= weights[i]) <= 0) { pick = ready[i]; break; }
+        Garrison.setTrainingType(building, pick);
+      }
+      const need = this.gearNeed(player);
+      for (const building of World.buildings) {
+        const choices = building.player === player && building.buildProgress >= 1 && !building.isCrafting && building.definition.job?.kind === 'craft' && building.definition.job.choices;
+        if (!choices || choices.length < 2 || !choices.every(choice => Object.keys(choice.outputs).every(id => GEAR.has(id)))) continue;
+        let best = -1, fewest = Infinity;
+        choices.forEach((choice, index) => {
+          const output = Object.keys(choice.outputs)[0], wanted = need[output];
+          if (!(wanted > 0) || !this.hasInputs(building, choice.inputs || {}, player)) return;
+          const score = (Economy.totalAmount(output, player) + (building.outputStock?.[output] || 0)) / wanted;
+          if (score < fewest) { fewest = score; best = index; }
+        });
+        if (best >= 0) building.choice = best;
+      }
     },
 
     // Som en människa: saknas en byggresurs pausas de byggnader som förbrukar den (annars hinner den aldrig samlas i lagret), och
@@ -308,7 +435,7 @@
       if (next === BLOCKED) return false;
       if (next !== type) return this.place(player, state, next), true;
       state.storageAt = this.time + Config.ai.warehouses.cooldown;
-      this.place(player, state, type, this.free(remote, Config.buildings[type], 7));
+      this.place(player, state, type, this.free(remote, defOf(type), 7));
       return true;
     },
 
@@ -353,9 +480,9 @@
       const scale = Config.ai.scale[type];
       let cap = scale ? scale[0] + Math.floor(census.total / scale[1]) : Config.ai.maxPerType;
       if (Config.ai.chain.includes(type)) {          // led i en tillverkningskedja: aldrig fler än det som förbrukar det de tillverkar (byggs bara för att något annat står och väntar)
-        const definition = Config.buildings[type], resourceId = primaryOutputs(definition)[0], supply = rateOf(definition, resourceId, 'out');
+        const definition = defOf(type), resourceId = primaryOutputs(definition)[0], supply = rateOf(definition, resourceId, 'out');
         let demand = 0;
-        for (const [other, count] of Object.entries(census.count)) if (other !== type) demand += count * rateOf(Config.buildings[other], resourceId, 'in');
+        for (const [other, count] of Object.entries(census.count)) if (other !== type) demand += count * rateOf(defOf(other), resourceId, 'in');
         if (supply > 0) cap = Math.min(cap, Math.max(1, Math.ceil(demand / supply * Config.ai.chainShare)));
       }
       return cap;
@@ -402,7 +529,7 @@
     // Vilken byggnad ska byggas för att 'type' ska kunna byggas? type själv, en förkunskap, WAIT eller BLOCKED.
     need(player, state, census, type, trail) {
       if (trail.length >= MAX_CHAIN || trail.includes(type) || (state.blocked[type] || 0) > this.time) return BLOCKED;
-      const definition = Config.buildings[type], path = [...trail, type];
+      const definition = defOf(type), path = [...trail, type];
 
       const missing = resourceId => !census.produces.has(resourceId) && !Economy.totalAmount(resourceId, player);
       const first = resources => {             // första saknade resursen som går att tillverka: bygg dess producent
@@ -442,7 +569,7 @@
     bottleneck(resourceId, depth = 0) {
       const producer = this.producerOf(resourceId);
       if (depth < MAX_CHAIN) {
-        for (const input of inputsOf(Config.buildings[producer])) {
+        for (const input of inputsOf(defOf(producer))) {
           if (this.producerOf(input) && this.producerOf(input) !== producer && !this.supplied(input)) return this.bottleneck(input, depth + 1);
         }
       }
@@ -564,7 +691,7 @@
 
     // Byggnader som behöver en råvara på marken (gruvor, samlare): platsen måste synas för att den ska finnas för datorn
     needsSight(type) {
-      const definition = Config.buildings[type];
+      const definition = defOf(type);
       return !!(definition.placeOnTerrain || definition.job?.sourceTerrain);
     },
 
@@ -600,7 +727,7 @@
 
     // Kandidatplatser för en byggnad, bästa först
     * sites(player, type) {
-      const hq = World.hqOf(player), definition = Config.buildings[type], job = definition.job;
+      const hq = World.hqOf(player), definition = defOf(type), job = definition.job;
       let yielded = 0;
       const emit = function* (tiles) { for (const tile of tiles) { yield tile; if (++yielded >= SITE_ATTEMPTS) return; } };
 

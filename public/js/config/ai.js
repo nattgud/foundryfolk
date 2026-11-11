@@ -59,6 +59,28 @@ CityBuilder.Config.ai = {
     ['warehouse', 1.5], ['large_warehouse', 0.7], ['guard_tower', 1.2, 'war'], ['garrison', 0.7, 'war'],
   ],
   warLevel: 40, warMin: 0.25, warMax: 2.5,
+  // Soldater. Datorn väljer själv vad garnisonerna tränar (systems/ai.js, chooseTraining), bland de typer den har utrustning för i lagret.
+  //   from     lägsta datornivå (Config.ai-nivån, se AI.level) för att träna typen.   weight   grundvikt (hur ofta typen väljs när inget annat styr).
+  //   counters vad som kontrar vad: motståndarens typ -> { egen typ: hur bra den kontrar, 0-1 }. Bygger på dueller med lika råkostnad.
+  //   learn    datorn lär sig hur spelaren spelar: var sampleSeconds:e sekund (minst minSoldiers soldater) sparas spelarens arméblandning som ett glidande
+  //            medelvärde i webbläsaren (localStorage, key), alltså för alla lägen och banor. Säkerheten växer med antalet prov (fullt vid fullSamples).
+  //            Datorns vikt för en typ = grundvikten * (1 + styrka * säkerhet * boost * hur väl typen kontrar det spelaren brukar ha).
+  //   adapt    styrkan 0-1 = (datornivå - from) / span. I storyn gäller storyFactor tills datornivån nått hardFrom (de sista kapitlen är lika skarpa som annars).
+  army: {
+    from: { clubman: 1, footman: 8, swordsman: 14, archer: 14, blademaster: 32, knight: 34 },
+    weight: { clubman: 1, footman: 0.8, swordsman: 2.2, archer: 1.6, blademaster: 2, knight: 1.6 },
+    counters: {
+      clubman: { archer: 1, blademaster: 0.4, swordsman: 0.2 },
+      footman: { archer: 1, blademaster: 0.6, clubman: 0.6 },
+      swordsman: { blademaster: 1, archer: 0.8, knight: 0.4 },
+      blademaster: { archer: 1 },
+      archer: { knight: 1, swordsman: 1, blademaster: 0.4 },
+      knight: { blademaster: 1, swordsman: 0.5, clubman: 0.5 },
+    },
+    clubmanShare: 0.25,   // clubmannens vikt när datorn har utrustning till andra soldater (den är billigast och bara en reserv)
+    learn: { key: 'foundryfolk.aiProfile', sampleSeconds: 25, minSoldiers: 4, fullSamples: 24, boost: 3 },
+    adapt: { from: 10, span: 60, storyFactor: 0.65, hardFrom: 50 },
+  },
   plan: [
     { from: 1, goals: [['woodcutter', 2], ['sawmill', 1], ['quarry', 1], ['hunters_cottage', 1], ['warehouse', 1], ['woodcutter', 3], ['quarry', 2], ['sawmill', 2]] },
     { from: 1, goals: [['well', 1], ['farm', 1], ['clay_pit', 1], ['brickworks', 1], ['hunters_cottage', 2], ['fishing_hut', 1], ['guard_tower', 1], ['woodcutter', 4], ['warehouse', 2]] },
