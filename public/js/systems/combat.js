@@ -115,9 +115,17 @@
 
     // ---- Skada ---------------------------------------------------------------------------------
 
+    // Hur mycket ett slag gör mot ett mål: rustning (minus slagets pierce) dras av, sedan avvisar målets resist en del av skadetypen (melee, arrow, siege). Minst 1 går alltid igenom.
+    damageAmount(attackerDefinition, targetDefinition) {
+      const type = attackerDefinition.damageType || (attackerDefinition.attackRange > MELEE_RANGE ? 'arrow' : 'melee');
+      const armor = Math.max(0, (targetDefinition.armor || 0) - (attackerDefinition.pierce || 0));
+      const resist = targetDefinition.resist?.[type] || 0;
+      return Math.max(1, Math.round((attackerDefinition.attackDamage - armor) * (1 - resist)));
+    },
+
     attack(attacker, target) {
       attacker.lastAttackAt = this.time;
-      const definition = attacker.definition, amount = Math.max(1, definition.attackDamage - (target.definition.armor || 0));
+      const definition = attacker.definition, amount = this.damageAmount(definition, target.definition);
       attacker.attackCooldownLeft = definition.attackCooldown;
       this.glows.set(attacker, GLOW_SECONDS);
       if (definition.attackRange <= MELEE_RANGE) {
@@ -142,7 +150,7 @@
       for (const other of [...World.units]) {
         if (other === target || other === attacker || other.removed || other.hp == null || other.player === Players.NEUTRAL || !Players.isHostile(attacker.player, other.player)) continue;
         if (Utils.distance(other.x - x, other.y - y) > radius) continue;
-        this.damage(other, Math.max(1, damage - (other.definition.armor || 0)), attacker);
+        this.damage(other, this.damageAmount(attacker.definition, other.definition), attacker);
       }
     },
 

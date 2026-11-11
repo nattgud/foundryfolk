@@ -7,6 +7,8 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'New unit: the Shieldbearer (made from a Shield, which the Woodsmith crafts from planks and iron). It takes only 40% of arrow damage, but hits weakly.',
+      'Combat balance: arrows are weak against Shieldbearers and Knights; the Blademaster\'s steel sword pierces 2 armor; Archers, Footmen and Clubmen were retuned.',
       'Race-bound buildings and units (Soul Altar, Greater Demon, Inventor\'s Workshop, Catapult) always use their own race\'s images, whoever owns them.',
       'Story chapters can now contain dead buildings: decoration such as a Soul Altar that nobody can use, but that can be destroyed.',
       'The Bowyer is now called the Woodsmith, since it makes both clubs and bows from wood.',

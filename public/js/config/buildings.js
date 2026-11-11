@@ -823,7 +823,8 @@ CityBuilder.Config.buildings = {
       kind: 'craft',
       choices: [
         { inputs: { wood: 1 }, outputs: { club: 1 } },
-        { inputs: { wood: 4 }, outputs: { bow: 1 } }
+        { inputs: { wood: 4 }, outputs: { bow: 1 } },
+        { inputs: { plank: 3, iron: 1 }, outputs: { shield: 1 } }
       ],
       craftSeconds: 12
     },
@@ -1157,7 +1158,7 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'garrison',
       capacity: 4,
-      trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer'],
+      trains: ['clubman', 'footman', 'swordsman', 'shieldbearer', 'blademaster', 'archer'],
       defaultTrain: 'clubman',   // vald från början (och det datorn tränar)
       aiTrains: ['swordsman', 'archer'],
       searchRadius: 20
@@ -1244,7 +1245,7 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'garrison',
       capacity: 10,
-      trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer', 'knight'],
+      trains: ['clubman', 'footman', 'swordsman', 'shieldbearer', 'blademaster', 'archer', 'knight'],
       defaultTrain: 'clubman',
       aiTrains: ['swordsman', 'archer', 'knight'],
       searchRadius: 20

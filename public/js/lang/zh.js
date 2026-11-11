@@ -548,6 +548,7 @@
       'building.watchtower': '瞭望塔',
       'resource.sword': '剑',
       'resource.bow': '弓',
+      'resource.shield': '盾牌', 'unit.shieldbearer': '盾兵',
       'resource.leather_armor': '皮甲',
       'resource.iron_armor': '铁甲',
       'resource.horse': '马',

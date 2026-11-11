@@ -76,6 +76,7 @@ CityBuilder.Config.resources = {
   sword:            { name: 'Iron Sword',           color: '#d5dbe1' },
   steel_sword:      { name: 'Steel Sword',          color: '#9fb4d0' },
   bow:              { name: 'Bow',                  color: '#9a6b3c' },
+  shield:           { name: 'Shield',               color: '#a07a4a' },
   leather_armor:    { name: 'Leather Armor',        color: '#947046' },
   iron_armor:       { name: 'Iron Armor',           color: '#8f9bb0' },
 

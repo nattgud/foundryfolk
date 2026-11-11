@@ -549,6 +549,7 @@
       'building.watchtower': 'Torre de vigia',
       'resource.sword': 'Espada',
       'resource.bow': 'Arco',
+      'resource.shield': 'Escudo', 'unit.shieldbearer': 'Escudeiro',
       'resource.leather_armor': 'Armadura de couro',
       'resource.iron_armor': 'Armadura de ferro',
       'resource.horse': 'Cavalo',

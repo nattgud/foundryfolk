@@ -6,6 +6,8 @@
 
    Soldater (isSoldier) har dessutom:
    attackDamage, attackRange (rutor), attackCooldown (sekunder mellan slag), armor (dras från skadan, minst 1 går alltid igenom),
+   pierce (hur många rustningspoäng slaget ignorerar), resist: { arrow: 0.6 } (andel av en skadetyps skada som avvisas; typer: melee, arrow, siege),
+   damageType (utelämnat: arrow för avståndsattacker, annars melee; katapulten och eld är siege),
    searchRadius (hur långt från sin post eller byggnad en soldat upptäcker fiender),
    training: { inputs, seconds } = vad en ny soldat kostar och hur lång tid träningen tar i en garnisonsbyggnad.
 
@@ -87,9 +89,9 @@ CityBuilder.Config.units = {
   // Soldatnivåer (billigast först): Clubman (bara trä), Footman (järnsvärd, ingen rustning), Swordsman (järnsvärd + läderrustning), Blademaster (stålsvärd + läderrustning)
   clubman: {
     isSoldier: true,
-    maxHp: 5,
+    maxHp: 8,
     armor: 0,
-    attackDamage: 1,
+    attackDamage: 2,
     attackRange: 1,
     attackCooldown: 1,
     searchRadius: 20,
@@ -102,9 +104,9 @@ CityBuilder.Config.units = {
   },
   footman: {
     isSoldier: true,
-    maxHp: 10,
+    maxHp: 14,
     armor: 0,
-    attackDamage: 6,
+    attackDamage: 5,
     attackRange: 1,
     attackCooldown: 1,
     searchRadius: 20,
@@ -115,6 +117,23 @@ CityBuilder.Config.units = {
     fallbackSize: 6,
     imageSize: 16,
   },
+  // Sköldbärare: seg och långsam, tar bara 40 % av pilarnas skada men gör lite skada själv. Slås av blademaster (pierce) och katapult. Ingen bild än: units/shieldbearer.png
+  shieldbearer: {
+    isSoldier: true,
+    maxHp: 35,
+    armor: 2,
+    resist: { arrow: 0.6 },
+    attackDamage: 3,
+    attackRange: 1,
+    attackCooldown: 1.2,
+    searchRadius: 20,
+    training: { inputs: { shield: 1, leather_armor: 1 }, seconds: 20 },
+    speedMultiplier: 0.9,
+    color: '#7f8fa6',
+    fallbackShape: 'circle',
+    fallbackSize: 7,
+    imageSize: 16,
+  },
   blademaster: {
     isSoldier: true,
     maxHp: 30,
@@ -123,6 +142,7 @@ CityBuilder.Config.units = {
     attackRange: 1,
     attackCooldown: 1,
     searchRadius: 20,
+    pierce: 2,   // stålsvärdet går igenom 2 poäng av målets rustning (mot knight och sköldbärare)
     training: { inputs: { steel_sword: 1, leather_armor: 1 }, seconds: 25 },
     speedMultiplier: 1,
     color: '#8fb0d8',
@@ -132,9 +152,9 @@ CityBuilder.Config.units = {
   },
   archer: {
     isSoldier: true,
-    maxHp: 18,
+    maxHp: 14,
     armor: 0,
-    attackDamage: 4,
+    attackDamage: 5,
     attackRange: 5,
     attackCooldown: 1.2,
     searchRadius: 20,
@@ -149,10 +169,11 @@ CityBuilder.Config.units = {
     isSoldier: true,
     maxHp: 50,
     armor: 3,
-    attackDamage: 8,
+    attackDamage: 9,
     attackRange: 1,
     attackCooldown: 1,
     searchRadius: 20,
+    resist: { arrow: 0.4 },   // tar 40 % mindre skada av pilar
     training: { inputs: { sword: 1, iron_armor: 1, horse: 1 }, seconds: 30 },
     speedMultiplier: 1.6,   // till häst
     color: '#e0b44a',
@@ -174,6 +195,7 @@ CityBuilder.Config.units = {
     attackCooldown: 8,
     fire: { seconds: 8, damage: 3, every: 1 },
     projectile: 'stone',
+    damageType: 'siege',   // sköldbärare och knight skyddar inte mot stenar
     projectileSpeed: 7,
     projectileMaxSeconds: 1.8,
     searchRadius: 16,

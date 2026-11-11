@@ -548,6 +548,7 @@
       'building.watchtower': '物見台',
       'resource.sword': '剣',
       'resource.bow': '弓',
+      'resource.shield': '盾', 'unit.shieldbearer': '盾兵',
       'resource.leather_armor': '革の鎧',
       'resource.iron_armor': '鉄の鎧',
       'resource.horse': '馬',

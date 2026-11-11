@@ -549,6 +549,7 @@
       'building.watchtower': 'Сторожевая вышка',
       'resource.sword': 'Меч',
       'resource.bow': 'Лук',
+      'resource.shield': 'Щит', 'unit.shieldbearer': 'Щитоносец',
       'resource.leather_armor': 'Кожаный доспех',
       'resource.iron_armor': 'Железный доспех',
       'resource.horse': 'Лошадь',

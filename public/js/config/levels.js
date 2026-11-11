@@ -335,7 +335,7 @@
   /* ---------- Goals ---------- */
   // Militära resurser (vapen, rustningar, hästar) går åt till soldater och ingår inte i banmålen
   const SKIP_GOAL_RESOURCES = new Set(['water', 'seeds', 'straw', 'bone', 'blood', 'animal', 'ash', 'tar', 'cursed_ash', 'coins',
-    'sword', 'bow', 'club', 'steel_sword', 'leather_armor', 'iron_armor', 'horse']);
+    'sword', 'bow', 'club', 'shield', 'steel_sword', 'leather_armor', 'iron_armor', 'horse']);
 
   // A building makes one of its recipes at a time (choices); by-products count as outputs too
   const recipesOf = job => job.choices || [job];

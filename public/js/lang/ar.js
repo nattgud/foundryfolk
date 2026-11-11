@@ -549,6 +549,7 @@
       'building.watchtower': 'برج المراقبة',
       'resource.sword': 'سيف',
       'resource.bow': 'قوس',
+      'resource.shield': 'ترس', 'unit.shieldbearer': 'حامل الترس',
       'resource.leather_armor': 'درع جلدي',
       'resource.iron_armor': 'درع حديدي',
       'resource.horse': 'حصان',
