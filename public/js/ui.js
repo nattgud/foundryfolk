@@ -1851,7 +1851,7 @@
         submenu.hidden = true;
 
         for (const buildingId of buildingIds) {
-          const building = Config.buildings[buildingId];
+          const building = Config.definitionOf(buildingId, CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN));
 
           const Levels = CityBuilder.Levels;
           const locked = Levels && !Levels.isUnlocked(buildingId);
@@ -3111,7 +3111,7 @@
 
     // Byggnadens id (nyckeln i Config.buildings) för en definition
     buildingIdOf(definition) {
-      return Object.keys(Config.buildings).find(id => Config.buildings[id] === definition);
+      return definition?.baseId || Object.keys(Config.buildings).find(id => Config.buildings[id] === definition);
     },
 
     // Översatt namn från byggnadens id eller definition

@@ -17,7 +17,8 @@
    names   valfritt: rasens egna namn (engelska) på byggnader, resurser och enheter: names: { resource: { sword: 'Bone Blade' }, building: {...}, unit: {...} }.
            Gäller bara visningen (id:n och reglerna är desamma). Översättningar läggs i språkfilen som "resource.sword.demon" (saknas de visas det engelska namnet).
    training valfritt: rasens egen utbildning av en soldat: training: { knight: { inputs: { sword: 1, hell_armor: 1, horse: 1 }, seconds: 30 } }. Utelämnat = units.js.
-           Utrustningen måste kunna tillverkas av rasen (en byggnad med race: 'demon' i buildings.js, t.ex. hellforge).
+   buildings valfritt: rasens egen version av en byggnad (samma id, samma bild), som en funktion av den vanliga definitionen: buildings: { armorsmith: def => ({ ...def, job: {...} }) }.
+           Använd det för att byta vad en byggnad tillverkar (så att utrustningen i training ovan kan tillverkas av rasen). Se Config.definitionOf längst ner.
    Menyerna får rasens färger när SPELAREN har rasen. Huvudmenyn ändras aldrig. En ras utan base, accent och colors använder standardfärgerna.
    human är standardrasen (inga egna bilder eller färger) och ska finnas kvar. */
 CityBuilder.Config.races = {
@@ -28,8 +29,12 @@ CityBuilder.Config.races = {
     base: '#31191c',      // mörk blodröd grundton
     accent: '#e8643c',    // glödande orangeröd
     colors: {},           // t.ex. { line: '#5a2226', text: '#f1e3de' } om en färg inte blir som du vill
-    // Demonernas utrustning, byggnader och soldater: samma regler som människornas men egna namn. Knight och sköldbärare tränas dessutom på demonernas egen utrustning
-    // (ben- och blodbaserad, tillverkad i Hellforge).
+    // Demonernas utrustning, byggnader och soldater: samma regler som människornas men egna namn. Knight och sköldbärare tränas dessutom på demonernas egen utrustning:
+    // Bonecarver (Woodsmith) gör Bone Shield i stället för Shield, och Plate Forge (Armorsmith) gör Hellplate i stället för Iron Armor. Ben och blod kommer från jägare.
+    buildings: {
+      bowyer: def => ({ ...def, job: { ...def.job, choices: [...def.job.choices.filter(choice => !('shield' in choice.outputs)), { inputs: { plank: 2, bone: 2 }, outputs: { bone_shield: 1 } }] } }),
+      armorsmith: def => ({ ...def, job: { ...def.job, inputs: { steel: 2, blood: 2 }, outputs: { hell_armor: 1 } } }),
+    },
     names: {
       resource: {
         club: 'Bone Club', sword: 'Bone Blade', steel_sword: 'Hellsteel Blade', bow: 'Sinew Bow', leather_armor: 'Hide Armor', horse: 'Nightmare',
@@ -53,3 +58,16 @@ CityBuilder.Config.races = {
 
 // En soldats utbildning för en ras: rasens egen (races[ras].training) annars den vanliga (units.js)
 CityBuilder.Config.trainingOf = (kind, race) => CityBuilder.Config.races?.[race]?.training?.[kind] ?? CityBuilder.Config.units[kind]?.training;
+
+// En byggnads definition för en ras: rasens egen version (races[ras].buildings[id]) om det finns en, annars den vanliga. Versionen sparas så att samma ras alltid får samma objekt,
+// och den vet sitt id (baseId). Nya byggnader får sin definition härifrån (World.placeBuilding).
+CityBuilder.Config.definitionOf = (() => {
+  const cache = new Map();
+  return (id, race) => {
+    const base = CityBuilder.Config.buildings[id], make = CityBuilder.Config.races?.[race]?.buildings?.[id];
+    if (!base || !make) return base;
+    const key = race + ':' + id;
+    if (!cache.has(key)) cache.set(key, Object.assign(make(base), { baseId: id }));
+    return cache.get(key);
+  };
+})();

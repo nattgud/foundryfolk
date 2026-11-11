@@ -407,7 +407,7 @@
       const worker = building.workerUnit;
       if (worker && !worker.removed) this.deposit(worker, building);   // det arbetaren bär (gjort med den gamla inriktningen) hamnar i huset i stället för att försvinna
       building.type = type;
-      building.definition = Config.buildings[type];
+      building.definition = Config.definitionOf(type, CityBuilder.Players.raceOf(building.player));
       building.status = ''; building.boostLeft = 0; building.meals = null;
       if (worker && !worker.removed) { worker.stepQueue.length = 0; worker.carriedResource = null; worker.carriedOutputs = null; worker.idleCooldown = 0; }
     },

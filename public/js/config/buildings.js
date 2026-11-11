@@ -861,25 +861,7 @@ CityBuilder.Config.buildings = {
     },
     buildDuration: 45
   },
-  // Demonernas egen utrustning (bara demoner, se races.js training): benskölden till sköldbäraren och Hellplate till knighten.
-  // Ben och blod kommer som biprodukter från jägare; stål från stålverket.
-  hellforge: {
-    name: 'Hellforge',
-    race: 'demon',
-    category: 'war',
-    symbol: 'HF',
-    color: '#7a2a2e',
-    buildCost: { plank: 8, stone: 8 },
-    job: {
-      kind: 'craft',
-      choices: [
-        { inputs: { plank: 2, bone: 2 }, outputs: { bone_shield: 1 } },
-        { inputs: { steel: 2, blood: 2 }, outputs: { hell_armor: 1 } }
-      ],
-      craftSeconds: 20
-    },
-    buildDuration: 45
-  },
+
 
   // Handel. 'choices': byggnaden gör ett val åt gången, spelaren väljer i infopanelen (building.choice).
   mint: {

@@ -218,7 +218,7 @@
     // player = vem byggnaden tillhör (se core/players.js)
     placeBuilding(buildingType, x, y, isInstant, player = Players.HUMAN) {
       const building = {
-        id: this.nextBuildingId++, type: buildingType, definition: Config.buildings[buildingType], x, y, player,
+        id: this.nextBuildingId++, type: buildingType, definition: Config.definitionOf(buildingType, Players.raceOf(player)), x, y, player,
         buildProgress: isInstant ? 1 : 0, paused: false, removed: false,
         inputStock: {},       // levererade insatser
         outputStock: {},      // färdiga produkter i utbufferten

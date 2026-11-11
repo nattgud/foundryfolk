@@ -524,7 +524,7 @@
       'building.armorsmith': 'Rustningssmed', 'building.horse_breeder': 'Hästuppfödare', 'building.wall': 'Mur', 'building.guard_tower': 'Vakttorn', 'building.garrison': 'Garnison', 'building.watchtower': 'Utkikstorn',
       'resource.club': 'Påk', 'resource.sword': 'Järnsvärd', 'resource.steel_sword': 'Stålsvärd', 'resource.bow': 'Båge', 'resource.leather_armor': 'Läderrustning', 'resource.iron_armor': 'Järnrustning', 'resource.horse': 'Häst',
       'resource.shield': 'Sköld', 'unit.shieldbearer': 'Sköldbärare',
-      'resource.bone_shield': 'Bensköld', 'resource.hell_armor': 'Helvetesplåt', 'building.hellforge': 'Helvetessmedja',
+      'resource.bone_shield': 'Bensköld', 'resource.hell_armor': 'Helvetesplåt',
       'resource.club.demon': 'Benpåk', 'resource.sword.demon': 'Benklinga', 'resource.steel_sword.demon': 'Helvetesstålklinga', 'resource.bow.demon': 'Senbåge', 'resource.leather_armor.demon': 'Hudrustning', 'resource.horse.demon': 'Mardröm',
       'building.swordsmith.demon': 'Klingagrop', 'building.bowyer.demon': 'Bensnidare', 'building.leatherworker.demon': 'Hudverk', 'building.armorsmith.demon': 'Plåtsmedja', 'building.stables.demon': 'Mardrömsstall',
       'building.guard_tower.demon': 'Bentorn', 'building.garrison.demon': 'Skräckgarnison',
