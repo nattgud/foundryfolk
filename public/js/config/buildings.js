@@ -1159,7 +1159,7 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'garrison',
       capacity: 4,
-      trains: ['clubman', 'footman', 'swordsman', 'shieldbearer', 'blademaster', 'archer'],
+      trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer'],
       defaultTrain: 'clubman',   // vald från början (och det datorn tränar)
       aiTrains: ['swordsman', 'archer'],
       searchRadius: 20
@@ -1246,7 +1246,7 @@ CityBuilder.Config.buildings = {
     job: {
       kind: 'garrison',
       capacity: 10,
-      trains: ['clubman', 'footman', 'swordsman', 'shieldbearer', 'blademaster', 'archer', 'knight'],
+      trains: ['clubman', 'footman', 'swordsman', 'blademaster', 'archer', 'knight'],
       defaultTrain: 'clubman',
       aiTrains: ['swordsman', 'archer', 'knight'],
       searchRadius: 20

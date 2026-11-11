@@ -964,7 +964,7 @@
       return result;
     },
 
-    flowLabel: label => label === 'construction' ? t('Construction') : UI.buildingName(label),
+    flowLabel: label => label === 'construction' ? t('Construction') : label === 'kills' ? t('Kills') : UI.buildingName(label),
 
     // Ritar om panelen (högst en gång per sekund om inte force)
     renderResourceFlow(force) {
@@ -2143,9 +2143,10 @@
         picture.alt = '';
         picture.draggable = false;
         picture.onload = () => icon.classList.add('has-image');
-        // En ras har egna bilder (images/buildings/demon/farm.png): saknas den används originalet
-        if (race) { picture.onerror = () => { picture.onerror = null; picture.src = image; }; picture.src = image.replace(/[^/]+$/, `${race}/$&`); }
-        else picture.src = image;
+        // Bilder ligger i en mapp per ras (images/buildings/human/farm.png, .../demon/farm.png): saknas rasens används människans
+        const humanImage = CityBuilder.Assets.raced(image, 'human');
+        if (race && race !== 'human') { picture.onerror = () => { picture.onerror = null; picture.src = humanImage; }; picture.src = CityBuilder.Assets.raced(image, race); }
+        else picture.src = humanImage;
         icon.appendChild(picture);
       }
 
@@ -3100,12 +3101,17 @@
 
     // Namn efter spelarens ras (config/races.js names); race kan anges för en annan ägare
     playerRace() { return CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN) || undefined; },
+    // Rasen en byggnad tillhör (dess ägares), så att en fiendes demonbyggnad visas med demonnamn även om spelaren är människa
+    raceOfBuilding(building) { return building ? CityBuilder.Players.raceOf(building.player) || undefined : this.playerRace(); },
 
-    resourceName(resourceId, race = this.playerRace()) {
+    // Standardras för namn: den som en pågående beskrivning satt (describeBuilding, för en fiendes byggnad), annars spelarens
+    defaultRace() { return this.nameRace || this.playerRace(); },
+
+    resourceName(resourceId, race = this.defaultRace()) {
       return I18n().nameOf('resource', resourceId, Config.resources[resourceId]?.name, race);
     },
 
-    unitName(unitId, race = this.playerRace()) {
+    unitName(unitId, race = this.defaultRace()) {
       return I18n().nameOf('unit', unitId, undefined, race);
     },
 
@@ -3115,7 +3121,8 @@
     },
 
     // Översatt namn från byggnadens id eller definition
-    buildingName(idOrDefinition) {
+    // race: för ett id (byggnadsmenyn) spelarens ras; en definition vet själv sin ras (variantRace, annars rasbunden eller vanlig)
+    buildingName(idOrDefinition, race) {
       const id = typeof idOrDefinition === 'string' ? idOrDefinition : this.buildingIdOf(idOrDefinition);
       const definition = typeof idOrDefinition === 'string' ? Config.buildings[idOrDefinition] : idOrDefinition;
       // En variant av en byggnad med inriktning heter byggnadens namn och inriktning: "Mine (Coal)"
@@ -3124,7 +3131,7 @@
         const focus = this.resourceName(definition.job?.outputResource ?? Object.keys(definition.job?.outputs || {})[0]);
         return `${I18n().nameOf('building', definition.group, group.name)} (${focus})`;
       }
-      return I18n().nameOf('building', id, definition?.name, definition?.race || this.playerRace());
+      return I18n().nameOf('building', id, definition?.name, race !== undefined ? definition?.race || race : typeof idOrDefinition === 'string' ? definition?.race || this.defaultRace() : definition?.variantRace || definition?.race);
     },
 
     // En resurs som ikon (bild, annars färgruta) med namnet som hover. amount utelämnat = bara ikonen. className 'info-short' = röd (saknas).
@@ -3148,9 +3155,9 @@
     unitChip(unitId) {
       const unit = Config.units[unitId] || {}, name = this.unitName(unitId).replace(/"/g, '&quot;'), color = unit.color || '#3a444d';
       // Spelarens ras har egna bilder i en undermapp (images/units/demon/x.png): den provas först, sedan originalet, och saknas båda visas färgrutan
-      const race = CityBuilder.Players.imageRace(unit, CityBuilder.Players.HUMAN), raceImage = race && unit.image ? unit.image.replace(/[^/]+$/, `${race}/$&`) : unit.image;
+      const race = CityBuilder.Players.imageRace(unit, CityBuilder.Players.HUMAN), raceImage = unit.image ? CityBuilder.Assets.raced(unit.image, race) : unit.image, humanImage = unit.image ? CityBuilder.Assets.raced(unit.image, 'human') : unit.image;
       const icon = unit.image && Config.settings.useImages !== false
-        ? `<img class="info-res-icon" src="${raceImage}" alt="${name}" draggable="false" style="background:${color}" onerror="if(this.dataset.fallback||this.src.endsWith('${unit.image}')){this.removeAttribute('src');this.removeAttribute('alt')}else{this.dataset.fallback=1;this.src='${unit.image}'}">`
+        ? `<img class="info-res-icon" src="${raceImage}" alt="${name}" draggable="false" style="background:${color}" onerror="if(this.dataset.fallback){this.removeAttribute('src');this.removeAttribute('alt')}else{this.dataset.fallback=1;this.src='${humanImage}'}">`
         : `<span class="info-res-icon" style="background:${color}"></span>`;
       return `<span class="info-res" title="${name}">${icon}</span>`;
     },
@@ -3294,6 +3301,12 @@
 
     // building (valfri): en byggd byggnad, vars utdata visas med boost, aura och trollformler inräknade
     describeBuilding(definition, building) {
+      const before = this.nameRace;
+      this.nameRace = building ? this.raceOfBuilding(building) || 'human' : definition.variantRace || this.playerRace() || 'human';
+      try { return this.describeBuildingLines(definition, building); } finally { this.nameRace = before; }
+    },
+
+    describeBuildingLines(definition, building) {
       const lines = [];
       const job = definition.job;
       const factor = building ? CityBuilder.Behaviors.yieldFactor(building) : 1;
@@ -3472,7 +3485,7 @@
       const enemy = building && building.player !== CityBuilder.Players.HUMAN;
       const content = building
         ? this.tooltipContent(
-            this.buildingName(building.definition),
+            this.buildingName(building.definition, this.raceOfBuilding(building) || 'human'),
             null,
             [
               ...(building.buildProgress < 1 ? [t('Constructing {time}', { time: this.timeLeft(building) }), ...(Object.keys(CityBuilder.Construction.missing(building)).length ? [t('Still to deliver: {goods}', { goods: this.resourceIconsHtml(CityBuilder.Construction.missing(building)) })] : [])] : []),
@@ -3538,14 +3551,14 @@
 
         // Garnisoner: en knapp per soldattyp som byggnaden kan träna
         const trainButtons = active && CityBuilder.Garrison.isGarrison(building)
-          ? `<div class="choice-group">${building.definition.job.trains.map(kind => `<button class="train-button focus-icon" data-kind="${kind}" aria-label="${this.unitName(kind)}" title="${this.unitName(kind)}">${this.unitChip(kind)}</button>`).join('')}</div>`
+          ? `<div class="choice-group">${building.definition.job.trains.map(kind => `<button class="train-button focus-icon" data-kind="${kind}" aria-label="${this.unitName(kind, this.raceOfBuilding(building))}" title="${this.unitName(kind, this.raceOfBuilding(building))}">${this.unitChip(kind)}</button>`).join('')}</div>`
           : '';
 
         const stanceButton = active && CityBuilder.Garrison.isGarrison(building) ? '<button id="stanceButton" class="icon-button"></button>' : '';
         const orderButton = active && CityBuilder.Garrison.isGarrison(building) && building.definition.job.trains.some(kind => Config.units[kind].manual) ? '<button id="orderButton"></button>' : '';
 
         panel.innerHTML =
-          `<div><b id="infoName">${this.buildingName(building.definition)}</b><span id="infoTools"></span><br><span id="infoStatus"></span></div>` +
+          `<div><b id="infoName">${this.buildingName(building.definition, this.raceOfBuilding(building) || 'human')}</b><span id="infoTools"></span><br><span id="infoStatus"></span></div>` +
           `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${marketButton}${trainButtons}${orderButton}${spellButtons}${stanceButton}${choiceButton}${boostButton}${priorityButton}${pauseButton}${demolishButton}</div>`;
 
         if (byId('stanceButton')) {
@@ -3625,15 +3638,15 @@
       if (own && building.buildProgress >= 1 && CityBuilder.Garrison.isGarrison(building)) {
         const Garrison = CityBuilder.Garrison, chosen = Garrison.trainingType(building);
         const roster = Object.entries(Garrison.ensure(building).garrison)
-          .map(([kind, count]) => `${count} ${lower(this.unitName(kind))}`).join(', ');
+          .map(([kind, count]) => `${count} ${lower(this.unitName(kind, this.raceOfBuilding(building)))}`).join(', ');
         const outside = building.deployed.length ? ` (${t('{n} out fighting', { n: building.deployed.length })})` : '';
-        const training = building.isCrafting ? `${t('Training: {unit}', { unit: this.unitName(building.trainingUnit) })}<br>` : '';
+        const training = building.isCrafting ? `${t('Training: {unit}', { unit: this.unitName(building.trainingUnit, this.raceOfBuilding(building)) })}<br>` : '';
         const chosenTraining = Config.trainingOf(chosen, CityBuilder.Players.raceOf(building.player));
         const cost = this.resourceIconsHtml(chosenTraining.inputs) + (chosenTraining.souls ? ` ${t('Souls')}: ${chosenTraining.souls}` : '');
         const souls = building.definition.soulCounter ? `<br>${t('Souls')}: ${Math.floor(building.souls || 0)}` : '';
         garrisonHtml = souls +
           `<br>${t('Soldiers: {n}/{max}', { n: Garrison.count(building), max: Garrison.capacity(building) })}${roster ? ' – ' + roster : ''}${outside}` +
-          `<br>${training}${t('Next soldier: {unit}', { unit: this.unitName(chosen) })} ${cost}`;
+          `<br>${training}${t('Next soldier: {unit}', { unit: this.unitName(chosen, this.raceOfBuilding(building)) })} ${cost}`;
         for (const button of byId('info').querySelectorAll('.train-button')) button.classList.toggle('on', button.dataset.kind === chosen);
       }
 
@@ -3651,7 +3664,7 @@
 
       // Toolsmith: vilket verktyg som tillverkas nu
       const making = own && building.buildProgress >= 1 && building.definition.job?.auto
-        ? `<br>${t('Making: {item}', { item: this.resourceName(Object.keys(CityBuilder.Behaviors.recipe(building).outputs)[0]) })}` : '';
+        ? `<br>${t('Making: {item}', { item: this.resourceName(Object.keys(CityBuilder.Behaviors.recipe(building).outputs)[0], this.raceOfBuilding(building)) })}` : '';
 
       const html = !own
         ? [building.buildProgress < 1 ? statusText : null, t('Health: {hp}/{max}', { hp: Math.ceil(building.hp), max: Math.ceil(building.maxHp) })].filter(Boolean).join('<br>')
@@ -3673,7 +3686,7 @@
         status.dataset.html = html;
         status.innerHTML = html;
       }
-      const name = this.buildingName(building.definition);   // byter med inriktningen
+      const name = this.buildingName(building.definition, this.raceOfBuilding(building) || 'human');   // byter med inriktningen
       if (byId('infoName').textContent !== name) byId('infoName').textContent = name;
       const toolsHtml = own && !building.definition.isStorage ? this.toolsHtml(building) : '';
       const tools = byId('infoTools');
@@ -3719,7 +3732,7 @@
           const html = `${selected ? '●' : '○'} ${takes ? takes + ' → ' : ''}${made}`;
           if (radio.dataset.html !== html) { radio.dataset.html = html; radio.innerHTML = html; }
           radio.classList.toggle('on', selected);
-          const plain = amounts => Object.entries(amounts || {}).map(([id, amount]) => `${amount} ${this.resourceName(id)}`).join(' + ');
+          const plain = amounts => Object.entries(amounts || {}).map(([id, amount]) => `${amount} ${this.resourceName(id, this.raceOfBuilding(building))}`).join(' + ');
           radio.title = Object.keys(Config.takesOf({ inputs, any })).length ? t('Processing: {inputs} → {outputs}', { inputs: [any && this.anyNames(any), plain(inputs)].filter(Boolean).join(' + '), outputs: plain(outputs) }) : t('Producing: {outputs}', { outputs: plain(outputs) });
         });
       }
@@ -3728,7 +3741,7 @@
         const enabled = choices.filter((choice, index) => Behaviors.recipeEnabled(building, index)).length;
         panel.querySelectorAll('.tool-toggle').forEach(button => {
           const index = +button.dataset.index, id = Object.keys(choices[index].outputs)[0], on = Behaviors.recipeEnabled(building, index);
-          const stock = CityBuilder.Economy.totalAmount(id, building.player), item = this.resourceName(id);
+          const stock = CityBuilder.Economy.totalAmount(id, building.player), item = this.resourceName(id, this.raceOfBuilding(building));
           const html = this.resourceChip(id);   // bara ikonen: läget syns på knappen (grå = av, gul ring = tillverkas nu), antalet och namnet i hovern
           if (button.dataset.html !== html) { button.dataset.html = html; button.innerHTML = html; }
           button.classList.toggle('on', on);
@@ -3768,7 +3781,7 @@
     // Byggnad vald i menyn: namn, kostnad och vad den gör (fungerar även utan hover, t.ex. på mobil)
     renderPlacementInfo(panel, game) {
       const buildingType = game.placingType;
-      const definition = Config.buildings[buildingType];
+      const definition = Config.definitionOf(buildingType, this.playerRace());
       const key = 'p:' + buildingType;
       panel.style.display = 'flex';
 

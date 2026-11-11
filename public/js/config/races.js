@@ -34,6 +34,8 @@ CityBuilder.Config.races = {
     buildings: {
       bowyer: def => ({ ...def, job: { ...def.job, choices: [...def.job.choices.filter(choice => !('shield' in choice.outputs)), { inputs: { plank: 2, bone: 2 }, outputs: { bone_shield: 1 } }] } }),
       armorsmith: def => ({ ...def, job: { ...def.job, inputs: { steel: 2, blood: 2 }, outputs: { hell_armor: 1 } } }),
+      // Demonernas jägare får mer blod och ben ur djuren
+      hunters_cottage: def => ({ ...def, job: { ...def.job, byproducts: { bone: 3, blood: 3 } } }),
     },
     names: {
       resource: {
@@ -44,11 +46,13 @@ CityBuilder.Config.races = {
         guard_tower: 'Bone Tower', garrison: 'Dread Garrison',
       },
       unit: {
-        clubman: 'Imp', footman: 'Grunt', swordsman: 'Hellblade', shieldbearer: 'Bone Guard', blademaster: 'Blade Fiend', archer: 'Hell Archer', knight: 'Hell Knight',
+        clubman: 'Imp', footman: 'Grunt', swordsman: 'Hellblade', blademaster: 'Blade Fiend', archer: 'Hell Archer', knight: 'Hell Knight',
       },
     },
+    // Det rasens spelare får i lagret för varje fientlig soldat som deras soldater dödar (monster räknas inte)
+    killLoot: { blood: 1, bone: 1 },
     training: {
-      shieldbearer: { inputs: { bone_shield: 1, leather_armor: 1 }, seconds: 20 },
+      swordsman: { inputs: { sword: 1, bone_shield: 1 }, seconds: 20 },
       knight: { inputs: { sword: 1, hell_armor: 1, horse: 1 }, seconds: 30 },
     },
   },
@@ -67,7 +71,7 @@ CityBuilder.Config.definitionOf = (() => {
     const base = CityBuilder.Config.buildings[id], make = CityBuilder.Config.races?.[race]?.buildings?.[id];
     if (!base || !make) return base;
     const key = race + ':' + id;
-    if (!cache.has(key)) cache.set(key, Object.assign(make(base), { baseId: id }));
+    if (!cache.has(key)) cache.set(key, Object.assign(make(base), { baseId: id, variantRace: race }));
     return cache.get(key);
   };
 })();

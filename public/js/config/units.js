@@ -57,36 +57,37 @@ CityBuilder.Config.units = {
   // Djur: samma beteende (äter, sprider växter, förökar sig, kan jagas), olika utseende. spawnWeight = hur vanlig arten är.
   deer: {
     ...ANIMAL_DEFAULTS, color: '#760', imageSize: 18, spawnWeight: 4,
-    image: 'images/units/deer.png', imageFacesLeft: false,
+    image: 'images/units/animals/deer.png', imageFacesLeft: false,
   },
   moose: {
     ...ANIMAL_DEFAULTS, color: '#432', imageSize: 22, spawnWeight: 2,
-    image: 'images/units/moose.png', imageFacesLeft: false,
+    image: 'images/units/animals/moose.png', imageFacesLeft: false,
   },
   fox: {
     ...ANIMAL_DEFAULTS, color: '#c60', fallbackSize: 5, imageSize: 12, spawnWeight: 2,
-    image: 'images/units/fox.png', imageFacesLeft: false,
+    image: 'images/units/animals/fox.png', imageFacesLeft: false,
   },
   rabbit: {
     ...ANIMAL_DEFAULTS, color: '#998', fallbackSize: 4, imageSize: 12, spawnWeight: 3,
-    image: 'images/units/rabbit.png', imageFacesLeft: false,
+    image: 'images/units/animals/rabbit.png', imageFacesLeft: false,
   },
   swordsman: {
     isSoldier: true,
-    maxHp: 25,
-    armor: 1,
+    maxHp: 28,
+    armor: 2,
+    resist: { arrow: 0.5 },   // skölden: tar 50 % mindre skada av pilar (men slås av blademaster, vars stålsvärd går igenom rustningen)
     attackDamage: 6,
     attackRange: 1,
     attackCooldown: 1,
     searchRadius: 20,
-    training: { inputs: { sword: 1, leather_armor: 1 }, seconds: 20 },
+    training: { inputs: { sword: 1, shield: 1 }, seconds: 20 },
     speedMultiplier: 1,
     color: '#cfd6dd',
     fallbackShape: 'circle',
     fallbackSize: 6,
     imageSize: 16,
   },
-  // Soldatnivåer (billigast först): Clubman (bara trä), Footman (järnsvärd, ingen rustning), Swordsman (järnsvärd + läderrustning), Blademaster (stålsvärd + läderrustning)
+  // Soldatnivåer (billigast först): Clubman (bara trä), Footman (järnsvärd, ingen rustning), Swordsman (järnsvärd + sköld), Blademaster (stålsvärd + läderrustning)
   clubman: {
     isSoldier: true,
     maxHp: 8,
@@ -117,23 +118,6 @@ CityBuilder.Config.units = {
     fallbackSize: 6,
     imageSize: 16,
   },
-  // Sköldbärare: seg och långsam, tar bara 40 % av pilarnas skada men gör lite skada själv. Slås av blademaster (pierce) och katapult. Ingen bild än: units/shieldbearer.png
-  shieldbearer: {
-    isSoldier: true,
-    maxHp: 35,
-    armor: 2,
-    resist: { arrow: 0.6 },
-    attackDamage: 3,
-    attackRange: 1,
-    attackCooldown: 1.2,
-    searchRadius: 20,
-    training: { inputs: { shield: 1, leather_armor: 1 }, seconds: 20 },
-    speedMultiplier: 0.9,
-    color: '#7f8fa6',
-    fallbackShape: 'circle',
-    fallbackSize: 7,
-    imageSize: 16,
-  },
   blademaster: {
     isSoldier: true,
     maxHp: 30,
@@ -142,7 +126,7 @@ CityBuilder.Config.units = {
     attackRange: 1,
     attackCooldown: 1,
     searchRadius: 20,
-    pierce: 2,   // stålsvärdet går igenom 2 poäng av målets rustning (mot knight och sköldbärare)
+    pierce: 2,   // stålsvärdet går igenom 2 poäng av målets rustning (mot knight och swordsman)
     training: { inputs: { steel_sword: 1, leather_armor: 1 }, seconds: 25 },
     speedMultiplier: 1,
     color: '#8fb0d8',

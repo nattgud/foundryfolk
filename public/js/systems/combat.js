@@ -223,6 +223,11 @@
       if (isBuilding(target)) return this.destroyBuilding(target);
       const unit = target;
       if (attacker && unit.definition.isSoldier && !unit.definition.isMonster && Players.isHostile(attacker.player, unit.player)) Garrison.addSouls(attacker.player);   // själar till Altar of Souls
+      if (attacker && unit.definition.isSoldier && !unit.definition.isMonster && Players.isHostile(attacker.player, unit.player)) {
+        // Vissa raser (demoner) får råvaror av varje dödad fientlig soldat (races[ras].killLoot), om lagret har plats
+        const loot = Config.races?.[Players.raceOf(attacker.player)]?.killLoot, Economy = CityBuilder.Economy;
+        for (const resourceId in loot || {}) if (!Economy.isFull(resourceId, attacker.player)) { Economy.addToNearestStorage(resourceId, loot[resourceId], World.hqOf(attacker.player), attacker.player); Economy.record(attacker.player, 'make', resourceId, 'kills', loot[resourceId]); }
+      }
       const Sound = CityBuilder.Sound;
       if (unit.definition.isSoldier) Sound?.play(unit.definition.isMonster ? Sound.known(unit.definition.dieSound, 'monster_die') : 'died', { x: unit.x, y: unit.y });
       if (unit.animalRecordId) CityBuilder.Animals.markDead(unit);   // ett dödat monster kommer inte tillbaka

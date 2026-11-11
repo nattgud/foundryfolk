@@ -5,9 +5,12 @@
   const warn = message => console.warn('[config] ' + message);
 
   // image utelämnat -> images/<mapp>/<id>.png
+  // Djur ligger i images/units/animals, monster i images/units/monster. Övriga enheter och byggnader anges utan rasmapp (images/units/footman.png):
+  // Assets lägger till rasmappen (human, demon ...).
   const applyDefaultImages = (groupName, folder) => {
     for (const [id, definition] of Object.entries(Config[groupName])) {
-      if (definition.image === undefined) definition.image = `images/${folder}/${id}.png?v=${Config.settings.version}`;
+      const sub = definition.isAnimal ? 'animals/' : definition.isMonster ? 'monster/' : '';
+      if (definition.image === undefined) definition.image = `images/${folder}/${sub}${id}.png?v=${Config.settings.version}`;
     }
   };
   applyDefaultImages('resources', 'resources');
