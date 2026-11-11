@@ -25,15 +25,26 @@
     #loading.error .fill { background: #c0392b; }
     /* "Klicka för att börja": visas efter laddningen när webbläsaren inte fått någon användaråtgärd än (oftast vid omladdning), så att ljudet kan startas */
     #loading.ready .track, #loading.ready .text { display: none; }
-    #startButton { appearance: none; border: 0; cursor: pointer; padding: 16px 46px; border-radius: 999px; background: #e0a53a; color: #1b1510;
-      font: 700 20px/1 system-ui, sans-serif; letter-spacing: .04em; box-shadow: 0 6px 24px rgba(0,0,0,.45); transition: transform .15s, background .15s;
-      animation: startPulse 2.2s ease-out infinite; }
-    #startButton::before { content: '\25B6'; margin-right: .6em; font-size: .8em; }
-    #startButton:hover { background: #f0b84c; transform: scale(1.05); }
-    #startButton:active { transform: scale(.98); }
-    #startButton:focus-visible { outline: 3px solid #fff4d6; outline-offset: 4px; }
-    @keyframes startPulse { 0% { box-shadow: 0 0 0 0 rgba(224,165,58,.55), 0 6px 24px rgba(0,0,0,.45); } 70%, 100% { box-shadow: 0 0 0 24px rgba(224,165,58,0), 0 6px 24px rgba(0,0,0,.45); } }
-    @media (prefers-reduced-motion: reduce) { #startButton { animation: none; } }
+    /* Knappen är bilden images/ui/start_button.png (eller start_button_<språkkod>.png, t.ex. start_button_sv.png, om texten står i bilden). Saknas bilderna
+       blir det en vanlig guldknapp med text. Glöden följer bildens form (drop-shadow) och pulserar; hover/tryck och ingången går på opacity och skala. */
+    #startButton { appearance: none; border: 0; padding: 0; margin: 0; background: none; cursor: pointer; color: inherit; font: inherit; border-radius: 12px;
+      opacity: .94; animation: startIn .6s ease-out .15s backwards; transition: opacity .2s, transform .2s, filter .2s; -webkit-tap-highlight-color: transparent; }
+    #startButton img { display: block; width: min(420px, 72vw); height: auto; user-select: none; -webkit-user-drag: none; pointer-events: none;
+      filter: drop-shadow(0 0 1px rgba(255,244,214,.9)) drop-shadow(0 0 6px rgba(224,165,58,.45)); animation: startGlow 2.4s ease-in-out .8s infinite; }
+    #startButton.plain { padding: 16px 46px; border-radius: 999px; background: #e0a53a; color: #1b1510; font: 700 20px/1 system-ui, sans-serif; letter-spacing: .04em; box-shadow: 0 6px 24px rgba(0,0,0,.45); }
+    #startButton.plain::before { content: '\25B6'; margin-right: .6em; font-size: .8em; }
+    #startButton:hover { transform: scale(1.04); filter: brightness(1.12); }
+    #startButton:active { transform: scale(.97); filter: brightness(.95); }
+    #startButton:focus-visible { outline: none; }
+    #startButton:focus-visible img, #startButton.plain:focus-visible { filter: drop-shadow(0 0 2px #fff4d6) drop-shadow(0 0 2px #fff4d6) drop-shadow(0 0 12px rgba(224,165,58,.9)); }
+    #startButton:disabled { pointer-events: none; opacity: .0 !important; transition: opacity .35s; }
+    @keyframes startIn { from { opacity: 0; transform: scale(.94); } }
+    @keyframes startGlow {
+      0%, 100% { filter: drop-shadow(0 0 1px rgba(255,244,214,.55)) drop-shadow(0 0 5px rgba(224,165,58,.30)); }
+      50% { filter: drop-shadow(0 0 2px rgba(255,244,214,1)) drop-shadow(0 0 16px rgba(224,165,58,.85)); }
+    }
+    #startButton:hover { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) { #startButton, #startButton img { animation: none; transform: none; } }
   </style>
 </head>
 <body onload="loadAllGameComponents()">
@@ -99,10 +110,22 @@
       waitForClick(label) {
         return new Promise(resolve => {
           const box = document.getElementById('loading'), button = document.createElement('button');
-          button.id = 'startButton'; button.type = 'button'; button.textContent = label;
-          box.classList.add('ready'); box.appendChild(button);
-          const go = () => { removeEventListener('keydown', onKey, true); button.remove(); box.classList.remove('ready'); resolve(); };
+          button.id = 'startButton'; button.type = 'button'; button.setAttribute('aria-label', label);
+          const go = () => {
+            removeEventListener('keydown', onKey, true);
+            button.disabled = true;   // knappen tonas ut medan laddningsrutan försvinner
+            setTimeout(() => { button.remove(); box.classList.remove('ready'); }, 500); resolve();
+          };
           const onKey = event => { if (['Tab', 'Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) return; event.preventDefault(); event.stopImmediatePropagation(); go(); };
+          // Bild: start_button_<språk>.png, annars start_button.png, annars en vanlig knapp med text
+          let language = 'en'; try { language = localStorage.getItem('citybuilder.language') || 'en'; } catch (error) { /* ingen sparad */ }
+          const plain = () => { button.classList.add('plain'); button.textContent = label; };
+          const picture = new Image(); picture.alt = label; picture.draggable = false;
+          const candidates = [`images/ui/start_button_${language}.png`, 'images/ui/start_button.png'].map(file => file + '?v=' + version);
+          picture.onerror = () => { const next = candidates.shift(); if (next) picture.src = next; else plain(); };
+          picture.onload = () => { button.textContent = ''; button.appendChild(picture); };
+          picture.onerror();
+          box.classList.add('ready'); box.appendChild(button);
           button.addEventListener('click', go);
           addEventListener('keydown', onKey, true);
           button.focus();
