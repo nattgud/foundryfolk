@@ -31,12 +31,15 @@
     return (job.choices || [job]).flatMap(recipe => recipe.outputs ? Object.keys(recipe.outputs) : recipe.outputResource ? [recipe.outputResource] : []);
   };
 
+  // Soldatens utbildning för den datorspelare som tänker just nu (rasen kan ha egen utrustning, se config/races.js)
+  const trainingNow = id => Config.trainingOf(id, Players.raceOf(AI.current));
+
   // Det en byggnad behöver få levererat: insatser, utrustning, mat (en av alternativen) och för garnisoner soldatens utrustning
   const inputsOf = definition => {
     const job = definition.job;
     if (!job) return [];
     const inputs = [...Object.keys(Config.firstInputs(job.choices?.[0] ?? job)), ...Object.keys(definition.requiredEquipment || {})];
-    if (job.kind === 'garrison') inputs.push(...Object.keys(Config.units[job.defaultTrain ?? job.trains[0]].training.inputs));
+    if (job.kind === 'garrison') inputs.push(...Object.keys(trainingNow(job.defaultTrain ?? job.trains[0]).inputs));
     for (const group of [].concat(job.eats || [])) inputs.push(group.any[0]);
     return inputs;
   };
@@ -63,7 +66,7 @@
     if (job.kind === 'garrison') {
       if (kind !== 'in') return 0;
       const trains = job.aiTrains ?? job.trains;   // datorn tränar bara dessa (de nya billiga nivåerna är för spelaren)
-      return trains.reduce((sum, id) => { const training = Config.units[id].training; return sum + (training?.inputs?.[resourceId] || 0) / (training?.seconds || 20) * 60; }, 0) / trains.length;
+      return trains.reduce((sum, id) => { const training = trainingNow(id); return sum + (training?.inputs?.[resourceId] || 0) / (training?.seconds || 20) * 60; }, 0) / trains.length;
     }
     const recipes = job.choices || [job];
     let total = 0;
@@ -77,7 +80,8 @@
 
   // Verktyg som byggnader kräver, och soldaternas utrustning: de har egna lagertak (Config.ai.limits)
   const EQUIPMENT = new Set(Object.values(Config.buildings).flatMap(definition => Object.keys(definition.requiredEquipment || {})));
-  const GEAR = new Set(Object.values(Config.units).filter(unit => !unit.unique).flatMap(unit => Object.keys(unit.training?.inputs || {})));
+  const GEAR = new Set([...Object.values(Config.units).filter(unit => !unit.unique).flatMap(unit => Object.keys(unit.training?.inputs || {})),
+    ...Object.values(Config.races || {}).flatMap(race => Object.values(race.training || {}).flatMap(training => Object.keys(training.inputs || {})))]);
 
   const gameSeconds = () => CityBuilder.Levels?.seconds ?? 0;   // speltid på banan (sparas, så anfallstiden gäller även efter omladdning)
 

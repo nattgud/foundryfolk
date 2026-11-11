@@ -524,6 +524,11 @@
       'building.armorsmith': 'Rustningssmed', 'building.horse_breeder': 'Hästuppfödare', 'building.wall': 'Mur', 'building.guard_tower': 'Vakttorn', 'building.garrison': 'Garnison', 'building.watchtower': 'Utkikstorn',
       'resource.club': 'Påk', 'resource.sword': 'Järnsvärd', 'resource.steel_sword': 'Stålsvärd', 'resource.bow': 'Båge', 'resource.leather_armor': 'Läderrustning', 'resource.iron_armor': 'Järnrustning', 'resource.horse': 'Häst',
       'resource.shield': 'Sköld', 'unit.shieldbearer': 'Sköldbärare',
+      'resource.bone_shield': 'Bensköld', 'resource.hell_armor': 'Helvetesplåt', 'building.hellforge': 'Helvetessmedja',
+      'resource.club.demon': 'Benpåk', 'resource.sword.demon': 'Benklinga', 'resource.steel_sword.demon': 'Helvetesstålklinga', 'resource.bow.demon': 'Senbåge', 'resource.leather_armor.demon': 'Hudrustning', 'resource.horse.demon': 'Mardröm',
+      'building.swordsmith.demon': 'Klingagrop', 'building.bowyer.demon': 'Bensnidare', 'building.leatherworker.demon': 'Hudverk', 'building.armorsmith.demon': 'Plåtsmedja', 'building.stables.demon': 'Mardrömsstall',
+      'building.guard_tower.demon': 'Bentorn', 'building.garrison.demon': 'Skräckgarnison',
+      'unit.clubman.demon': 'Imp', 'unit.footman.demon': 'Grymtare', 'unit.swordsman.demon': 'Helvetesklinga', 'unit.shieldbearer.demon': 'Benvakt', 'unit.blademaster.demon': 'Klingdjävul', 'unit.archer.demon': 'Helvetesskytt', 'unit.knight.demon': 'Helvetesriddare',
       'unit.clubman': 'Påkman', 'unit.footman': 'Fotsoldat', 'unit.blademaster': 'Svärdsmästare', 'unit.swordsman': 'Svärdsman', 'unit.archer': 'Bågskytt', 'unit.knight': 'Riddare',
       'Soldiers': 'Soldater',
       'Houses up to {n} soldiers': 'Rymmer upp till {n} soldater',
@@ -2108,8 +2113,11 @@
     },
 
     // Namn på en sak: typ ('terrain', 'building', 'resource', 'unit'), id och det engelska namnet från config.
-    nameOf(kind, id, fallback) {
+    // race (valfri): rasens eget namn (config/races.js names), översatt via nyckeln "typ.id.ras" (t.ex. "unit.knight.demon"), annars det engelska rasnamnet.
+    nameOf(kind, id, fallback, race) {
       const dictionary = DICTIONARIES[this.language];
+      const raceName = race && CityBuilder.Config.races?.[race]?.names?.[kind]?.[id];
+      if (raceName) return (dictionary && dictionary[kind + '.' + id + '.' + race]) || this.t(raceName);
       const key = kind + '.' + id;
       if (dictionary && dictionary[key]) return dictionary[key];
       return this.t(fallback !== undefined && fallback !== null ? fallback : prettify(id));

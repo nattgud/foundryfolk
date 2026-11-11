@@ -7,6 +7,8 @@
 
   CityBuilder.Changelog = {
     '0.9.2': [
+      'Soldier costs rebalanced: Footman 20 HP / 6 damage, Archer 12 HP / 4 damage / slower shots and a bow now costs 6 wood.',
+      'Races can now have their own names and equipment (config/races.js): demon gear and buildings have demon names, and the new Hellforge (demons only) makes Bone Shields and Hellplate for the demon Bone Guard and Hell Knight.',
       'New unit: the Shieldbearer (made from a Shield, which the Woodsmith crafts from planks and iron). It takes only 40% of arrow damage, but hits weakly.',
       'Combat balance: arrows are weak against Shieldbearers and Knights; the Blademaster\'s steel sword pierces 2 armor; Archers, Footmen and Clubmen were retuned.',
       'Race-bound buildings and units (Soul Altar, Greater Demon, Inventor\'s Workshop, Catapult) always use their own race\'s images, whoever owns them.',

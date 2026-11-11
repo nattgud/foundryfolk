@@ -706,7 +706,7 @@
         let takes = cache.get(building.type);
         if (!takes) {
           const definition = building.definition, job = definition.job || {};
-          takes = new Set([job.inputs, definition.requiredEquipment, ...(job.choices || []).map(Config.takesOf), ...(job.trains || []).map(kind => Config.units[kind]?.training?.inputs)]
+          takes = new Set([job.inputs, definition.requiredEquipment, ...(job.choices || []).map(Config.takesOf), ...(job.trains || []).map(kind => Config.trainingOf(kind, CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN))?.inputs)]
             .flatMap(amounts => Object.keys(amounts || {})));
           for (const group of [].concat(job.eats || [])) group.any.forEach(id => takes.add(id));
           cache.set(building.type, takes);
@@ -928,7 +928,7 @@
         for (const choice of job.choices || []) { add(Config.takesOf(choice)); add(choice.outputs); }
         if (building.mixing) for (const cost of CityBuilder.Spells.costs()) add(cost);
         for (const group of [].concat(job.eats || [])) group.any.forEach(resourceId => known.add(resourceId));
-        for (const kind of job.trains || []) add(Config.units[kind]?.training?.inputs);
+        for (const kind of job.trains || []) add(Config.trainingOf(kind, CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN))?.inputs);
       }
       add(Config.settings.startingResources);
       for (const id in Config.resources) if (Economy.totalAmount(id) > 0) known.add(id);
@@ -955,7 +955,7 @@
         if (building.isMarket && Config.buildings.market.market.prices[resourceId] !== undefined) { use.add(id); make.add(id); }
         const job = building.job;
         if (!job) continue;
-        const takes = [job.inputs, building.requiredEquipment, ...(building.mixing ? CityBuilder.Spells.costs() : []), ...(job.choices || []).map(Config.takesOf), ...(job.trains || []).map(kind => Config.units[kind]?.training?.inputs)];
+        const takes = [job.inputs, building.requiredEquipment, ...(building.mixing ? CityBuilder.Spells.costs() : []), ...(job.choices || []).map(Config.takesOf), ...(job.trains || []).map(kind => Config.trainingOf(kind, CityBuilder.Players.raceOf(building.player))?.inputs)];
         if (takes.some(amounts => amounts && amounts[resourceId] !== undefined) || [].concat(job.eats || []).some(group => group.any.includes(resourceId)) || Behaviors.boostOf(building)?.resource === resourceId) use.add(id);
         if ([job.outputs, job.byproducts, ...(job.choices || []).map(choice => choice.outputs)].some(amounts => amounts && amounts[resourceId] !== undefined) || job.outputResource === resourceId) make.add(id);
       }
@@ -3098,12 +3098,15 @@
       return I18n().nameOf('terrain', terrainType, Config.terrain[terrainType]?.name || TERRAIN_NAMES[terrainType]);
     },
 
-    resourceName(resourceId) {
-      return I18n().nameOf('resource', resourceId, Config.resources[resourceId]?.name);
+    // Namn efter spelarens ras (config/races.js names); race kan anges för en annan ägare
+    playerRace() { return CityBuilder.Players.raceOf(CityBuilder.Players.HUMAN) || undefined; },
+
+    resourceName(resourceId, race = this.playerRace()) {
+      return I18n().nameOf('resource', resourceId, Config.resources[resourceId]?.name, race);
     },
 
-    unitName(unitId) {
-      return I18n().nameOf('unit', unitId);
+    unitName(unitId, race = this.playerRace()) {
+      return I18n().nameOf('unit', unitId, undefined, race);
     },
 
     // Byggnadens id (nyckeln i Config.buildings) för en definition
@@ -3121,7 +3124,7 @@
         const focus = this.resourceName(definition.job?.outputResource ?? Object.keys(definition.job?.outputs || {})[0]);
         return `${I18n().nameOf('building', definition.group, group.name)} (${focus})`;
       }
-      return I18n().nameOf('building', id, definition?.name);
+      return I18n().nameOf('building', id, definition?.name, definition?.race || this.playerRace());
     },
 
     // En resurs som ikon (bild, annars färgruta) med namnet som hover. amount utelämnat = bara ikonen. className 'info-short' = röd (saknas).
@@ -3161,7 +3164,7 @@
       if (!job) return { imports: [], tools: [], exports: [] };
       const stock = building.inputStock, equipment = definition.requiredEquipment || {};
       // Insatser som förbrukas. Verktyg (requiredEquipment) förbrukas inte och visas för sig.
-      const imports = Object.entries(CityBuilder.Garrison.isGarrison(building) ? Object.fromEntries(Object.entries(Config.units[CityBuilder.Garrison.trainingType(building)].training.inputs).map(([id, amount]) => [id, Behaviors.inputBuffer(amount)])) : Behaviors.requiredResources(building))
+      const imports = Object.entries(CityBuilder.Garrison.isGarrison(building) ? Object.fromEntries(Object.entries(Config.trainingOf(CityBuilder.Garrison.trainingType(building), CityBuilder.Players.raceOf(building.player)).inputs).map(([id, amount]) => [id, Behaviors.inputBuffer(amount)])) : Behaviors.requiredResources(building))
         .filter(([id]) => !(id in equipment))
         .map(([id, capacity]) => ({ ids: [id], have: stock[id] || 0, capacity }));
       const tools = Object.entries(equipment).map(([id, need]) => ({ id, have: stock[id] || 0, need }));
@@ -3625,7 +3628,7 @@
           .map(([kind, count]) => `${count} ${lower(this.unitName(kind))}`).join(', ');
         const outside = building.deployed.length ? ` (${t('{n} out fighting', { n: building.deployed.length })})` : '';
         const training = building.isCrafting ? `${t('Training: {unit}', { unit: this.unitName(building.trainingUnit) })}<br>` : '';
-        const chosenTraining = Config.units[chosen].training;
+        const chosenTraining = Config.trainingOf(chosen, CityBuilder.Players.raceOf(building.player));
         const cost = this.resourceIconsHtml(chosenTraining.inputs) + (chosenTraining.souls ? ` ${t('Souls')}: ${chosenTraining.souls}` : '');
         const souls = building.definition.soulCounter ? `<br>${t('Souls')}: ${Math.floor(building.souls || 0)}` : '';
         garrisonHtml = souls +

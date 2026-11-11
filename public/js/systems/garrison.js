@@ -17,7 +17,7 @@
    På en soldat pekar unit.quarters på byggnaden den hör till (null = fri soldat). */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World, Behaviors, Utils } = CityBuilder;
+  const { Config, World, Behaviors, Utils, Players } = CityBuilder;
   const HOME_REJECT_SECONDS = 60;   // så länge en soldat som inte kom fram till en byggnad inte söker den igen (se reject)
 
   const Garrison = {
@@ -165,7 +165,7 @@
     inputCapacities(building) {
       const free = Garrison.slotsFree(building), chosen = Garrison.trainingType(building);
       if (free <= 0 || !Garrison.mayTrain(building, chosen) || !Garrison.isOrdered(building, chosen)) return {};   // en unik soldat som redan finns behöver ingen ny utrustning
-      const { inputs } = Config.units[chosen].training;
+      const { inputs } = Config.trainingOf(chosen, Players.raceOf(building.player));
       return Object.fromEntries(Object.entries(inputs).map(([resourceId, amount]) => [resourceId, Math.min(Behaviors.inputBuffer(amount), free * amount)]));
     },
 
@@ -191,7 +191,7 @@
         }
 
         const kind = Garrison.trainingType(building);
-        const { inputs, seconds, souls = 0 } = Config.units[kind].training;
+        const { inputs, seconds, souls = 0 } = Config.trainingOf(kind, Players.raceOf(building.player));
         if (!Garrison.mayTrain(building, kind)) { building.status = 'Only one at a time'; building.ordered = null; return; }
         if (!Garrison.isOrdered(building, kind)) { building.status = 'Waiting for your order'; return; }
         const missing = Object.entries(inputs)
