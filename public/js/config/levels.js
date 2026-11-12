@@ -1003,7 +1003,8 @@
       checkTimer += deltaSeconds;
       if (checkTimer >= 1) {
         checkTimer = 0;
-        if (!progress.complete && (progress.won || evaluate().every(item => item.done))) {
+        // En scen som pågår spelas klart först: kapitlet avslutas när den är färdig (scenerna tas bort ur listan när de är klara).
+        if (!progress.complete && !progress.actors.scenes?.length && (progress.won || evaluate().every(item => item.done))) {
           progress.complete = true;
           progress.stars = state.info.custom || state.info.story ? 0 : starsFor(progress.seconds);
           completeListeners.forEach(fn => { try { fn(Levels.result()); } catch (e) { console.error(e); } });
