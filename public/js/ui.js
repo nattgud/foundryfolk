@@ -2457,7 +2457,7 @@
           z-index: 150;
           display: none;
           pointer-events: none;
-          max-width: 240px;
+          max-width: calc(240px * var(--ts, 1));
           padding: 6px 9px;
           border: 1px solid var(--line);
           border-radius: 6px;
@@ -2737,8 +2737,8 @@
         }
 
         .resource-window-close {
-          width: 32px;
-          height: 32px;
+          width: calc(32px * var(--ts, 1));
+          height: calc(32px * var(--ts, 1));
           font-size: calc(22px * var(--ts, 1));
           line-height: 1;
         }
@@ -2756,7 +2756,7 @@
         .market-bar { display: flex; justify-content: space-between; gap: 8px; padding: 10px 14px 0; }
         .market-group { display: flex; gap: 4px; }
         .market-list { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px 14px; overflow-y: auto; }
-        .market-row { display: grid; grid-template-columns: minmax(0, 1fr) 70px 44px 128px; align-items: center; gap: 8px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: calc(12px * var(--ts, 1)); background: rgb(255 255 255 / 2%); }
+        .market-row { display: grid; grid-template-columns: minmax(0, 1fr) calc(70px * var(--ts, 1)) calc(44px * var(--ts, 1)) calc(128px * var(--ts, 1)); align-items: center; gap: 8px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: calc(12px * var(--ts, 1)); background: rgb(255 255 255 / 2%); }
         .market-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
         .market-stock { color: var(--dim); text-align: right; }
         .market-trade { white-space: nowrap; padding: 4px 8px; }
@@ -2765,7 +2765,7 @@
         .workshop-window { width: min(520px, 100%); }
         .workshop-body { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; overflow-y: auto; min-height: 0; }
         .workshop-slots { display: flex; flex-direction: column; gap: 4px; }
-        .workshop-row { display: grid; grid-template-columns: 16px 44px minmax(0, 1fr) 28px 34px 28px 28px 28px 28px; align-items: center; gap: 4px; }
+        .workshop-row { display: grid; grid-template-columns: calc(16px * var(--ts, 1)) calc(44px * var(--ts, 1)) minmax(0, 1fr) calc(28px * var(--ts, 1)) calc(34px * var(--ts, 1)) calc(28px * var(--ts, 1)) calc(28px * var(--ts, 1)) calc(28px * var(--ts, 1)) calc(28px * var(--ts, 1)); align-items: center; gap: 4px; }
         .workshop-row button { padding: 3px 0; }
         .workshop-row button:disabled { border-color: var(--line); background: none; opacity: .35; }
         .workshop-index { color: var(--dim); text-align: center; font-size: calc(12px * var(--ts, 1)); }
@@ -2785,7 +2785,7 @@
         .resonance i.lit:nth-child(2) { animation-delay: .12s; } .resonance i.lit:nth-child(3) { animation-delay: .24s; } .resonance i.lit:nth-child(4) { animation-delay: .36s; } .resonance i.lit:nth-child(5) { animation-delay: .48s; }
         @keyframes resonance-pulse { 0%, 100% { opacity: .65; } 50% { opacity: 1; } }
         .workshop-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; margin-bottom: 4px; }
-        .workshop-bar { display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: center; gap: 6px; font-size: calc(11px * var(--ts, 1)); color: var(--dim); }
+        .workshop-bar { display: grid; grid-template-columns: calc(50px * var(--ts, 1)) minmax(0, 1fr); align-items: center; gap: 6px; font-size: calc(11px * var(--ts, 1)); color: var(--dim); }
         .workshop-bar i { display: block; height: 6px; border-radius: 3px; background: rgb(255 255 255 / 8%); overflow: hidden; }
         .workshop-bar b { display: block; height: 100%; }
         .spellbook-window { width: min(780px, 100%); max-height: min(88vh, 640px); background-image: linear-gradient(90deg, rgb(120 90 50 / 10%), transparent 8%, transparent 92%, rgb(120 90 50 / 10%)); }
@@ -2798,7 +2798,7 @@
         .spellbook-tabs button.on, .spellbook-row.on { border-color: var(--accent, #8fd18f); background: rgb(143 209 143 / 14%); }
         .spellbook-filter { display: flex; align-items: center; gap: 6px; font-size: calc(12px * var(--ts, 1)); color: var(--dim); cursor: pointer; }
         .spellbook-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; min-height: 0; }
-        .spellbook-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 8px; text-align: left; font-size: calc(13px * var(--ts, 1)); }
+        .spellbook-row { display: grid; grid-template-columns: calc(22px * var(--ts, 1)) minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 8px; text-align: left; font-size: calc(13px * var(--ts, 1)); }
         .spellbook-row.short .spellbook-title { opacity: .6; }
         .spellbook-cost { display: flex; gap: 4px; font-size: calc(12px * var(--ts, 1)); }
         .spellbook-empty { padding: 12px 4px; }
@@ -2870,7 +2870,7 @@
           border: 0;
           background: transparent;
           color: var(--dim);
-          font-size: calc(32px * var(--ts, 1));
+          font-size: 32px;   /* stjärnan ligger i en ruta med fast storlek (som ikonen), så den växer inte med texten */
           cursor: pointer;
           transition: color 200ms;
         }
@@ -2889,12 +2889,12 @@
         }
 
         .main-menu {
-          width: min(360px, 100%);
+          width: min(calc(360px * var(--ts, 1)), 100%);
           max-height: min(92vh, 680px);
         }
 
         .main-menu.is-wide {
-          width: min(780px, 100%);
+          width: min(calc(780px * var(--ts, 1)), 100%);
           max-height: min(92vh, 780px);
         }
 
@@ -2905,6 +2905,8 @@
           padding: 10px 12px;
           overflow-y: auto;
         }
+
+        .main-menu-body > * { flex-shrink: 0; }   /* högre text ska ge rullning, inte hoptryckta rader som överlappar */
 
         .main-menu-level {
           color: var(--dim);
@@ -2921,6 +2923,7 @@
           padding: 8px 12px;
           font-size: calc(14px * var(--ts, 1));
           text-align: left;
+          overflow-wrap: anywhere;
         }
 
         .main-menu-gap { height: 6px; flex: none; }
@@ -2931,7 +2934,7 @@
 
         .main-menu-icon {
           display: inline-block;
-          width: 28px;
+          width: calc(28px * var(--ts, 1));
           margin-right: 6px;
           text-align: center;
           font-size: calc(17px * var(--ts, 1));

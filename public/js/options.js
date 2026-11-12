@@ -298,7 +298,7 @@
       const style = document.createElement('style');
       style.id = 'optionsStyles';
       style.textContent = `
-        .graphics-label { min-width: 56px; font-variant-numeric: tabular-nums; }
+        .graphics-label { min-width: calc(56px * var(--ts, 1)); font-variant-numeric: tabular-nums; }
         body.gfx-min *, body.gfx-min *::before, body.gfx-min *::after { animation: none !important; transition: none !important; }
         #fpsCounter {
           position: fixed;
@@ -321,7 +321,7 @@
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          min-height: 44px;
+          min-height: calc(44px * var(--ts, 1));
           padding: 4px 2px;
           border-bottom: 1px solid var(--line);
         }
@@ -330,8 +330,8 @@
         .options-label small { color: var(--dim); font-size: calc(11px * var(--ts, 1)); }
 
         .options-toggle, .options-select {
-          min-width: 96px;
-          min-height: 36px;
+          min-width: calc(96px * var(--ts, 1));
+          min-height: calc(36px * var(--ts, 1));
           padding: 0 10px;
           border: 1px solid var(--line);
           border-radius: 6px;

@@ -198,7 +198,7 @@
       const style = document.createElement('style');
       style.id = 'storyStyles';
       style.textContent = `
-        .story-reader { max-width: 560px; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; max-height: 88vh; overflow-y: auto; }
+        .story-reader { max-width: calc(560px * var(--ts, 1)); padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; max-height: 88vh; overflow-y: auto; }
         .story-text { display: flex; flex-direction: column; gap: 12px; line-height: 1.5; }
         .story-text p { margin: 0; }
         /* Texten mot bakgrundsbilden: svart kontur (fyra håll) och mjuk skugga. Brevet ligger på papper och behöver ingen. */
@@ -215,7 +215,7 @@
         .story-portrait { flex: 0 0 56px; width: 56px; height: 56px; box-sizing: border-box; border: 2px solid #888; border-radius: 50%; overflow: hidden; background: transparent; display: flex; align-items: center; justify-content: center; font: 700 calc(26px * var(--ts, 1)) Georgia, serif; font-style: normal; }
         .story-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .story-narration { font-style: italic; opacity: .85; }
-        .story-next { align-self: flex-end; min-width: 140px; }
+        .story-next { align-self: flex-end; min-width: calc(140px * var(--ts, 1)); }
       `;
       document.head.append(style);
     },

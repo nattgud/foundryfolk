@@ -192,7 +192,7 @@
         .custom-enemy-title { font-size: calc(13px * var(--ts, 1)); padding-top: 4px; }
         .custom-enemy .options-row:last-child { border-bottom: 0; }
         .custom-slider { width: 110px; accent-color: #5fb55f; }
-        .custom-amount { min-width: 62px; text-align: right; font-size: calc(12px * var(--ts, 1)); color: var(--dim); }
+        .custom-amount { min-width: calc(62px * var(--ts, 1)); text-align: right; font-size: calc(12px * var(--ts, 1)); color: var(--dim); }
         .custom-seed { min-width: 0; width: 84px; }
         .custom-enemies { display: flex; flex-direction: column; gap: 8px; }
       `;
