@@ -37,6 +37,7 @@
     const characters = {};   // sökväg -> ras
     const CHARACTER_SIZE = 32;   // helkroppsbilderna är 128 px och ritas dubbelt så stora som vanliga enheter (16)
     for (const id of speakerIds.filter(name => name !== 'reeve' && name !== 'narrator')) for (const race of ['human', 'demon']) {
+      if (C.RaceImages) { if (C.RaceImages.has(`images/units/${race}/${id}.png`)) characters[`images/units/${id}.png`] = race; continue; }   // listan finns: inga 404 från att gissa
       const probe = new Image();
       probe.onload = () => { characters[`images/units/${id}.png`] = race; if (window.StoryEditor) window.StoryEditor.render(); };
       probe.src = `images/units/${race}/${id}.png`;

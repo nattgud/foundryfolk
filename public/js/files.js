@@ -9,6 +9,7 @@ self.GAME_SCRIPTS = [
   'js/core/commands.js',
   'js/core/heap.js',
   'js/core/assets.js',
+  'js/config/raceimages.js',
   'js/core/save.js',
   // 2. Konfiguration
   'js/config/settings.js',
