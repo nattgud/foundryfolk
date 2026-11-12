@@ -48,7 +48,7 @@ CityBuilder.Config.units = {
     color: '#ffffff',
     fallbackShape: 'circle',
     fallbackSize: 5,
-    imageSize: 16,
+    imageSize: 24,   // standardstorlek för skådespelare (en vanlig enhet är 16)
   },
   carrier: {
     isHauler: true,
