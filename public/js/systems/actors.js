@@ -9,7 +9,9 @@
      wait: sekunder       väntar
      teleport: mål        flyttar direkt
      vanish: true         försvinner direkt
-     say: text | { text, for: sekunder, wait: true }   pratbubbla ovanför huvudet (fast storlek, i vägen för ingenting); manuset går vidare direkt, eller efter 'for' sekunder om wait är true
+     say: text | { text, for: sekunder, wait: true, speaker: id, voice: false }   pratbubbla ovanför huvudet (fast storlek, i vägen för ingenting). Har skådespelaren en talare i
+                          Config.story.speakers (samma id, eller speaker) skrivs texten ut med dess röst (voice: false stänger av). for = sekunder kvar efter sista tecknet (standard 1,8).
+                          Manuset går vidare direkt, eller med wait: true först när bubblan är borta (räknat från att den syns)
      leave: true          går mot närmaste ruta som spelaren inte ser (dimman) och försvinner när den inte syns längre
      kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
@@ -204,11 +206,12 @@
     },
     say: {
       start(data, arg, act, unit) {
-        const spec = typeof arg === 'string' ? { text: arg } : arg, seconds = spec.for || 3.5;
-        CityBuilder.Bubbles?.say(unit, spec.text, seconds);
-        act.hold = spec.wait ? seconds : 0;
+        const spec = typeof arg === 'string' ? { text: arg } : arg, speaker = spec.voice === false ? null : spec.speaker || (CityBuilder.Config.story.speakers[data.id] ? data.id : null);
+        act.handle = CityBuilder.Bubbles?.say(unit, spec.text, spec.for, null, speaker);
+        act.wait = !!spec.wait;
       },
-      update(data, arg, dt, act) { return act.elapsed >= act.hold; },
+      // Med wait väntar manuset tills bubblan är borta (och, om den talar, tills hela texten sagts): tiden räknas från att bubblan syns, inte från att steget börjar
+      update(data, arg, dt, act) { return !act.wait || !act.handle || act.handle.done || act.elapsed > 60; },
     },
     // Lämnar scenen: går mot närmaste ruta utom spelarens synfält och försvinner så snart den inte syns (eller är framme, eller inte kommer fram)
     leave: {
