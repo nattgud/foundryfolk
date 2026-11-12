@@ -33,7 +33,6 @@
     images.sort((x, y) => x.label.localeCompare(y.label));
     // Berättelsens karaktärer med helkroppsbild (images/units/<ras>/<id>.png): letas upp i bakgrunden, så nya bilder dyker upp av sig själva
     const characters = {};   // sökväg -> ras
-    const CHARACTER_SIZE = 24;   // skådespelarnas standardstorlek (Config.units.actor.imageSize); helkroppsbilderna är 128 px
     for (const id of speakerIds.filter(name => name !== 'reeve' && name !== 'narrator')) for (const race of ['human', 'demon']) {
       if (C.RaceImages) { if (C.RaceImages.has(`images/units/${race}/${id}.png`)) characters[`images/units/${id}.png`] = race; continue; }   // listan finns: inga 404 från att gissa
       const probe = new Image();
@@ -142,7 +141,6 @@
     // ---------------------------------------------------------------- scener: en lista med steg i ordning
     const sceneNow = () => scenes[cur];
     const uniqueId = base => { const taken = new Set([...actorIds(), ...scenes.flatMap(sc => sc.cast.map(c => c.id))]); let id = base, n = 2; while (taken.has(id)) id = base + n++; return id; };
-    const castSize = path => characters[path] ? CHARACTER_SIZE : images.find(item => item.path === path)?.size;
     const NO_WHO = ['dialog', 'wait', 'camera'];   // dessa hör till scenen, inte till en person
     const stepLabel = (sc, s) => {
       const who = s.who || '?';
@@ -162,7 +160,7 @@
     function compileScene(sc, withConds = true) {
       const out = compile({ id: sc.id, conds: withConds ? sc.conds : [], effects: [] });
       const cast = new Map(sc.cast.map(c => [c.id, c]));
-      const specOf = (c, at) => { const spec = { id: c.id, image: c.image }; if (c.race) spec.race = c.race; if (c.count > 1) spec.count = c.count; const size = castSize(c.image); if (size && size !== CHARACTER_SIZE) spec.size = size; spec.at = at; return spec; };
+      const specOf = (c, at) => { const spec = { id: c.id, image: c.image }; if (c.race) spec.race = c.race; if (c.count > 1) spec.count = c.count; spec.at = at; return spec; };
       out.spawn = sc.cast.filter(c => c.at).map(c => ({ ...specOf(c, c.at), script: [] }));
       out.scene = sc.steps.map(s => {
         let step;
