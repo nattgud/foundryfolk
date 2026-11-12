@@ -10,7 +10,7 @@
      teleport: mål        flyttar direkt
      vanish: true         försvinner direkt
      say: text | { text, for: sekunder, wait: true, speaker: id, voice: false }   pratbubbla ovanför huvudet (fast storlek, i vägen för ingenting). Har skådespelaren en talare i
-                          Config.story.speakers (samma id, eller speaker) skrivs texten ut med dess röst (voice: false stänger av). for = sekunder kvar efter sista tecknet (standard 1,8).
+                          Config.story.speakers (samma id, samma namn som bildfilen, eller speaker) skrivs texten ut med dess röst (voice: false stänger av). for = sekunder kvar efter sista tecknet (standard 1,8).
                           Manuset går vidare direkt, eller med wait: true först när bubblan är borta (räknat från att den syns)
      leave: true          går mot närmaste ruta som spelaren inte ser (dimman) och försvinner när den inte syns längre
      kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
@@ -206,7 +206,9 @@
     },
     say: {
       start(data, arg, act, unit) {
-        const spec = typeof arg === 'string' ? { text: arg } : arg, speaker = spec.voice === false ? null : spec.speaker || (CityBuilder.Config.story.speakers[data.id] ? data.id : null);
+        const spec = typeof arg === 'string' ? { text: arg } : arg, speakers = CityBuilder.Config.story.speakers, byImage = (data.image || '').replace(/^.*\//, '').replace(/\.png$/, '');
+        // Rösten: speaker i steget, annars skådespelarens id, annars bildfilens namn (images/units/pipwick.png -> pipwick, så 'pipwick1' också låter som Pipwick)
+        const speaker = spec.voice === false ? null : spec.speaker || [data.id, byImage].find(name => speakers[name]) || null;
         act.handle = CityBuilder.Bubbles?.say(unit, spec.text, spec.for, null, speaker);
         act.wait = !!spec.wait;
       },

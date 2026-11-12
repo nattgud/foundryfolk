@@ -69,7 +69,7 @@
         case 'wait': return `Väntar ${arg} s`;
         case 'tell': return `Dialog: ${arg.map(line => `${line.who}: “${line.text}”`).join(' / ')}`;
         case 'kill': { const spec = typeof arg === 'string' ? { actor: arg } : arg; return `Dödar ${spec.actor} (${spec.leave === undefined ? 'blodpöl' : [].concat(spec.leave).join(' + ')})`; }
-        case 'say': { const spec = typeof arg === 'string' ? { text: arg } : arg; return `Pratbubbla: “${spec.text}”${spec.for ? ` (${spec.for} s kvar${spec.wait ? ', väntar' : ''}${spec.voice === false ? ', utan röst' : ''})` : ''}`; }
+        case 'say': { const spec = typeof arg === 'string' ? { text: arg } : arg; return `Pratbubbla: “${spec.text}”${spec.for ? ` (${spec.for} s kvar${spec.wait ? ', väntar' : ''}${spec.voice === false ? ', utan röst' : spec.speaker ? ', röst: ' + spec.speaker : ''})` : ''}`; }
         case 'vanish': return 'Försvinner direkt';
         case 'leave': return 'Går mot dimman och försvinner';
         default: return `${type}: ${JSON.stringify(arg)}`;
@@ -161,7 +161,7 @@
           <div class="hint" style="margin:0">…och klicka sedan på kartan (en byggnad = byggnaden som mål).</div>
           <div class="row"><input type="number" id="stWait" value="2" style="width:55px"> s <button data-act="addWait">Vänta</button></div>
           <div class="row">${select('stSpeaker', speakerIds.length ? speakerIds : ['narrator'], 'narrator')}<input id="stText" placeholder="Vad sägs?" style="flex:1;min-width:80px"><button data-act="addSay">Dialog</button></div>
-          <div class="row"><input id="stBubble" placeholder="Pratbubbla: text" style="flex:1;min-width:80px"><input type="number" id="stBubbleSec" value="2" style="width:46px" title="sekunder bubblan står kvar efter sista ordet"> s kvar <label title="Manuset väntar tills bubblan är borta (räknat från att den syns)"><input type="checkbox" id="stBubbleWait" checked> vänta</label> <label title="Texten sägs med skådespelarens röst om hen har en (samma namn som en talare)"><input type="checkbox" id="stBubbleVoice" checked> röst</label><button data-act="addBubble">Pratbubbla</button></div>
+          <div class="row"><input id="stBubble" placeholder="Pratbubbla: text" style="flex:1;min-width:80px"><input type="number" id="stBubbleSec" value="2" style="width:46px" title="sekunder bubblan står kvar efter sista ordet"> s kvar <label title="Manuset väntar tills bubblan är borta (räknat från att den syns)"><input type="checkbox" id="stBubbleWait" checked> vänta</label> <label title="Utan val används skådespelarens id eller bildens namn om det är en talare"><input type="checkbox" id="stBubbleVoice" checked> röst</label> ${select('stBubbleSpeaker', [['', '(automatisk)'], ...speakerIds.filter(name => name !== 'narrator')], '')}<button data-act="addBubble">Pratbubbla</button></div>
           <div class="row">${select('stVictim', known.length ? known : ['(ingen annan sparad)'], known[0] || '')} ${select('stLeave', [['blood', 'blodpöl'], ['corpse', 'lik'], ['both', 'båda'], ['none', 'inget']], 'blood')} <button data-act="addKill">Dödar</button></div>
           <div class="row"><button data-act="addLeave" title="Går mot närmaste ruta utom spelarens synfält och försvinner när den inte syns">Lämna scenen (mot dimman)</button><button data-act="addVanish">Försvinn direkt</button></div>
         </div>
@@ -390,7 +390,8 @@
       addBubble: () => {
         const text = $('#stBubble').value.trim(); if (!text) { notice('Skriv vad bubblan ska säga.'); return; }
         const seconds = +$('#stBubbleSec').value || 2, wait = $('#stBubbleWait').checked, voice = $('#stBubbleVoice').checked;
-        draft.script.push({ say: { text, for: seconds, ...(wait ? { wait: true } : {}), ...(voice ? {} : { voice: false }) } }); render();
+        const speaker = $('#stBubbleSpeaker').value;
+        draft.script.push({ say: { text, for: seconds, ...(wait ? { wait: true } : {}), ...(voice ? (speaker ? { speaker } : {}) : { voice: false }) } }); render();
       },
       addKill: () => { const step = killStep(); if (step) { draft.script.push(step); render(); } },
       addLeave: () => { draft.script.push({ leave: true }); render(); },
