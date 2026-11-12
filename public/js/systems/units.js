@@ -123,7 +123,8 @@
       // Står enheten på en mur (som byggdes under den) ignorerar den blockeringen tills den kommit ut på en vanlig ruta
       if (tileCost === Infinity && !isTarget && !Pathfinder.isWall(Math.floor(unit.x), Math.floor(unit.y))) { Pathfinder.drop(step.path); step.path = null; return; } // vägen blockerades -> räkna om
 
-      const laneX = unit.laneX || 0, laneY = unit.laneY || 0; // soldaters egen linje i rutan, så att en marscherande grupp inte blir en enda hög
+      const final = unit.slotX !== undefined && step.pathIndex === step.path.length - 1;   // grupp (actors.js): sista rutan har en egen plats
+      const laneX = final ? unit.slotX : unit.laneX || 0, laneY = final ? unit.slotY : unit.laneY || 0; // soldaters egen linje i rutan, så att en marscherande grupp inte blir en enda hög
       const dx = nextTile.x + .5 + laneX - unit.x, dy = nextTile.y + .5 + laneY - unit.y, distance = Utils.distance(dx, dy);
       const stepLength = Config.settings.walkSpeed * (unit.definition.speedMultiplier || 1) * deltaSeconds / (tileCost === Infinity ? 1 : tileCost);
       unit.status = 'Walking';
@@ -551,4 +552,4 @@
   };
 
   CityBuilder.Units = Units;
-})(window.CityBuilder);
+})(window.CityBuilder);

@@ -17,6 +17,7 @@
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
      tell: [dialograder]  visar en dialog och väntar tills den lästs
      Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { camera: mål, zoom: 1-5 (valfritt) }, ... ]. Stegen sker i ordning, ett i taget.
+     Grupp: spawn med count: n skapar n st (id#1 ... id#n) på samma ruta. Ett steg med gruppens id gäller alla: de går med en kort fördröjning var (ett led) och får var sin plats vid målet; bara den första talar.
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
    Mål (walk, teleport, spawn.at): [dx, dy] (rutor från spelarens HQ), 'hq', ett byggnads-id ('bakery' = närmaste), ett skådespelar-id, { x, y } (absolut ruta),
      { building: 'bakery' }, { actor: 'baker' }.
@@ -37,6 +38,8 @@
   const { World, Config, Players, Utils, Jobs } = CityBuilder;
 
   const LEAVE_LAYER = { blood: 0, corpse: 1 };
+  const GROUP_GAP = .25, SLOT = .55, GROUP_MAX = 100;   // grupp: sekunder mellan två medlemmars start, avstånd (rutor) mellan platserna vid målet
+  const frac = x => x - Math.floor(x);
   const STUCK_BASE = 15, STUCK_PER_TILE = 1.5;   // sekunder innan en promenad ger upp och teleporterar
 
   const levels = () => CityBuilder.Levels;
@@ -51,6 +54,7 @@
 
     // ---- uppslag ----
     data: id => state().list.find(item => item.id === id),
+    members: id => state().list.filter(item => item.group === id && !item.gone),   // en grupp (spawn med count) är id#1 ... id#n
     unitOf(id) { const unit = this.units.get(id); return unit && !unit.removed ? unit : null; },
     hq: () => World.headquarters,
 
@@ -65,7 +69,8 @@
         return this.resolve({ building: target }, from);
       }
       if (target.actor !== undefined) {
-        const unit = this.unitOf(target.actor), data = this.data(target.actor);
+        const key = this.data(target.actor) ? target.actor : this.members(target.actor)[0]?.id ?? target.actor;   // en grupp: den första i den
+        const unit = this.unitOf(key), data = this.data(key);
         if (unit) return { x: Math.floor(unit.x), y: Math.floor(unit.y), kind: 'actor' };
         return data && !data.gone ? { x: Math.floor(data.x), y: Math.floor(data.y), kind: 'actor' } : null;
       }
@@ -86,11 +91,17 @@
 
     // ---- skapa, spara, bygga upp ----
     spawn(spec) {
+      if (spec?.id && spec.count > 1) {   // en grupp: count st med samma utseende, id#1 ... id#n. Alla börjar på samma ruta och får var sin plats vid målet
+        const n = Math.min(GROUP_MAX, spec.count | 0), cols = Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols);
+        for (let i = 1; i <= n; i++) this.spawn({ ...spec, count: undefined, id: `${spec.id}#${i}`, group: spec.id, nth: i, slot: [((i - 1) % cols - (cols - 1) / 2) * SLOT, (Math.floor((i - 1) / cols) - (rows - 1) / 2) * SLOT] });
+        return this.data(`${spec.id}#1`);
+      }
       if (!spec?.id || this.data(spec.id) && !this.data(spec.id).gone) return null;
       const from = this.resolve(spec.at ?? 'hq');
       if (!from) { console.warn(`Actors: spawn ${spec.id} has no valid position`); return null; }
       const at = from.kind === 'building' ? { x: from.x, y: from.y + 1 } : from;
       const data = {
+        group: spec.group, nth: spec.nth, slot: spec.slot, gap: spec.gap,
         id: spec.id, image: spec.image, race: spec.race, frame: spec.frame, size: spec.size, speed: spec.speed, faces: spec.faces,
         x: at.x + .5, y: at.y + .5, script: spec.script || [], index: 0, act: null, arrived: false, gone: false, killed: false,
       };
@@ -111,6 +122,10 @@
       if (data.size) unit.definition.imageSize = data.size;
       if (data.speed) unit.definition.speedMultiplier = data.speed;
       if (data.faces !== undefined) unit.definition.imageFacesLeft = data.faces === 'left';
+      if (data.group) {   // fast egen linje i rutan (som soldaterna, se Units.walk) och en egen plats vid målet: ingen jämförelse mellan enheter behövs
+        unit.laneX = (frac(data.nth * .618034) - .5) * .3; unit.laneY = (frac(data.nth * .754877) - .5) * .3;
+        unit.slotX = data.slot?.[0] || 0; unit.slotY = data.slot?.[1] || 0;
+      }
       this.units.set(data.id, unit);
       return unit;
     },
@@ -157,8 +172,14 @@
             else if (step.tell) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'dialogue', lines: step.tell, part: 'events', mark }]); scene.running.push({ kind: 'tell', mark }); } }
             else if (step.wait !== undefined && !step.who) scene.running.push({ kind: 'wait', left: +step.wait || 0 });
             else {
-              const [type] = Object.entries(step).find(([key]) => key !== 'who' && Actions[key]) || [], data = this.data(step.who);
-              if (type && data && !data.gone) { this.setScript(step.who, [{ [type]: step[type] }]); scene.running.push({ kind: 'actor', who: step.who }); }
+              const [type] = Object.entries(step).find(([key]) => key !== 'who' && Actions[key]) || [], one = this.data(step.who);
+              // Ett steg för en grupp gäller alla i den: de går och lämnar med en liten fördröjning var (ett led), bara den första talar
+              for (const data of type ? one ? [one] : this.members(step.who) : []) {
+                if (data.gone || (data.group && type === 'say' && data.nth > 1)) continue;
+                const delay = data.group && (type === 'walk' || type === 'leave') ? (data.nth - 1) * (data.gap ?? GROUP_GAP) : 0;
+                this.setScript(data.id, delay ? [{ wait: delay }, { [type]: step[type] }] : [{ [type]: step[type] }]);
+                scene.running.push({ kind: 'actor', who: data.id });
+              }
             }
           }
         }

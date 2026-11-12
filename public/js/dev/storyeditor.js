@@ -162,7 +162,7 @@
     function compileScene(sc, withConds = true) {
       const out = compile({ id: sc.id, conds: withConds ? sc.conds : [], effects: [] });
       const cast = new Map(sc.cast.map(c => [c.id, c]));
-      const specOf = (c, at) => { const spec = { id: c.id, image: c.image }; if (c.race) spec.race = c.race; const size = castSize(c.image); if (size && size !== CHARACTER_SIZE) spec.size = size; spec.at = at; return spec; };
+      const specOf = (c, at) => { const spec = { id: c.id, image: c.image }; if (c.race) spec.race = c.race; if (c.count > 1) spec.count = c.count; const size = castSize(c.image); if (size && size !== CHARACTER_SIZE) spec.size = size; spec.at = at; return spec; };
       out.spawn = sc.cast.filter(c => c.at).map(c => ({ ...specOf(c, c.at), script: [] }));
       out.scene = sc.steps.map(s => {
         let step;
@@ -193,12 +193,13 @@
       });
       return out;
     }
-    let castDraft = { id: '', image: defaultImage, race: '' }, stepDraft = { who: '', type: 'walk', target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineWho: speakerIds[0] || 'narrator', lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '' };
+    let castDraft = { id: '', image: defaultImage, race: '', count: 1 }, stepDraft = { who: '', type: 'walk', target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineWho: speakerIds[0] || 'narrator', lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '' };
     const resetStep = () => { stepDraft = { ...stepDraft, target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '' }; };
     const moodIds = () => Object.keys(Config.story.voice?.moods || { calm: 1 });
     const moodOfLine = text => { const m = /^\[(\w+)\]([\s\S]*)$/.exec(text); return m ? { mood: m[1], text: m[2] } : { mood: 'calm', text }; };
     const lineText = ln => ln.mood && ln.mood !== 'calm' ? `[${ln.mood}]${ln.text}` : ln.text;
-    const blankCast = () => ({ id: '', image: castDraft.image, race: castDraft.race });
+    const blankCast = () => ({ id: '', image: castDraft.image, race: castDraft.race, count: 1 });
+    const countOf = () => Math.max(1, Math.min(100, Math.floor(+castDraft.count) || 1));
     let sceneCond = 'time';
     function viewScene() {
       const sc = sceneNow();
@@ -216,8 +217,8 @@
         <div class="card"><div class="hint" style="margin:0">${sc.conds.length ? 'Fler villkor:' : 'Låt den vänta på något:'}</div><div class="row"><select data-bind="sceneCond" style="width:100%">${Object.entries(COND).map(([kind, item]) => `<option value="${kind}"${sceneCond === kind ? ' selected' : ''}>${item.label}</option>`).join('')}</select></div>
           <div class="row">${cond.f.map(([, type, hint], i) => field(type, 'sc' + i, hint)).join(' ')}</div><div class="row"><button data-act="sceneCondAdd">Lägg till</button></div></div>
         <h4>2. Vilka är med?</h4>
-        ${sc.cast.length ? sc.cast.map((c, i) => `<div class="card"><div class="row"><img class="pv" src="${esc(imageSrc(c.image, c.race))}" onerror="this.style.display='none'"><b>${esc(c.id)}</b><span class="hint">${c.at ? 'finns från början, vid ruta ' + c.at.join(', ') : 'dyker upp senare (i ett steg)'}</span></div><div class="row"><button class="small" data-act="castMove" data-i="${i}">${c.at ? 'Flytta på kartan' : 'Placera från början'}</button><button class="small danger" data-act="castDel" data-i="${i}">Ta bort</button></div></div>`).join('') : '<p class="hint">Ingen än.</p>'}
-        <div class="card"><div class="row">Ny person <select data-bind="castDraft.image">${chars.length ? `<optgroup label="Karaktärer">${chars.map(([path, race]) => `<option value="${esc(path)}"${castDraft.image === path ? ' selected' : ''}>${esc(nameOf(path))}</option>`).join('')}</optgroup>` : ''}<optgroup label="Enheter">${images.map(item => `<option value="${esc(item.path)}"${castDraft.image === item.path ? ' selected' : ''}>${esc(item.label)}</option>`).join('')}</optgroup></select></div>
+        ${sc.cast.length ? sc.cast.map((c, i) => `<div class="card"><div class="row"><img class="pv" src="${esc(imageSrc(c.image, c.race))}" onerror="this.style.display='none'"><b>${esc(c.id)}${c.count > 1 ? ' ×' + c.count : ''}</b><span class="hint">${c.at ? 'finns från början, vid ruta ' + c.at.join(', ') : 'dyker upp senare (i ett steg)'}</span></div><div class="row"><button class="small" data-act="castMove" data-i="${i}">${c.at ? 'Flytta på kartan' : 'Placera från början'}</button><button class="small danger" data-act="castDel" data-i="${i}">Ta bort</button></div></div>`).join('') : '<p class="hint">Ingen än.</p>'}
+        <div class="card"><div class="row">Antal <input type="number" min="1" max="100" data-bind="castDraft.count" value="${esc(castDraft.count)}" style="width:70px"> <span class="hint">fler än 1 = en grupp som går i led</span></div><div class="row">Ny person <select data-bind="castDraft.image">${chars.length ? `<optgroup label="Karaktärer">${chars.map(([path, race]) => `<option value="${esc(path)}"${castDraft.image === path ? ' selected' : ''}>${esc(nameOf(path))}</option>`).join('')}</optgroup>` : ''}<optgroup label="Enheter">${images.map(item => `<option value="${esc(item.path)}"${castDraft.image === item.path ? ' selected' : ''}>${esc(item.label)}</option>`).join('')}</optgroup></select></div>
           <div class="row"><button class="primary" data-act="castAdd">Finns från början (klicka på kartan)</button></div><div class="row"><button data-act="castLater">Dyker upp senare</button></div></div>
         <h4>3. Vad händer? (uppifrån och ned)</h4>
         ${sc.steps.length ? sc.steps.map((s, i) => `<div class="step"><b>${i + 1}.</b><span${stepDraft.editing === i ? ' class="ok"' : ''}>${esc(stepLabel(sc, s))}</span><button class="small" data-act="sEdit" data-i="${i}" title="Redigera steget">✎</button><button class="small" data-act="sUp" data-i="${i}">↑</button><button class="small" data-act="sDown" data-i="${i}">↓</button><button class="small danger" data-act="sDel" data-i="${i}">✕</button></div>`).join('') : '<p class="hint">Inga steg än. Allt som står här händer efter varandra. En dialog tillhör scenen och spelas även om personerna försvunnit.</p>'}
@@ -340,7 +341,7 @@
       sceneCondAdd: () => { const sc = sceneNow(), spec = COND[sceneCond], v = read(spec, 'sc'); if (spec.f.some(([name, type]) => type !== 'text' && v[name] === '')) { notice('Fyll i alla fält.'); return; } sc.conds.push({ kind: sceneCond, v }); render(); },
       sceneCondDel: ({ i }) => { sceneNow().conds.splice(+i, 1); render(); },
       castAdd: () => { st.arm = { kind: 'cast' }; if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); if (characters[castDraft.image]) castDraft.race = characters[castDraft.image] === 'demon' ? 'demon' : ''; render(); },
-      castLater: () => { const sc = sceneNow(); if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); sc.cast.push({ id: castDraft.id, image: castDraft.image, race: characters[castDraft.image] === 'demon' ? 'demon' : '', at: null }); stepDraft.who = stepDraft.who || castDraft.id; castDraft = blankCast(); render(); },
+      castLater: () => { const sc = sceneNow(); if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); sc.cast.push({ id: castDraft.id, image: castDraft.image, race: characters[castDraft.image] === 'demon' ? 'demon' : '', count: countOf(), at: null }); stepDraft.who = stepDraft.who || castDraft.id; castDraft = blankCast(); render(); },
       castMove: ({ i }) => { st.arm = { kind: 'castMove', i: +i }; render(); },
       castDel: ({ i }) => { const sc = sceneNow(), [gone] = sc.cast.splice(+i, 1); sc.steps = sc.steps.filter(s => s.who !== gone.id); render(); },
       sUp: ({ i }) => { move(sceneNow().steps, +i, -1); resetStep(); render(); },
@@ -434,7 +435,7 @@
     }
     function armClick(tile) {
       const arm = st.arm; st.arm = null;
-      if (arm.kind === 'cast') { const sc = sceneNow(); if (sc) { const id = castDraft.id.trim() || uniqueId('person'); sc.cast.push({ id, image: castDraft.image, race: castDraft.race, at: [tile.x - hq().x, tile.y - hq().y] }); castDraft = blankCast(); stepDraft.who = stepDraft.who || id; } }
+      if (arm.kind === 'cast') { const sc = sceneNow(); if (sc) { const id = castDraft.id.trim() || uniqueId('person'); sc.cast.push({ id, image: castDraft.image, race: castDraft.race, count: countOf(), at: [tile.x - hq().x, tile.y - hq().y] }); castDraft = blankCast(); stepDraft.who = stepDraft.who || id; } }
       else if (arm.kind === 'castMove') { const c = sceneNow()?.cast[arm.i]; if (c) c.at = [tile.x - hq().x, tile.y - hq().y]; }
       else if (arm.kind === 'sceneStep') { const sc = sceneNow(); if (sc) { const step = { who: arm.who, type: arm.type, arg: tileTarget(tile) }; if (arm.zoom) step.zoom = arm.zoom; if (arm.edit !== null && arm.edit !== undefined) sc.steps[arm.edit] = step; else sc.steps.push(step); resetStep(); } }
       render();
