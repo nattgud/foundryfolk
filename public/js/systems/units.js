@@ -533,8 +533,17 @@
       const task = unit.deliveryTask, line = unit.definition.isSoldier ? null : CityBuilder.Bubbles?.stuck(unit, task ? Logistics.pairKey(task.source, task.destination) : undefined, task?.destination);
       Logistics.failTask(unit);
       if (line && !unit.stepQueue.length) {   // vägen är verkligen blockerad: gå fram dit den tar slut och säg det där, inte långt därifrån
-        const goal = task?.destination, spot = goal ? Pathfinder.approachTile(Math.round(unit.x), Math.round(unit.y), goal.x, goal.y) : null;
-        const say = () => { CityBuilder.Bubbles.say(unit, line, 4, 'stuck'); };
+        const goal = task?.destination, spot = goal ? Pathfinder.approachTile(Math.floor(unit.x), Math.floor(unit.y), goal.x, goal.y) : null;
+        const blockedNow = () => !!goal && !goal.removed && !Pathfinder.findPathNow(Math.floor(unit.x), Math.floor(unit.y), goal.x, goal.y, false);   // finns vägen igen, finns inget att säga
+        const say = () => {
+          if (unit.removed || !blockedNow()) return;
+          let checked = performance.now(), still = true;
+          CityBuilder.Bubbles.say(unit, line, 4, 'stuck', undefined, () => {   // försvinner så fort bäraren fått ett nytt uppdrag eller vägen öppnats
+            if (unit.removed || unit.deliveryTask || unit.stepQueue.length) return false;
+            const t = performance.now(); if (t - checked > 1000) { checked = t; still = blockedNow(); }
+            return still;
+          });
+        };
         if (spot) unit.stepQueue = Math.hypot(spot.x - unit.x, spot.y - unit.y) < 1.5 ? [Jobs.run(say)] : [Jobs.walkTo(spot.x, spot.y), Jobs.run(say)];
       }
       if (unit.definition.isSoldier) CityBuilder.Combat.onPathFailure(unit, step);

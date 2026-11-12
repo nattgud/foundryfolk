@@ -57,7 +57,7 @@
   }
 
   const Bubbles = {
-    say(unit, text, seconds, extraClass, speaker) {
+    say(unit, text, seconds, extraClass, speaker, keep) {   // keep (valfri): funktion som ger false när bubblan inte längre stämmer, då försvinner den direkt
       const handle = { done: false };
       if (!unit || unit.removed || !text) { handle.done = true; return handle; }
       drop(unit);
@@ -68,7 +68,7 @@
       const shownPart = document.createElement('span'), restPart = document.createElement('span');   // resten finns med osynlig så att bubblan har sin slutliga storlek från början
       restPart.style.visibility = 'hidden'; restPart.textContent = plain; el.append(shownPart, restPart); el.style.opacity = '0';
       ensureLayer().appendChild(el);
-      bubbles.set(unit, { el, handle, shownPart, restPart, plain, voice, speaker, seconds: seconds || (voice ? LINGER : DEFAULT_SECONDS), until: Infinity, born: now(), started: false, order: ++counter });
+      bubbles.set(unit, { el, handle, shownPart, restPart, plain, voice, speaker, seconds: seconds || (voice ? LINGER : DEFAULT_SECONDS), until: Infinity, born: now(), started: false, keep, order: ++counter });
       return handle;
     },
     // Ger en replik (text) när det är dags att berätta att vägen är blockerad, annars null. Den som anropar låter enheten gå fram till blockeringen och säga den där (Units.handlePathFailure).
@@ -96,7 +96,7 @@
       const zoom = Renderer.zoom, size = Renderer.tileSize, camera = Renderer.camera, t = now(), Vision = CityBuilder.Vision;
       const live = [];
       for (const [unit, item] of bubbles) {
-        if (unit.removed || t > item.until || (!item.started && t - item.born > GIVE_UP)) { drop(unit); continue; }
+        if (unit.removed || t > item.until || (!item.started && t - item.born > GIVE_UP) || (item.keep && !item.keep())) { drop(unit); continue; }
         const x = (unit.x * size - camera.x) * zoom, y = (unit.y * size - camera.y) * zoom - size * zoom * .55;
         const visible = !dialogOpen && x > -20 && y > -20 && x < innerWidth + 20 && y < innerHeight + 20 && (!Vision || Vision.sees(Players.HUMAN, unit));
         item.visible = visible; item.x = x; item.y = y;
