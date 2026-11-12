@@ -332,7 +332,7 @@
         <div class="card"><div class="row">Ny person <select data-bind="castDraft.image">${chars.length ? `<optgroup label="Karaktärer">${chars.map(([path, race]) => `<option value="${esc(path)}"${castDraft.image === path ? ' selected' : ''}>${esc(nameOf(path))}</option>`).join('')}</optgroup>` : ''}<optgroup label="Enheter">${images.map(item => `<option value="${esc(item.path)}"${castDraft.image === item.path ? ' selected' : ''}>${esc(item.label)}</option>`).join('')}</optgroup></select></div>
           <div class="row"><button class="primary" data-act="castAdd">Placera på kartan</button></div></div>
         <h4>3. Vad händer? (uppifrån och ned)</h4>
-        ${sc.steps.length ? sc.steps.map((s, i) => `<div class="step"><b>${i + 1}.</b><span>${esc(stepLabel(sc, s))}${i ? `<br><label class="hint"><input type="checkbox" data-act="stepTogether" data-i="${i}"${s.together ? ' checked' : ''}> samtidigt som föregående</label>` : ''}</span><button class="small" data-act="stepUp" data-i="${i}">↑</button><button class="small" data-act="stepDown" data-i="${i}">↓</button><button class="small danger" data-act="stepDel" data-i="${i}">✕</button></div>`).join('') : '<p class="hint">Inga steg än. Allt som står här händer efter varandra, så du behöver inte oroa dig för vem som väntar på vem.</p>'}
+        ${sc.steps.length ? sc.steps.map((s, i) => `<div class="step"><b>${i + 1}.</b><span>${esc(stepLabel(sc, s))}${i ? `<br><label class="hint"><input type="checkbox" data-act="stepTogether" data-i="${i}"${s.together ? ' checked' : ''}> samtidigt som föregående</label>` : ''}</span><button class="small" data-act="sUp" data-i="${i}">↑</button><button class="small" data-act="sDown" data-i="${i}">↓</button><button class="small danger" data-act="sDel" data-i="${i}">✕</button></div>`).join('') : '<p class="hint">Inga steg än. Allt som står här händer efter varandra, så du behöver inte oroa dig för vem som väntar på vem.</p>'}
         <div class="card"><div class="row">${select('', whoOpts, stepDraft.who, 'stepDraft.who')} ${select('', [['walk', 'går till…'], ['say', 'säger (pratbubbla)'], ['dialog', 'pratar (dialogruta)'], ['leave', 'lämnar scenen'], ['vanish', 'försvinner direkt'], ['kill', 'dödar…'], ['teleport', 'dyker upp vid…'], ['wait', 'väntar']], t, 'stepDraft.type')}</div>
           ${needTarget ? `<div class="row">${select('', targets.filter(x => t === 'walk' || x[0] !== castIds[0] || true), stepDraft.target, 'stepDraft.target')}</div>` : ''}
           ${t === 'say' ? `<div class="row"><input data-bind="stepDraft.text" value="${esc(stepDraft.text)}" placeholder="vad sägs?" style="width:100%"></div><div class="hint" style="margin:0">Personen väntar tills bubblan är klar. Rösten följer med om hen har en.</div>` : ''}
@@ -502,9 +502,9 @@
       castAdd: () => { st.arm = { kind: 'cast' }; if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); if (characters[castDraft.image]) castDraft.race = characters[castDraft.image] === 'demon' ? 'demon' : ''; render(); },
       castMove: ({ i }) => { st.arm = { kind: 'castMove', i: +i }; render(); },
       castDel: ({ i }) => { const sc = sceneNow(), [gone] = sc.cast.splice(+i, 1); sc.steps = sc.steps.filter(s => s.who !== gone.id); render(); },
-      stepUp: ({ i }) => { move(sceneNow().steps, +i, -1); render(); },
-      stepDown: ({ i }) => { move(sceneNow().steps, +i, 1); render(); },
-      stepDel: ({ i }) => { sceneNow().steps.splice(+i, 1); render(); },
+      sUp: ({ i }) => { move(sceneNow().steps, +i, -1); render(); },
+      sDown: ({ i }) => { move(sceneNow().steps, +i, 1); render(); },
+      sDel: ({ i }) => { sceneNow().steps.splice(+i, 1); render(); },
       stepTogether: ({ i }) => { const s = sceneNow().steps[+i]; s.together = !s.together; render(); },
       stepAdd: () => {
         const sc = sceneNow(), d = stepDraft, who = d.who; if (!who) { notice('Lägg först till någon som är med i scenen.'); return; }
