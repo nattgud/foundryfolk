@@ -382,7 +382,9 @@
       armStart: () => { st.arm = { kind: 'start' }; render(); },
       armStep: ({ type }) => { st.arm = { kind: 'step', type }; render(); },
       addWait: () => { draft.script.push({ wait: +$('#stWait').value || 1 }); render(); },
-      addSay: () => { const text = $('#stText').value.trim(); if (!text) { note('Skriv vad som sägs.'); return; } draft.script.push({ tell: [{ who: $('#stSpeaker').value, text }] }); render(); },
+      addSay: () => { const text = $('#stText').value.trim(); if (!text) { note('Skriv vad som sägs.'); return; } const line = { who: $('#stSpeaker').value, text }, last = draft.script[draft.script.length - 1];
+        if (last && last.tell) last.tell.push(line); else draft.script.push({ tell: [line] });   // repliker i rad hör till samma dialog; något annat emellan startar en ny
+        $('#stText').value = ''; render(); },
       addBubble: () => {
         const text = $('#stBubble').value.trim(); if (!text) { note('Skriv vad bubblan ska säga.'); return; }
         const seconds = +$('#stBubbleSec').value || 3, wait = $('#stBubbleWait').checked;
