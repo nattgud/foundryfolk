@@ -38,7 +38,7 @@
   const { World, Config, Players, Utils, Jobs } = CityBuilder;
 
   const LEAVE_LAYER = { blood: 0, corpse: 1 };
-  const GROUP_GAP = .25, GROUP_MAX = 100, PER_TILE = 20;   // grupp: sekunder mellan två medlemmars start, högst så många på en ruta (resten flödar över till rutorna runt)
+  const GROUP_GAP = .1, GROUP_MAX = 100, PER_TILE = 20;   // grupp: sekunder mellan två medlemmars start, högst så många på en ruta (resten flödar över till rutorna runt)
   // Rutorna kring målet i den ordning de fylls: målrutan först, sedan de närmaste
   const TILE_ORDER = (() => { const list = []; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) list.push([dx, dy]); return list.sort((a, b) => a[0] * a[0] + a[1] * a[1] - b[0] * b[0] - b[1] * b[1] || a[1] - b[1] || a[0] - b[0]); })();
   const SPOT_COLS = 5, SPOT_STEP = .17;   // platserna på en ruta: ett litet rutnät, så att ingen står på exakt samma pixel
