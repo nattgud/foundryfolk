@@ -16,6 +16,7 @@
      kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
      tell: [dialograder]  visar en dialog och väntar tills den lästs
+     (varje steg kan ha mark: 'nyckel', som sätts när steget är klart; { until: { told: 'nyckel' } } hos en annan skådespelare väntar på det. Editorns scener använder det.)
      until: villkor       väntar tills villkoret gäller (samma slag som en händelses when, t.ex. { spoke: 'counsellors' } eller [{ gone: 'x' }, { resource: 'wood', made: 5 }]).
                           Så får en skådespelare vänta på en annan: manusen går annars parallellt, var och ett för sig
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
@@ -143,13 +144,13 @@
           if (!entry) continue;
           const [type, arg] = Object.entries(entry)[0];
           if (!Actions[type]) { console.warn(`Actors: unknown action '${type}' for ${data.id}`); data.index++; continue; }
-          data.act = { type, arg, started: false, elapsed: 0 };
+          data.act = { type, arg, started: false, elapsed: 0, done: entry.mark };   // mark: nyckel som sätts när steget är klart (se until: { told })
         }
         const action = Actions[data.act.type], act = data.act;
         if (!act.started) { act.started = true; action.start?.(data, act.arg, act, unit); }
-        if (data.act !== act) continue;   // handlingen bytte manus
+        if (data.act !== act) { if (data.gone && act.done) levels().markTold(act.done); continue; }   // handlingen bytte manus (eller skådespelaren försvann: steget räknas då som klart)
         act.elapsed += deltaSeconds;
-        if (action.update ? action.update(data, act.arg, deltaSeconds, act, unit) : true) { if (data.act === act) { data.act = null; data.index++; } }
+        if (action.update ? action.update(data, act.arg, deltaSeconds, act, unit) : true) { if (act.done) levels().markTold(act.done); if (data.act === act) { data.act = null; data.index++; } }
       }
     },
 
@@ -265,7 +266,7 @@
       start(data, arg) { CityBuilder.Story.fire(arg); },
     },
     until: {
-      update(data, arg) { const Story = CityBuilder.Story; return [].concat(arg).every(need => Story.reached(need, Story.chapter)); },
+      update(data, arg, dt, act) { const Story = CityBuilder.Story; return act.elapsed > 900 || [].concat(arg).every(need => Story.reached(need, Story.chapter)); },   // ger upp efter 15 minuter så att inget fastnar för alltid
     },
   };
 
