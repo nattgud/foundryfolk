@@ -44,6 +44,23 @@
       return Config.terrain[tile.terrainType].walkCost * (1 - Config.settings.maxWearSpeedBonus * tile.wear);
     },
 
+    // Rutan närmast målet som en enhet kan nå till fots från startrutan (där en blockerad väg tar slut), eller null. Breddenförst över gångbara rutor, högst limit rutor.
+    approachTile(startX, startY, goalX, goalY, limit = 6000) {
+      const seen = new Set([startX + ',' + startY]), queue = [[startX, startY]];
+      let best = { x: startX, y: startY, d: Math.hypot(startX - goalX, startY - goalY) };
+      for (let i = 0; i < queue.length && i < limit; i++) {
+        const [x, y] = queue[i];
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx, ny = y + dy, key = nx + ',' + ny;
+          if ((dx || dy) && !seen.has(key) && this.tileCost(nx, ny) !== Infinity && Number.isFinite(this.tileCost(nx, ny))) {
+            seen.add(key); queue.push([nx, ny]);
+            const d = Math.hypot(nx - goalX, ny - goalY); if (d < best.d - 1e-9) best = { x: nx, y: ny, d };
+          }
+        }
+      }
+      return best;
+    },
+
     // Terräng har ändrats. Gamla "ingen väg"-svar kan vara fel nu. Vanliga vägar behålls (de kontrolleras när enheten går).
     clearCache() { this.epoch++; },
 

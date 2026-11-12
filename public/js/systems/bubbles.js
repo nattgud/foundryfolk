@@ -3,9 +3,9 @@
                                                 talare (valfri, ett id i Config.story.speakers): texten skrivs då ut tecken för tecken med talarens röst, precis som i dialogerna, och
                                                 sekunder är hur länge bubblan står kvar efter att allt är sagt. [tonläge] i texten byter röstläge (Voice.parse) och visas inte.
                                                 Allt börjar först när bubblan syns första gången (enheten syns, ingen dialog är öppen), så inget går förlorat i dimman.
-     Bubbles.stuck(enhet, nyckel, mål)          en varning över en arbetare vars väg är blockerad. Den visas först när samma väg (nyckel, t.ex. källa>mål) misslyckats upprepade gånger under
-                                                minst STUCK_AFTER sekunder, så ett kort hack syns aldrig; högst en gång per STUCK_COOLDOWN s och väg. mål = byggnaden bäraren inte nådde (för texten).
-                                                Av med Config.settings.stuckBubbles = false
+     Bubbles.stuck(enhet, nyckel, mål)          ger en replik (eller null) när en arbetares väg är blockerad: först när samma väg (nyckel, t.ex. källa>mål) misslyckats upprepade gånger under
+                                                minst STUCK_AFTER sekunder, så ett kort hack syns aldrig; högst en gång per STUCK_COOLDOWN s och väg. mål = byggnaden som inte nåddes (för texten).
+                                                Arbetaren går fram till blockeringen och säger repliken där. Av med Config.settings.stuckBubbles = false
    Bubblorna fångar aldrig klick (pointer-events: none), ligger i DOM-ordningen direkt efter spelytan så att alla paneler och dialoger ritas över dem,
    döljs helt medan en dialog (.resource-window-overlay) är öppen, visas bara för enheter spelaren ser, och flyttas isär om de skulle överlappa. Högst MAX visas samtidigt. */
 (function (CityBuilder) {
@@ -13,6 +13,8 @@
   const { Players, Config } = CityBuilder;   // Renderer laddas senare, så den slås upp först när den behövs
   const LINGER = 1.8, GIVE_UP = 25;   // sekunder kvar efter ett röstat tal; sekunder en bubbla får vänta på att synas innan den ges upp
   const MAX = 5, GAP = 3, DEFAULT_SECONDS = 3.5, FADE = 0.4, STUCK_SECONDS = 4, STUCK_COOLDOWN = 90, STUCK_AFTER = 10, STUCK_GAP = 45;   // sekunder
+  const STUCK_LINES_TO = ['No way through to the {name}!', 'The road to the {name} is blocked.', "I can't get to the {name} from here."];
+  const STUCK_LINES = ['No way through here!', 'The road is blocked.', "I can't get any further."];
   const blocked = new Map();   // väg (nyckel) -> { first, last, n, shown }: när den började misslyckas, senaste misslyckandet, antal, senaste visningen
   const bubbles = new Map();   // enhet -> { el, until, born, order }
   let layer = null, counter = 0;
@@ -25,8 +27,7 @@
       #bubbleLayer .bubble { position: absolute; left: 0; top: 0; max-width: 190px; padding: 3px 8px; border-radius: 9px; background: #f7f3e6; color: #222; border: 1px solid #5a5242;
         font: 12px/1.25 sans-serif; text-align: center; box-shadow: 0 1px 3px rgb(0 0 0 / 35%); transition: opacity .35s; will-change: transform; }
       #bubbleLayer .bubble::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 8px; height: 8px; margin-left: -4px; background: inherit; border: inherit;
-        border-top: 0; border-left: 0; transform: rotate(45deg); }
-      #bubbleLayer .bubble.stuck { font-weight: bold; color: #b00020; border-color: #b00020; }`;
+        border-top: 0; border-left: 0; transform: rotate(45deg); }`;
     document.head.appendChild(style);
     layer = document.createElement('div'); layer.id = 'bubbleLayer';
     const canvas = CityBuilder.Renderer?.canvas;
@@ -70,18 +71,19 @@
       bubbles.set(unit, { el, handle, shownPart, restPart, plain, voice, speaker, seconds: seconds || (voice ? LINGER : DEFAULT_SECONDS), until: Infinity, born: now(), started: false, order: ++counter });
       return handle;
     },
+    // Ger en replik (text) när det är dags att berätta att vägen är blockerad, annars null. Den som anropar låter enheten gå fram till blockeringen och säga den där (Units.handlePathFailure).
     stuck(unit, key, target) {
-      if (Config.settings?.stuckBubbles === false || !unit || unit.removed || unit.player !== Players.HUMAN) return;
+      if (Config.settings?.stuckBubbles === false || !unit || unit.removed || unit.player !== Players.HUMAN) return null;
       const t = now(); key = key ?? 'unit' + unit.id;
       let record = blocked.get(key);
       if (!record || t - record.last > STUCK_GAP) record = { first: t, last: t, n: 0, shown: record?.shown ?? -Infinity };   // en ny period av misslyckanden
       record.last = t; record.n++; blocked.set(key, record);
       if (blocked.size > 200) for (const [k, r] of blocked) if (t - r.last > 300) blocked.delete(k);
-      if (record.n < 2 || t - record.first < STUCK_AFTER || t - record.shown < STUCK_COOLDOWN) return;
+      if (record.n < 2 || t - record.first < STUCK_AFTER || t - record.shown < STUCK_COOLDOWN) return null;
       record.shown = t;
       let name = ''; try { const UI = CityBuilder.UI; name = target?.definition ? UI.buildingName(target.definition, UI.raceOfBuilding(target)) : ''; } catch (error) { name = ''; }
-      const text = name ? CityBuilder.t('Blocked: no path to {name}', { name }) : CityBuilder.t('Blocked: no path');
-      this.say(unit, '⚠ ' + text, STUCK_SECONDS, 'stuck');
+      const lines = name ? STUCK_LINES_TO : STUCK_LINES;
+      return CityBuilder.t(lines[Math.floor(Math.random() * lines.length)], { name });
     },
     clear() { for (const unit of [...bubbles.keys()]) drop(unit); blocked.clear(); },
     get count() { return bubbles.size; },

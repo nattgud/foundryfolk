@@ -530,8 +530,13 @@
       if (unit.actor) { unit.stepQueue.length = 0; unit.pathFailed = true; return; }   // skådespelaren teleporteras av Actors
       const step = unit.stepQueue[0];
       unit.stepQueue.length = 0; unit.idleCooldown = 1; unit.status = "Can't reach";
-      if (!unit.definition.isSoldier) { const task = unit.deliveryTask; CityBuilder.Bubbles?.stuck(unit, task ? Logistics.pairKey(task.source, task.destination) : undefined, task?.destination); }
+      const task = unit.deliveryTask, line = unit.definition.isSoldier ? null : CityBuilder.Bubbles?.stuck(unit, task ? Logistics.pairKey(task.source, task.destination) : undefined, task?.destination);
       Logistics.failTask(unit);
+      if (line && !unit.stepQueue.length) {   // vägen är verkligen blockerad: gå fram dit den tar slut och säg det där, inte långt därifrån
+        const goal = task?.destination, spot = goal ? Pathfinder.approachTile(Math.round(unit.x), Math.round(unit.y), goal.x, goal.y) : null;
+        const say = () => { CityBuilder.Bubbles.say(unit, line, 4, 'stuck'); };
+        if (spot) unit.stepQueue = Math.hypot(spot.x - unit.x, spot.y - unit.y) < 1.5 ? [Jobs.run(say)] : [Jobs.walkTo(spot.x, spot.y), Jobs.run(say)];
+      }
       if (unit.definition.isSoldier) CityBuilder.Combat.onPathFailure(unit, step);
     },
   };
