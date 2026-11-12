@@ -58,7 +58,7 @@
     const existingEvents = () => chapter()?.events || [];
     const actorIds = () => [...new Set([...defs.map(def => def.id), ...existingEvents().flatMap(event => [].concat(event.spawn || []).map(spec => spec.id))])];
     const eventIds = () => [...new Set([...events.map(event => event.id).filter(Boolean), ...existingEvents().map(event => event.id).filter(Boolean)])];
-    const imageSrc = (path, race) => { const m = /^images\/units\/([^/]+\.png)$/.exec(path || ''); return race && m ? `images/units/${race}/${m[1]}` : path; };
+    const imageSrc = (path, race) => { const m = /^images\/units\/([^/]+\.png)$/.exec(path || ''); return m ? `images/units/${race || 'human'}/${m[1]}` : path; };   // spelets sökväg saknar rasmappen (som i Config.units): den sätts in här, annars ger förhandsvisningen 404
     const nameOf = path => images.find(item => item.path === path)?.label || (path || '').replace('images/units/', '').replace('.png', '');
     const targetText = target => Array.isArray(target) ? `ruta (${target[0]}, ${target[1]})` : typeof target === 'string' ? (target === 'hq' ? 'basen' : target) : JSON.stringify(target);
     const stepText = step => {
