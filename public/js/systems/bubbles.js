@@ -25,7 +25,7 @@
     style.textContent = `
       #bubbleLayer { position: fixed; inset: 0; overflow: hidden; pointer-events: none; user-select: none; -webkit-user-select: none; }
       #bubbleLayer .bubble { position: absolute; left: 0; top: 0; max-width: 190px; padding: 3px 8px; border-radius: 9px; background: #f7f3e6; color: #222; border: 1px solid #5a5242;
-        font: 12px/1.25 sans-serif; text-align: center; box-shadow: 0 1px 3px rgb(0 0 0 / 35%); transition: opacity .35s; will-change: transform; }
+        font: calc(12px * var(--ts, 1))/1.25 sans-serif; text-align: center; box-shadow: 0 1px 3px rgb(0 0 0 / 35%); transition: opacity .35s; will-change: transform; }
       #bubbleLayer .bubble::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 8px; height: 8px; margin-left: -4px; background: inherit; border: inherit;
         border-top: 0; border-left: 0; transform: rotate(45deg); }`;
     document.head.appendChild(style);

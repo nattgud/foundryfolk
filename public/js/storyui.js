@@ -212,7 +212,7 @@
         .story-player { flex-direction: row-reverse; }   /* spelaren: bilden till höger, som i en chatt */
         .story-player .story-body { text-align: right; }
         .story-line b { margin-right: 2px; }
-        .story-portrait { flex: 0 0 56px; width: 56px; height: 56px; box-sizing: border-box; border: 2px solid #888; border-radius: 50%; overflow: hidden; background: transparent; display: flex; align-items: center; justify-content: center; font: 700 26px Georgia, serif; font-style: normal; }
+        .story-portrait { flex: 0 0 56px; width: 56px; height: 56px; box-sizing: border-box; border: 2px solid #888; border-radius: 50%; overflow: hidden; background: transparent; display: flex; align-items: center; justify-content: center; font: 700 calc(26px * var(--ts, 1)) Georgia, serif; font-style: normal; }
         .story-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .story-narration { font-style: italic; opacity: .85; }
         .story-next { align-self: flex-end; min-width: 140px; }

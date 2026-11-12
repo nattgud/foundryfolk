@@ -181,18 +181,18 @@
           .custom-layout { grid-template-columns: 300px minmax(0, 1fr); align-items: start; }
           .custom-slider { width: 160px; }
         }
-        .custom-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--dim); }
+        .custom-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: calc(11px * var(--ts, 1)); color: var(--dim); }
         .custom-legend-item { display: inline-flex; align-items: center; gap: 5px; }
         .custom-legend-item i, .custom-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
         .custom-dot { border-radius: 50%; margin-right: 6px; }
-        .custom-caption { color: var(--dim); font-size: 12px; }
+        .custom-caption { color: var(--dim); font-size: calc(12px * var(--ts, 1)); }
         .custom-count, .custom-control { display: flex; align-items: center; gap: 6px; }
         .custom-count .options-toggle { min-width: 40px; }
         .custom-enemy { border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; }
-        .custom-enemy-title { font-size: 13px; padding-top: 4px; }
+        .custom-enemy-title { font-size: calc(13px * var(--ts, 1)); padding-top: 4px; }
         .custom-enemy .options-row:last-child { border-bottom: 0; }
         .custom-slider { width: 110px; accent-color: #5fb55f; }
-        .custom-amount { min-width: 62px; text-align: right; font-size: 12px; color: var(--dim); }
+        .custom-amount { min-width: 62px; text-align: right; font-size: calc(12px * var(--ts, 1)); color: var(--dim); }
         .custom-seed { min-width: 0; width: 84px; }
         .custom-enemies { display: flex; flex-direction: column; gap: 8px; }
       `;

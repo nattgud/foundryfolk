@@ -23,8 +23,9 @@
     [30000, '30 seconds'], [60000, '1 minute'], [120000, '2 minutes'], [300000, '5 minutes'], [900000, '15 minutes'],
   ];
   const FPS_CHOICES = [[0, 'Unlimited'], [30, '30 FPS']];
+  const TEXT_CHOICES = [[0.9, 'Small'], [1, 'Standard'], [1.25, 'Large'], [1.5, 'Larger'], [2, 'Largest']];   // textstorlek i menyer, dialoger och tooltips (CSS-variabeln --ts)
   const GRAPHICS_CHOICES = ['Minimum', 'Low', 'Medium', 'High'];   // index = nivå
-  const DEFAULTS = { showFps: false, autosaveMs: 30000, fpsLimit: 0, shapesOnly: false, graphics: GRAPHICS_CHOICES.length - 1 };
+  const DEFAULTS = { showFps: false, autosaveMs: 30000, fpsLimit: 0, textScale: 1, shapesOnly: false, graphics: GRAPHICS_CHOICES.length - 1 };
 
   const Options = {
     settings: { ...DEFAULTS },
@@ -39,6 +40,7 @@
         if (Number.isInteger(saved.graphics) && saved.graphics >= 0 && saved.graphics < GRAPHICS_CHOICES.length) this.settings.graphics = saved.graphics;
         if (AUTOSAVE_CHOICES.some(([value]) => value === saved.autosaveMs)) this.settings.autosaveMs = saved.autosaveMs;
         if (FPS_CHOICES.some(([value]) => value === saved.fpsLimit)) this.settings.fpsLimit = saved.fpsLimit;
+        if (TEXT_CHOICES.some(([value]) => value === saved.textScale)) this.settings.textScale = saved.textScale;
       } catch (error) { /* ingen lagring tillgänglig: standardvärden */ }
     },
 
@@ -74,6 +76,7 @@
 
     // Lägger in inställningarna i spelet
     apply() {
+      document.documentElement.style.setProperty('--ts', String(this.settings.textScale));   // all text i gränssnittet skalas med den; ritad text på kartan påverkas inte
       document.body.classList.toggle('gfx-min', this.settings.graphics === 0);   // slår av CSS-animationer (se injectStyles)
       if (this.appliedGraphics !== this.settings.graphics) {
         this.appliedGraphics = this.settings.graphics;
@@ -188,6 +191,9 @@
       body.append(
         row(t('Language'),
           select(I18n.languages.map(([code, name]) => [code, name]), I18n.language, code => I18n.setLanguage(code), false)),
+        row(t('Text size'),
+          select(TEXT_CHOICES, this.settings.textScale, value => this.set('textScale', Number(value))),
+          t('Makes the text in menus, dialogs and tooltips larger or smaller')),
         row(t('FPS counter'), toggle('showFps'), t('Shown below the resource bar')),
         row(t('Frame rate'),
           select(FPS_CHOICES, this.settings.fpsLimit, value => this.set('fpsLimit', Number(value))),
@@ -300,7 +306,7 @@
           top: 48px;
           z-index: 20;
           pointer-events: none;
-          font-size: 11px;
+          font-size: calc(11px * var(--ts, 1));
           line-height: 1;
           color: #fff;
           text-shadow: 0 0 3px #000, 0 0 3px #000;
@@ -321,7 +327,7 @@
         }
 
         .options-label { display: flex; flex-direction: column; gap: 2px; }
-        .options-label small { color: var(--dim); font-size: 11px; }
+        .options-label small { color: var(--dim); font-size: calc(11px * var(--ts, 1)); }
 
         .options-toggle, .options-select {
           min-width: 96px;
@@ -337,7 +343,7 @@
         .options-toggle.is-on { background: #2d5a3d; border-color: #5fb55f; }
 
         .stats-row span { color: var(--dim); }
-        .stats-heading { margin-top: 10px; color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+        .stats-heading { margin-top: 10px; color: var(--dim); font-size: calc(12px * var(--ts, 1)); text-transform: uppercase; letter-spacing: .04em; }
       `;
       document.head.appendChild(style);
     },
