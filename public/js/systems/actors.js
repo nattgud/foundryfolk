@@ -16,7 +16,7 @@
      kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
      tell: [dialograder]  visar en dialog och väntar tills den lästs
-     Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, ... ]. Stegen sker i ordning, ett i taget.
+     Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { camera: mål }, ... ]. Stegen sker i ordning, ett i taget.
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
    Mål (walk, teleport, spawn.at): [dx, dy] (rutor från spelarens HQ), 'hq', ett byggnads-id ('bakery' = närmaste), ett skådespelar-id, { x, y } (absolut ruta),
      { building: 'bakery' }, { actor: 'baker' }.
@@ -152,7 +152,8 @@
         while (!scene.running.length && scene.index < scene.steps.length && guard++ < 100) {
           {
             const step = scene.steps[scene.index], i = scene.index++;
-            if (step.spawn) this.spawn({ ...step.spawn, script: [] });
+            if (step.camera !== undefined) { const tile = this.resolve(step.camera, null); if (tile) { CityBuilder.Game.scrollTo(Math.floor(tile.x), Math.floor(tile.y), true); scene.running.push({ kind: 'wait', left: .8 }); } }
+            else if (step.spawn) this.spawn({ ...step.spawn, script: [] });
             else if (step.tell) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'dialogue', lines: step.tell, part: 'events', mark }]); scene.running.push({ kind: 'tell', mark }); } }
             else if (step.wait !== undefined && !step.who) scene.running.push({ kind: 'wait', left: +step.wait || 0 });
             else {

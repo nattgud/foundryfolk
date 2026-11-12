@@ -206,10 +206,10 @@
     },
 
     // Rullar kartan mjukt så att rutan hamnar i mitten (görs bara om den inte redan syns väl)
-    scrollTo(x, y) {
+    scrollTo(x, y, always) {   // always: rulla även om rutan redan syns (berättelsens kamerasteg)
       const renderer = CityBuilder.Renderer, size = renderer.tileSize, viewW = innerWidth / renderer.zoom, viewH = innerHeight / renderer.zoom;
       const goalX = (x + 0.5) * size - viewW / 2, goalY = (y + 0.5) * size - viewH / 2, fromX = renderer.camera.x, fromY = renderer.camera.y;
-      if (Math.abs(goalX - fromX) < viewW * 0.3 && Math.abs(goalY - fromY) < viewH * 0.3) return;
+      if (!always && Math.abs(goalX - fromX) < viewW * 0.3 && Math.abs(goalY - fromY) < viewH * 0.3) return;
       const start = performance.now(), ms = 600, token = this.scrollToken = {};
       const step = now => {
         if (this.scrollToken !== token) return;   // en nyare rullning har tagit över

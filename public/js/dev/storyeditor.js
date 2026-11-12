@@ -143,11 +143,12 @@
     const uniqueId = base => { const taken = new Set([...actorIds(), ...scenes.flatMap(sc => sc.cast.map(c => c.id))]); let id = base, n = 2; while (taken.has(id)) id = base + n++; return id; };
     const castSize = path => characters[path] ? CHARACTER_SIZE : images.find(item => item.path === path)?.size;
     const lineList = text => text.split('\n').map(line => line.trim()).filter(Boolean).map(line => { const m = /^([A-Za-z_][\w]*)\s*:\s*(.+)$/.exec(line); return m ? { who: m[1], text: m[2] } : { who: '', text: line }; });
-    const NO_WHO = ['dialog', 'wait'];   // dessa hör till scenen, inte till en person
+    const NO_WHO = ['dialog', 'wait', 'camera'];   // dessa hör till scenen, inte till en person
     const stepLabel = (sc, s) => {
       const who = s.who || '?';
       switch (s.type) {
         case 'walk': return `${who} går till ${targetText(s.arg)}`;
+        case 'camera': return `Kameran flyttar till ${targetText(s.arg)}`;
         case 'appear': return `${who} dyker upp vid ${targetText(s.arg)}`;
         case 'say': return `${who} säger i en pratbubbla: “${s.arg.text}”`;
         case 'dialog': return `Dialog: ${s.arg.map(line => `${line.who || '?'}: “${line.text}”`).join(' / ')}`;
@@ -168,6 +169,7 @@
         switch (s.type) {
           case 'appear': step = { spawn: specOf(cast.get(s.who) || { id: s.who, image: '' }, s.arg) }; break;
           case 'walk': step = { who: s.who, walk: s.arg }; break;
+          case 'camera': step = { camera: s.arg }; break;
           case 'say': step = { who: s.who, say: { text: s.arg.text, for: +s.arg.secs || 2, wait: true } }; break;
           case 'dialog': step = { tell: s.arg.map(line => ({ who: line.who, text: line.text })) }; break;
           case 'leave': step = { who: s.who, leave: true }; break;
@@ -180,7 +182,7 @@
     }
     function sceneProblems(sc) {
       const out = [], tag = `Scenen "${sc.name}"`, ids = new Set(sc.cast.map(c => c.id));
-      if (!sc.cast.length && !sc.steps.some(s => s.type === 'dialog')) out.push({ text: `${tag} har ingen med.` });
+      if (!sc.cast.length && sc.steps.some(s => !NO_WHO.includes(s.type))) out.push({ text: `${tag} har ingen med.` });
       if (!sc.steps.length) out.push({ text: `${tag} har inga steg.` });
       const here = new Set(sc.cast.filter(c => c.at).map(c => c.id));
       sc.steps.forEach((s, i) => {
@@ -202,7 +204,7 @@
       const targets = [['hq', 'basen'], ...buildingTypes.filter(b => b !== 'hq').map(b => [b, 'byggnaden ' + b]), ...castIds.map(id => [id, 'personen ' + id]), ['__map', 'en plats på kartan…']];
       const t = stepDraft.type, whoOpts = castIds.length ? castIds : ['(ingen med än)'];
       if (!castIds.includes(stepDraft.who)) stepDraft.who = castIds[0] || '';
-      const needTarget = t === 'walk' || t === 'appear', needWho = !NO_WHO.includes(t);
+      const needTarget = t === 'walk' || t === 'appear' || t === 'camera', needWho = !NO_WHO.includes(t);
       return `<div class="row">${select('', scenes.map((s, i) => [i, s.name]), cur, 'sceneIndex')}<button class="small" data-act="newScene">+ Ny</button><button class="small danger" data-act="deleteScene" title="Radera scenen">✕</button></div>
         <div class="row">Namn <input data-bind="scene.name" value="${esc(sc.name)}" style="flex:1"></div>
         <h4>1. När startar scenen?</h4>
@@ -215,7 +217,7 @@
           <div class="row"><button class="primary" data-act="castAdd">Finns från början (klicka på kartan)</button></div><div class="row"><button data-act="castLater">Dyker upp senare</button></div></div>
         <h4>3. Vad händer? (uppifrån och ned)</h4>
         ${sc.steps.length ? sc.steps.map((s, i) => `<div class="step"><b>${i + 1}.</b><span>${esc(stepLabel(sc, s))}</span><button class="small" data-act="sUp" data-i="${i}">↑</button><button class="small" data-act="sDown" data-i="${i}">↓</button><button class="small danger" data-act="sDel" data-i="${i}">✕</button></div>`).join('') : '<p class="hint">Inga steg än. Allt som står här händer efter varandra. En dialog tillhör scenen och spelas även om personerna försvunnit.</p>'}
-        <div class="card"><div class="row">${needWho ? select('', whoOpts, stepDraft.who, 'stepDraft.who') : ''} ${select('', [['walk', 'går till…'], ['appear', 'dyker upp vid…'], ['say', 'säger (pratbubbla)'], ['leave', 'lämnar scenen (går mot dimman)'], ['vanish', 'försvinner direkt'], ['dialog', 'DIALOG (dialogruta, flera personer)'], ['wait', 'VÄNTA (sekunder)']], t, 'stepDraft.type')}</div>
+        <div class="card"><div class="row">${needWho ? select('', whoOpts, stepDraft.who, 'stepDraft.who') : ''} ${select('', [['walk', 'går till…'], ['appear', 'dyker upp vid…'], ['say', 'säger (pratbubbla)'], ['leave', 'lämnar scenen (går mot dimman)'], ['vanish', 'försvinner direkt'], ['camera', 'KAMERAN flyttar till…'], ['dialog', 'DIALOG (dialogruta, flera personer)'], ['wait', 'VÄNTA (sekunder)']], t, 'stepDraft.type')}</div>
           ${needTarget ? `<div class="row">${select('', targets.filter(x => t === 'walk' || x[0] !== castIds[0] || true), stepDraft.target, 'stepDraft.target')}</div>` : ''}
           ${t === 'say' ? `<div class="row"><input data-bind="stepDraft.text" value="${esc(stepDraft.text)}" placeholder="vad sägs?" style="width:100%"></div><div class="hint" style="margin:0">Personen väntar tills bubblan är klar. Rösten följer med om hen har en.</div>` : ''}
           ${t === 'dialog' ? `<div class="row"><textarea data-bind="stepDraft.text" style="height:90px;font:12px sans-serif" placeholder="en replik per rad, så här:\nthordram: Text\nreeve: [angry]Mer text">${esc(stepDraft.text)}</textarea></div>` : ''}
@@ -338,7 +340,7 @@
       stepAdd: () => {
         const sc = sceneNow(), d = stepDraft, who = NO_WHO.includes(d.type) ? '' : d.who; if (!who && !NO_WHO.includes(d.type)) { notice('Lägg först till någon som är med i scenen.'); return; }
         const step = { who, type: d.type };
-        if (d.type === 'walk' || d.type === 'appear') { if (d.target === '__map') { st.arm = { kind: 'sceneStep', who, type: d.type }; render(); return; } step.arg = d.target; }
+        if (d.type === 'walk' || d.type === 'appear' || d.type === 'camera') { if (d.target === '__map') { st.arm = { kind: 'sceneStep', who, type: d.type }; render(); return; } step.arg = d.target; }
         else if (d.type === 'say') { if (!d.text.trim()) { notice('Skriv vad som sägs.'); return; } step.arg = { text: d.text.trim(), secs: 2 }; d.text = ''; }
         else if (d.type === 'dialog') { const lines = lineList(d.text); if (!lines.length) { notice('Skriv minst en replik, t.ex. narrator: Text'); return; } step.arg = lines; d.text = ''; }
         else if (d.type === 'wait') step.arg = +d.wait || 1;
@@ -442,7 +444,7 @@
       if (base && st.tab === 'scene' && sceneNow()) {
         const sc = sceneNow();
         for (const c of sc.cast) if (c.at) wanted.push({ x: base.x + c.at[0], y: base.y + c.at[1], label: c.id.slice(0, 7), color: 'rgb(255 213 74 / 90%)', wide: true });
-        sc.steps.forEach((s, i) => { const tile = (s.type === 'walk' || s.type === 'appear') && (Array.isArray(s.arg) || typeof s.arg === 'string') && tileOfTarget(s.arg); if (tile) wanted.push({ ...tile, label: String(i + 1), color: 'rgb(120 200 255 / 90%)' }); });
+        sc.steps.forEach((s, i) => { const tile = (s.type === 'walk' || s.type === 'appear' || s.type === 'camera') && (Array.isArray(s.arg) || typeof s.arg === 'string') && tileOfTarget(s.arg); if (tile) wanted.push({ ...tile, label: String(i + 1), color: 'rgb(120 200 255 / 90%)' }); });
       }
       while (marks.length < wanted.length) { const div = document.createElement('div'); div.style.cssText = 'position:absolute;color:#000;font:bold 11px sans-serif;text-align:center;border-radius:10px;white-space:nowrap;padding:0 3px;box-sizing:border-box;min-width:16px'; markerBox.appendChild(div); marks.push(div); }
       marks.forEach((div, i) => {
