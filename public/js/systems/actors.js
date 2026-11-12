@@ -16,7 +16,7 @@
      kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
      tell: [dialograder]  visar en dialog och väntar tills den lästs
-     Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { camera: mål, zoom: 1-5 (valfritt) }, ... ]. Stegen sker i ordning, ett i taget.
+     Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { camera: mål, zoom: 1-5 (valfritt) }, ... ]. Stegen sker i ordning, ett i taget (together: true på ett steg = det börjar samtidigt som förra steget, och nästa steg väntar på båda).
      Grupp: spawn med count: n skapar n st (id#1 ... id#n) på samma ruta. Ett steg med gruppens id gäller alla: de går med en kort fördröjning var (ett led) och slutar på samma ruta (högst 20 per ruta, resten på rutorna runt); bara den första talar.
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
    Mål (walk, teleport, spawn.at): [dx, dy] (rutor från spelarens HQ), 'hq', ett byggnads-id ('bakery' = närmaste), ett skådespelar-id, { x, y } (absolut ruta),
@@ -171,7 +171,7 @@
       for (const scene of state().scenes || []) {
         scene.running = scene.running.filter(run => !this.sceneDone(scene, run, dt));
         let guard = 0;
-        while (!scene.running.length && scene.index < scene.steps.length && guard++ < 100) {
+        while ((!scene.running.length || scene.steps[scene.index]?.together) && scene.index < scene.steps.length && guard++ < 100) {   // together: true = börjar direkt, utan att vänta på förra steget
           {
             const step = scene.steps[scene.index], i = scene.index++;
             if (step.camera !== undefined) { const tile = this.resolve(step.camera, null); if (tile) { CityBuilder.Game.scrollTo(Math.floor(tile.x), Math.floor(tile.y), true, step.zoom); scene.running.push({ kind: 'wait', left: .8 }); } }
