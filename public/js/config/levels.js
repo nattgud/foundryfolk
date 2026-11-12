@@ -996,6 +996,9 @@
   const starsFor = seconds => { const par = state.info.goal.par; return 1 + (seconds <= par ? 1 : 0) + (seconds <= par * 0.6 ? 1 : 0); };
 
   const Systems = CityBuilder.Systems = CityBuilder.Systems || {};
+  const goalsDone = () => progress.won || evaluate().every(item => item.done);
+  // Händelser med end: true körs när alla mål är uppnådda, och kapitlet avslutas först efter dem
+  const endEventPending = () => (state.info.story?.events || []).some((event, i) => event.end && !progress.told['event:' + i]);
   Systems.levels = {
     update(deltaSeconds) {
       advancing = false;   // nya banan körs
@@ -1004,7 +1007,7 @@
       if (checkTimer >= 1) {
         checkTimer = 0;
         // En scen som pågår spelas klart först: kapitlet avslutas när den är färdig (scenerna tas bort ur listan när de är klara).
-        if (!progress.complete && !progress.actors.scenes?.length && (progress.won || evaluate().every(item => item.done))) {
+        if (!progress.complete && !progress.actors.scenes?.length && !endEventPending() && goalsDone()) {
           progress.complete = true;
           progress.stars = state.info.custom || state.info.story ? 0 : starsFor(progress.seconds);
           completeListeners.forEach(fn => { try { fn(Levels.result()); } catch (e) { console.error(e); } });
@@ -1136,6 +1139,7 @@
     // Berättelsen som visats i det här kapitlet (följer med sparningen): brev, dialoger och händelser berättas en gång
     told: key => !!progress.told[key],
     markTold: key => { progress.told[key] = true; },
+    goalsDone,
     onComplete: fn => { completeListeners.push(fn); },
     // ---- Custom map ----
     CUSTOM: { get races() { return Object.entries(CityBuilder.Config.races || {}).map(([id, race]) => [id, race.name || id]); }, maxEnemies: MAX_CUSTOM_ENEMIES, difficulties: DIFFICULTIES.length, teams: TEAM_CHOICES, steps: 5 },

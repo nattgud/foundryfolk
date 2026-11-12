@@ -225,10 +225,11 @@
       (chapter.events || []).forEach((event, i) => {
         if (Levels.told('event:' + i)) return;
         if (event.guide && CityBuilder.UI.guideDone()) { Levels.markTold('event:' + i); return; }   // guide: true = hör till guiden och hoppas över av den som redan klarat den
-        if (event.at === undefined && !event.goal && !event.when) return;
+        if (event.at === undefined && !event.goal && !event.when && !event.end) return;
         if (event.whileFog && Levels.told('fog:lifted')) { Levels.markTold('event:' + i); return; }   // dimman har lyft: händelsen skulle komma för sent
         if (event.at !== undefined && Levels.seconds < event.at) return;
         if (event.goal && !Levels.progress()[event.goal - 1]?.done) return;
+        if (event.end && !Levels.goalsDone()) return;   // end: true = när alla mål är uppnådda; kapitlet väntar in händelsen (och dess scen) innan det avslutas
         if ([].concat(event.when || []).some(need => !this.reached(need, chapter))) return;   // when kan vara flera villkor som alla ska gälla
         Levels.markTold('event:' + i);
         Levels.markTold('fired:' + i);   // utlöst på riktigt (en hoppad händelse är bara 'event:'), bara en utlöst händelse byter musik

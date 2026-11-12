@@ -128,6 +128,7 @@
       time:  { label: 'Efter så här många sekunder in i kapitlet', f: [['n', 'num', 'sekunder']], make: v => ({ top: { at: +v.n } }), text: v => `efter ${v.n} s` },
       goal:  { label: 'När ett mål är klart', f: [['n', 'num', 'målnummer (1 = första)']], make: v => ({ top: { goal: +v.n } }), text: v => `när mål ${v.n} är klart` },
       built: { label: 'När spelaren har byggt något', f: [['bld', 'bld'], ['n', 'num', 'antal']], make: v => ({ when: { type: 'build', id: v.bld, amount: +v.n || 1 } }), text: v => `när ${v.n || 1} ${v.bld} är byggt` },
+      end:   { label: 'När alla mål är uppnådda (banan avslutas efter scenen)', f: [], make: () => ({ top: { end: true } }), text: () => 'när alla mål är uppnådda' },
       made:  { label: 'När så här mycket har tillverkats', f: [['res', 'res'], ['n', 'num', 'antal']], make: v => ({ when: { resource: v.res, made: +v.n } }), text: v => `när ${v.n} ${v.res} är tillverkat` },
     };
     const field = (type, id, hint) => {
@@ -202,7 +203,7 @@
     function viewScene() {
       const sc = sceneNow();
       if (!sc) return `<p>En <b>scen</b> är något som händer i berättelsen: du väljer vilka som är med och skriver sedan vad som händer, steg för steg, i ordning.</p><div class="row"><button class="primary" data-act="newScene">Skapa en scen</button></div>`;
-      const groups = [...new Set(Object.values(COND).map(item => item.group))], cond = COND[sceneCond];
+      const cond = COND[sceneCond];
       const castIds = sc.cast.map(c => c.id), chars = Object.entries(characters);
       const targets = [['hq', 'basen'], ...buildingTypes.filter(b => b !== 'hq').map(b => [b, 'byggnaden ' + b]), ...castIds.map(id => [id, 'personen ' + id]), ['__map', 'en plats på kartan…']];
       const t = stepDraft.type, whoOpts = castIds.length ? castIds : ['(ingen med än)'];
@@ -212,7 +213,7 @@
         <div class="row">Namn <input data-bind="scene.name" value="${esc(sc.name)}" style="flex:1"></div>
         <h4>1. När startar scenen?</h4>
         ${sc.conds.length ? sc.conds.map((c, i) => `<div class="step"><span>${esc(COND[c.kind].text(c.v))}</span><button class="small danger" data-act="sceneCondDel" data-i="${i}">✕</button></div>`).join('') : '<p class="hint">Direkt när kapitlet startar. Lägg till ett villkor om den ska vänta på något.</p>'}
-        <div class="card"><div class="hint" style="margin:0">${sc.conds.length ? 'Fler villkor:' : 'Låt den vänta på något:'}</div><div class="row"><select data-bind="sceneCond" style="width:100%">${groups.map(group => `<optgroup label="${group}">${Object.entries(COND).filter(([, item]) => item.group === group).map(([kind, item]) => `<option value="${kind}"${sceneCond === kind ? ' selected' : ''}>${item.label}</option>`).join('')}</optgroup>`).join('')}</select></div>
+        <div class="card"><div class="hint" style="margin:0">${sc.conds.length ? 'Fler villkor:' : 'Låt den vänta på något:'}</div><div class="row"><select data-bind="sceneCond" style="width:100%">${Object.entries(COND).map(([kind, item]) => `<option value="${kind}"${sceneCond === kind ? ' selected' : ''}>${item.label}</option>`).join('')}</select></div>
           <div class="row">${cond.f.map(([, type, hint], i) => field(type, 'sc' + i, hint)).join(' ')}</div><div class="row"><button data-act="sceneCondAdd">Lägg till</button></div></div>
         <h4>2. Vilka är med?</h4>
         ${sc.cast.length ? sc.cast.map((c, i) => `<div class="card"><div class="row"><img class="pv" src="${esc(imageSrc(c.image, c.race))}" onerror="this.style.display='none'"><b>${esc(c.id)}</b><span class="hint">${c.at ? 'finns från början, vid ruta ' + c.at.join(', ') : 'dyker upp senare (i ett steg)'}</span></div><div class="row"><button class="small" data-act="castMove" data-i="${i}">${c.at ? 'Flytta på kartan' : 'Placera från början'}</button><button class="small danger" data-act="castDel" data-i="${i}">Ta bort</button></div></div>`).join('') : '<p class="hint">Ingen än.</p>'}
@@ -240,7 +241,7 @@
       const out = {}; if (event.id) out.id = event.id;
       const top = {}, when = [];
       for (const cond of event.conds) { const made = COND[cond.kind].make(cond.v); if (made.top) Object.assign(top, made.top); else when.push(made.when); }
-      if (top.at === undefined && top.goal === undefined && !when.length) top.at = 0;
+      if (top.at === undefined && top.goal === undefined && !top.end && !when.length) top.at = 0;
       Object.assign(out, top);
       if (when.length) out.when = when.length === 1 ? when[0] : when;
       return out;
