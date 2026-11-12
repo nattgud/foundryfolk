@@ -399,6 +399,8 @@
       'Eating': 'Äter',
       'Wandering': 'Strövar',
       "Can't reach": 'Kan inte nå fram',
+      'Blocked: no path to {name}': 'Blockerat: ingen väg till {name}',
+      'Blocked: no path': 'Blockerat: ingen väg',
       'Hunted': 'Jagas',
       'Paused': 'Pausad',
       'Gathering': 'Samlar',

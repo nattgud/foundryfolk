@@ -530,7 +530,7 @@
       if (unit.actor) { unit.stepQueue.length = 0; unit.pathFailed = true; return; }   // skådespelaren teleporteras av Actors
       const step = unit.stepQueue[0];
       unit.stepQueue.length = 0; unit.idleCooldown = 1; unit.status = "Can't reach";
-      if (!unit.definition.isSoldier) CityBuilder.Bubbles?.stuck(unit);
+      if (!unit.definition.isSoldier) { const task = unit.deliveryTask; CityBuilder.Bubbles?.stuck(unit, task ? Logistics.pairKey(task.source, task.destination) : undefined, task?.destination); }
       Logistics.failTask(unit);
       if (unit.definition.isSoldier) CityBuilder.Combat.onPathFailure(unit, step);
     },

@@ -3,14 +3,17 @@
                                                 talare (valfri, ett id i Config.story.speakers): texten skrivs då ut tecken för tecken med talarens röst, precis som i dialogerna, och
                                                 sekunder är hur länge bubblan står kvar efter att allt är sagt. [tonläge] i texten byter röstläge (Voice.parse) och visas inte.
                                                 Allt börjar först när bubblan syns första gången (enheten syns, ingen dialog är öppen), så inget går förlorat i dimman.
-     Bubbles.stuck(enhet)                       en "!" över en arbetare som fastnat (högst en gång per 10 s och enhet; av med Config.settings.stuckBubbles = false)
+     Bubbles.stuck(enhet, nyckel, mål)          en varning över en arbetare vars väg är blockerad. Den visas först när samma väg (nyckel, t.ex. källa>mål) misslyckats upprepade gånger under
+                                                minst STUCK_AFTER sekunder, så ett kort hack syns aldrig; högst en gång per STUCK_COOLDOWN s och väg. mål = byggnaden bäraren inte nådde (för texten).
+                                                Av med Config.settings.stuckBubbles = false
    Bubblorna fångar aldrig klick (pointer-events: none), ligger i DOM-ordningen direkt efter spelytan så att alla paneler och dialoger ritas över dem,
    döljs helt medan en dialog (.resource-window-overlay) är öppen, visas bara för enheter spelaren ser, och flyttas isär om de skulle överlappa. Högst MAX visas samtidigt. */
 (function (CityBuilder) {
   'use strict';
   const { Players, Config } = CityBuilder;   // Renderer laddas senare, så den slås upp först när den behövs
   const LINGER = 1.8, GIVE_UP = 25;   // sekunder kvar efter ett röstat tal; sekunder en bubbla får vänta på att synas innan den ges upp
-  const MAX = 5, GAP = 3, DEFAULT_SECONDS = 3.5, FADE = 0.4, STUCK_SECONDS = 2.5, STUCK_COOLDOWN = 10;
+  const MAX = 5, GAP = 3, DEFAULT_SECONDS = 3.5, FADE = 0.4, STUCK_SECONDS = 4, STUCK_COOLDOWN = 90, STUCK_AFTER = 10, STUCK_GAP = 45;   // sekunder
+  const blocked = new Map();   // väg (nyckel) -> { first, last, n, shown }: när den började misslyckas, senaste misslyckandet, antal, senaste visningen
   const bubbles = new Map();   // enhet -> { el, until, born, order }
   let layer = null, counter = 0;
 
@@ -23,7 +26,7 @@
         font: 12px/1.25 sans-serif; text-align: center; box-shadow: 0 1px 3px rgb(0 0 0 / 35%); transition: opacity .35s; will-change: transform; }
       #bubbleLayer .bubble::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 8px; height: 8px; margin-left: -4px; background: inherit; border: inherit;
         border-top: 0; border-left: 0; transform: rotate(45deg); }
-      #bubbleLayer .bubble.stuck { font-weight: bold; color: #b00020; padding: 1px 8px; font-size: 14px; }`;
+      #bubbleLayer .bubble.stuck { font-weight: bold; color: #b00020; border-color: #b00020; }`;
     document.head.appendChild(style);
     layer = document.createElement('div'); layer.id = 'bubbleLayer';
     const canvas = CityBuilder.Renderer?.canvas;
@@ -67,13 +70,20 @@
       bubbles.set(unit, { el, handle, shownPart, restPart, plain, voice, speaker, seconds: seconds || (voice ? LINGER : DEFAULT_SECONDS), until: Infinity, born: now(), started: false, order: ++counter });
       return handle;
     },
-    stuck(unit) {
+    stuck(unit, key, target) {
       if (Config.settings?.stuckBubbles === false || !unit || unit.removed || unit.player !== Players.HUMAN) return;
-      const t = now();
-      if (unit.stuckBubbleAt && t - unit.stuckBubbleAt < STUCK_COOLDOWN) return;
-      unit.stuckBubbleAt = t; this.say(unit, '!', STUCK_SECONDS, 'stuck');
+      const t = now(); key = key ?? 'unit' + unit.id;
+      let record = blocked.get(key);
+      if (!record || t - record.last > STUCK_GAP) record = { first: t, last: t, n: 0, shown: record?.shown ?? -Infinity };   // en ny period av misslyckanden
+      record.last = t; record.n++; blocked.set(key, record);
+      if (blocked.size > 200) for (const [k, r] of blocked) if (t - r.last > 300) blocked.delete(k);
+      if (record.n < 2 || t - record.first < STUCK_AFTER || t - record.shown < STUCK_COOLDOWN) return;
+      record.shown = t;
+      let name = ''; try { const UI = CityBuilder.UI; name = target?.definition ? UI.buildingName(target.definition, UI.raceOfBuilding(target)) : ''; } catch (error) { name = ''; }
+      const text = name ? CityBuilder.t('Blocked: no path to {name}', { name }) : CityBuilder.t('Blocked: no path');
+      this.say(unit, '⚠ ' + text, STUCK_SECONDS, 'stuck');
     },
-    clear() { for (const unit of [...bubbles.keys()]) drop(unit); },
+    clear() { for (const unit of [...bubbles.keys()]) drop(unit); blocked.clear(); },
     get count() { return bubbles.size; },
 
     // Placerar alla bubblor för en bildruta
