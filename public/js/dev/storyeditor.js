@@ -191,7 +191,7 @@
       give:  { label: 'Ge varor till spelaren', f: [['res', 'res'], ['n', 'num', 'antal']], text: v => `ge ${v.n} ${v.res}` },
     };
     const field = (type, id, hint) => {
-      if (type === 'num') return `<input type="number" id="${id}" placeholder="${esc(hint || '')}" style="width:90px">`;
+      if (type === 'num') return `<input type="number" id="${id}" value="${/sekund/.test(hint) ? 60 : /radie/.test(hint) ? 3 : 1}" title="${esc(hint || '')}" style="width:70px"> <span class="hint">${esc(hint || '')}</span>`;
       if (type === 'text') return `<input id="${id}" placeholder="${esc(hint || '')}" style="width:100%">`;
       if (type === 'res') return select(id, resourceIds, 'wood');
       if (type === 'bld') return select(id, ['hq', ...buildingTypes], 'hq');
@@ -316,6 +316,8 @@
       panel.scrollTop = scrollTop; persist();
     }
     const note = text => { st.note = text; render(); };
+    // Ett felmeddelande utan omritning: det du fyllt i bevaras, och meddelandet står vid knapparna längst ned
+    const notice = text => { st.note = ''; let el = $('#seNotice'); if (!el) { el = document.createElement('p'); el.id = 'seNotice'; el.className = 'warn'; $('.se-body').appendChild(el); } el.textContent = '⚠ ' + text; el.scrollIntoView?.({ block: 'nearest' }); };
 
     // ---------------------------------------------------------------- inmatning i panelen
     const setPath = (path, value) => {
@@ -332,7 +334,7 @@
     });
     panel.addEventListener('click', event => {
       const button = event.target.closest('[data-act]'); if (!button) return;
-      st.note = ''; const fn = actions[button.dataset.act]; if (fn) fn(button.dataset, event);
+      st.note = ''; if (button.dataset.act !== 'saveEvent') st.confirmNoCond = false; const fn = actions[button.dataset.act]; if (fn) fn(button.dataset, event);
     });
 
     // ---------------------------------------------------------------- skådespelarens bygge
@@ -344,7 +346,7 @@
       return { ...def, at: draft.at, script: draft.script.map(step => ({ ...step })) };
     };
     const killStep = () => {
-      const id = $('#stVictim')?.value, how = $('#stLeave')?.value; if (!id || id.startsWith('(')) { note('Spara en annan skådespelare först, den som ska dödas.'); return null; }
+      const id = $('#stVictim')?.value, how = $('#stLeave')?.value; if (!id || id.startsWith('(')) { notice('Spara en annan skådespelare först, den som ska dödas.'); return null; }
       return how === 'blood' ? { kill: id } : { kill: { actor: id, leave: how === 'both' ? ['blood', 'corpse'] : how } };
     };
     const move = (list, i, d) => { const j = i + d; if (j >= 0 && j < list.length) [list[i], list[j]] = [list[j], list[i]]; };
@@ -362,7 +364,7 @@
       }
     }
     function play(def) {
-      if (!def.at) { note('Välj en startruta först.'); return; }
+      if (!def.at) { notice('Välj en startruta först.'); return; }
       stopPreview(); previewBase = C.Levels.progressRef().actors.leftovers.length;
       const needs = new Set();
       for (const step of def.script) { const [type, arg] = Object.entries(step)[0]; const target = type === 'kill' ? (typeof arg === 'string' ? arg : arg.actor) : (type === 'walk' || type === 'teleport') && typeof arg === 'string' ? arg : null; if (target && target !== def.id && defById(target)) needs.add(target); }
@@ -382,11 +384,11 @@
       armStart: () => { st.arm = { kind: 'start' }; render(); },
       armStep: ({ type }) => { st.arm = { kind: 'step', type }; render(); },
       addWait: () => { draft.script.push({ wait: +$('#stWait').value || 1 }); render(); },
-      addSay: () => { const text = $('#stText').value.trim(); if (!text) { note('Skriv vad som sägs.'); return; } const line = { who: $('#stSpeaker').value, text }, last = draft.script[draft.script.length - 1];
+      addSay: () => { const text = $('#stText').value.trim(); if (!text) { notice('Skriv vad som sägs.'); return; } const line = { who: $('#stSpeaker').value, text }, last = draft.script[draft.script.length - 1];
         if (last && last.tell) last.tell.push(line); else draft.script.push({ tell: [line] });   // repliker i rad hör till samma dialog; något annat emellan startar en ny
         $('#stText').value = ''; render(); },
       addBubble: () => {
-        const text = $('#stBubble').value.trim(); if (!text) { note('Skriv vad bubblan ska säga.'); return; }
+        const text = $('#stBubble').value.trim(); if (!text) { notice('Skriv vad bubblan ska säga.'); return; }
         const seconds = +$('#stBubbleSec').value || 3, wait = $('#stBubbleWait').checked;
         draft.script.push({ say: seconds === 3.5 && !wait ? text : { text, for: seconds, ...(wait ? { wait: true } : {}) } }); render();
       },
@@ -398,11 +400,11 @@
       stepDel: ({ i }) => { draft.script.splice(+i, 1); render(); },
       saveActor: () => {
         const def = currentDef();
-        if (!def.id) { note('Ge skådespelaren ett namn.'); return; }
-        if (!def.image) { note('Välj en bild.'); return; }
-        if (!def.at) { note('Välj en startruta på kartan.'); return; }
+        if (!def.id) { notice('Ge skådespelaren ett namn.'); return; }
+        if (!def.image) { notice('Välj en bild.'); return; }
+        if (!def.at) { notice('Välj en startruta på kartan.'); return; }
         const duplicate = defs.findIndex((other, i) => other.id === def.id && i !== draft.editing);
-        if (duplicate >= 0) { note(`Det finns redan en skådespelare som heter ${def.id}.`); return; }
+        if (duplicate >= 0) { notice(`Det finns redan en skådespelare som heter ${def.id}.`); return; }
         if (draft.editing !== null) { const oldId = defs[draft.editing].id; defs[draft.editing] = def; if (oldId !== def.id) for (const event of events) for (const effect of event.effects) if (effect.v.actor === oldId) effect.v.actor = def.id; } else defs.push(def);
         const image = draft.image; draft = blankDraft(); draft.image = image; note(`Sparade ${def.id}. Glöm inte att starta den med en händelse (knappen på kortet, eller fliken Händelser).`);
       },
@@ -414,17 +416,19 @@
       stopPreview: () => { stopPreview(); note('Uppspelningen är rensad.'); },
       startAtBegin: ({ id }) => { events.push({ id: '', conds: [{ kind: 'time', v: { n: '0' } }], effects: [{ kind: 'spawn', v: { actor: id } }] }); note(`Skapade en händelse som startar ${id} när kapitlet börjar (se fliken Händelser).`); },
       // händelser
-      addCond: () => { const spec = COND[evDraft.addCond], v = read(spec, 'c'); if (Object.values(v).some(value => value === '')) { note('Fyll i alla fält.'); return; } evDraft.conds.push({ kind: evDraft.addCond, v }); render(); },
+      addCond: () => { const spec = COND[evDraft.addCond], v = read(spec, 'c'); if (Object.values(v).some(value => value === '')) { notice('Fyll i alla fält.'); return; } evDraft.conds.push({ kind: evDraft.addCond, v }); render(); },
       condDel: ({ i }) => { evDraft.conds.splice(+i, 1); render(); },
       addEff: () => {
         const spec = EFF[evDraft.addEff], v = read(spec, 'e');
-        if (Object.values(v).some(value => value === '')) { note('Fyll i alla fält.'); return; }
-        if (evDraft.addEff === 'act' && !draft.script.length) { note('Manuset är tomt. Bygg ett i fliken Skådespelare först.'); return; }
+        if (Object.values(v).some(value => value === '')) { notice('Fyll i alla fält.'); return; }
+        if (evDraft.addEff === 'act' && !draft.script.length) { notice('Manuset är tomt. Bygg ett i fliken Skådespelare först.'); return; }
         evDraft.effects.push({ kind: evDraft.addEff, v, script: evDraft.addEff === 'act' ? draft.script.map(step => ({ ...step })) : undefined }); render();
       },
       effDel: ({ i }) => { evDraft.effects.splice(+i, 1); render(); },
       saveEvent: () => {
-        if (!evDraft.conds.length && !evDraft.effects.length) { note('Lägg till något först.'); return; }
+        if (!evDraft.conds.length && !evDraft.effects.length) { notice('Lägg till något först.'); return; }
+        if (!evDraft.conds.length && !st.confirmNoCond) { st.confirmNoCond = true; notice('Du har inte lagt till något villkor (1. När ska det hända?), så händelsen sker direkt när kapitlet startar (at: 0). Tryck Spara igen om det är meningen, annars lägg till villkoret med knappen "Lägg till villkor".'); return; }
+        st.confirmNoCond = false;
         const { editing, addCond, addEff, ...rest } = evDraft, event = { ...rest, id: evDraft.id.trim() };
         if (editing !== null) events[editing] = event; else events.push(event);
         evDraft = blankEvent(); note('Händelsen är sparad.');
@@ -456,7 +460,7 @@
     }
     const buildingAt = (x, y) => { const building = World.buildingAt(x, y); return editable(building) ? building : null; };
     function placeBuilding(type, x, y, dead) {
-      if (!World.canPlace(type, x, y)) { note(`${type} kan inte stå på ${x}, ${y}.`); return null; }
+      if (!World.canPlace(type, x, y)) { notice(`${type} kan inte stå på ${x}, ${y}.`); return null; }
       const building = World.placeBuilding(C.Construction.variantFor(type, x, y) || type, x, y, true, dead ? Story.deadOwner() : Players.HUMAN);
       return dead ? World.makeDead(building) : Story.ready(building);
     }
