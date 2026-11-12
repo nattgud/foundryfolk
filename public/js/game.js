@@ -206,15 +206,19 @@
     },
 
     // Rullar kartan mjukt så att rutan hamnar i mitten (görs bara om den inte redan syns väl)
-    scrollTo(x, y, always) {   // always: rulla även om rutan redan syns (berättelsens kamerasteg)
-      const renderer = CityBuilder.Renderer, size = renderer.tileSize, viewW = innerWidth / renderer.zoom, viewH = innerHeight / renderer.zoom;
+    scrollTo(x, y, always, zoomLevel) {   // always: rulla även om rutan redan syns; zoomLevel 1-5 (minst till mest) zoomar samtidigt (berättelsens kamerasteg)
+      const renderer = CityBuilder.Renderer, size = renderer.tileSize, fromZoom = renderer.zoom, limits = CityBuilder.Config.settings.zoom;
+      const toZoom = zoomLevel >= 1 ? CityBuilder.Utils.clamp(limits.min * (limits.max / limits.min) ** ((Math.min(5, zoomLevel) - 1) / 4), limits.min, limits.max) : fromZoom;
+      const viewW = innerWidth / toZoom, viewH = innerHeight / toZoom;
       const goalX = (x + 0.5) * size - viewW / 2, goalY = (y + 0.5) * size - viewH / 2, fromX = renderer.camera.x, fromY = renderer.camera.y;
-      if (!always && Math.abs(goalX - fromX) < viewW * 0.3 && Math.abs(goalY - fromY) < viewH * 0.3) return;
+      if (!always && toZoom === fromZoom && Math.abs(goalX - fromX) < viewW * 0.3 && Math.abs(goalY - fromY) < viewH * 0.3) return;
       const start = performance.now(), ms = 600, token = this.scrollToken = {};
       const step = now => {
         if (this.scrollToken !== token) return;   // en nyare rullning har tagit över
         const t = Math.min(1, (now - start) / ms), ease = 1 - (1 - t) ** 3;
-        renderer.camera.x = fromX + (goalX - fromX) * ease; renderer.camera.y = fromY + (goalY - fromY) * ease;
+        const zoom = fromZoom + (toZoom - fromZoom) * ease, fromCx = fromX + innerWidth / fromZoom / 2, fromCy = fromY + innerHeight / fromZoom / 2;   // mittpunkten glider, så målet hamnar mitt på skärmen vid vilken zoom som helst
+        renderer.zoom = zoom;
+        renderer.camera.x = fromCx + ((x + 0.5) * size - fromCx) * ease - innerWidth / zoom / 2; renderer.camera.y = fromCy + ((y + 0.5) * size - fromCy) * ease - innerHeight / zoom / 2;
         if (t < 1) requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
