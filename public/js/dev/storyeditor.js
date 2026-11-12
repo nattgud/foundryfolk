@@ -60,6 +60,7 @@
         case 'wait': return `Väntar ${arg} s`;
         case 'tell': return `Dialog: ${arg.map(line => `${line.who}: “${line.text}”`).join(' / ')}`;
         case 'kill': { const spec = typeof arg === 'string' ? { actor: arg } : arg; return `Dödar ${spec.actor} (${spec.leave === undefined ? 'blodpöl' : [].concat(spec.leave).join(' + ')})`; }
+        case 'say': { const spec = typeof arg === 'string' ? { text: arg } : arg; return `Pratbubbla: “${spec.text}”${spec.for ? ` (${spec.for} s${spec.wait ? ', väntar' : ''})` : ''}`; }
         case 'vanish': return 'Försvinner direkt';
         case 'leave': return 'Går mot dimman och försvinner';
         default: return `${type}: ${JSON.stringify(arg)}`;
@@ -150,6 +151,7 @@
           <div class="hint" style="margin:0">…och klicka sedan på kartan (en byggnad = byggnaden som mål).</div>
           <div class="row"><input type="number" id="stWait" value="2" style="width:55px"> s <button data-act="addWait">Vänta</button></div>
           <div class="row">${select('stSpeaker', speakerIds.length ? speakerIds : ['narrator'], 'narrator')}<input id="stText" placeholder="Vad sägs?" style="flex:1;min-width:80px"><button data-act="addSay">Dialog</button></div>
+          <div class="row"><input id="stBubble" placeholder="Pratbubbla: text" style="flex:1;min-width:80px"><input type="number" id="stBubbleSec" value="3" style="width:46px" title="sekunder"> s <label title="Manuset väntar tills bubblan är borta"><input type="checkbox" id="stBubbleWait"> vänta</label><button data-act="addBubble">Pratbubbla</button></div>
           <div class="row">${select('stVictim', known.length ? known : ['(ingen annan sparad)'], known[0] || '')} ${select('stLeave', [['blood', 'blodpöl'], ['corpse', 'lik'], ['both', 'båda'], ['none', 'inget']], 'blood')} <button data-act="addKill">Dödar</button></div>
           <div class="row"><button data-act="addLeave" title="Går mot närmaste ruta utom spelarens synfält och försvinner när den inte syns">Lämna scenen (mot dimman)</button><button data-act="addVanish">Försvinn direkt</button></div>
         </div>
@@ -370,6 +372,11 @@
       armStep: ({ type }) => { st.arm = { kind: 'step', type }; render(); },
       addWait: () => { draft.script.push({ wait: +$('#stWait').value || 1 }); render(); },
       addSay: () => { const text = $('#stText').value.trim(); if (!text) { note('Skriv vad som sägs.'); return; } draft.script.push({ tell: [{ who: $('#stSpeaker').value, text }] }); render(); },
+      addBubble: () => {
+        const text = $('#stBubble').value.trim(); if (!text) { note('Skriv vad bubblan ska säga.'); return; }
+        const seconds = +$('#stBubbleSec').value || 3, wait = $('#stBubbleWait').checked;
+        draft.script.push({ say: seconds === 3.5 && !wait ? text : { text, for: seconds, ...(wait ? { wait: true } : {}) } }); render();
+      },
       addKill: () => { const step = killStep(); if (step) { draft.script.push(step); render(); } },
       addLeave: () => { draft.script.push({ leave: true }); render(); },
       addVanish: () => { draft.script.push({ vanish: true }); render(); },

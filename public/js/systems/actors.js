@@ -9,6 +9,7 @@
      wait: sekunder       väntar
      teleport: mål        flyttar direkt
      vanish: true         försvinner direkt
+     say: text | { text, for: sekunder, wait: true }   pratbubbla ovanför huvudet (fast storlek, i vägen för ingenting); manuset går vidare direkt, eller efter 'for' sekunder om wait är true
      leave: true          går mot närmaste ruta som spelaren inte ser (dimman) och försvinner när den inte syns längre
      kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
@@ -200,6 +201,14 @@
     },
     vanish: {
       start(data) { Actors.remove(data); },
+    },
+    say: {
+      start(data, arg, act, unit) {
+        const spec = typeof arg === 'string' ? { text: arg } : arg, seconds = spec.for || 3.5;
+        CityBuilder.Bubbles?.say(unit, spec.text, seconds);
+        act.hold = spec.wait ? seconds : 0;
+      },
+      update(data, arg, dt, act) { return act.elapsed >= act.hold; },
     },
     // Lämnar scenen: går mot närmaste ruta utom spelarens synfält och försvinner så snart den inte syns (eller är framme, eller inte kommer fram)
     leave: {
