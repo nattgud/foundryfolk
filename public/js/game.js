@@ -94,7 +94,6 @@
       for (let i = 0; i < Config.settings.startingCarriers; i++) World.spawnUnit('carrier', 0, 0);
       const restored = Save ? Save.applyStart() : false;
       if (!restored) { CityBuilder.Sound?.restartMusic(); CityBuilder.Story?.begin(); }   // en bana eller ett kapitel som börjar om: också musiken börjar om från början      // ett kapitel som börjar om: färdiga byggnader och Eye of Shades (en sparning har dem redan)
-      CityBuilder.Actors?.rebuild();                   // skådespelarna (berättelsens enheter) skapas från framstegen, nya eller inlästa
       CityBuilder.Vision.refresh();                    // synfältet och djuren finns från första bildrutan
       CityBuilder.Animals.updateActivation();
       if (level) UI.showToast((restored ? t('Game loaded.') + ' ' : '') + (level.custom ? level.name : level.story ? t('Chapter {n}: {name}', { n: level.level, name: level.name }) : t('Level {level}: {name}', { level: level.level, name: level.name })));

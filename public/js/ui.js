@@ -2145,7 +2145,7 @@
         picture.onload = () => icon.classList.add('has-image');
         // Bilder ligger i en mapp per ras (images/buildings/human/farm.png, .../demon/farm.png): saknas rasens används människans
         const humanImage = CityBuilder.Assets.raced(image, 'human');
-        if (race && race !== 'human') { picture.onerror = () => { picture.onerror = null; picture.src = humanImage; }; picture.src = CityBuilder.Assets.racedIfExists(image, race); }
+        if (race && race !== 'human') { picture.onerror = () => { picture.onerror = null; picture.src = humanImage; }; picture.src = CityBuilder.Assets.raced(image, race); }
         else picture.src = humanImage;
         icon.appendChild(picture);
       }
@@ -3155,7 +3155,7 @@
     unitChip(unitId) {
       const unit = Config.units[unitId] || {}, name = this.unitName(unitId).replace(/"/g, '&quot;'), color = unit.color || '#3a444d';
       // Spelarens ras har egna bilder i en undermapp (images/units/demon/x.png): den provas först, sedan originalet, och saknas båda visas färgrutan
-      const race = CityBuilder.Players.imageRace(unit, CityBuilder.Players.HUMAN), raceImage = unit.image ? CityBuilder.Assets.racedIfExists(unit.image, race) : unit.image, humanImage = unit.image ? CityBuilder.Assets.raced(unit.image, 'human') : unit.image;
+      const race = CityBuilder.Players.imageRace(unit, CityBuilder.Players.HUMAN), raceImage = unit.image ? CityBuilder.Assets.raced(unit.image, race) : unit.image, humanImage = unit.image ? CityBuilder.Assets.raced(unit.image, 'human') : unit.image;
       const icon = unit.image && Config.settings.useImages !== false
         ? `<img class="info-res-icon" src="${raceImage}" alt="${name}" draggable="false" style="background:${color}" onerror="if(this.dataset.fallback){this.removeAttribute('src');this.removeAttribute('alt')}else{this.dataset.fallback=1;this.src='${humanImage}'}">`
         : `<span class="info-res-icon" style="background:${color}"></span>`;

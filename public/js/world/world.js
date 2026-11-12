@@ -218,15 +218,6 @@
     },
 
     // player = vem byggnaden tillhör (se core/players.js)
-    // Lägger till en kuliss under spelets gång (Actors: blodpöl efter en död skådespelare)
-    addScenery(type, x, y, layer = 0) {
-      const item = { type, x, y, layer }, key = Utils.tileKey(x, y);
-      if (!this.scenery.has(key)) this.scenery.set(key, []);
-      this.scenery.get(key).push(item); this.sceneryList.push(item);
-      this.sceneryList.sort((a, b) => a.layer - b.layer);
-      return item;
-    },
-
     // Det som ligger på marken (lik, blod) försvinner när något byggs ovanpå
     clearGroundScenery(x, y) {
       const key = Utils.tileKey(x, y), items = this.scenery.get(key);

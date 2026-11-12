@@ -40,16 +40,6 @@ const ANIMAL_DEFAULTS = {
 };
 
 CityBuilder.Config.units = {
-  // Skådespelare (systems/actors.js): berättelsens enheter. Ingen ägare, inget liv (kan inte skadas), ingen roll. Bild, storlek och fart sätts per skådespelare.
-  actor: {
-    isActor: true,
-    player: CityBuilder.Players.NEUTRAL,
-    speedMultiplier: 1,
-    color: '#ffffff',
-    fallbackShape: 'circle',
-    fallbackSize: 5,
-    imageSize: 16,
-  },
   carrier: {
     isHauler: true,
     wearsPaths: true,

@@ -111,7 +111,7 @@
       this.reading = true;
       const guide = this.queue.findIndex(page => page.type === 'guide');   // guidens rörelsesidor (UI.openTutorial) kommer efter det som står före dem i kön
       const pages = this.queue.splice(0, guide < 0 ? this.queue.length : guide);
-      const next = () => { for (const page of pages) if (page.mark) CityBuilder.Levels.markTold(page.mark); this.reading = false; this.flush(); };
+      const next = () => { this.reading = false; this.flush(); };
       if (pages.length) CityBuilder.StoryUI.read(pages, next);
       else { this.queue.shift(); CityBuilder.UI.openTutorial('story', next); }
     },
@@ -127,8 +127,7 @@
     fire(event) {
       const Weather = CityBuilder.Weather, hq = World.headquarters;
       if (event.give && hq) for (const [resourceId, amount] of Object.entries(event.give)) hq.storedGoods[resourceId] = (hq.storedGoods[resourceId] || 0) + amount;   // give: varor till spelarens huvudlager
-      if (event.tell) this.tell([{ type: 'dialogue', lines: event.tell, part: 'events', scene: event.scene, mark: event.id ? 'read:' + event.id : undefined }]);   // id: händelsens namn, så att { read: id } kan vänta på att dialogen lästs
-      CityBuilder.Actors?.fire(event);   // spawn och act: skådespelare
+      if (event.tell) this.tell([{ type: 'dialogue', lines: event.tell, part: 'events', scene: event.scene }]);
       if (event.weather) { Weather.type = event.weather; Weather.left = 90; Weather.flashIn = 1; CityBuilder.Sound?.play('weather.' + event.weather); }
       if (event.tornado || event.super) {
         const spot = Weather.tornadoSpot() || (hq && { x: hq.x + 10, y: hq.y + 6, player: Players.HUMAN });
@@ -183,10 +182,6 @@
 
     // Har villkoret slagit till? goal: n, left: k = målet n har högst k kvar; made: n = n har tillverkats eller samlats i kapitlet (oavsett vart varan tog vägen); annars har man amount, eller more fler än man startade med
     reached(need, chapter) {
-      for (const key of Object.keys(need)) {   // triggers (systems/actors.js): { arrived: 'baker' }, { read: 'event-id' } ...
-        const trigger = CityBuilder.Actors?.Triggers[key];
-        if (trigger) return !!trigger(need[key], need, chapter);
-      }
       if (need.sees === 'rival') return World.buildings.some(building => Players.isAI(building.player) && CityBuilder.Vision.explored(Players.HUMAN, building.x + .5, building.y + .5));   // sees: 'rival' = man har sett någon av fiendens byggnader (dimma eller inte)
       if (need.sees === 'soldier') return World.units.some(unit => !unit.removed && unit.definition.isSoldier && !unit.definition.isMonster && Players.isAI(unit.player) && CityBuilder.Vision.sees(Players.HUMAN, unit));   // sees: 'soldier' = någon av datorns soldater syns just nu (t.ex. en anfallsvåg)
       if (need.goal !== undefined) { const item = CityBuilder.Levels.progress()[need.goal - 1]; return !!item && item.have >= item.amount - (need.left || 0); }   // goal: n, left: k = målet med det numret har högst k kvar (följer målets egna siffror)
