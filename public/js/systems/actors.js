@@ -19,6 +19,7 @@
      (varje steg kan ha mark: 'nyckel', som sätts när steget är klart; { until: { told: 'nyckel' } } hos en annan skådespelare väntar på det. Editorns scener använder det.)
      until: villkor       väntar tills villkoret gäller (samma slag som en händelses when, t.ex. { spoke: 'counsellors' } eller [{ gone: 'x' }, { resource: 'wood', made: 5 }]).
                           Så får en skådespelare vänta på en annan: manusen går annars parallellt, var och ett för sig
+     Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, ... ]. Stegen sker i ordning (together: true = samtidigt som steget före).
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
    Mål (walk, teleport, spawn.at): [dx, dy] (rutor från spelarens HQ), 'hq', ett byggnads-id ('bakery' = närmaste), ett skådespelar-id, { x, y } (absolut ruta),
      { building: 'bakery' }, { actor: 'baker' }.
@@ -121,6 +122,7 @@
     rebuild() {
       this.units = new Map();
       const saved = state();
+      for (const scene of saved.scenes || []) for (const run of scene.running) if (run.kind === 'tell' && !levels().told(run.mark)) { const i = +run.mark.split(':').pop(); CityBuilder.Story.tell([{ type: 'dialogue', lines: scene.steps[i].tell, part: 'events', mark: run.mark }]); }
       for (const data of saved.list) if (!data.gone) { data.act = data.act && data.act.type ? { ...data.act, started: false } : null; this.build(data); }
       for (const item of saved.leftovers) World.addScenery(item.type, item.x, item.y, item.layer);
     },
@@ -132,8 +134,45 @@
       data.script = script || []; data.index = 0; data.act = null;
     },
 
+    // ---- scener: en lista steg som sker i ordning (en dirigent, ingen skådespelare äger scenen) ----
+    // scene: [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { who: id, say: ..., together: true } ... ]
+    // Ett steg börjar när det förra är klart. together: true startar det samtidigt som steget före. Dialoger hör till scenen, inte till en person.
+    startScene(id, steps) {
+      const progress = levels().progressRef?.(); if (!progress) return;
+      const saved = state(); (saved.scenes ||= []);
+      if (saved.scenes.some(scene => scene.id === id)) return;
+      saved.scenes.push({ id, steps: JSON.parse(JSON.stringify(steps)), index: 0, running: [] });
+    },
+    sceneDone(scene, run, dt) {
+      if (run.kind === 'wait') return (run.left -= dt) <= 0;
+      if (run.kind === 'tell') return levels().told(run.mark);
+      const data = this.data(run.who);
+      return !data || data.gone || (!data.act && data.index >= data.script.length);
+    },
+    updateScenes(dt) {
+      for (const scene of state().scenes || []) {
+        scene.running = scene.running.filter(run => !this.sceneDone(scene, run, dt));
+        let guard = 0;
+        while (!scene.running.length && scene.index < scene.steps.length && guard++ < 100) {   // nästa grupp: ett steg plus de som är together efter det
+          do {
+            const step = scene.steps[scene.index], i = scene.index++;
+            if (step.spawn) { this.spawn({ ...step.spawn, script: [] }); continue; }
+            if (step.tell) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'dialogue', lines: step.tell, part: 'events', mark }]); scene.running.push({ kind: 'tell', mark }); } continue; }
+            if (step.wait !== undefined && !step.who) { scene.running.push({ kind: 'wait', left: +step.wait || 0 }); continue; }
+            const [type] = Object.entries(step).find(([key]) => Actions[key]) || [];
+            const data = this.data(step.who);
+            if (!type || !data || data.gone) continue;
+            this.setScript(step.who, [{ [type]: step[type] }]);
+            scene.running.push({ kind: 'actor', who: step.who });
+          } while (scene.steps[scene.index]?.together);
+        }
+      }
+      const saved = state(); if (saved.scenes) saved.scenes = saved.scenes.filter(scene => scene.index < scene.steps.length || scene.running.length);
+    },
+
     // ---- själva uppdateringen ----
     update(deltaSeconds) {
+      this.updateScenes(deltaSeconds);
       for (const data of state().list) {
         if (data.gone) continue;
         const unit = this.unitOf(data.id);
@@ -157,6 +196,7 @@
     // Händelser i kapitlet: spawn och act
     fire(event) {
       for (const spec of [].concat(event.spawn || [])) this.spawn(spec);
+      if (event.scene) this.startScene(event.id || 'scene' + Date.now(), event.scene);
       for (const [id, script] of Object.entries(event.act || {})) this.setScript(id, script);
     },
 
