@@ -17,7 +17,7 @@
     const { World, Renderer, Story, Config, Utils, Players } = C, canvas = Renderer.canvas, A = C.Actors;
 
     // ---------------------------------------------------------------- data
-    const st = { tab: 'map', mode: 'place', type: 's:corpse', layer: '', drag: null, painting: false, hover: null, last: null, arm: null, note: '' };
+    const st = { untilKind: 'spoke', tab: 'map', mode: 'place', type: 's:corpse', layer: '', drag: null, painting: false, hover: null, last: null, arm: null, note: '' };
     let defs = [], events = [], chapterNumber = null;
     const blankDraft = () => ({ editing: null, id: '', image: defaultImage, custom: '', race: '', size: '', at: null, script: [] });
     const blankEvent = () => ({ id: '', conds: [], effects: [], addCond: 'time', addEff: 'spawn', editing: null });
@@ -78,10 +78,18 @@
         case 'tell': return `Dialog: ${arg.map(line => `${line.who}: “${line.text}”`).join(' / ')}`;
         case 'kill': { const spec = typeof arg === 'string' ? { actor: arg } : arg; return `Dödar ${spec.actor} (${spec.leave === undefined ? 'blodpöl' : [].concat(spec.leave).join(' + ')})`; }
         case 'say': { const spec = typeof arg === 'string' ? { text: arg } : arg; return `Pratbubbla: “${spec.text}”${spec.for ? ` (${spec.for} s kvar${spec.wait ? ', väntar' : ''}${spec.voice === false ? ', utan röst' : spec.speaker ? ', röst: ' + spec.speaker : ''})` : ''}`; }
+        case 'until': return 'Väntar tills: ' + [].concat(arg).map(need => untilText(need)).join(' och ');
         case 'vanish': return 'Försvinner direkt';
         case 'leave': return 'Går mot dimman och försvinner';
         default: return `${type}: ${JSON.stringify(arg)}`;
       }
+    };
+    const untilText = need => {   // ett vänta-tills-villkor i klartext
+      if (need.arrived) return `${need.arrived} är framme`; if (need.arrivedSeen) return `${need.arrivedSeen} är framme och syns`; if (need.seen) return `${need.seen} syns`;
+      if (need.gone) return `${need.gone} är borta`; if (need.killed) return `${need.killed} är dödad`; if (need.spoke) return `${need.spoke} har pratat klart`;
+      if (need.near) return `${need.near} är nära ${need.of}`; if (need.read) return `dialogen '${need.read}' är läst`; if (need.told) return `nyckel ${need.told}`;
+      if (need.made !== undefined) return `${need.made} ${need.resource} tillverkat`; if (need.type === 'build') return `${need.id} byggd`; if (need.amount !== undefined) return `har ${need.amount} ${need.resource || need.type}`;
+      return JSON.stringify(need);
     };
     const select = (id, options, current, bind) => `<select ${id ? `id="${id}"` : ''} ${bind ? `data-bind="${bind}"` : ''}>${options.map(option => { const [value, label] = Array.isArray(option) ? option : [option, option]; return `<option value="${esc(value)}"${String(value) === String(current) ? ' selected' : ''}>${esc(label)}</option>`; }).join('')}</select>`;
 
@@ -169,6 +177,8 @@
           <div class="hint" style="margin:0">…och klicka sedan på kartan (en byggnad = byggnaden som mål).</div>
           <div class="row"><input type="number" id="stWait" value="2" style="width:55px"> s <button data-act="addWait">Vänta</button></div>
           <div class="row">${select('stSpeaker', speakerIds.length ? speakerIds : ['narrator'], 'narrator')}<input id="stText" placeholder="Vad sägs?" style="flex:1;min-width:80px"><button data-act="addSay">Dialog</button></div>
+          <div class="row">${select('', Object.entries(COND).filter(([, item]) => item.make(Object.fromEntries(item.f.map(([name]) => [name, 'X']))).when).map(([kind, item]) => [kind, (item.group === 'Skådespelare' ? 'Skådespelare ' : '') + item.label]), st.untilKind, 'untilKind')}</div>
+          <div class="row">${COND[st.untilKind].f.map(([, type, hint], i) => field(type, 'u' + i, hint)).join(' ')} <button data-act="addUntil" title="Manuset stannar här tills villkoret gäller, så att det går att vänta på en annan skådespelare">Vänta tills</button></div>
           <div class="row"><input id="stBubble" placeholder="Pratbubbla: text" style="flex:1;min-width:80px"><input type="number" id="stBubbleSec" value="2" style="width:46px" title="sekunder bubblan står kvar efter sista ordet"> s kvar <label title="Manuset väntar tills bubblan är borta (räknat från att den syns)"><input type="checkbox" id="stBubbleWait" checked> vänta</label> <label title="Utan val används skådespelarens id eller bildens namn om det är en talare"><input type="checkbox" id="stBubbleVoice" checked> röst</label> ${select('stBubbleSpeaker', [['', '(automatisk)'], ...speakerIds.filter(name => name !== 'narrator')], '')}<button data-act="addBubble">Pratbubbla</button></div>
           <div class="row">${select('stVictim', known.length ? known : ['(ingen annan sparad)'], known[0] || '')} ${select('stLeave', [['blood', 'blodpöl'], ['corpse', 'lik'], ['both', 'båda'], ['none', 'inget']], 'blood')} <button data-act="addKill">Dödar</button></div>
           <div class="row"><button data-act="addLeave" title="Går mot närmaste ruta utom spelarens synfält och försvinner när den inte syns">Lämna scenen (mot dimman)</button><button data-act="addVanish">Försvinn direkt</button></div>
@@ -189,6 +199,7 @@
       gone:        { group: 'Skådespelare', label: 'har försvunnit', f: [['actor', 'actor']], make: v => ({ when: { gone: v.actor } }), text: v => `${v.actor} är borta` },
       killed:      { group: 'Skådespelare', label: 'har dödats', f: [['actor', 'actor']], make: v => ({ when: { killed: v.actor } }), text: v => `${v.actor} är dödad` },
       near:        { group: 'Skådespelare', label: 'är nära en byggnad', f: [['actor', 'actor'], ['bld', 'bld', 'byggnad'], ['n', 'num', 'radie']], make: v => ({ when: { near: v.actor, of: v.bld, radius: +v.n || 3 } }), text: v => `${v.actor} nära ${v.bld}` },
+      spoke:       { group: 'Skådespelare', label: 'har läst klart en dialog', f: [['actor', 'actor']], make: v => ({ when: { spoke: v.actor } }), text: v => `${v.actor} har pratat klart` },
       read:        { group: 'Dialog', label: 'En händelses dialog är läst', f: [['id', 'event']], make: v => ({ when: { read: v.id } }), text: v => `dialogen '${v.id}' läst` },
       told:        { group: 'Dialog', label: 'En nyckel är satt (avancerat)', f: [['key', 'text', 'nyckel']], make: v => ({ when: { told: v.key } }), text: v => `nyckel ${v.key}` },
     };
@@ -400,6 +411,11 @@
         const seconds = +$('#stBubbleSec').value || 2, wait = $('#stBubbleWait').checked, voice = $('#stBubbleVoice').checked;
         const speaker = $('#stBubbleSpeaker').value;
         draft.script.push({ say: { text, for: seconds, ...(wait ? { wait: true } : {}), ...(voice ? (speaker ? { speaker } : {}) : { voice: false }) } }); render();
+      },
+      addUntil: () => {
+        const spec = COND[st.untilKind], v = read(spec, 'u');
+        if (Object.values(v).some(value => value === '')) { notice('Fyll i alla fält.'); return; }
+        draft.script.push({ until: spec.make(v).when }); render();
       },
       addKill: () => { const step = killStep(); if (step) { draft.script.push(step); render(); } },
       addLeave: () => { draft.script.push({ leave: true }); render(); },

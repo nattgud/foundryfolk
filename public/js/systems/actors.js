@@ -16,6 +16,8 @@
      kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
      tell: [dialograder]  visar en dialog och väntar tills den lästs
+     until: villkor       väntar tills villkoret gäller (samma slag som en händelses when, t.ex. { spoke: 'counsellors' } eller [{ gone: 'x' }, { resource: 'wood', made: 5 }]).
+                          Så får en skådespelare vänta på en annan: manusen går annars parallellt, var och ett för sig
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
    Mål (walk, teleport, spawn.at): [dx, dy] (rutor från spelarens HQ), 'hq', ett byggnads-id ('bakery' = närmaste), ett skådespelar-id, { x, y } (absolut ruta),
      { building: 'bakery' }, { actor: 'baker' }.
@@ -27,6 +29,7 @@
      { gone: id }         den har försvunnit eller dött
      { killed: id }       den har dödats av en annan skådespelare
      { near: id, of: mål, radius }  skådespelaren är inom radius rutor (standard 3) från målet
+     { spoke: id }        skådespelaren har läst klart en dialog (en tell i sitt manus)
      { read: 'händelse-id' }  dialogen i händelsen med id: 'händelse-id' är läst
      { told: 'nyckel' }   en nyckel i Levels.told
 
@@ -261,6 +264,9 @@
     fire: {
       start(data, arg) { CityBuilder.Story.fire(arg); },
     },
+    until: {
+      update(data, arg) { const Story = CityBuilder.Story; return [].concat(arg).every(need => Story.reached(need, Story.chapter)); },
+    },
   };
 
   // ---- triggers ----
@@ -276,6 +282,7 @@
       return !!tile && Utils.distance(unit.x - tile.x - .5, unit.y - tile.y - .5) <= (need.radius ?? 3);
     },
     read: key => levels().told('read:' + key),
+    spoke: id => Object.keys(levels().progressRef().told || {}).some(key => key.startsWith(`read:${id}:`)),
     told: key => levels().told(key),
   };
 
