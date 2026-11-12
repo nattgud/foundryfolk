@@ -606,7 +606,7 @@
 
     // Skada från en meteor eller eld. HQ och enheter med definition.meteorProof skonas. Som lavan: inget larm, bara livet som minskar.
     harm(target, amount) {
-      if (target.hp == null || target.removed || target.type === 'hq' || target.definition?.meteorProof) return;
+      if (target.hp == null || target.removed || target.actor || target.type === 'hq' || target.definition?.meteorProof) return;
       target.hp -= amount;
       if (target.hp <= 0) CityBuilder.Combat.kill(target);
     },

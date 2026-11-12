@@ -217,7 +217,7 @@
     },
 
     kill(target, attacker) {
-      if (target.removed) return;
+      if (target.removed || target.actor) return;   // skådespelare är odödliga (Actors tar bort dem själva)
       const Levels = CityBuilder.Levels;
       if (attacker?.player === Players.HUMAN && Players.isPlayer(target.player) && Players.isHostile(Players.HUMAN, target.player)) Levels?.onDefeated?.(target);   // monster räknas inte mot banans mål
       if (isBuilding(target)) return this.destroyBuilding(target);

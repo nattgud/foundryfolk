@@ -353,6 +353,9 @@
 					say("reeve", "[sad]That could take a while."),
 					say("pipwick", "[sad]I know. I am trying not to encourage her hopes."),
 				],
+				events: [
+					{ when: { type: "build", id: "woodcutter", amount: 1 }, spawn: [{ id: "pipwick1", image: "images/units/pipwick.png", at: [0, 0], script: [{ walk: "woodcutter" }, { say: { text: "This is good!", for: 3, wait: true } }, { walk: "hq" }, { vanish: true }] }] },
+				],
 			},
 			// 2
 			{
