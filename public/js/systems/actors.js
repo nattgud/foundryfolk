@@ -17,7 +17,7 @@
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
      tell: [dialograder]  visar en dialog och väntar tills den lästs
      Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { camera: mål, zoom: 1-5 (valfritt) }, ... ]. Stegen sker i ordning, ett i taget.
-     Grupp: spawn med count: n skapar n st (id#1 ... id#n) på samma ruta. Ett steg med gruppens id gäller alla: de går med en kort fördröjning var (ett led) och får var sin plats vid målet; bara den första talar.
+     Grupp: spawn med count: n skapar n st (id#1 ... id#n) på samma ruta. Ett steg med gruppens id gäller alla: de går med en kort fördröjning var (ett led) och slutar på samma ruta (högst 20 per ruta, resten på rutorna runt); bara den första talar.
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
    Mål (walk, teleport, spawn.at): [dx, dy] (rutor från spelarens HQ), 'hq', ett byggnads-id ('bakery' = närmaste), ett skådespelar-id, { x, y } (absolut ruta),
      { building: 'bakery' }, { actor: 'baker' }.
@@ -38,7 +38,14 @@
   const { World, Config, Players, Utils, Jobs } = CityBuilder;
 
   const LEAVE_LAYER = { blood: 0, corpse: 1 };
-  const GROUP_GAP = .25, SLOT = .55, GROUP_MAX = 100;   // grupp: sekunder mellan två medlemmars start, avstånd (rutor) mellan platserna vid målet
+  const GROUP_GAP = .25, GROUP_MAX = 100, PER_TILE = 20;   // grupp: sekunder mellan två medlemmars start, högst så många på en ruta (resten flödar över till rutorna runt)
+  // Rutorna kring målet i den ordning de fylls: målrutan först, sedan de närmaste
+  const TILE_ORDER = (() => { const list = []; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) list.push([dx, dy]); return list.sort((a, b) => a[0] * a[0] + a[1] * a[1] - b[0] * b[0] - b[1] * b[1] || a[1] - b[1] || a[0] - b[0]); })();
+  const SPOT_COLS = 5, SPOT_STEP = .17;   // platserna på en ruta: ett litet rutnät, så att ingen står på exakt samma pixel
+  const slotOf = nth => {
+    const i = nth - 1, tile = TILE_ORDER[Math.floor(i / PER_TILE)], k = i % PER_TILE, rows = Math.ceil(PER_TILE / SPOT_COLS);
+    return [tile[0] + (k % SPOT_COLS - (SPOT_COLS - 1) / 2) * SPOT_STEP, tile[1] + (Math.floor(k / SPOT_COLS) - (rows - 1) / 2) * SPOT_STEP];
+  };
   const frac = x => x - Math.floor(x);
   const STUCK_BASE = 15, STUCK_PER_TILE = 1.5;   // sekunder innan en promenad ger upp och teleporterar
 
@@ -91,9 +98,9 @@
 
     // ---- skapa, spara, bygga upp ----
     spawn(spec) {
-      if (spec?.id && spec.count > 1) {   // en grupp: count st med samma utseende, id#1 ... id#n. Alla börjar på samma ruta och får var sin plats vid målet
-        const n = Math.min(GROUP_MAX, spec.count | 0), cols = Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols);
-        for (let i = 1; i <= n; i++) this.spawn({ ...spec, count: undefined, id: `${spec.id}#${i}`, group: spec.id, nth: i, slot: [((i - 1) % cols - (cols - 1) / 2) * SLOT, (Math.floor((i - 1) / cols) - (rows - 1) / 2) * SLOT] });
+      if (spec?.id && spec.count > 1) {   // en grupp: count st med samma utseende, id#1 ... id#n. Alla börjar på samma ruta och slutar på samma ruta (högst 20 per ruta, resten flödar över till rutorna runt)
+        const n = Math.min(GROUP_MAX, spec.count | 0);
+        for (let i = 1; i <= n; i++) this.spawn({ ...spec, count: undefined, id: `${spec.id}#${i}`, group: spec.id, nth: i, slot: slotOf(i) });
         return this.data(`${spec.id}#1`);
       }
       if (!spec?.id || this.data(spec.id) && !this.data(spec.id).gone) return null;
