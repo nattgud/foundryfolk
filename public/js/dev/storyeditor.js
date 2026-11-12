@@ -19,7 +19,7 @@
     // ---------------------------------------------------------------- data
     const st = { tab: 'map', mode: 'place', type: 's:corpse', layer: '', drag: null, painting: false, hover: null, last: null, arm: null, note: '' };
     let defs = [], events = [], chapterNumber = null;
-    const blankDraft = () => ({ editing: null, id: '', image: defaultImage, custom: '', race: '', at: null, script: [] });
+    const blankDraft = () => ({ editing: null, id: '', image: defaultImage, custom: '', race: '', size: '', at: null, script: [] });
     const blankEvent = () => ({ id: '', conds: [], effects: [], addCond: 'time', addEff: 'spawn', editing: null });
     const previews = []; let previewBase = 0;
 
@@ -33,6 +33,14 @@
     for (const [id, unit] of Object.entries(Config.units)) if (id !== 'actor' && unit.image) images.push({ path: strip(unit.image), size: unit.imageSize, label: id });
     for (const entry of Object.values(Config.units.worker?.imagesByBuilding || {})) if (entry.image && !images.some(item => item.path === strip(entry.image))) images.push({ path: strip(entry.image), size: Config.units.worker.imageSize, label: strip(entry.image).replace('images/units/', '').replace('.png', '') });
     images.sort((x, y) => x.label.localeCompare(y.label));
+    // Berättelsens karaktärer med helkroppsbild (images/units/<ras>/<id>.png): letas upp i bakgrunden, så nya bilder dyker upp av sig själva
+    const characters = {};   // sökväg -> ras
+    const CHARACTER_SIZE = 32;   // helkroppsbilderna är 128 px och ritas dubbelt så stora som vanliga enheter (16)
+    for (const id of speakerIds.filter(name => name !== 'reeve' && name !== 'narrator')) for (const race of ['human', 'demon']) {
+      const probe = new Image();
+      probe.onload = () => { characters[`images/units/${id}.png`] = race; if (window.StoryEditor) window.StoryEditor.render(); };
+      probe.src = `images/units/${race}/${id}.png`;
+    }
     const defaultImage = images.find(item => item.label === 'worker')?.path || images[0]?.path || '';
     let draft = blankDraft(), evDraft = blankEvent();
 
@@ -140,7 +148,8 @@
         <div class="row"><img class="pv" id="pv" src="${esc(src || '')}" onerror="this.style.visibility='hidden'" onload="this.style.visibility='visible'">
           <div style="flex:1"><div class="row">Namn <input data-bind="draft.id" value="${esc(draft.id)}" placeholder="t.ex. pipwick" style="width:110px"></div>
           <div class="row">Ras ${select('', [['', 'människa'], ['demon', 'demon']], draft.race, 'draft.race')}</div></div></div>
-        <div class="row">Bild ${select('', [...images.map(item => [item.path, item.label]), ['__custom', 'Egen bildfil…']], draft.image, 'draft.image')}</div>
+        <div class="row">Storlek <input type="number" data-bind="draft.size" value="${esc(draft.size)}" placeholder="auto" style="width:60px"> <span class="hint">(16 = vanlig enhet, karaktärer 32)</span></div>
+        <div class="row">Bild <select data-bind="draft.image">${Object.keys(characters).length ? `<optgroup label="Karaktärer">${Object.entries(characters).map(([path, race]) => `<option value="${esc(path)}"${draft.image === path ? ' selected' : ''}>${esc(nameOf(path))} (${race === 'demon' ? 'demon' : 'människa'})</option>`).join('')}</optgroup>` : ''}<optgroup label="Enheter">${images.map(item => `<option value="${esc(item.path)}"${draft.image === item.path ? ' selected' : ''}>${esc(item.label)}</option>`).join('')}</optgroup><option value="__custom"${draft.image === '__custom' ? ' selected' : ''}>Egen bildfil…</option></select></div>
         ${customImage ? `<div class="row">Fil <input data-bind="draft.custom" value="${esc(draft.custom)}" placeholder="images/units/pipwick.png" style="width:100%"></div>` : ''}
         <div class="row"><button data-act="armStart">${draft.at ? 'Byt startruta' : 'Välj startruta på kartan'}</button> <span class="${draft.at ? 'ok' : 'warn'}">${draft.at ? `start (${draft.at[0]}, ${draft.at[1]})` : '⚠ ingen startruta'}</span></div>
         <h4>Manus (görs i ordning)</h4>
@@ -317,7 +326,8 @@
       const target = event.target;
       if (target.id === 'sePause') { C.Game.paused = target.checked; return; }
       const bind = target.dataset?.bind; if (!bind) return;
-      setPath(bind, target.value); if (target.tagName === 'SELECT' || target.type === 'radio') render();
+      setPath(bind, target.value); if (bind === 'draft.image' && characters[target.value]) draft.race = characters[target.value] === 'demon' ? 'demon' : '';
+      if (target.tagName === 'SELECT' || target.type === 'radio') render();
     });
     panel.addEventListener('click', event => {
       const button = event.target.closest('[data-act]'); if (!button) return;
@@ -329,7 +339,7 @@
     const currentDef = () => {
       const custom = draft.image === '__custom', path = custom ? draft.custom.trim() : draft.image, def = { id: draft.id.trim(), image: path };
       if (draft.race && !/\/(animals|monster)\//.test(path)) def.race = draft.race;
-      const size = images.find(item => item.path === path)?.size; if (size && size !== 16) def.size = size;
+      const size = +draft.size || (characters[path] ? CHARACTER_SIZE : images.find(item => item.path === path)?.size); if (size && size !== 16) def.size = size;
       return { ...def, at: draft.at, script: draft.script.map(step => ({ ...step })) };
     };
     const killStep = () => {
@@ -394,7 +404,7 @@
         const image = draft.image; draft = blankDraft(); draft.image = image; note(`Sparade ${def.id}. Glöm inte att starta den med en händelse (knappen på kortet, eller fliken Händelser).`);
       },
       newActor: () => { const image = draft.image; draft = blankDraft(); draft.image = image; render(); },
-      editActor: ({ i }) => { const def = defs[+i], known = images.some(item => item.path === def.image); draft = { editing: +i, id: def.id, image: known ? def.image : '__custom', custom: known ? '' : def.image, race: def.race || '', at: def.at, script: def.script.map(step => ({ ...step })) }; render(); },
+      editActor: ({ i }) => { const def = defs[+i], known = images.some(item => item.path === def.image) || !!characters[def.image]; draft = { editing: +i, id: def.id, image: known ? def.image : '__custom', custom: known ? '' : def.image, race: def.race || '', size: def.size || '', at: def.at, script: def.script.map(step => ({ ...step })) }; render(); },
       deleteActor: ({ i }) => { defs.splice(+i, 1); draft.editing = null; render(); },
       playDraft: () => play(currentDef()),
       playSaved: ({ i }) => play(pureDef(defs[+i])),
