@@ -17,10 +17,8 @@
     const { World, Renderer, Story, Config, Utils, Players } = C, canvas = Renderer.canvas, A = C.Actors;
 
     // ---------------------------------------------------------------- data
-    const st = { untilKind: 'spoke', adv: false, tab: 'scene', mode: 'place', type: 's:corpse', layer: '', drag: null, painting: false, hover: null, last: null, arm: null, note: '' };
-    let defs = [], events = [], scenes = [], cur = 0, chapterNumber = null;
-    const blankDraft = () => ({ editing: null, id: '', image: defaultImage, custom: '', race: '', size: '', at: null, script: [] });
-    const blankEvent = () => ({ id: '', conds: [], effects: [], addCond: 'time', addEff: 'spawn', editing: null });
+    const st = { tab: 'scene', mode: 'place', type: 's:corpse', layer: '', drag: null, painting: false, hover: null, last: null, arm: null, note: '' };
+    let scenes = [], cur = 0, chapterNumber = null;
     const previews = [], previewScenes = [], previewAppear = []; let previewBase = 0;
 
     const sceneryTypes = Object.keys(Config.story.sceneryTypes || {});
@@ -51,7 +49,6 @@
       }
     }
     const defaultImage = images.find(item => item.label === 'worker')?.path || images[0]?.path || '';
-    let draft = blankDraft(), evDraft = blankEvent();
 
     // ---------------------------------------------------------------- hjälpare
     const hq = () => World.headquarters;
@@ -64,41 +61,18 @@
       : JSON.stringify(value);
     const chapter = () => Story.chapter;
     const existingEvents = () => chapter()?.events || [];
-    const actorIds = () => [...new Set([...defs.map(def => def.id), ...scenes.flatMap(sc => sc.cast.map(c => c.id)), ...existingEvents().flatMap(event => [].concat(event.spawn || []).map(spec => spec.id))])];
-    const eventIds = () => [...new Set([...events.map(event => event.id).filter(Boolean), ...existingEvents().map(event => event.id).filter(Boolean)])];
+    const actorIds = () => [...new Set([...scenes.flatMap(sc => sc.cast.map(c => c.id)), ...existingEvents().flatMap(event => [].concat(event.spawn || []).map(spec => spec.id))])];
     const imageSrc = (path, race) => { const m = /^images\/units\/([^/]+\.png)$/.exec(path || ''); return m ? `images/units/${race || 'human'}/${m[1]}` : path; };   // spelets sökväg saknar rasmappen (som i Config.units): den sätts in här, annars ger förhandsvisningen 404
     const nameOf = path => images.find(item => item.path === path)?.label || (path || '').replace('images/units/', '').replace('.png', '');
     const targetText = target => Array.isArray(target) ? `ruta (${target[0]}, ${target[1]})` : typeof target === 'string' ? (target === 'hq' ? 'basen' : target) : JSON.stringify(target);
-    const stepText = step => {
-      const [type, arg] = Object.entries(step)[0];
-      switch (type) {
-        case 'walk': return `Går till ${targetText(arg)}`;
-        case 'teleport': return `Teleporteras till ${targetText(arg)}`;
-        case 'wait': return `Väntar ${arg} s`;
-        case 'tell': return `Dialog: ${arg.map(line => `${line.who}: “${line.text}”`).join(' / ')}`;
-        case 'kill': { const spec = typeof arg === 'string' ? { actor: arg } : arg; return `Dödar ${spec.actor} (${spec.leave === undefined ? 'blodpöl' : [].concat(spec.leave).join(' + ')})`; }
-        case 'say': { const spec = typeof arg === 'string' ? { text: arg } : arg; return `Pratbubbla: “${spec.text}”${spec.for ? ` (${spec.for} s kvar${spec.wait ? ', väntar' : ''}${spec.voice === false ? ', utan röst' : spec.speaker ? ', röst: ' + spec.speaker : ''})` : ''}`; }
-        case 'until': return 'Väntar tills: ' + [].concat(arg).map(need => untilText(need)).join(' och ');
-        case 'vanish': return 'Försvinner direkt';
-        case 'leave': return 'Går mot dimman och försvinner';
-        default: return `${type}: ${JSON.stringify(arg)}`;
-      }
-    };
-    const untilText = need => {   // ett vänta-tills-villkor i klartext
-      if (need.arrived) return `${need.arrived} är framme`; if (need.arrivedSeen) return `${need.arrivedSeen} är framme och syns`; if (need.seen) return `${need.seen} syns`;
-      if (need.gone) return `${need.gone} är borta`; if (need.killed) return `${need.killed} är dödad`; if (need.spoke) return `${need.spoke} har pratat klart`;
-      if (need.near) return `${need.near} är nära ${need.of}`; if (need.read) return `dialogen '${need.read}' är läst`; if (need.told) return `nyckel ${need.told}`;
-      if (need.made !== undefined) return `${need.made} ${need.resource} tillverkat`; if (need.type === 'build') return `${need.id} byggd`; if (need.amount !== undefined) return `har ${need.amount} ${need.resource || need.type}`;
-      return JSON.stringify(need);
-    };
     const select = (id, options, current, bind) => `<select ${id ? `id="${id}"` : ''} ${bind ? `data-bind="${bind}"` : ''}>${options.map(option => { const [value, label] = Array.isArray(option) ? option : [option, option]; return `<option value="${esc(value)}"${String(value) === String(current) ? ' selected' : ''}>${esc(label)}</option>`; }).join('')}</select>`;
 
     // ---------------------------------------------------------------- spara och ladda (webbläsaren, per kapitel)
     const storeKey = number => `storyEditor.v2.chapter${number}`;
-    const persist = () => { try { if (chapterNumber !== null) localStorage.setItem(storeKey(chapterNumber), JSON.stringify({ defs, events, scenes })); } catch (error) { /* ingen lagring */ } };
+    const persist = () => { try { if (chapterNumber !== null) localStorage.setItem(storeKey(chapterNumber), JSON.stringify({ scenes })); } catch (error) { /* ingen lagring */ } };
     const restore = number => {
-      defs = []; events = []; scenes = []; cur = 0; draft = blankDraft(); evDraft = blankEvent();
-      try { const saved = JSON.parse(localStorage.getItem(storeKey(number)) || 'null'); if (saved) { defs = saved.defs || []; events = saved.events || []; scenes = saved.scenes || []; } } catch (error) { /* tomt */ }
+      scenes = []; cur = 0;
+      try { const saved = JSON.parse(localStorage.getItem(storeKey(number)) || 'null'); if (saved) scenes = saved.scenes || []; } catch (error) { /* tomt */ }
     };
 
     // ---------------------------------------------------------------- panel
@@ -136,7 +110,7 @@
     const $ = selector => panel.querySelector(selector);
 
     // ---------------------------------------------------------------- flikarna
-    const tabsNow = () => [['scene', 'Scener'], ['map', 'Karta'], ...(st.adv ? [['actor', 'Skådespelare'], ['event', 'Händelser']] : []), ['export', 'Exportera']];
+    const tabsNow = () => [['scene', 'Scener'], ['map', 'Karta'], ['export', 'Exportera']];
 
     function viewMap() {
       return `<p class="hint">Placera kulisser och döda byggnader direkt på kartan. Klicka eller dra för att måla.</p>
@@ -149,107 +123,20 @@
         <button class="danger" data-act="clearScenery">Ta bort alla kulisser i kapitlet</button>`;
     }
 
-    function viewActor() {
-      const editing = draft.editing !== null;
-      const used = id => events.some(event => event.effects.some(effect => effect.kind === 'spawn' && effect.v.actor === id));
-      const known = defs.filter(def => def.id !== draft.id).map(def => def.id);
-      const customImage = draft.image === '__custom';
-      const src = imageSrc(customImage ? draft.custom : draft.image, draft.race);
-      const list = defs.length ? defs.map((def, i) => `<div class="card"><div class="row"><b>${esc(def.id)}</b> <span class="hint">${esc(nameOf(def.image))}${def.race ? ', ' + def.race : ''}</span></div>
-          <div class="row ${used(def.id) ? 'ok' : 'warn'}">${used(def.id) ? '✓ startas av en händelse' : '⚠ startas inte av någon händelse'}</div>
-          <div class="row"><button data-act="editActor" data-i="${i}">Redigera</button><button data-act="playSaved" data-i="${i}">Spela upp</button>
-          ${used(def.id) ? '' : `<button class="primary" data-act="startAtBegin" data-id="${esc(def.id)}">Skapa händelse som startar den</button>`}<button class="danger small" data-act="deleteActor" data-i="${i}">✕</button></div></div>`).join('')
-        : '<p class="hint">Inga sparade skådespelare än.</p>';
-      return `<h4>Sparade skådespelare</h4>${list}
-        <h4>${editing ? `Redigerar: ${esc(draft.id)}` : 'Ny skådespelare'}</h4>
-        <div class="row"><img class="pv" id="pv" src="${esc(src || '')}" onerror="this.style.visibility='hidden'" onload="this.style.visibility='visible'">
-          <div style="flex:1"><div class="row">Namn <input data-bind="draft.id" value="${esc(draft.id)}" placeholder="t.ex. pipwick" style="width:110px"></div>
-          <div class="row">Ras ${select('', [['', 'människa'], ['demon', 'demon']], draft.race, 'draft.race')}</div></div></div>
-        <div class="row">Storlek <input type="number" data-bind="draft.size" value="${esc(draft.size)}" placeholder="auto" style="width:60px"> <span class="hint">(16 = vanlig enhet, karaktärer 32)</span></div>
-        <div class="row">Bild <select data-bind="draft.image">${Object.keys(characters).length ? `<optgroup label="Karaktärer">${Object.entries(characters).map(([path, race]) => `<option value="${esc(path)}"${draft.image === path ? ' selected' : ''}>${esc(nameOf(path))} (${race === 'demon' ? 'demon' : 'människa'})</option>`).join('')}</optgroup>` : ''}<optgroup label="Enheter">${images.map(item => `<option value="${esc(item.path)}"${draft.image === item.path ? ' selected' : ''}>${esc(item.label)}</option>`).join('')}</optgroup><option value="__custom"${draft.image === '__custom' ? ' selected' : ''}>Egen bildfil…</option></select></div>
-        ${customImage ? `<div class="row">Fil <input data-bind="draft.custom" value="${esc(draft.custom)}" placeholder="images/units/pipwick.png" style="width:100%"></div>` : ''}
-        <div class="row"><button data-act="armStart">${draft.at ? 'Byt startruta' : 'Välj startruta på kartan'}</button> <span class="${draft.at ? 'ok' : 'warn'}">${draft.at ? `start (${draft.at[0]}, ${draft.at[1]})` : '⚠ ingen startruta'}</span></div>
-        <h4>Manus (görs i ordning)</h4>
-        ${draft.script.length ? draft.script.map((step, i) => `<div class="step"><b>${i + 1}.</b><span>${esc(stepText(step))}</span>
-            <button class="small" data-act="stepUp" data-i="${i}" title="Flytta upp">↑</button><button class="small" data-act="stepDown" data-i="${i}" title="Flytta ned">↓</button><button class="small danger" data-act="stepDel" data-i="${i}" title="Ta bort">✕</button></div>`).join('') : '<p class="hint">Inga steg än. Lägg till steg nedan.</p>'}
-        <div class="card"><b>Lägg till steg</b>
-          <div class="row"><button data-act="armStep" data-type="walk">Gå till…</button><button data-act="armStep" data-type="teleport">Teleportera till…</button></div>
-          <div class="hint" style="margin:0">…och klicka sedan på kartan (en byggnad = byggnaden som mål).</div>
-          <div class="row"><input type="number" id="stWait" value="2" style="width:55px"> s <button data-act="addWait">Vänta</button></div>
-          <div class="row">${select('stSpeaker', speakerIds.length ? speakerIds : ['narrator'], 'narrator')}<input id="stText" placeholder="Vad sägs?" style="flex:1;min-width:80px"><button data-act="addSay">Dialog</button></div>
-          <div class="row">${select('', Object.entries(COND).filter(([, item]) => item.make(Object.fromEntries(item.f.map(([name]) => [name, 'X']))).when).map(([kind, item]) => [kind, (item.group === 'Skådespelare' ? 'Skådespelare ' : '') + item.label]), st.untilKind, 'untilKind')}</div>
-          <div class="row">${COND[st.untilKind].f.map(([, type, hint], i) => field(type, 'u' + i, hint)).join(' ')} <button data-act="addUntil" title="Manuset stannar här tills villkoret gäller, så att det går att vänta på en annan skådespelare">Vänta tills</button></div>
-          <div class="row"><input id="stBubble" placeholder="Pratbubbla: text" style="flex:1;min-width:80px"><input type="number" id="stBubbleSec" value="2" style="width:46px" title="sekunder bubblan står kvar efter sista ordet"> s kvar <label title="Manuset väntar tills bubblan är borta (räknat från att den syns)"><input type="checkbox" id="stBubbleWait" checked> vänta</label> <label title="Utan val används skådespelarens id eller bildens namn om det är en talare"><input type="checkbox" id="stBubbleVoice" checked> röst</label> ${select('stBubbleSpeaker', [['', '(automatisk)'], ...speakerIds.filter(name => name !== 'narrator')], '')}<button data-act="addBubble">Pratbubbla</button></div>
-          <div class="row">${select('stVictim', known.length ? known : ['(ingen annan sparad)'], known[0] || '')} ${select('stLeave', [['blood', 'blodpöl'], ['corpse', 'lik'], ['both', 'båda'], ['none', 'inget']], 'blood')} <button data-act="addKill">Dödar</button></div>
-          <div class="row"><button data-act="addLeave" title="Går mot närmaste ruta utom spelarens synfält och försvinner när den inte syns">Lämna scenen (mot dimman)</button><button data-act="addVanish">Försvinn direkt</button></div>
-        </div>
-        <div class="row"><button class="primary" data-act="saveActor">${editing ? 'Spara ändringarna' : 'Spara skådespelare'}</button><button data-act="playDraft">Spela upp</button><button data-act="stopPreview">Rensa uppspelning</button>${editing ? '<button data-act="newActor">Ny</button>' : ''}</div>`;
-    }
-
-    // Villkor: f = fält [namn, typ, hjälptext]. top/when: hur de blir en del av händelsen.
+    // När en scen startar (inget villkor = direkt när kapitlet startar)
     const COND = {
-      time:        { group: 'Tid', label: 'Efter så här många sekunder in i kapitlet', f: [['n', 'num', 'sekunder']], make: v => ({ top: { at: +v.n } }), text: v => `efter ${v.n} s` },
-      goal:        { group: 'Mål', label: 'Ett mål är klart', f: [['n', 'num', 'målnummer (1 = första)']], make: v => ({ top: { goal: +v.n } }), text: v => `mål ${v.n} klart` },
-      made:        { group: 'Resurser', label: 'Så mycket har tillverkats i kapitlet', f: [['res', 'res'], ['n', 'num', 'antal']], make: v => ({ when: { resource: v.res, made: +v.n } }), text: v => `${v.n} ${v.res} tillverkat` },
-      have:        { group: 'Resurser', label: 'Spelaren har minst så mycket', f: [['res', 'res'], ['n', 'num', 'antal']], make: v => ({ when: { resource: v.res, amount: +v.n } }), text: v => `har ${v.n} ${v.res}` },
-      built:       { group: 'Byggnader', label: 'Spelaren har byggt', f: [['bld', 'bld'], ['n', 'num', 'antal']], make: v => ({ when: { type: 'build', id: v.bld, amount: +v.n || 1 } }), text: v => `byggt ${v.n || 1} ${v.bld}` },
-      arrived:     { group: 'Skådespelare', label: 'är framme (gått färdigt)', f: [['actor', 'actor']], make: v => ({ when: { arrived: v.actor } }), text: v => `${v.actor} är framme` },
-      arrivedSeen: { group: 'Skådespelare', label: 'är framme och spelaren ser hen', f: [['actor', 'actor']], make: v => ({ when: { arrivedSeen: v.actor } }), text: v => `${v.actor} är framme och syns` },
-      seen:        { group: 'Skådespelare', label: 'syns just nu', f: [['actor', 'actor']], make: v => ({ when: { seen: v.actor } }), text: v => `${v.actor} syns` },
-      gone:        { group: 'Skådespelare', label: 'har försvunnit', f: [['actor', 'actor']], make: v => ({ when: { gone: v.actor } }), text: v => `${v.actor} är borta` },
-      killed:      { group: 'Skådespelare', label: 'har dödats', f: [['actor', 'actor']], make: v => ({ when: { killed: v.actor } }), text: v => `${v.actor} är dödad` },
-      near:        { group: 'Skådespelare', label: 'är nära en byggnad', f: [['actor', 'actor'], ['bld', 'bld', 'byggnad'], ['n', 'num', 'radie']], make: v => ({ when: { near: v.actor, of: v.bld, radius: +v.n || 3 } }), text: v => `${v.actor} nära ${v.bld}` },
-      spoke:       { group: 'Skådespelare', label: 'har läst klart en dialog', f: [['actor', 'actor']], make: v => ({ when: { spoke: v.actor } }), text: v => `${v.actor} har pratat klart` },
-      read:        { group: 'Dialog', label: 'En händelses dialog är läst', f: [['id', 'event']], make: v => ({ when: { read: v.id } }), text: v => `dialogen '${v.id}' läst` },
-      told:        { group: 'Dialog', label: 'En nyckel är satt (avancerat)', f: [['key', 'text', 'nyckel']], make: v => ({ when: { told: v.key } }), text: v => `nyckel ${v.key}` },
-    };
-    const EFF = {
-      spawn: { label: 'Starta en skådespelare', f: [['actor', 'actordef']], text: v => `starta ${v.actor}` },
-      act:   { label: 'Byt manus på en skådespelare (manuset i fliken Skådespelare)', f: [['actor', 'actor']], text: (v, e) => `${v.actor} får nytt manus (${(e.script || []).length} steg)` },
-      tell:  { label: 'Visa en dialograd', f: [['who', 'speaker'], ['text', 'text', 'vad sägs?']], text: v => `dialog: “${v.text}”` },
-      give:  { label: 'Ge varor till spelaren', f: [['res', 'res'], ['n', 'num', 'antal']], text: v => `ge ${v.n} ${v.res}` },
+      time:  { label: 'Efter så här många sekunder in i kapitlet', f: [['n', 'num', 'sekunder']], make: v => ({ top: { at: +v.n } }), text: v => `efter ${v.n} s` },
+      goal:  { label: 'När ett mål är klart', f: [['n', 'num', 'målnummer (1 = första)']], make: v => ({ top: { goal: +v.n } }), text: v => `när mål ${v.n} är klart` },
+      built: { label: 'När spelaren har byggt något', f: [['bld', 'bld'], ['n', 'num', 'antal']], make: v => ({ when: { type: 'build', id: v.bld, amount: +v.n || 1 } }), text: v => `när ${v.n || 1} ${v.bld} är byggt` },
+      made:  { label: 'När så här mycket har tillverkats', f: [['res', 'res'], ['n', 'num', 'antal']], make: v => ({ when: { resource: v.res, made: +v.n } }), text: v => `när ${v.n} ${v.res} är tillverkat` },
     };
     const field = (type, id, hint) => {
-      if (type === 'num') return `<input type="number" id="${id}" value="${/sekund/.test(hint) ? 60 : /radie/.test(hint) ? 3 : 1}" title="${esc(hint || '')}" style="width:70px"> <span class="hint">${esc(hint || '')}</span>`;
-      if (type === 'text') return `<input id="${id}" placeholder="${esc(hint || '')}" style="width:100%">`;
+      if (type === 'num') return `<input type="number" id="${id}" value="${/sekund/.test(hint) ? 60 : 1}" title="${esc(hint || '')}" style="width:70px"> <span class="hint">${esc(hint || '')}</span>`;
       if (type === 'res') return select(id, resourceIds, 'wood');
-      if (type === 'bld') return select(id, ['hq', ...buildingTypes], 'hq');
-      if (type === 'actor') return actorIds().length ? select(id, actorIds(), actorIds()[0]) : `<input id="${id}" placeholder="skådespelar-id">`;
-      if (type === 'actordef') return defs.length ? select(id, defs.map(def => def.id), defs[0].id) : '<span class="warn">Spara en skådespelare först</span>';
-      if (type === 'event') return eventIds().length ? select(id, eventIds(), eventIds()[0]) : '<span class="warn">Ingen händelse har ett namn än</span>';
-      if (type === 'speaker') return select(id, speakerIds.length ? speakerIds : ['narrator'], 'narrator');
+      if (type === 'bld') return select(id, buildingTypes, buildingTypes[0]);
       return '';
     };
     const read = (spec, prefix) => Object.fromEntries(spec.f.map(([name], i) => [name, ($(`#${prefix}${i}`)?.value ?? '').trim()]));
-    const summary = event => {
-      const when = event.conds.map(cond => COND[cond.kind].text(cond.v)), what = event.effects.map(effect => EFF[effect.kind].text(effect.v, effect));
-      return `${event.id ? `[${event.id}] ` : ''}När: ${when.join(' och ') || 'kapitlet startar'} → ${what.join(', ') || '(inget)'}`;
-    };
-
-    function viewEvent() {
-      const cond = COND[evDraft.addCond], eff = EFF[evDraft.addEff];
-      const groups = [...new Set(Object.values(COND).map(item => item.group))];
-      const saved = events.length ? events.map((event, i) => `<div class="card"><div>${esc(summary(event))}</div><div class="row"><button data-act="loadEvent" data-i="${i}">Redigera</button><button data-act="testSaved" data-i="${i}">Testa</button><button class="danger small" data-act="deleteEvent" data-i="${i}">✕</button></div></div>`).join('') : '<p class="hint">Inga sparade händelser än.</p>';
-      const existing = existingEvents();
-      return `<h4>Sparade händelser</h4>${saved}
-        <h4>Ny händelse</h4>
-        <div class="row">Namn (valfritt) <input data-bind="evDraft.id" value="${esc(evDraft.id)}" placeholder="t.ex. pipwick_arrive" style="flex:1"></div>
-        <div class="hint" style="margin:0">Ett namn behövs bara om en annan händelse ska vänta på att dialogen är läst.</div>
-        <h4>1. När ska det hända?</h4>
-        ${evDraft.conds.length ? evDraft.conds.map((c, i) => `<div class="step"><span>${esc(COND[c.kind].text(c.v))}</span><button class="small danger" data-act="condDel" data-i="${i}">✕</button></div>`).join('') : '<p class="hint">Inga villkor: händelsen sker direkt när kapitlet startar.</p>'}
-        <div class="card"><div class="row"><select data-bind="evDraft.addCond" style="width:100%">${groups.map(group => `<optgroup label="${group}">${Object.entries(COND).filter(([, item]) => item.group === group).map(([kind, item]) => `<option value="${kind}"${evDraft.addCond === kind ? ' selected' : ''}>${group === 'Skådespelare' ? 'Skådespelare ' : ''}${item.label}</option>`).join('')}</optgroup>`).join('')}</select></div>
-          <div class="row">${cond.f.map(([, type, hint], i) => field(type, 'c' + i, hint)).join(' ')}</div>
-          <div class="row"><button data-act="addCond">Lägg till villkor</button></div></div>
-        <h4>2. Vad ska hända?</h4>
-        ${evDraft.effects.length ? evDraft.effects.map((e, i) => `<div class="step"><span>${esc(EFF[e.kind].text(e.v, e))}</span><button class="small danger" data-act="effDel" data-i="${i}">✕</button></div>`).join('') : '<p class="hint">Inga effekter än.</p>'}
-        <div class="card"><div class="row"><select data-bind="evDraft.addEff" style="width:100%">${Object.entries(EFF).map(([kind, item]) => `<option value="${kind}"${evDraft.addEff === kind ? ' selected' : ''}>${item.label}</option>`).join('')}</select></div>
-          <div class="row">${eff.f.map(([, type, hint], i) => field(type, 'e' + i, hint)).join(' ')}</div>
-          ${evDraft.addEff === 'act' ? `<div class="hint" style="margin:0">Manuset som används: ${draft.script.length ? esc(draft.script.map(stepText).join('; ')) : '<span class="warn">tomt (bygg ett i fliken Skådespelare)</span>'}</div>` : ''}
-          <div class="row"><button data-act="addEff">Lägg till effekt</button></div></div>
-        <div class="row"><button class="primary" data-act="saveEvent">${evDraft.editing !== null ? 'Spara ändringarna' : 'Spara händelse'}</button><button data-act="testDraft" title="Kör effekterna nu i spelet">Testa nu</button><button data-act="stopPreview">Rensa test</button></div>
-        <p class="hint">Testa nu ger t.ex. varor på riktigt i det här spelet. Ladda om kapitlet efteråt.</p>
-        ${existing.length ? `<details><summary>Händelser som redan finns i kapitlet (${existing.length})</summary>${existing.map(event => `<div class="card hint">${esc(ser(event).slice(0, 170))}</div>`).join('')}</details>` : ''}`;
-    }
 
     // ---------------------------------------------------------------- scener: en lista med steg i ordning
     const sceneNow = () => scenes[cur];
@@ -262,12 +149,10 @@
       switch (s.type) {
         case 'walk': return `${who} går till ${targetText(s.arg)}`;
         case 'appear': return `${who} dyker upp vid ${targetText(s.arg)}`;
-        case 'teleport': return `${who} flyttas direkt till ${targetText(s.arg)}`;
         case 'say': return `${who} säger i en pratbubbla: “${s.arg.text}”`;
         case 'dialog': return `Dialog: ${s.arg.map(line => `${line.who || '?'}: “${line.text}”`).join(' / ')}`;
         case 'leave': return `${who} lämnar scenen (går mot dimman)`;
         case 'vanish': return `${who} försvinner`;
-        case 'kill': return `${who} dödar ${s.arg.actor} (${s.arg.leave === 'both' ? 'blod + lik' : s.arg.leave === 'none' ? 'inget kvar' : s.arg.leave === 'corpse' ? 'lik' : 'blodpöl'})`;
         case 'wait': return `Väntar ${s.arg} s`;
       }
       return s.type;
@@ -283,15 +168,12 @@
         switch (s.type) {
           case 'appear': step = { spawn: specOf(cast.get(s.who) || { id: s.who, image: '' }, s.arg) }; break;
           case 'walk': step = { who: s.who, walk: s.arg }; break;
-          case 'teleport': step = { who: s.who, teleport: s.arg }; break;
           case 'say': step = { who: s.who, say: { text: s.arg.text, for: +s.arg.secs || 2, wait: true } }; break;
           case 'dialog': step = { tell: s.arg.map(line => ({ who: line.who, text: line.text })) }; break;
           case 'leave': step = { who: s.who, leave: true }; break;
           case 'vanish': step = { who: s.who, vanish: true }; break;
-          case 'kill': step = { who: s.who, kill: s.arg.leave === 'blood' ? s.arg.actor : { actor: s.arg.actor, leave: s.arg.leave === 'both' ? ['blood', 'corpse'] : s.arg.leave } }; break;
           case 'wait': step = { wait: +s.arg || 1 }; break;
         }
-        if (s.together) step.together = true;
         return step;
       });
       return out;
@@ -306,7 +188,6 @@
         else if (!NO_WHO.includes(s.type) && !here.has(s.who) && ids.has(s.who)) out.push({ text: `${tag}: steg ${i + 1} ("${stepLabel(sc, s)}") sker innan ${s.who} finns. Låt hen dyka upp först, eller placera hen på kartan från början.` });
         if (!NO_WHO.includes(s.type) && !ids.has(s.who)) out.push({ text: `${tag}: steg ${i + 1} – personen är inte med i scenen.` });
         if (s.type === 'dialog') for (const line of s.arg) if (!line.who || (speakerIds.length && !speakerIds.includes(line.who))) out.push({ text: `${tag}: okänd talare '${line.who}' i dialogen (skriv t.ex. ${speakerIds.slice(0, 3).join(', ')}: text).` });
-        if (s.type === 'kill' && !ids.has(s.arg.actor) && !actorIds().includes(s.arg.actor)) out.push({ text: `${tag}: ${s.arg.actor} finns inte.` });
       });
       return out;
     }
@@ -321,24 +202,23 @@
       const targets = [['hq', 'basen'], ...buildingTypes.filter(b => b !== 'hq').map(b => [b, 'byggnaden ' + b]), ...castIds.map(id => [id, 'personen ' + id]), ['__map', 'en plats på kartan…']];
       const t = stepDraft.type, whoOpts = castIds.length ? castIds : ['(ingen med än)'];
       if (!castIds.includes(stepDraft.who)) stepDraft.who = castIds[0] || '';
-      const needTarget = t === 'walk' || t === 'teleport' || t === 'appear', needWho = !NO_WHO.includes(t);
+      const needTarget = t === 'walk' || t === 'appear', needWho = !NO_WHO.includes(t);
       return `<div class="row">${select('', scenes.map((s, i) => [i, s.name]), cur, 'sceneIndex')}<button class="small" data-act="newScene">+ Ny</button><button class="small danger" data-act="deleteScene" title="Radera scenen">✕</button></div>
         <div class="row">Namn <input data-bind="scene.name" value="${esc(sc.name)}" style="flex:1"></div>
         <h4>1. När startar scenen?</h4>
         ${sc.conds.length ? sc.conds.map((c, i) => `<div class="step"><span>${esc(COND[c.kind].text(c.v))}</span><button class="small danger" data-act="sceneCondDel" data-i="${i}">✕</button></div>`).join('') : '<p class="hint">Direkt när kapitlet startar. Lägg till ett villkor om den ska vänta på något.</p>'}
-        <details><summary>${sc.conds.length ? 'Fler villkor' : 'Vänta på något…'}</summary><div class="card"><div class="row"><select data-bind="sceneCond" style="width:100%">${groups.map(group => `<optgroup label="${group}">${Object.entries(COND).filter(([, item]) => item.group === group).map(([kind, item]) => `<option value="${kind}"${sceneCond === kind ? ' selected' : ''}>${item.label}</option>`).join('')}</optgroup>`).join('')}</select></div>
-          <div class="row">${cond.f.map(([, type, hint], i) => field(type, 'sc' + i, hint)).join(' ')}</div><div class="row"><button data-act="sceneCondAdd">Lägg till</button></div></div></details>
+        <div class="card"><div class="hint" style="margin:0">${sc.conds.length ? 'Fler villkor:' : 'Låt den vänta på något:'}</div><div class="row"><select data-bind="sceneCond" style="width:100%">${groups.map(group => `<optgroup label="${group}">${Object.entries(COND).filter(([, item]) => item.group === group).map(([kind, item]) => `<option value="${kind}"${sceneCond === kind ? ' selected' : ''}>${item.label}</option>`).join('')}</optgroup>`).join('')}</select></div>
+          <div class="row">${cond.f.map(([, type, hint], i) => field(type, 'sc' + i, hint)).join(' ')}</div><div class="row"><button data-act="sceneCondAdd">Lägg till</button></div></div>
         <h4>2. Vilka är med?</h4>
         ${sc.cast.length ? sc.cast.map((c, i) => `<div class="card"><div class="row"><img class="pv" src="${esc(imageSrc(c.image, c.race))}" onerror="this.style.display='none'"><b>${esc(c.id)}</b><span class="hint">${c.at ? 'finns från början, vid ruta ' + c.at.join(', ') : 'dyker upp senare (i ett steg)'}</span></div><div class="row"><button class="small" data-act="castMove" data-i="${i}">${c.at ? 'Flytta på kartan' : 'Placera från början'}</button><button class="small danger" data-act="castDel" data-i="${i}">Ta bort</button></div></div>`).join('') : '<p class="hint">Ingen än.</p>'}
         <div class="card"><div class="row">Ny person <select data-bind="castDraft.image">${chars.length ? `<optgroup label="Karaktärer">${chars.map(([path, race]) => `<option value="${esc(path)}"${castDraft.image === path ? ' selected' : ''}>${esc(nameOf(path))}</option>`).join('')}</optgroup>` : ''}<optgroup label="Enheter">${images.map(item => `<option value="${esc(item.path)}"${castDraft.image === item.path ? ' selected' : ''}>${esc(item.label)}</option>`).join('')}</optgroup></select></div>
           <div class="row"><button class="primary" data-act="castAdd">Finns från början (klicka på kartan)</button></div><div class="row"><button data-act="castLater">Dyker upp senare</button></div></div>
         <h4>3. Vad händer? (uppifrån och ned)</h4>
-        ${sc.steps.length ? sc.steps.map((s, i) => `<div class="step"><b>${i + 1}.</b><span>${esc(stepLabel(sc, s))}${i ? `<br><label class="hint"><input type="checkbox" data-act="stepTogether" data-i="${i}"${s.together ? ' checked' : ''}> samtidigt som föregående</label>` : ''}</span><button class="small" data-act="sUp" data-i="${i}">↑</button><button class="small" data-act="sDown" data-i="${i}">↓</button><button class="small danger" data-act="sDel" data-i="${i}">✕</button></div>`).join('') : '<p class="hint">Inga steg än. Allt som står här händer efter varandra. En dialog tillhör scenen och spelas även om personerna försvunnit.</p>'}
-        <div class="card"><div class="row">${needWho ? select('', whoOpts, stepDraft.who, 'stepDraft.who') : ''} ${select('', [['walk', 'går till…'], ['appear', 'dyker upp vid…'], ['say', 'säger (pratbubbla)'], ['leave', 'lämnar scenen (går mot dimman)'], ['vanish', 'försvinner direkt'], ['kill', 'dödar…'], ['teleport', 'flyttas direkt till…'], ['dialog', 'DIALOG (dialogruta, flera personer)'], ['wait', 'VÄNTA (sekunder)']], t, 'stepDraft.type')}</div>
+        ${sc.steps.length ? sc.steps.map((s, i) => `<div class="step"><b>${i + 1}.</b><span>${esc(stepLabel(sc, s))}</span><button class="small" data-act="sUp" data-i="${i}">↑</button><button class="small" data-act="sDown" data-i="${i}">↓</button><button class="small danger" data-act="sDel" data-i="${i}">✕</button></div>`).join('') : '<p class="hint">Inga steg än. Allt som står här händer efter varandra. En dialog tillhör scenen och spelas även om personerna försvunnit.</p>'}
+        <div class="card"><div class="row">${needWho ? select('', whoOpts, stepDraft.who, 'stepDraft.who') : ''} ${select('', [['walk', 'går till…'], ['appear', 'dyker upp vid…'], ['say', 'säger (pratbubbla)'], ['leave', 'lämnar scenen (går mot dimman)'], ['vanish', 'försvinner direkt'], ['dialog', 'DIALOG (dialogruta, flera personer)'], ['wait', 'VÄNTA (sekunder)']], t, 'stepDraft.type')}</div>
           ${needTarget ? `<div class="row">${select('', targets.filter(x => t === 'walk' || x[0] !== castIds[0] || true), stepDraft.target, 'stepDraft.target')}</div>` : ''}
           ${t === 'say' ? `<div class="row"><input data-bind="stepDraft.text" value="${esc(stepDraft.text)}" placeholder="vad sägs?" style="width:100%"></div><div class="hint" style="margin:0">Personen väntar tills bubblan är klar. Rösten följer med om hen har en.</div>` : ''}
           ${t === 'dialog' ? `<div class="row"><textarea data-bind="stepDraft.text" style="height:90px;font:12px sans-serif" placeholder="en replik per rad, så här:\nthordram: Text\nreeve: [angry]Mer text">${esc(stepDraft.text)}</textarea></div>` : ''}
-          ${t === 'kill' ? `<div class="row">${select('', castIds.filter(id => id !== stepDraft.who).concat(actorIds().filter(id => !castIds.includes(id))), stepDraft.victim, 'stepDraft.victim')} ${select('', [['blood', 'blodpöl'], ['corpse', 'lik'], ['both', 'blod + lik'], ['none', 'inget']], stepDraft.leave, 'stepDraft.leave')}</div>` : ''}
           ${t === 'wait' ? `<div class="row"><input type="number" data-bind="stepDraft.wait" value="${stepDraft.wait}" style="width:70px"> sekunder</div>` : ''}
           <div class="row"><button class="primary" data-act="stepAdd">Lägg till steg</button></div></div>
         <div class="row"><button class="primary" data-act="scenePlay">▶ Spela upp scenen</button><button data-act="stopPreview">Rensa</button></div>
@@ -346,8 +226,6 @@
     }
 
     // ---------------------------------------------------------------- export och kontroll
-    const defById = id => defs.find(def => def.id === id);
-    const pureDef = def => { const out = { id: def.id, image: def.image }; if (def.race) out.race = def.race; if (def.size) out.size = def.size; out.at = def.at; out.script = def.script.map(step => ({ ...step })); return out; };
     function compile(event) {
       const out = {}; if (event.id) out.id = event.id;
       const top = {}, when = [];
@@ -355,32 +233,9 @@
       if (top.at === undefined && top.goal === undefined && !when.length) top.at = 0;
       Object.assign(out, top);
       if (when.length) out.when = when.length === 1 ? when[0] : when;
-      for (const effect of event.effects) {
-        const v = effect.v;
-        if (effect.kind === 'spawn') { const def = defById(v.actor); if (def?.at) (out.spawn ||= []).push(pureDef(def)); }
-        else if (effect.kind === 'act') (out.act ||= {})[v.actor] = (effect.script || []).map(step => ({ ...step }));
-        else if (effect.kind === 'tell') (out.tell ||= []).push({ who: v.who || 'narrator', text: v.text });
-        else if (effect.kind === 'give') (out.give ||= {})[v.res] = +v.n;
-      }
       return out;
     }
-    function problems() {
-      const out = [], ids = new Set(actorIds());
-      for (const def of defs) if (!events.some(event => event.effects.some(effect => effect.kind === 'spawn' && effect.v.actor === def.id))) out.push({ text: `Skådespelaren '${def.id}' startas inte av någon händelse.`, fix: { act: 'startAtBegin', id: def.id, label: 'Skapa händelse som startar den' } });
-      for (const def of defs) if (!def.at) out.push({ text: `Skådespelaren '${def.id}' saknar startruta.` });
-      for (const event of events) {
-        for (const effect of event.effects) {
-          if ((effect.kind === 'spawn' || effect.kind === 'act') && !ids.has(effect.v.actor)) out.push({ text: `Händelsen "${summary(event)}" använder skådespelaren '${effect.v.actor}' som inte finns.` });
-          if (effect.kind === 'act' && !(effect.script || []).length) out.push({ text: `Händelsen "${summary(event)}" byter till ett tomt manus.` });
-        }
-        for (const cond of event.conds) {
-          if (cond.kind === 'read' && !eventIds().includes(cond.v.id)) out.push({ text: `Händelsen "${summary(event)}" väntar på dialogen '${cond.v.id}' som inte finns.` });
-          if (['arrived', 'arrivedSeen', 'seen', 'gone', 'killed', 'near'].includes(cond.kind) && !ids.has(cond.v.actor)) out.push({ text: `Händelsen "${summary(event)}" väntar på skådespelaren '${cond.v.actor}' som inte finns.` });
-        }
-      }
-      for (const sc of scenes) out.push(...sceneProblems(sc));
-      return out;
-    }
+    function problems() { return scenes.flatMap(sceneProblems); }
     function sceneryRows() {   // kulisser slås ihop till rektanglar per typ och lager
       const groups = new Map();
       for (const item of World.sceneryList) { const id = item.type + '|' + item.layer; if (!groups.has(id)) groups.set(id, new Set()); groups.get(id).add(`${item.x},${item.y}`); }
@@ -402,31 +257,28 @@
       const parts = [];
       parts.push({ title: 'Kulisser (ersätter kapitlets scenery)', text: `scenery: [\n${sceneryRows().map(line => '\t' + line + ',').join('\n')}\n],` });
       parts.push({ title: 'Startbyggnader och döda byggnader (ersätter kapitlets start)', text: `start: { buildings: [\n${list.filter(building => building !== eye).map(building => '\t' + row(building) + ',').join('\n')}\n] },` + (eye ? `\neye: { dx: ${eye.x - base.x}, dy: ${eye.y - base.y} },` : '') });
-      if (events.length || scenes.length) parts.push({ title: 'Händelser och scener (lägg till i kapitlets events)', text: `events: [\n${[...scenes.map(sc => compileScene(sc)), ...events.map(event => compile(event))].map(event => '\t' + ser(event) + ',').join('\n')}\n],` });
-      const loose = defs.filter(def => !events.some(event => event.effects.some(effect => effect.kind === 'spawn' && effect.v.actor === def.id)));
-      if (loose.length) parts.push({ title: 'VARNING: skådespelare som INTE startas av någon händelse (de syns aldrig i spelet förrän en händelse startar dem)', text: `// ${loose.map(def => ser(pureDef(def))).join('\n// ')}` });
+      if (scenes.length) parts.push({ title: 'Scener (lägg till i kapitlets events)', text: `events: [\n${scenes.map(sc => compileScene(sc)).map(event => '\t' + ser(event) + ',').join('\n')}\n],` });
       return parts;
     }
     function viewExport() {
       const issues = problems(), parts = exportParts(), text = parts.map(part => `// ${part.title}\n${part.text}`).join('\n\n');
       return `<h4>Kontroll</h4>
-        ${issues.length ? issues.map(issue => `<div class="row warn">⚠ ${esc(issue.text)} ${issue.fix ? `<button data-act="${issue.fix.act}" data-id="${esc(issue.fix.id)}">${issue.fix.label}</button>` : ''}</div>`).join('') : '<div class="ok">✓ Inget att anmärka på.</div>'}
+        ${issues.length ? issues.map(issue => `<div class="row warn">⚠ ${esc(issue.text)} </div>`).join('') : '<div class="ok">✓ Inget att anmärka på.</div>'}
         <h4>Rader att klistra in i kapitlet</h4>
         <div class="row"><button class="primary" data-act="copyExport">Kopiera allt</button><span class="hint" id="copyNote"></span></div>
         <textarea readonly id="exportText">${esc(text)}</textarea>
-        <p class="hint">Händelserna lägger du i kapitlets <code>events</code>, och dina ändringar av kartan ersätter <code>scenery</code> och <code>start</code>. Skådespelare ingår inlagda i de händelser som startar dem.</p>`;
+        <p class="hint">Scenerna lägger du i kapitlets <code>events</code>, och dina ändringar av kartan ersätter <code>scenery</code> och <code>start</code>.</p>`;
     }
 
     // ---------------------------------------------------------------- rita om panelen
     function render() {
-      const armText = st.arm ? (st.arm.kind === 'cast' || st.arm.kind === 'castMove' ? 'Klicka på kartan där personen ska stå när scenen börjar.' : st.arm.kind === 'sceneStep' ? 'Klicka på kartan: vart? (klicka på en byggnad för att gå till den)' : st.arm.kind === 'start' ? 'Klicka på kartan för att välja startruta.' : st.arm.type === 'walk' ? 'Klicka på kartan: vart ska hen gå? (en byggnad = byggnaden)' : 'Klicka på kartan: vart ska hen teleporteras?') : '';
+      const armText = st.arm ? (st.arm.kind === 'sceneStep' ? 'Klicka på kartan: vart? (klicka på en byggnad för att gå till den)' : 'Klicka på kartan där personen ska stå när scenen börjar.') : '';
       const scrollTop = panel.scrollTop;
       panel.innerHTML = `<div class="se-head"><b>Story-editor</b><span class="hint" style="margin:0">${chapter() ? `kapitel ${chapter().number}: ${esc(chapter().name || '')}` : '(ingen story pågår)'}</span>
           <label title="Fryser kapitlet medan du arbetar"><input type="checkbox" id="sePause"${C.Game.paused ? ' checked' : ''}> paus</label></div>
         <div class="se-tabs">${tabsNow().map(([id, label]) => `<button data-act="tab" data-tab="${id}" class="${st.tab === id ? 'on' : ''}">${label}</button>`).join('')}</div>
         ${armText ? `<div class="banner"><span>${armText}</span><button data-act="cancelArm">Avbryt</button></div>` : ''}
-        <div class="se-body">${{ scene: viewScene, map: viewMap, actor: viewActor, event: viewEvent, export: viewExport }[st.tab]()}
-          <div class="row" style="margin-top:10px"><button class="small" data-act="toggleAdv">${st.adv ? 'Dölj avancerat' : 'Avancerat…'}</button></div>
+        <div class="se-body">${{ scene: viewScene, map: viewMap, export: viewExport }[st.tab]()}
           ${st.note ? `<p class="ok">${esc(st.note)}</p>` : ''}<div class="hint" id="seHover"></div></div>`;
       panel.scrollTop = scrollTop; persist();
     }
@@ -437,7 +289,7 @@
     // ---------------------------------------------------------------- inmatning i panelen
     const setPath = (path, value) => {
       const [root, key] = path.split('.');
-      if (root === 'sceneCond') sceneCond = value; else if (root === 'sceneIndex') cur = +value; else if (key === undefined) st[root] = value; else ({ draft, evDraft, castDraft, stepDraft, scene: sceneNow() || {} })[root][key] = value;
+      if (root === 'sceneCond') sceneCond = value; else if (root === 'sceneIndex') cur = +value; else if (key === undefined) st[root] = value; else ({ castDraft, stepDraft, scene: sceneNow() || {} })[root][key] = value;
     };
     panel.addEventListener('input', event => { const bind = event.target.dataset?.bind; if (bind && event.target.type !== 'radio' && event.target.tagName !== 'SELECT') setPath(bind, event.target.value); });
     panel.addEventListener('change', event => {
@@ -446,26 +298,15 @@
       const bind = target.dataset?.bind; if (!bind) return;
       setPath(bind, target.value);
       if (bind === 'castDraft.image') { castDraft.race = characters[target.value] === 'demon' ? 'demon' : ''; castDraft.id = uniqueId(nameOf(target.value).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); }
-      if (bind === 'draft.image' && characters[target.value]) draft.race = characters[target.value] === 'demon' ? 'demon' : '';
       if (target.tagName === 'SELECT' || target.type === 'radio') render();
     });
     panel.addEventListener('click', event => {
       const button = event.target.closest('[data-act]'); if (!button) return;
-      st.note = ''; if (button.dataset.act !== 'saveEvent') st.confirmNoCond = false; const fn = actions[button.dataset.act]; if (fn) fn(button.dataset, event);
+      st.note = ''; const fn = actions[button.dataset.act]; if (fn) fn(button.dataset, event);
     });
 
     // ---------------------------------------------------------------- skådespelarens bygge
     const tileTarget = tile => { const building = World.buildingAt(tile.x, tile.y); if (building && !building.removed) return building.type === 'hq' ? 'hq' : building.type; return [tile.x - hq().x, tile.y - hq().y]; };
-    const currentDef = () => {
-      const custom = draft.image === '__custom', path = custom ? draft.custom.trim() : draft.image, def = { id: draft.id.trim(), image: path };
-      if (draft.race && !/\/(animals|monster)\//.test(path)) def.race = draft.race;
-      const size = +draft.size || (characters[path] ? CHARACTER_SIZE : images.find(item => item.path === path)?.size); if (size && size !== 16) def.size = size;
-      return { ...def, at: draft.at, script: draft.script.map(step => ({ ...step })) };
-    };
-    const killStep = () => {
-      const id = $('#stVictim')?.value, how = $('#stLeave')?.value; if (!id || id.startsWith('(')) { notice('Spara en annan skådespelare först, den som ska dödas.'); return null; }
-      return how === 'blood' ? { kill: id } : { kill: { actor: id, leave: how === 'both' ? ['blood', 'corpse'] : how } };
-    };
     const move = (list, i, d) => { const j = i + d; if (j >= 0 && j < list.length) [list[i], list[j]] = [list[j], list[i]]; };
     function stopPreview() {   // tar bort uppspelade skådespelare, deras blodpölar och att dialogerna lästs, så att inget följer med en sparning
       const progress = C.Levels.progressRef(), saved = progress.actors;
@@ -482,21 +323,7 @@
         World.sceneryList = World.sceneryList.filter(other => !(other.x === item.x && other.y === item.y && other.type === item.type && other.layer === item.layer));
       }
     }
-    function play(def) {
-      if (!def.at) { notice('Välj en startruta först.'); return; }
-      stopPreview(); previewBase = C.Levels.progressRef().actors.leftovers.length;
-      const needs = new Set();
-      for (const step of def.script) { const [type, arg] = Object.entries(step)[0]; const target = type === 'kill' ? (typeof arg === 'string' ? arg : arg.actor) : (type === 'walk' || type === 'teleport') && typeof arg === 'string' ? arg : null; if (target && target !== def.id && defById(target)) needs.add(target); }
-      for (const id of needs) { A.spawn(pureDef(defById(id))); previews.push(id); }
-      A.spawn(def); previews.push(def.id); note(`Spelar upp ${def.id}.`);
-    }
-    function testEvent(event) {
-      const compiled = compile(event); stopPreview(); previewBase = C.Levels.progressRef().actors.leftovers.length;
-      C.Story.fire(compiled); for (const spec of compiled.spawn || []) previews.push(spec.id); note('Effekterna kördes.');
-    }
-
     const actions = {
-      toggleAdv: () => { st.adv = !st.adv; if (!st.adv && (st.tab === 'actor' || st.tab === 'event')) st.tab = 'scene'; render(); },
       newScene: () => { const n = scenes.length + 1; let id = 'scene' + n; while (scenes.some(sc => sc.id === id)) id += 'b'; scenes.push({ id, name: 'Scen ' + n, conds: [], cast: [], steps: [] }); cur = scenes.length - 1; render(); },
       deleteScene: () => { scenes.splice(cur, 1); cur = Math.max(0, cur - 1); render(); },
       sceneCondAdd: () => { const sc = sceneNow(), spec = COND[sceneCond], v = read(spec, 'sc'); if (spec.f.some(([name, type]) => type !== 'text' && v[name] === '')) { notice('Fyll i alla fält.'); return; } sc.conds.push({ kind: sceneCond, v }); render(); },
@@ -508,14 +335,12 @@
       sUp: ({ i }) => { move(sceneNow().steps, +i, -1); render(); },
       sDown: ({ i }) => { move(sceneNow().steps, +i, 1); render(); },
       sDel: ({ i }) => { sceneNow().steps.splice(+i, 1); render(); },
-      stepTogether: ({ i }) => { const s = sceneNow().steps[+i]; s.together = !s.together; render(); },
       stepAdd: () => {
         const sc = sceneNow(), d = stepDraft, who = NO_WHO.includes(d.type) ? '' : d.who; if (!who && !NO_WHO.includes(d.type)) { notice('Lägg först till någon som är med i scenen.'); return; }
-        const step = { who, type: d.type, together: false };
-        if (d.type === 'walk' || d.type === 'teleport' || d.type === 'appear') { if (d.target === '__map') { st.arm = { kind: 'sceneStep', who, type: d.type }; render(); return; } step.arg = d.target; }
+        const step = { who, type: d.type };
+        if (d.type === 'walk' || d.type === 'appear') { if (d.target === '__map') { st.arm = { kind: 'sceneStep', who, type: d.type }; render(); return; } step.arg = d.target; }
         else if (d.type === 'say') { if (!d.text.trim()) { notice('Skriv vad som sägs.'); return; } step.arg = { text: d.text.trim(), secs: 2 }; d.text = ''; }
         else if (d.type === 'dialog') { const lines = lineList(d.text); if (!lines.length) { notice('Skriv minst en replik, t.ex. narrator: Text'); return; } step.arg = lines; d.text = ''; }
-        else if (d.type === 'kill') { const victim = d.victim || sc.cast.map(c => c.id).find(id => id !== who); if (!victim) { notice('Det behöver finnas någon annan att döda.'); return; } step.arg = { actor: victim, leave: d.leave }; }
         else if (d.type === 'wait') step.arg = +d.wait || 1;
         sc.steps.push(step); render();
       },
@@ -528,68 +353,7 @@
       cancelArm: () => { st.arm = null; render(); },
       clearScenery: () => { World.scenery.clear(); World.sceneryList = []; note('Alla kulisser är borttagna (ladda om kapitlet för att få tillbaka dem).'); },
       // skådespelare
-      armStart: () => { st.arm = { kind: 'start' }; render(); },
-      armStep: ({ type }) => { st.arm = { kind: 'step', type }; render(); },
-      addWait: () => { draft.script.push({ wait: +$('#stWait').value || 1 }); render(); },
-      addSay: () => { const text = $('#stText').value.trim(); if (!text) { notice('Skriv vad som sägs.'); return; } const line = { who: $('#stSpeaker').value, text }, last = draft.script[draft.script.length - 1];
-        if (last && last.tell) last.tell.push(line); else draft.script.push({ tell: [line] });   // repliker i rad hör till samma dialog; något annat emellan startar en ny
-        $('#stText').value = ''; render(); },
-      addBubble: () => {
-        const text = $('#stBubble').value.trim(); if (!text) { notice('Skriv vad bubblan ska säga.'); return; }
-        const seconds = +$('#stBubbleSec').value || 2, wait = $('#stBubbleWait').checked, voice = $('#stBubbleVoice').checked;
-        const speaker = $('#stBubbleSpeaker').value;
-        draft.script.push({ say: { text, for: seconds, ...(wait ? { wait: true } : {}), ...(voice ? (speaker ? { speaker } : {}) : { voice: false }) } }); render();
-      },
-      addUntil: () => {
-        const spec = COND[st.untilKind], v = read(spec, 'u');
-        if (Object.values(v).some(value => value === '')) { notice('Fyll i alla fält.'); return; }
-        draft.script.push({ until: spec.make(v).when }); render();
-      },
-      addKill: () => { const step = killStep(); if (step) { draft.script.push(step); render(); } },
-      addLeave: () => { draft.script.push({ leave: true }); render(); },
-      addVanish: () => { draft.script.push({ vanish: true }); render(); },
-      stepUp: ({ i }) => { move(draft.script, +i, -1); render(); },
-      stepDown: ({ i }) => { move(draft.script, +i, 1); render(); },
-      stepDel: ({ i }) => { draft.script.splice(+i, 1); render(); },
-      saveActor: () => {
-        const def = currentDef();
-        if (!def.id) { notice('Ge skådespelaren ett namn.'); return; }
-        if (!def.image) { notice('Välj en bild.'); return; }
-        if (!def.at) { notice('Välj en startruta på kartan.'); return; }
-        const duplicate = defs.findIndex((other, i) => other.id === def.id && i !== draft.editing);
-        if (duplicate >= 0) { notice(`Det finns redan en skådespelare som heter ${def.id}.`); return; }
-        if (draft.editing !== null) { const oldId = defs[draft.editing].id; defs[draft.editing] = def; if (oldId !== def.id) for (const event of events) for (const effect of event.effects) if (effect.v.actor === oldId) effect.v.actor = def.id; } else defs.push(def);
-        const image = draft.image; draft = blankDraft(); draft.image = image; note(`Sparade ${def.id}. Glöm inte att starta den med en händelse (knappen på kortet, eller fliken Händelser).`);
-      },
-      newActor: () => { const image = draft.image; draft = blankDraft(); draft.image = image; render(); },
-      editActor: ({ i }) => { const def = defs[+i], known = images.some(item => item.path === def.image) || !!characters[def.image]; draft = { editing: +i, id: def.id, image: known ? def.image : '__custom', custom: known ? '' : def.image, race: def.race || '', size: def.size || '', at: def.at, script: def.script.map(step => ({ ...step })) }; render(); },
-      deleteActor: ({ i }) => { defs.splice(+i, 1); draft.editing = null; render(); },
-      playDraft: () => play(currentDef()),
-      playSaved: ({ i }) => play(pureDef(defs[+i])),
       stopPreview: () => { stopPreview(); note('Uppspelningen är rensad.'); },
-      startAtBegin: ({ id }) => { events.push({ id: '', conds: [{ kind: 'time', v: { n: '0' } }], effects: [{ kind: 'spawn', v: { actor: id } }] }); note(`Skapade en händelse som startar ${id} när kapitlet börjar (se fliken Händelser).`); },
-      // händelser
-      addCond: () => { const spec = COND[evDraft.addCond], v = read(spec, 'c'); if (Object.values(v).some(value => value === '')) { notice('Fyll i alla fält.'); return; } evDraft.conds.push({ kind: evDraft.addCond, v }); render(); },
-      condDel: ({ i }) => { evDraft.conds.splice(+i, 1); render(); },
-      addEff: () => {
-        const spec = EFF[evDraft.addEff], v = read(spec, 'e');
-        if (Object.values(v).some(value => value === '')) { notice('Fyll i alla fält.'); return; }
-        if (evDraft.addEff === 'act' && !draft.script.length) { notice('Manuset är tomt. Bygg ett i fliken Skådespelare först.'); return; }
-        evDraft.effects.push({ kind: evDraft.addEff, v, script: evDraft.addEff === 'act' ? draft.script.map(step => ({ ...step })) : undefined }); render();
-      },
-      effDel: ({ i }) => { evDraft.effects.splice(+i, 1); render(); },
-      saveEvent: () => {
-        if (!evDraft.conds.length && !evDraft.effects.length) { notice('Lägg till något först.'); return; }
-        if (!evDraft.conds.length && !st.confirmNoCond) { st.confirmNoCond = true; notice('Du har inte lagt till något villkor (1. När ska det hända?), så händelsen sker direkt när kapitlet startar (at: 0). Tryck Spara igen om det är meningen, annars lägg till villkoret med knappen "Lägg till villkor".'); return; }
-        st.confirmNoCond = false;
-        const { editing, addCond, addEff, ...rest } = evDraft, event = { ...rest, id: evDraft.id.trim() };
-        if (editing !== null) events[editing] = event; else events.push(event);
-        evDraft = blankEvent(); note('Händelsen är sparad.');
-      },
-      loadEvent: ({ i }) => { evDraft = { ...blankEvent(), ...JSON.parse(JSON.stringify(events[+i])), editing: +i }; render(); },
-      deleteEvent: ({ i }) => { events.splice(+i, 1); evDraft = blankEvent(); render(); },
-      testDraft: () => { const { editing, addCond, addEff, ...rest } = evDraft; testEvent({ ...rest, id: evDraft.id.trim() }); },
-      testSaved: ({ i }) => testEvent(events[+i]),
       copyExport: () => {
         const area = $('#exportText'); area.select();
         const done = ok => { const el = $('#copyNote'); if (el) el.textContent = ok ? 'Kopierat!' : 'Markera texten och kopiera.'; };
@@ -631,9 +395,7 @@
       const arm = st.arm; st.arm = null;
       if (arm.kind === 'cast') { const sc = sceneNow(); if (sc) { const id = castDraft.id.trim() || uniqueId('person'); sc.cast.push({ id, image: castDraft.image, race: castDraft.race, at: [tile.x - hq().x, tile.y - hq().y] }); castDraft = blankCast(); stepDraft.who = stepDraft.who || id; } }
       else if (arm.kind === 'castMove') { const c = sceneNow()?.cast[arm.i]; if (c) c.at = [tile.x - hq().x, tile.y - hq().y]; }
-      else if (arm.kind === 'sceneStep') { const sc = sceneNow(); if (sc) sc.steps.push({ who: arm.who, type: arm.type, arg: tileTarget(tile), together: false }); }
-      else if (arm.kind === 'start') draft.at = [tile.x - hq().x, tile.y - hq().y];
-      else draft.script.push({ [arm.type]: tileTarget(tile) });
+      else if (arm.kind === 'sceneStep') { const sc = sceneNow(); if (sc) sc.steps.push({ who: arm.who, type: arm.type, arg: tileTarget(tile) }); }
       render();
     }
     const mine = event => !event.shiftKey && event.target === canvas && event.button !== 1 && (st.tab === 'map' || !!st.arm);
@@ -677,15 +439,10 @@
     const tileOfTarget = target => { const found = A.resolve(target, null); return found && { x: found.x, y: found.y }; };
     function drawMarks() {
       const wanted = [], base = hq();
-      if (base && st.tab === 'actor') {
-        for (const def of defs) if (def.at && defs.indexOf(def) !== draft.editing) wanted.push({ x: base.x + def.at[0], y: base.y + def.at[1], label: def.id.slice(0, 7), color: 'rgb(180 180 190 / 85%)', wide: true });
-        if (draft.at) wanted.push({ x: base.x + draft.at[0], y: base.y + draft.at[1], label: 'S', color: 'rgb(255 213 74 / 90%)' });
-        draft.script.forEach((step, i) => { const [type, arg] = Object.entries(step)[0]; const tile = (type === 'walk' || type === 'teleport') && tileOfTarget(arg); if (tile) wanted.push({ ...tile, label: String(i + 1), color: 'rgb(255 213 74 / 90%)' }); });
-      }
       if (base && st.tab === 'scene' && sceneNow()) {
         const sc = sceneNow();
         for (const c of sc.cast) if (c.at) wanted.push({ x: base.x + c.at[0], y: base.y + c.at[1], label: c.id.slice(0, 7), color: 'rgb(255 213 74 / 90%)', wide: true });
-        sc.steps.forEach((s, i) => { const tile = (s.type === 'walk' || s.type === 'teleport' || s.type === 'appear') && (Array.isArray(s.arg) || typeof s.arg === 'string') && tileOfTarget(s.arg); if (tile) wanted.push({ ...tile, label: String(i + 1), color: 'rgb(120 200 255 / 90%)' }); });
+        sc.steps.forEach((s, i) => { const tile = (s.type === 'walk' || s.type === 'appear') && (Array.isArray(s.arg) || typeof s.arg === 'string') && tileOfTarget(s.arg); if (tile) wanted.push({ ...tile, label: String(i + 1), color: 'rgb(120 200 255 / 90%)' }); });
       }
       while (marks.length < wanted.length) { const div = document.createElement('div'); div.style.cssText = 'position:absolute;color:#000;font:bold 11px sans-serif;text-align:center;border-radius:10px;white-space:nowrap;padding:0 3px;box-sizing:border-box;min-width:16px'; markerBox.appendChild(div); marks.push(div); }
       marks.forEach((div, i) => {
@@ -709,6 +466,6 @@
     })();
 
     render();
-    window.StoryEditor = { get defs() { return defs; }, get events() { return events; }, get scenes() { return scenes; }, compileScene, export: () => exportParts().map(part => part.text).join('\n'), state: st, compile, actions, render };
+    window.StoryEditor = { get scenes() { return scenes; }, compileScene, export: () => exportParts().map(part => part.text).join('\n'), state: st, actions, render };
   }
 })();

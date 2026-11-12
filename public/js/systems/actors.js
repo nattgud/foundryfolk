@@ -16,10 +16,7 @@
      kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
      tell: [dialograder]  visar en dialog och väntar tills den lästs
-     (varje steg kan ha mark: 'nyckel', som sätts när steget är klart; { until: { told: 'nyckel' } } hos en annan skådespelare väntar på det. Editorns scener använder det.)
-     until: villkor       väntar tills villkoret gäller (samma slag som en händelses when, t.ex. { spoke: 'counsellors' } eller [{ gone: 'x' }, { resource: 'wood', made: 5 }]).
-                          Så får en skådespelare vänta på en annan: manusen går annars parallellt, var och ett för sig
-     Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, ... ]. Stegen sker i ordning (together: true = samtidigt som steget före).
+     Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, ... ]. Stegen sker i ordning, ett i taget.
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
    Mål (walk, teleport, spawn.at): [dx, dy] (rutor från spelarens HQ), 'hq', ett byggnads-id ('bakery' = närmaste), ett skådespelar-id, { x, y } (absolut ruta),
      { building: 'bakery' }, { actor: 'baker' }.
@@ -31,7 +28,6 @@
      { gone: id }         den har försvunnit eller dött
      { killed: id }       den har dödats av en annan skådespelare
      { near: id, of: mål, radius }  skådespelaren är inom radius rutor (standard 3) från målet
-     { spoke: id }        skådespelaren har läst klart en dialog (en tell i sitt manus)
      { read: 'händelse-id' }  dialogen i händelsen med id: 'händelse-id' är läst
      { told: 'nyckel' }   en nyckel i Levels.told
 
@@ -135,8 +131,8 @@
     },
 
     // ---- scener: en lista steg som sker i ordning (en dirigent, ingen skådespelare äger scenen) ----
-    // scene: [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { who: id, say: ..., together: true } ... ]
-    // Ett steg börjar när det förra är klart. together: true startar det samtidigt som steget före. Dialoger hör till scenen, inte till en person.
+    // scene: [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { who: id, say: ... } ... ]
+    // Ett steg börjar när det förra är klart. Dialoger hör till scenen, inte till en person.
     startScene(id, steps) {
       const progress = levels().progressRef?.(); if (!progress) return;
       const saved = state(); (saved.scenes ||= []);
@@ -153,18 +149,17 @@
       for (const scene of state().scenes || []) {
         scene.running = scene.running.filter(run => !this.sceneDone(scene, run, dt));
         let guard = 0;
-        while (!scene.running.length && scene.index < scene.steps.length && guard++ < 100) {   // nästa grupp: ett steg plus de som är together efter det
-          do {
+        while (!scene.running.length && scene.index < scene.steps.length && guard++ < 100) {
+          {
             const step = scene.steps[scene.index], i = scene.index++;
-            if (step.spawn) { this.spawn({ ...step.spawn, script: [] }); continue; }
-            if (step.tell) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'dialogue', lines: step.tell, part: 'events', mark }]); scene.running.push({ kind: 'tell', mark }); } continue; }
-            if (step.wait !== undefined && !step.who) { scene.running.push({ kind: 'wait', left: +step.wait || 0 }); continue; }
-            const [type] = Object.entries(step).find(([key]) => Actions[key]) || [];
-            const data = this.data(step.who);
-            if (!type || !data || data.gone) continue;
-            this.setScript(step.who, [{ [type]: step[type] }]);
-            scene.running.push({ kind: 'actor', who: step.who });
-          } while (scene.steps[scene.index]?.together);
+            if (step.spawn) this.spawn({ ...step.spawn, script: [] });
+            else if (step.tell) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'dialogue', lines: step.tell, part: 'events', mark }]); scene.running.push({ kind: 'tell', mark }); } }
+            else if (step.wait !== undefined && !step.who) scene.running.push({ kind: 'wait', left: +step.wait || 0 });
+            else {
+              const [type] = Object.entries(step).find(([key]) => key !== 'who' && Actions[key]) || [], data = this.data(step.who);
+              if (type && data && !data.gone) { this.setScript(step.who, [{ [type]: step[type] }]); scene.running.push({ kind: 'actor', who: step.who }); }
+            }
+          }
         }
       }
       const saved = state(); if (saved.scenes) saved.scenes = saved.scenes.filter(scene => scene.index < scene.steps.length || scene.running.length);
@@ -183,13 +178,13 @@
           if (!entry) continue;
           const [type, arg] = Object.entries(entry)[0];
           if (!Actions[type]) { console.warn(`Actors: unknown action '${type}' for ${data.id}`); data.index++; continue; }
-          data.act = { type, arg, started: false, elapsed: 0, done: entry.mark };   // mark: nyckel som sätts när steget är klart (se until: { told })
+          data.act = { type, arg, started: false, elapsed: 0 };
         }
         const action = Actions[data.act.type], act = data.act;
         if (!act.started) { act.started = true; action.start?.(data, act.arg, act, unit); }
-        if (data.act !== act) { if (data.gone && act.done) levels().markTold(act.done); continue; }   // handlingen bytte manus (eller skådespelaren försvann: steget räknas då som klart)
+        if (data.act !== act) continue;   // handlingen bytte manus
         act.elapsed += deltaSeconds;
-        if (action.update ? action.update(data, act.arg, deltaSeconds, act, unit) : true) { if (act.done) levels().markTold(act.done); if (data.act === act) { data.act = null; data.index++; } }
+        if (action.update ? action.update(data, act.arg, deltaSeconds, act, unit) : true) { if (data.act === act) { data.act = null; data.index++; } }
       }
     },
 
@@ -305,9 +300,6 @@
     fire: {
       start(data, arg) { CityBuilder.Story.fire(arg); },
     },
-    until: {
-      update(data, arg, dt, act) { const Story = CityBuilder.Story; return act.elapsed > 900 || [].concat(arg).every(need => Story.reached(need, Story.chapter)); },   // ger upp efter 15 minuter så att inget fastnar för alltid
-    },
   };
 
   // ---- triggers ----
@@ -323,7 +315,6 @@
       return !!tile && Utils.distance(unit.x - tile.x - .5, unit.y - tile.y - .5) <= (need.radius ?? 3);
     },
     read: key => levels().told('read:' + key),
-    spoke: id => Object.keys(levels().progressRef().told || {}).some(key => key.startsWith(`read:${id}:`)),
     told: key => levels().told(key),
   };
 
