@@ -207,8 +207,8 @@
     say: {
       start(data, arg, act, unit) {
         const spec = typeof arg === 'string' ? { text: arg } : arg, speakers = CityBuilder.Config.story.speakers, byImage = (data.image || '').replace(/^.*\//, '').replace(/\.png$/, '');
-        // Rösten: speaker i steget, annars skådespelarens id, annars bildfilens namn (images/units/pipwick.png -> pipwick, så 'pipwick1' också låter som Pipwick)
-        const speaker = spec.voice === false ? null : spec.speaker || [data.id, byImage].find(name => speakers[name]) || null;
+        // Rösten: speaker i steget, annars skådespelarens id, annars bildfilens namn (images/units/pipwick.png -> pipwick, så 'pipwick1' också låter som Pipwick; en grupp som thordramandalbertha låter som den första)
+        const speaker = spec.voice === false ? null : spec.speaker || [data.id, byImage, ...byImage.split('and')].find(name => speakers[name]) || null;
         act.handle = CityBuilder.Bubbles?.say(unit, spec.text, spec.for, null, speaker);
         act.wait = !!spec.wait;
       },

@@ -42,6 +42,14 @@
       probe.onload = () => { characters[`images/units/${id}.png`] = race; if (window.StoryEditor) window.StoryEditor.render(); };
       probe.src = `images/units/${race}/${id}.png`;
     }
+    // Övriga rasbilder som inte är vanliga enheter, till exempel grupper som går tillsammans (thordramandalbertha, baeltharandmordrath)
+    if (C.RaceImages) {
+      const known = new Set(images.map(item => item.path.replace(/^.*\//, '')));
+      for (const file of C.RaceImages) {
+        const m = /^images\/units\/(human|demon)\/([^/]+\.png)$/.exec(file);
+        if (m && !known.has(m[2]) && !(C.RaceImages.has(`images/units/human/${m[2]}`) && C.RaceImages.has(`images/units/demon/${m[2]}`)) && !/_(carry|loaded)\.png$/.test(m[2]) && !characters[`images/units/${m[2]}`]) characters[`images/units/${m[2]}`] = m[1];
+      }
+    }
     const defaultImage = images.find(item => item.label === 'worker')?.path || images[0]?.path || '';
     let draft = blankDraft(), evDraft = blankEvent();
 
