@@ -168,7 +168,7 @@
           case 'appear': step = { spawn: specOf(cast.get(s.who) || { id: s.who, image: '' }, s.arg) }; break;
           case 'walk': step = { who: s.who, walk: s.arg }; break;
           case 'camera': step = { camera: s.arg }; if (s.zoom) step.zoom = s.zoom; break;
-          case 'say': step = { who: s.who, say: { text: s.arg.text, for: +s.arg.secs || 2, wait: true } }; break;
+          case 'say': step = { who: s.who, say: { text: s.arg.text, wait: true } }; break;
           case 'dialog': step = { tell: s.arg.map(line => ({ who: line.who, text: line.text })) }; break;
           case 'leave': step = { who: s.who, leave: true }; break;
           case 'vanish': step = { who: s.who, vanish: true }; break;

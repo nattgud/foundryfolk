@@ -11,8 +11,10 @@
 (function (CityBuilder) {
   'use strict';
   const { Players, Config } = CityBuilder;   // Renderer laddas senare, så den slås upp först när den behövs
-  const LINGER = 1.8, GIVE_UP = 25;   // sekunder kvar efter ett röstat tal; sekunder en bubbla får vänta på att synas innan den ges upp
-  const MAX = 5, GAP = 3, DEFAULT_SECONDS = 3.5, FADE = 0.4, STUCK_SECONDS = 4, STUCK_COOLDOWN = 90, STUCK_AFTER = 10, STUCK_GAP = 45;   // sekunder
+  // Utan eget värde räknas tiden efter textens längd: med röst (texten skrivs ut medan man läser) en kort stund efter sista tecknet, utan röst (allt syns direkt) tid att läsa hela
+  const stay = (plain, voiced) => voiced ? Math.min(6, Math.max(1.8, 1.2 + plain.length / 30)) : Math.min(9, Math.max(2.5, 1 + plain.length / 14));
+  const GIVE_UP = 25;   // sekunder en bubbla får vänta på att synas innan den ges upp
+  const MAX = 5, GAP = 3, FADE = 0.4, STUCK_SECONDS = 4, STUCK_COOLDOWN = 90, STUCK_AFTER = 10, STUCK_GAP = 45;   // sekunder
   const STUCK_LINES_TO = ['No way through to the {name}!', 'The road to the {name} is blocked.', "I can't get to the {name} from here."];
   const STUCK_LINES = ['No way through here!', 'The road is blocked.', "I can't get any further."];
   const blocked = new Map();   // väg (nyckel) -> { first, last, n, shown }: när den började misslyckas, senaste misslyckandet, antal, senaste visningen
@@ -57,6 +59,7 @@
   }
 
   const Bubbles = {
+    stay,   // standardtid efter textens längd (stay(text, medRöst))
     say(unit, text, seconds, extraClass, speaker, keep) {   // keep (valfri): funktion som ger false när bubblan inte längre stämmer, då försvinner den direkt
       const handle = { done: false };
       if (!unit || unit.removed || !text) { handle.done = true; return handle; }
@@ -68,7 +71,7 @@
       const shownPart = document.createElement('span'), restPart = document.createElement('span');   // resten finns med osynlig så att bubblan har sin slutliga storlek från början
       restPart.style.visibility = 'hidden'; restPart.textContent = plain; el.append(shownPart, restPart); el.style.opacity = '0';
       ensureLayer().appendChild(el);
-      bubbles.set(unit, { el, handle, shownPart, restPart, plain, voice, speaker, seconds: seconds || (voice ? LINGER : DEFAULT_SECONDS), until: Infinity, born: now(), started: false, keep, order: ++counter });
+      bubbles.set(unit, { el, handle, shownPart, restPart, plain, voice, speaker, seconds: seconds || stay(plain, !!voice), until: Infinity, born: now(), started: false, keep, order: ++counter });
       return handle;
     },
     // Ger en replik (text) när det är dags att berätta att vägen är blockerad, annars null. Den som anropar låter enheten gå fram till blockeringen och säga den där (Units.handlePathFailure).

@@ -10,7 +10,7 @@
      teleport: mål        flyttar direkt
      vanish: true         försvinner direkt
      say: text | { text, for: sekunder, wait: true, speaker: id, voice: false }   pratbubbla ovanför huvudet (fast storlek, i vägen för ingenting). Har skådespelaren en talare i
-                          Config.story.speakers (samma id, samma namn som bildfilen, eller speaker) skrivs texten ut med dess röst (voice: false stänger av). for = sekunder kvar efter sista tecknet (standard 1,8).
+                          Config.story.speakers (samma id, samma namn som bildfilen, eller speaker) skrivs texten ut med dess röst (voice: false stänger av). for = sekunder kvar efter sista tecknet (utan värde räknas tiden efter textens längd, se Bubbles.stay).
                           Manuset går vidare direkt, eller med wait: true först när bubblan är borta (räknat från att den syns)
      leave: true          går mot närmaste ruta som spelaren inte ser (dimman) och försvinner när den inte syns längre
      kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
