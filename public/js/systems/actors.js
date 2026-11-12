@@ -30,6 +30,7 @@
      { killed: id }       den har dödats av en annan skådespelare
      { near: id, of: mål, radius }  skådespelaren är inom radius rutor (standard 3) från målet
      { read: 'händelse-id' }  dialogen i händelsen med id: 'händelse-id' är läst
+     { scene: 'id' }      en annan scen (händelsens id) har spelats klart
      { told: 'nyckel' }   en nyckel i Levels.told
 
    I kapitlets events: spawn: { id, image, race ('demon' = demonernas version av bilden), frame, size, speed, at, script: [...] } (eller en lista av dem) skapar skådespelare, act: { id: [manus] } byter manus. */
@@ -191,7 +192,8 @@
           }
         }
       }
-      const saved = state(); if (saved.scenes) saved.scenes = saved.scenes.filter(scene => scene.index < scene.steps.length || scene.running.length);
+      const saved = state();
+      if (saved.scenes) saved.scenes = saved.scenes.filter(scene => { const going = scene.index < scene.steps.length || scene.running.length; if (!going) levels().markTold(`scene:${scene.id}:done`); return going; });   // en klar scen märks (villkoret { scene: id })
     },
 
     // ---- själva uppdateringen ----
@@ -345,6 +347,7 @@
     },
     read: key => levels().told('read:' + key),
     told: key => levels().told(key),
+    scene: id => levels().told(`scene:${id}:done`),   // en scen (event.id) har spelats klart
   };
 
   Actors.Actions = Actions;

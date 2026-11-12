@@ -127,6 +127,17 @@
       time:  { label: 'Efter så här många sekunder in i kapitlet', f: [['n', 'num', 'sekunder']], make: v => ({ top: { at: +v.n } }), text: v => `efter ${v.n} s` },
       goal:  { label: 'När ett mål är klart', f: [['n', 'num', 'målnummer (1 = första)']], make: v => ({ top: { goal: +v.n } }), text: v => `när mål ${v.n} är klart` },
       built: { label: 'När spelaren har byggt något', f: [['bld', 'bld'], ['n', 'num', 'antal']], make: v => ({ when: { type: 'build', id: v.bld, amount: +v.n || 1 } }), text: v => `när ${v.n || 1} ${v.bld} är byggt` },
+      stock: { label: 'När spelaren har så här mycket av en vara', f: [['res', 'res'], ['n', 'num', 'antal']], make: v => ({ when: { resource: v.res, amount: +v.n } }), text: v => `när lagret har ${v.n} ${v.res}` },
+      seesRival:   { label: 'När spelaren ser fiendens bas första gången', f: [], make: () => ({ when: { sees: 'rival' } }), text: () => 'när fiendens bas setts' },
+      seesSoldier: { label: 'När fiendens soldater syns (t.ex. en attack)', f: [], make: () => ({ when: { sees: 'soldier' } }), text: () => 'när fiendens soldater syns' },
+      seesMonster: { label: 'När ett monster syns', f: [], make: () => ({ when: { sees: 'monster' } }), text: () => 'när ett monster syns' },
+      kills:     { label: 'När spelaren har besegrat så här många fiender', f: [['n', 'num', 'antal']], make: v => ({ when: { type: 'kills', amount: +v.n } }), text: v => `när ${v.n} fiender är besegrade` },
+      destroyed: { label: 'När spelaren har förstört så här många fiendebyggnader', f: [['n', 'num', 'antal']], make: v => ({ when: { type: 'destroy', id: 'any', amount: +v.n } }), text: v => `när ${v.n} fiendebyggnader är förstörda` },
+      soldiers:  { label: 'När spelaren har så här många soldater', f: [['n', 'num', 'antal']], make: v => ({ when: { type: 'soldiers', amount: +v.n } }), text: v => `när spelaren har ${v.n} soldater` },
+      carriers:  { label: 'När spelaren har så här många bärare', f: [['n', 'num', 'antal']], make: v => ({ when: { type: 'carriers', amount: +v.n } }), text: v => `när spelaren har ${v.n} bärare` },
+      casts:     { label: 'När spelaren har trollat så här många gånger', f: [['n', 'num', 'antal']], make: v => ({ when: { type: 'casts', amount: +v.n } }), text: v => `när ${v.n} förtrollningar är gjorda` },
+      fogLifted: { label: 'När dimman har lyft', f: [], make: () => ({ when: { type: 'fog', amount: 1 } }), text: () => 'när dimman har lyft' },
+      sceneDone: { label: 'När en annan scen är klar', f: [['sc', 'scn']], make: v => ({ when: { scene: v.sc } }), text: v => `när scenen ${v.sc} är klar` },
       end:   { label: 'När alla mål är uppnådda (banan avslutas efter scenen)', f: [], make: () => ({ top: { end: true } }), text: () => 'när alla mål är uppnådda' },
       made:  { label: 'När så här mycket har tillverkats', f: [['res', 'res'], ['n', 'num', 'antal']], make: v => ({ when: { resource: v.res, made: +v.n } }), text: v => `när ${v.n} ${v.res} är tillverkat` },
     };
@@ -134,6 +145,7 @@
       if (type === 'num') return `<input type="number" id="${id}" value="${/sekund/.test(hint) ? 60 : 1}" title="${esc(hint || '')}" style="width:70px"> <span class="hint">${esc(hint || '')}</span>`;
       if (type === 'res') return select(id, resourceIds, 'wood');
       if (type === 'bld') return select(id, buildingTypes, buildingTypes[0]);
+      if (type === 'scn') { const others = scenes.filter(sc => sc !== sceneNow()); return others.length ? select(id, others.map(sc => [sc.id, sc.name]), others[0].id) : '<span class="hint">Det finns ingen annan scen än.</span>'; }
       return '';
     };
     const read = (spec, prefix) => Object.fromEntries(spec.f.map(([name], i) => [name, ($(`#${prefix}${i}`)?.value ?? '').trim()]));
@@ -183,6 +195,7 @@
       const out = [], tag = `Scenen "${sc.name}"`, ids = new Set(sc.cast.map(c => c.id));
       if (!sc.cast.length && sc.steps.some(s => !NO_WHO.includes(s.type))) out.push({ text: `${tag} har ingen med.` });
       if (!sc.steps.length) out.push({ text: `${tag} har inga steg.` });
+      for (const cond of sc.conds) if (cond.kind === 'sceneDone' && !scenes.some(other => other !== sc && other.id === cond.v.sc)) out.push({ text: `${tag} väntar på en scen som inte finns längre.` });
       const here = new Set(sc.cast.filter(c => c.at).map(c => c.id));
       let busy = new Set();   // personer som redan gör något i en grupp av steg som börjar samtidigt
       sc.steps.forEach((s, i) => {

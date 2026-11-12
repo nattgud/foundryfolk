@@ -189,6 +189,7 @@
       }
       if (need.sees === 'rival') return World.buildings.some(building => Players.isAI(building.player) && CityBuilder.Vision.explored(Players.HUMAN, building.x + .5, building.y + .5));   // sees: 'rival' = man har sett någon av fiendens byggnader (dimma eller inte)
       if (need.sees === 'soldier') return World.units.some(unit => !unit.removed && unit.definition.isSoldier && !unit.definition.isMonster && Players.isAI(unit.player) && CityBuilder.Vision.sees(Players.HUMAN, unit));   // sees: 'soldier' = någon av datorns soldater syns just nu (t.ex. en anfallsvåg)
+      if (need.sees === 'monster') return World.units.some(unit => !unit.removed && unit.definition.isMonster && CityBuilder.Vision.sees(Players.HUMAN, unit));   // sees: 'monster' = något monster syns just nu
       if (need.goal !== undefined) { const item = CityBuilder.Levels.progress()[need.goal - 1]; return !!item && item.have >= item.amount - (need.left || 0); }   // goal: n, left: k = målet med det numret har högst k kvar (följer målets egna siffror)
       if (need.made !== undefined) return CityBuilder.Levels.made(need.resource) >= need.made;
       return CityBuilder.Levels.have(need) >= this.needed(need, chapter);
