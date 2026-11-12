@@ -617,7 +617,7 @@
       if (outside(view, x, y)) continue;
       const kind = types[item.type] || {}, seed = CityBuilder.Utils.hash(item.x, item.y, 31);
       if (kind.light) { drawFire(context, item.type, item.x, item.y, tileSize, seed, now, 1); continue; }   // eld: samma som meteoreldarna
-      const image = Assets.get(`images/scenery/${item.type}${kind.variants > 1 ? 1 + Math.floor(seed * kind.variants) : ''}.png`);
+      const image = Assets.get(`images/scenery/${item.type}${kind.variants >= 1 ? 1 + Math.floor(seed * kind.variants) : ''}.png`);
       if (image) {
         if (kind.frames > 1) {
           const frame = Math.floor(now * (kind.fps || 6) + seed * kind.frames) % kind.frames, width = image.width / kind.frames;

@@ -219,7 +219,7 @@
 			},
 		},
 
-		// Kulisser (kapitlets scenery). Bilden är images/scenery/<typ>.png, eller <typ>1.png, <typ>2.png ... om variants > 1 (en slumpas per ruta). frames > 1: bilden är en remsa
+		// Kulisser (kapitlets scenery). Bilden är images/scenery/<typ>.png, eller <typ>1.png, <typ>2.png ... om variants finns (en slumpas per ruta; variants: 1 ger <typ>1.png). frames > 1: bilden är en remsa
 		// med lika många rutor bredvid varandra som spelas upp fps gånger i sekunden. light: lyser upp natten (radie i rutor). Saknas bilden ritas en enkel reserv.
 		sceneryTypes: {
 			ruin: { variants: 5 },
@@ -227,6 +227,14 @@
 			// walkable: ligger bara på marken. Alla går över den och man kan bygga över den (då försvinner den). Ritas under byggnader och enheter.
 			corpse: { variants: 6, walkable: true, fallback: 'corpse' },
 			blood: { variants: 3, walkable: true, fallback: 'blood' },
+			// Markeringar och föremål på marken. Gåbara (bara mark, går att bygga över): runes (ritualtecken), burnt (bränd mark), baggage (kvarlämnad packning), weapons (kasserade vapen), tracks (spår).
+			// wagon är en vält vagn: den blockerar som en ruin. Bilderna heter <typ><nummer>.png i images/scenery (variants = hur många).
+			runes: { variants: 2, walkable: true },
+			burnt: { variants: 2, walkable: true },
+			baggage: { variants: 2, walkable: true },
+			weapons: { variants: 4, walkable: true },
+			tracks: { variants: 1, walkable: true },
+			wagon: { variants: 2 },
 		},
 
 		unlock: {
