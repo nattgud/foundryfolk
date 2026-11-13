@@ -130,11 +130,11 @@
     },
 
     // Händelser på bestämda tider (Weather sköter själva vädret)
-    fire(event) {
+    fire(event, ctx) {
       const Weather = CityBuilder.Weather, hq = World.headquarters;
       if (event.give && hq) for (const [resourceId, amount] of Object.entries(event.give)) hq.storedGoods[resourceId] = (hq.storedGoods[resourceId] || 0) + amount;   // give: varor till spelarens huvudlager
       if (event.tell) this.tell([{ type: 'dialogue', lines: event.tell, part: 'events', scene: event.scene, mark: event.id ? 'read:' + event.id : undefined }]);   // id: händelsens namn, så att { read: id } kan vänta på att dialogen lästs
-      CityBuilder.Actors?.fire(event);   // spawn och act: skådespelare
+      CityBuilder.Actors?.fire(event, ctx);   // spawn och act: skådespelare
       if (event.weather) { Weather.type = event.weather; Weather.left = 90; Weather.flashIn = 1; CityBuilder.Sound?.play('weather.' + event.weather); }
       if (event.tornado || event.super) {
         const spot = Weather.tornadoSpot() || (hq && { x: hq.x + 10, y: hq.y + 6, player: Players.HUMAN });
@@ -187,6 +187,93 @@
       }
     },
 
+    // ---- Händelsebussen ----
+    // Delar av spelet säger till när något händer: Story.emit(namn, vem, av, vad, antal). Namn: hurt (en enhet eller byggnad skadas), defeated (en enhet dör), destroyed (en byggnad förstörs),
+    // pickup (en bärare hämtar en vara, av = lagret eller huset), deliver (en bärare lämnar en vara, av = huset), made (ett hus har gjort en vara), built (en byggnad blir färdig),
+    // cast (en förtrollning), weather (vädret byts, vad = typen). Händelser i kapitlet med on: namn (eller { event: namn, side, kind, by, resource, building, near, radius, weather }) körs direkt när det händer,
+    // utan att något kollas varje sekund. Utan någon som lyssnar kostar ett anrop bara ett uppslag.
+    // En händelse sker en gång, eller varje gång med repeat: true (och cooldown: sekunder mellan gångerna, standard 30).
+    emit(name, subject, by, what, amount) {
+      const chapter = this.chapter;
+      if (!chapter?.events) return;
+      if (this.listenFor !== chapter) {
+        this.listenFor = chapter; this.listen = new Map();
+        chapter.events.forEach((event, i) => { const key = typeof event.on === 'string' ? event.on : event.on?.event; if (key) (this.listen.get(key) || this.listen.set(key, []).get(key)).push(i); });
+      }
+      const list = this.listen.get(name);
+      if (!list) return;
+      const ctx = this.describe(name, subject, by, what, amount);
+      for (const i of list) {
+        const event = chapter.events[i];
+        if (this.matches(event.on, ctx) && this.ready(event, i, chapter)) this.trigger(event, i, ctx);
+      }
+    },
+    // Sida (own = spelaren, enemy, monster, ally, other) och slag (soldier, carrier, worker, monster, building, other) för en enhet eller byggnad
+    sideOf(thing) {
+      if (!thing) return undefined;
+      if (thing.definition?.isMonster) return 'monster';
+      if (thing.player === Players.HUMAN) return 'own';
+      if (Players.isHostile(Players.HUMAN, thing.player) && Players.isPlayer(thing.player)) return 'enemy';
+      return Players.isPlayer(thing.player) ? 'ally' : 'other';
+    },
+    kindOf(thing) {
+      if (!thing) return undefined;
+      if (thing.buildProgress !== undefined) return 'building';
+      const definition = thing.definition || {};
+      if (definition.isHauler) return 'carrier';
+      if (definition.isMonster) return 'monster';
+      if (definition.isSoldier) return 'soldier';
+      return thing.homeBuilding ? 'worker' : 'other';
+    },
+    describe(name, subject, by, what, amount) {
+      const isBuilding = subject?.buildProgress !== undefined, building = isBuilding ? subject : by?.buildProgress !== undefined ? by : null;
+      return {
+        name, unit: isBuilding ? null : subject, building, by, side: this.sideOf(subject), kind: this.kindOf(subject), bySide: this.sideOf(by), type: building?.type,
+        resource: name === 'weather' || name === 'cast' ? undefined : what, weather: name === 'weather' ? what : undefined, spell: name === 'cast' ? what : undefined, amount,
+        x: Math.floor(subject?.x ?? by?.x ?? 0), y: Math.floor(subject?.y ?? by?.y ?? 0),
+      };
+    },
+    // Passar händelsens villkor (on: { side, kind, by, resource, building, weather, near: mål, radius }) det som hände?
+    matches(on, ctx) {
+      if (!on || typeof on === 'string') return true;
+      if (on.side && on.side !== 'any' && on.side !== ctx.side) return false;
+      if (on.kind && on.kind !== 'any' && on.kind !== ctx.kind) return false;
+      if (on.by && on.by !== 'any' && on.by !== ctx.bySide) return false;
+      if (on.resource && on.resource !== ctx.resource) return false;
+      if (on.building && on.building !== ctx.type) return false;
+      if (on.weather && on.weather !== ctx.weather) return false;
+      if (on.near) { const tile = CityBuilder.Actors?.resolve(on.near, null); if (!tile || Utils.distance(ctx.x - tile.x, ctx.y - tile.y) > (on.radius ?? 5)) return false; }
+      return true;
+    },
+    // Vädret byts: ett meddelande (en jämförelse per steg)
+    watchWeather() {
+      const type = CityBuilder.Weather?.type;
+      if (this.lastWeather !== type) { const first = this.lastWeather === undefined; this.lastWeather = type; if (!first) this.emit('weather', null, null, type); }
+    },
+    // Är händelsen redo? Inte redan körd (eller redo igen efter sin cooldown om den upprepas), och alla andra villkor (at, goal, end, when) gäller
+    ready(event, i, chapter) {
+      const Levels = CityBuilder.Levels;
+      if (Levels.told('event:' + i)) {
+        if (!event.repeat) return false;
+        const last = Levels.progressRef().told['last:' + i] || 0;
+        if (Levels.seconds - last < (event.cooldown ?? 30)) return false;
+      }
+      if (event.guide && CityBuilder.UI.guideDone()) { Levels.markTold('event:' + i); return false; }   // guide: true = hör till guiden och hoppas över av den som redan klarat den
+      if (event.at === undefined && !event.goal && !event.when && !event.end && !event.on) return false;
+      if (event.whileFog && Levels.told('fog:lifted')) { Levels.markTold('event:' + i); return false; }   // dimman har lyft: händelsen skulle komma för sent
+      if (event.at !== undefined && Levels.seconds < event.at) return false;
+      if (event.goal && !Levels.progress()[event.goal - 1]?.done) return false;
+      if (event.end && !Levels.goalsDone()) return false;   // end: true = när alla mål är uppnådda; kapitlet väntar in händelsen (och dess scen) innan det avslutas
+      return ![].concat(event.when || []).some(need => !this.reached(need, chapter));   // when kan vara flera villkor som alla ska gälla
+    },
+    trigger(event, i, ctx) {
+      const Levels = CityBuilder.Levels;
+      Levels.markTold('event:' + i);
+      Levels.markTold('fired:' + i);   // utlöst på riktigt (en hoppad händelse är bara 'event:'), bara en utlöst händelse byter musik
+      Levels.progressRef().told['last:' + i] = Math.max(.001, Levels.seconds);
+      this.fire(event, ctx);
+    },
+
     // Har villkoret slagit till? goal: n, left: k = målet n har högst k kvar; made: n = n har tillverkats eller samlats i kapitlet (oavsett vart varan tog vägen); annars har man amount, eller more fler än man startade med
     reached(need, chapter) {
       for (const key of Object.keys(need)) {   // triggers (systems/actors.js): { arrived: 'baker' }, { read: 'event-id' } ...
@@ -229,18 +316,11 @@
 
       // En händelse sker en gång, när alla villkor den har slår till: at (sekunder in i kapitlet), goal (målet med det numret, räknat från 1, är klart) och when
       // (ett mål av samma slag som kapitlets: { resource | type, id, amount }, som att man har 50 järn eller har byggt en förtrollare)
+      // En händelse med on väntar på ett meddelande från spelet (se emit nedan) och kollas inte här.
+      this.watchWeather();
       (chapter.events || []).forEach((event, i) => {
-        if (Levels.told('event:' + i)) return;
-        if (event.guide && CityBuilder.UI.guideDone()) { Levels.markTold('event:' + i); return; }   // guide: true = hör till guiden och hoppas över av den som redan klarat den
-        if (event.at === undefined && !event.goal && !event.when && !event.end) return;
-        if (event.whileFog && Levels.told('fog:lifted')) { Levels.markTold('event:' + i); return; }   // dimman har lyft: händelsen skulle komma för sent
-        if (event.at !== undefined && Levels.seconds < event.at) return;
-        if (event.goal && !Levels.progress()[event.goal - 1]?.done) return;
-        if (event.end && !Levels.goalsDone()) return;   // end: true = när alla mål är uppnådda; kapitlet väntar in händelsen (och dess scen) innan det avslutas
-        if ([].concat(event.when || []).some(need => !this.reached(need, chapter))) return;   // when kan vara flera villkor som alla ska gälla
-        Levels.markTold('event:' + i);
-        Levels.markTold('fired:' + i);   // utlöst på riktigt (en hoppad händelse är bara 'event:'), bara en utlöst händelse byter musik
-        this.fire(event);
+        if (event.on || !this.ready(event, i, chapter)) return;
+        this.trigger(event, i);
       });
 
       this.waves(chapter);

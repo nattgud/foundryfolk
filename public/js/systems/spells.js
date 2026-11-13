@@ -398,6 +398,7 @@
       building.spellCooldown = building.spellTotal = this.recharge(intended);
       this.locks[this.lockKey(building.player, this.group(intended))] = building.spellCooldown;
       CityBuilder.Levels?.onCast(building.player);
+      CityBuilder.Story?.emit('cast', building, null, spell.id);   // händelsebussen
       if (spell.kind !== 'storm') CityBuilder.Sound?.play('spell_' + spell.kind, { x, y });   // åskan (storm) har sitt eget ljud ovan
       return null;
     },

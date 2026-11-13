@@ -322,6 +322,7 @@
 
     // Flödesstatistik (Economy.record): byggnaden förbrukade ('use') eller levererade ('make') en vara
     note(building, kind, resourceId, amount = 1) {
+      if (kind === 'make') CityBuilder.Story?.emit('made', building, null, resourceId, amount);   // händelsebussen
       if (kind === 'make' && building.player === CityBuilder.Players.HUMAN) CityBuilder.Levels?.onMade?.(resourceId, amount);   // berättelsens händelser räknar det som tillverkats
       CityBuilder.Economy.record(building.player, kind, resourceId, building.type, amount);
     },
@@ -719,4 +720,4 @@
   });
 
   CityBuilder.Behaviors = Behaviors;
-})(window.CityBuilder);
+})(window.CityBuilder);

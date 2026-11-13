@@ -167,6 +167,7 @@
           if (behavior.onBuilt) behavior.onBuilt(building);
         }
         CityBuilder.Sound?.play('built', { x: building.x, y: building.y });
+        CityBuilder.Story?.emit('built', building);   // händelsebussen
         if (building.definition.isWinBuilding) CityBuilder.UI.showToast('★ Monument is built!');
       }
     },

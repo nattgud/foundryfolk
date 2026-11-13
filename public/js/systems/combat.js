@@ -213,12 +213,14 @@
       Sound?.play(Sound.known(target.definition?.hitSound, 'hit'), { x: centreX(target), y: centreY(target) });   // monster kan ha ett eget skadeljud
       target.hp -= amount;
       this.hits.set(target, HIT_SECONDS);
+      CityBuilder.Story?.emit('hurt', target, attacker, undefined, amount);   // händelsebussen (systems/story.js)
       if (target.hp <= 0) this.kill(target, attacker);
     },
 
     kill(target, attacker) {
       if (target.removed || target.actor) return;   // skådespelare är odödliga (Actors tar bort dem själva)
       const Levels = CityBuilder.Levels;
+      CityBuilder.Story?.emit(isBuilding(target) ? 'destroyed' : 'defeated', target, attacker);
       if (attacker?.player === Players.HUMAN && Players.isPlayer(target.player) && Players.isHostile(Players.HUMAN, target.player)) Levels?.onDefeated?.(target);   // monster räknas inte mot banans mål
       if (isBuilding(target)) return this.destroyBuilding(target);
       const unit = target;

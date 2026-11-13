@@ -591,6 +591,7 @@
       }
       carrier.carriedResource = task.resource;
       carrier.hasPickedUp = true;
+      CityBuilder.Story?.emit('pickup', carrier, task.source, task.resource, 1);   // händelsebussen
     },
 
     dropOff(carrier) {
@@ -603,6 +604,7 @@
         destination.incomingCount[task.resource]--;
         if (destination.needsMaterials) Economy.record(destination.player, 'use', task.resource, 'construction');
       }
+      CityBuilder.Story?.emit('deliver', carrier, destination, task.resource, 1);   // händelsebussen
       carrier.carriedResource = null; carrier.deliveryTask = null; carrier.hasPickedUp = false;
     },
 

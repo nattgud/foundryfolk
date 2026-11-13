@@ -59,6 +59,7 @@
 
   const Actors = {
     units: new Map(),   // id -> enheten i världen (inte sparad; byggs upp av rebuild)
+    ctxUnits: new Map(),   // scen-id -> enheten som utlöste scenen (inte sparad; efter en inläsning letar pick: 'trigger' upp den närmaste av samma slag vid samma plats)
 
     // ---- uppslag ----
     data: id => state().list.find(item => item.id === id),
@@ -156,15 +157,36 @@
     // ---- scener: en lista steg som sker i ordning (en dirigent, ingen skådespelare äger scenen) ----
     // scene: [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { who: id, say: ... } ... ]
     // Ett steg börjar när det förra är klart. Dialoger hör till scenen, inte till en person.
-    startScene(id, steps) {
+    startScene(id, steps, ctx) {
       const progress = levels().progressRef?.(); if (!progress) return;
       const saved = state(); (saved.scenes ||= []);
       if (saved.scenes.some(scene => scene.id === id)) return;
-      saved.scenes.push({ id, steps: JSON.parse(JSON.stringify(steps)), index: 0, running: [] });
+      for (const key of Object.keys(progress.told)) if (key.startsWith(`scene:${id}:`)) delete progress.told[key];   // en upprepad scen börjar om: dialogerna får läsas igen
+      // ctx: vad som utlöste scenen (händelsebussen, systems/story.js). Det som sparas är bara det enkla; själva enheten ligger i ctxUnits
+      saved.scenes.push({ id, steps: JSON.parse(JSON.stringify(steps)), index: 0, running: [], ctx: ctx ? { x: ctx.x, y: ctx.y, side: ctx.side, kind: ctx.kind, resource: ctx.resource, type: ctx.type } : undefined });
+      if (ctx?.unit) this.ctxUnits.set(id, ctx.unit); else this.ctxUnits.delete(id);
+    },
+    // En enhet i spelet som en scen pekar ut (who: { pick: 'trigger' | 'nearest' | 'random', side, kind, near }). Bara enheter som spelaren ser kommer i fråga. null = ingen passar (steget faller då tillbaka på sitt alternativ, otherwise)
+    pickUnit(selector, scene) {
+      const Story = CityBuilder.Story, Vision = CityBuilder.Vision, ctx = scene.ctx || {};
+      const side = selector.side || (selector.pick === 'trigger' ? ctx.side : undefined) || 'any', kind = selector.kind || (selector.pick === 'trigger' ? ctx.kind : undefined) || 'any';
+      const fits = unit => !unit.removed && !unit.actor && Story.sideOf(unit) !== undefined && (side === 'any' || Story.sideOf(unit) === side) && (kind === 'any' || Story.kindOf(unit) === kind) && Vision.sees(Players.HUMAN, unit);
+      const direct = selector.pick === 'trigger' ? this.ctxUnits.get(scene.id) : null;
+      if (direct && fits(direct)) return direct;
+      const anchor = selector.pick === 'trigger' ? (ctx.x !== undefined ? { x: ctx.x, y: ctx.y } : null) : selector.near ? this.resolve(selector.near, null) : this.hq();
+      let best = null, bestDistance = Infinity, count = 0;
+      for (const unit of World.units) {
+        if (!fits(unit)) continue;
+        if (selector.pick === 'random') { if (Utils.random() * ++count < 1) best = unit; continue; }
+        const distance = anchor ? Utils.distance(unit.x - anchor.x - .5, unit.y - anchor.y - .5) : 0;
+        if (distance < bestDistance) { bestDistance = distance; best = unit; }
+      }
+      return best;
     },
     sceneDone(scene, run, dt) {
       if (run.kind === 'wait') return (run.left -= dt) <= 0;
       if (run.kind === 'tell') return levels().told(run.mark);
+      if (run.kind === 'bubble') return !!run.handle?.done || (run.left -= dt) <= 0;
       const data = this.data(run.who);
       return !data || data.gone || (!data.act && data.index >= data.script.length);
     },
@@ -175,20 +197,31 @@
         while ((!scene.running.length || scene.steps[scene.index]?.together) && scene.index < scene.steps.length && guard++ < 100) {   // together: true = börjar direkt, utan att vänta på förra steget
           {
             const step = scene.steps[scene.index], i = scene.index++;
-            if (step.camera !== undefined) { const tile = this.resolve(step.camera, null); if (tile) { CityBuilder.Game.scrollTo(Math.floor(tile.x), Math.floor(tile.y), true, step.zoom); scene.running.push({ kind: 'wait', left: .8 }); } }
-            else if (step.spawn) this.spawn({ ...step.spawn, script: [] });
+            let failed = false;   // kunde steget inte göras? Då körs dess otherwise (ett alternativt flöde) i stället
+            if (step.camera !== undefined) { const tile = this.resolve(step.camera, null); if (tile) { CityBuilder.Game.scrollTo(Math.floor(tile.x), Math.floor(tile.y), true, step.zoom); scene.running.push({ kind: 'wait', left: .8 }); } else failed = true; }
+            else if (step.spawn) { const made = this.spawn({ ...step.spawn, script: [] }); failed = !made && !this.data(step.spawn.id); }
             else if (step.tell) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'dialogue', lines: step.tell, part: 'events', mark }]); scene.running.push({ kind: 'tell', mark }); } }
             else if (step.wait !== undefined && !step.who) scene.running.push({ kind: 'wait', left: +step.wait || 0 });
+            else if (step.who && typeof step.who === 'object') {   // en enhet i spelet, utpekad av en regel: den kan bara säga något
+              const unit = step.say !== undefined ? this.pickUnit(step.who, scene) : null;
+              if (unit) {
+                const spec = typeof step.say === 'string' ? { text: step.say } : step.say, handle = CityBuilder.Bubbles?.say(unit, spec.text, spec.for, null, spec.voice === false ? null : spec.speaker || null);
+                if (handle && spec.wait !== false) scene.running.push({ kind: 'bubble', left: 60, handle });
+              } else failed = true;
+            }
             else {
               const [type] = Object.entries(step).find(([key]) => key !== 'who' && Actions[key]) || [], one = this.data(step.who);
               // Ett steg för en grupp gäller alla i den: de går och lämnar med en liten fördröjning var (ett led), bara den första talar
+              let started = 0;
               for (const data of type ? one ? [one] : this.members(step.who) : []) {
                 if (data.gone || (data.group && type === 'say' && data.nth > 1)) continue;
                 const delay = data.group && (type === 'walk' || type === 'leave') ? (data.nth - 1) * (data.gap ?? GROUP_GAP) : 0;
                 this.setScript(data.id, delay ? [{ wait: delay }, { [type]: step[type] }] : [{ [type]: step[type] }]);
-                scene.running.push({ kind: 'actor', who: data.id });
+                scene.running.push({ kind: 'actor', who: data.id }); started++;
               }
+              if (type && !started) failed = true;
             }
+            if (failed && step.otherwise?.length) scene.steps.splice(scene.index, 0, ...JSON.parse(JSON.stringify(step.otherwise)));
           }
         }
       }
@@ -220,9 +253,9 @@
     },
 
     // Händelser i kapitlet: spawn och act
-    fire(event) {
+    fire(event, ctx) {
       for (const spec of [].concat(event.spawn || [])) this.spawn(spec);
-      if (event.scene) this.startScene(event.id || 'scene' + Date.now(), event.scene);
+      if (event.scene) this.startScene(event.id || 'scene' + Date.now(), event.scene, ctx);
       for (const [id, script] of Object.entries(event.act || {})) this.setScript(id, script);
     },
 
