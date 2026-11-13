@@ -196,10 +196,8 @@
     emit(name, subject, by, what, amount) {
       const chapter = this.chapter;
       if (!chapter?.events) return;
-      if (this.listenFor !== chapter) {
-        this.listenFor = chapter; this.listen = new Map();
-        chapter.events.forEach((event, i) => { const key = typeof event.on === 'string' ? event.on : event.on?.event; if (key) (this.listen.get(key) || this.listen.set(key, []).get(key)).push(i); });
-      }
+      if (this.indexed !== chapter || this.indexedCount !== chapter.events.length) this.index(chapter);
+      if (this.driven.has(name)) this.dirty.add(name);   // en händelse med villkor som den här kan ändra kollas i nästa steg (se update)
       const list = this.listen.get(name);
       if (!list) return;
       const ctx = this.describe(name, subject, by, what, amount);
@@ -207,6 +205,32 @@
         const event = chapter.events[i];
         if (this.matches(event.on, ctx) && this.ready(event, i, chapter)) this.trigger(event, i, ctx);
       }
+    },
+    // ---- Hur varje händelse väcks ----
+    // 1. on: väntar på ett meddelande och körs direkt när det kommer (listen).
+    // 2. Villkor som bara ändras av ett meddelande (byggt, besegrat, förstört, förtrollat, tillverkat, dimman) kollas först när det meddelandet kommit (driven), med en säkerhetskoll var 2:a sekund.
+    // 3. Allt annat (tid, mål, lager, soldater, bärare, syn, scener, upprepning) kollas två gånger per sekund (ticking).
+    index(chapter) {
+      this.indexed = chapter; this.indexedCount = chapter.events.length; this.listen = new Map(); this.driven = new Map(); this.ticking = []; this.dirty = new Set(['*']); this.nextTick = 0; this.nextSweep = 0;
+      chapter.events.forEach((event, i) => {
+        const key = typeof event.on === 'string' ? event.on : event.on?.event;
+        if (key) { (this.listen.get(key) || this.listen.set(key, []).get(key)).push(i); return; }
+        const signals = this.signalsOf(event);
+        if (!signals) this.ticking.push(i); else for (const signal of signals) (this.driven.get(signal) || this.driven.set(signal, []).get(signal)).push(i);
+      });
+    },
+    signalsOf(event) {
+      if (event.at !== undefined || event.goal || event.end || event.guide || event.whileFog || event.repeat) return null;
+      const needs = [].concat(event.when || []), out = new Set();
+      if (!needs.length) return null;
+      for (const need of needs) { const signal = this.signalOf(need); if (!signal) return null; out.add(signal); }
+      return out;
+    },
+    signalOf(need) {
+      const triggers = CityBuilder.Actors?.Triggers || {};
+      if (Object.keys(need).some(key => triggers[key] || key === 'sees' || key === 'goal')) return null;
+      if (need.made !== undefined) return 'made';
+      return { build: 'built', buildings: 'built', kills: 'defeated', destroy: 'destroyed', casts: 'cast', fog: 'fog' }[need.type] || null;
     },
     // Sida (own = spelaren, enemy, monster, ally, other) och slag (soldier, carrier, worker, monster, building, other) för en enhet eller byggnad
     sideOf(thing) {
@@ -318,10 +342,21 @@
       // (ett mål av samma slag som kapitlets: { resource | type, id, amount }, som att man har 50 järn eller har byggt en förtrollare)
       // En händelse med on väntar på ett meddelande från spelet (se emit nedan) och kollas inte här.
       this.watchWeather();
-      (chapter.events || []).forEach((event, i) => {
-        if (event.on || !this.ready(event, i, chapter)) return;
-        this.trigger(event, i);
-      });
+      if (this.indexed !== chapter || this.indexedCount !== chapter.events.length) this.index(chapter);
+      const now = Levels.seconds, events = chapter.events || [];
+      if (now >= this.nextSweep || now < this.nextSweep - 3) { this.nextSweep = now + 2; this.dirty.add('*'); }
+      if (this.dirty.size) {   // villkor som väntar på ett meddelande
+        const hit = new Set();
+        for (const signal of this.dirty) for (const list of signal === '*' ? this.driven.values() : [this.driven.get(signal) || []]) for (const i of list) hit.add(i);
+        this.dirty.clear();
+        for (const i of [...hit].sort((a, b) => a - b)) if (this.ready(events[i], i, chapter)) this.trigger(events[i], i);
+      }
+      if (now >= this.nextTick || now < this.nextTick - 1) {   // villkor som måste kollas löpande
+        this.nextTick = now + .5;
+        let fired = false;
+        for (const i of this.ticking) if (this.ready(events[i], i, chapter)) { this.trigger(events[i], i); fired = fired || !events[i].repeat; }
+        if (fired) this.ticking = this.ticking.filter(i => events[i].repeat || !Levels.told('event:' + i));
+      }
 
       this.waves(chapter);
 
@@ -329,7 +364,7 @@
       if (chapter.fog && Levels.told('fog:on') && !Levels.told('fog:lifted')) {
         if (this.eyeStands()) { Weather.type = 'fog'; Weather.left = Math.max(Weather.left, 30); }
         else {
-          Levels.markTold('fog:lifted');
+          Levels.markTold('fog:lifted'); this.dirty.add('fog');
           Weather.type = 'clear'; Weather.left = 90;
           if (chapter.lifted) this.tell([{ type: 'dialogue', lines: chapter.lifted, part: 'lifted' }]);
         }

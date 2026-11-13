@@ -163,6 +163,9 @@
       onCast:      onCond('en förtrollning görs', 'cast', [nearF]),
       onWeather:   onCond('vädret byts', 'weather', [['weather', 'opt', 'till', ANY(() => Object.keys(Config.settings.weather?.chances || {}))]]),
     });
+    // Rullistan delas i grupper; händelserna i spelet körs direkt när något sker
+    const GROUPS = [['Tid och mål', ['time', 'goal', 'end']], ['Framsteg (kollas löpande)', ['stock', 'soldiers', 'carriers']], ['Framsteg (direkt när det sker)', ['built', 'made', 'kills', 'destroyed', 'casts', 'fogLifted']], ['Syn', ['seesRival', 'seesSoldier', 'seesMonster']], ['Andra scener', ['sceneDone']], ['Händelser i spelet (direkt)', Object.keys(COND).filter(k => k.startsWith('on'))]];
+    const condOptions = current => GROUPS.map(([label, keys]) => `<optgroup label="${esc(label)}">${keys.filter(k => COND[k]).map(k => `<option value="${k}"${current === k ? ' selected' : ''}>${esc(COND[k].label.replace(/^HÄNDELSE: /, ''))}</option>`).join('')}</optgroup>`).join('');
     const field = (type, id, hint, opts) => {
       if (type === 'near') return `<span class="hint">${esc(hint)}</span> ${select(id, [['', 'var som helst'], ['hq', 'basen'], ...buildingTypes.filter(b => b !== 'hq').map(b => [b, 'byggnaden ' + b]), ['__map', 'en plats på kartan…']], '')} <input type="number" id="${id}r" value="5" min="1" style="width:55px" title="radie i rutor"> <span class="hint">rutor</span>`;
       if (type === 'opt') return `<span class="hint">${esc(hint || '')}</span> ${select(id, typeof opts === 'function' ? opts() : opts, '')}`;
@@ -267,7 +270,7 @@
         <div class="row">Namn <input data-bind="scene.name" value="${esc(sc.name)}" style="flex:1"></div>
         <h4>1. När startar scenen?</h4>
         ${sc.conds.length ? sc.conds.map((c, i) => `<div class="step"><span>${esc(COND[c.kind].text(c.v))}</span><button class="small danger" data-act="sceneCondDel" data-i="${i}">✕</button></div>`).join('') : '<p class="hint">Direkt när kapitlet startar. Lägg till ett villkor om den ska vänta på något.</p>'}
-        <div class="card"><div class="hint" style="margin:0">${sc.conds.length ? 'Fler villkor:' : 'Låt den vänta på något:'}</div><div class="row"><select data-bind="sceneCond" style="width:100%">${Object.entries(COND).map(([kind, item]) => `<option value="${kind}"${sceneCond === kind ? ' selected' : ''}>${item.label}</option>`).join('')}</select></div>
+        <div class="card"><div class="hint" style="margin:0">${sc.conds.length ? 'Fler villkor:' : 'Låt den vänta på något:'}</div><div class="row"><select data-bind="sceneCond" style="width:100%">${condOptions(sceneCond)}</select></div>
           <div class="row">${cond.f.map(([, type, hint, opts], i) => field(type, 'sc' + i, hint, opts)).join(' ')}</div><div class="row"><button data-act="sceneCondAdd">Lägg till</button></div></div>
         ${sc.conds.some(c => c.kind.startsWith('on')) ? `<div class="row"><label><input type="checkbox" data-bind="scene.repeat"${sc.repeat ? ' checked' : ''}> Kan hända flera gånger</label>${sc.repeat ? ` vänta <input type="number" min="1" data-bind="scene.cooldown" value="${esc(sc.cooldown ?? 30)}" style="width:60px"> s mellan gångerna` : ' <span class="hint">(annars bara första gången)</span>'}</div>` : ''}
         <h4>2. Vilka är med?</h4>
