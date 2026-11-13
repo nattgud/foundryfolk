@@ -309,8 +309,7 @@
       }
       if (need.sees) {   // vad som syntes sparas i lastSeen: det är "det som utlöste" händelsen (trigger)
         const found = need.sees === 'rival' ? World.buildings.find(building => Players.isAI(building.player) && CityBuilder.Vision.explored(Players.HUMAN, building.x + .5, building.y + .5))
-          : need.sees === 'soldier' ? World.units.find(unit => !unit.removed && unit.definition.isSoldier && !unit.definition.isMonster && Players.isAI(unit.player) && CityBuilder.Vision.sees(Players.HUMAN, unit))
-          : need.sees === 'monster' ? World.units.find(unit => !unit.removed && unit.definition.isMonster && CityBuilder.Vision.sees(Players.HUMAN, unit)) : null;
+          : World.units.find(unit => !unit.removed && !unit.actor && this.kindOf(unit) === need.sees && (need.sees === 'monster' || Players.isAI(unit.player)) && CityBuilder.Vision.sees(Players.HUMAN, unit));   // soldier, worker, carrier (fiendens) eller monster
         this.lastSeen = found || null;
         return !!found;
       }   // sees: 'rival' = man har sett någon av fiendens byggnader (dimma eller inte)

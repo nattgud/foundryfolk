@@ -134,6 +134,8 @@
       stock: { label: 'När spelaren har så här mycket av en vara', f: [['res', 'res'], ['n', 'num', 'antal']], make: v => ({ when: { resource: v.res, amount: +v.n } }), text: v => `när lagret har ${v.n} ${v.res}` },
       seesRival:   { label: 'När spelaren ser fiendens bas första gången', f: [], make: () => ({ when: { sees: 'rival' } }), text: () => 'när fiendens bas setts' },
       seesSoldier: { label: 'När fiendens soldater syns (t.ex. en attack)', f: [], make: () => ({ when: { sees: 'soldier' } }), text: () => 'när fiendens soldater syns' },
+      seesWorker:  { label: 'När fiendens arbetare syns', f: [], make: () => ({ when: { sees: 'worker' } }), text: () => 'när fiendens arbetare syns' },
+      seesCarrier: { label: 'När fiendens bärare syns', f: [], make: () => ({ when: { sees: 'carrier' } }), text: () => 'när fiendens bärare syns' },
       seesMonster: { label: 'När ett monster syns', f: [], make: () => ({ when: { sees: 'monster' } }), text: () => 'när ett monster syns' },
       kills:     { label: 'När spelaren har besegrat så här många fiender', f: [['n', 'num', 'antal']], make: v => ({ when: { type: 'kills', amount: +v.n } }), text: v => `när ${v.n} fiender är besegrade` },
       destroyed: { label: 'När spelaren har förstört så här många fiendebyggnader', f: [['n', 'num', 'antal']], make: v => ({ when: { type: 'destroy', id: 'any', amount: +v.n } }), text: v => `när ${v.n} fiendebyggnader är förstörda` },
@@ -167,7 +169,7 @@
       onWeather:   onCond('vädret byts', 'weather', [['weather', 'opt', 'till', ANY(() => Object.keys(Config.settings.weather?.chances || {}))]]),
     });
     // Rullistan delas i grupper; händelserna i spelet körs direkt när något sker
-    const GROUPS = [['Tid och mål', ['time', 'goal', 'end']], ['Framsteg (kollas löpande)', ['stock', 'soldiers', 'carriers']], ['Framsteg (direkt när det sker)', ['built', 'made', 'kills', 'destroyed', 'casts', 'fogLifted']], ['Syn', ['seesRival', 'seesSoldier', 'seesMonster']], ['Andra scener', ['sceneDone']], ['Händelser i spelet (direkt)', Object.keys(COND).filter(k => k.startsWith('on'))]];
+    const GROUPS = [['Tid och mål', ['time', 'goal', 'end']], ['Framsteg (kollas löpande)', ['stock', 'soldiers', 'carriers']], ['Framsteg (direkt när det sker)', ['built', 'made', 'kills', 'destroyed', 'casts', 'fogLifted']], ['Syn', ['seesRival', 'seesSoldier', 'seesWorker', 'seesCarrier', 'seesMonster']], ['Andra scener', ['sceneDone']], ['Händelser i spelet (direkt)', Object.keys(COND).filter(k => k.startsWith('on'))]];
     const condOptions = current => GROUPS.map(([label, keys]) => `<optgroup label="${esc(label)}">${keys.filter(k => COND[k]).map(k => `<option value="${k}"${current === k ? ' selected' : ''}>${esc(COND[k].label.replace(/^HÄNDELSE: /, ''))}</option>`).join('')}</optgroup>`).join('');
     const field = (type, id, hint, opts) => {
       if (type === 'near') return `<span class="hint">${esc(hint)}</span> ${select(id, [['', 'var som helst'], ['hq', 'basen'], ...buildingTypes.filter(b => b !== 'hq').map(b => [b, 'byggnaden ' + b]), ['__map', 'en plats på kartan…']], '')} <input type="number" id="${id}r" value="5" min="1" style="width:55px" title="radie i rutor"> <span class="hint">rutor</span>`;
