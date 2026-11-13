@@ -51,6 +51,7 @@
 
     // ---------------------------------------------------------------- hjälpare
     const hq = () => World.headquarters;
+    const hasTrigger = sc => sc.conds.some(c => c.kind.startsWith('on') || c.kind.startsWith('sees'));   // händelser och "ser" pekar ut något: det som utlöste scenen
     const TRIGGER = '__trigger';   // mål: det som utlöste händelsen (bara för en scen som startar av en händelse)
     const keyOf = (x, y) => Utils.tileKey(x, y);
     const esc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -232,7 +233,7 @@
       const out = [], tag = `Scenen "${sc.name}"`, ids = new Set(sc.cast.map(c => c.id));
       if (!sc.cast.length && flatSteps(sc.steps).some(s => !NO_WHO.includes(s.type) && s.who !== UNIT)) out.push({ text: `${tag} har ingen med.` });
       if (!sc.steps.length) out.push({ text: `${tag} har inga steg.` });
-      if (!sc.conds.some(c => c.kind.startsWith('on')) && flatSteps(sc.steps).some(s => s.arg === TRIGGER || (s.who === UNIT && (s.pick || 'trigger') === 'trigger'))) out.push({ text: `${tag} använder "det som utlöste händelsen", men startar inte av en händelse. Lägg till ett villkor under "Händelser i spelet".` });
+      if (!hasTrigger(sc) && flatSteps(sc.steps).some(s => s.arg === TRIGGER || (s.who === UNIT && (s.pick || 'trigger') === 'trigger'))) out.push({ text: `${tag} använder "det som utlöste händelsen", men startar inte av en händelse eller något spelaren ser. Lägg till ett villkor under "Händelser i spelet" eller "Syn".` });
       for (const cond of sc.conds) if (cond.kind === 'sceneDone' && !scenes.some(other => other !== sc && other.id === cond.v.sc)) out.push({ text: `${tag} väntar på en scen som inte finns längre.` });
       const here = new Set(sc.cast.filter(c => c.at).map(c => c.id));
       let busy = new Set();   // personer som redan gör något i en grupp av steg som börjar samtidigt
@@ -260,7 +261,7 @@
       if (!sc) return `<p>En <b>scen</b> är något som händer i berättelsen: du väljer vilka som är med och skriver sedan vad som händer, steg för steg, i ordning.</p><div class="row"><button class="primary" data-act="newScene">Skapa en scen</button></div>`;
       const cond = COND[sceneCond];
       const castIds = sc.cast.map(c => c.id), chars = Object.entries(characters);
-      const targets = [['hq', 'basen'], ...(sc.conds.some(c => c.kind.startsWith('on')) ? [[TRIGGER, '★ det som utlöste händelsen']] : []), ...buildingTypes.filter(b => b !== 'hq').map(b => [b, 'byggnaden ' + b]), ...castIds.map(id => [id, 'personen ' + id]), ['__map', 'en plats på kartan…']];
+      const targets = [['hq', 'basen'], ...(hasTrigger(sc) ? [[TRIGGER, '★ det som utlöste händelsen']] : []), ...buildingTypes.filter(b => b !== 'hq').map(b => [b, 'byggnaden ' + b]), ...castIds.map(id => [id, 'personen ' + id]), ['__map', 'en plats på kartan…']];
       if (stepDraft.parent !== null && !sc.steps[stepDraft.parent]) stepDraft.parent = null;
       const inFs = stepDraft.parent !== null, list = inFs ? sc.steps[stepDraft.parent].otherwise || [] : sc.steps;
       if (stepDraft.who === UNIT && stepDraft.type !== 'say') stepDraft.type = 'say';
