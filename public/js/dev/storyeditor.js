@@ -148,21 +148,23 @@
     const KIND_OPT = [['', 'vad som helst'], ['soldier', 'soldat'], ['carrier', 'bärare'], ['worker', 'arbetare']];
     const ANY = list => () => [['', 'vilken som helst'], ...list().map(x => [x, x])];
     const sideF = (hint = 'vems') => ['side', 'opt', hint, SIDE_OPT], kindF = ['kind', 'opt', 'sort', KIND_OPT], byF = ['by', 'opt', 'orsakat av', SIDE_OPT];
-    const onMake = (event, v) => { const on = { event }; for (const key of ['side', 'kind', 'by', 'resource', 'building', 'weather']) if (v[key]) on[key] = v[key]; return { top: { on } }; };
-    const onText = (what, v) => { const parts = Object.values(v).filter(Boolean); return `${what}${parts.length ? ' (' + parts.join(', ') + ')' : ''}`; };
+    const nearF = ['near', 'near', 'nära'];
+    const onMake = (event, v) => { const on = { event }; for (const key of ['side', 'kind', 'by', 'resource', 'building', 'weather']) if (v[key]) on[key] = v[key]; if (v.near) { on.near = v.near; on.radius = Math.max(1, +v.radius || 5); } return { top: { on } }; };
+    const onText = (what, v) => { const parts = Object.entries(v).filter(([key, x]) => x && key !== 'near' && key !== 'radius').map(([, x]) => x); if (v.near) parts.push(`nära ${targetText(v.near)}, ${v.radius || 5} rutor`); return `${what}${parts.length ? ' (' + parts.join(', ') + ')' : ''}`; };
     const onCond = (label, event, f) => ({ label: 'HÄNDELSE: ' + label, f, make: v => onMake(event, v), text: v => onText(label, v) });
     Object.assign(COND, {
-      onHurt:      onCond('någon tar skada', 'hurt', [sideF('som skadas'), kindF, byF]),
-      onDefeated:  onCond('en enhet dödas', 'defeated', [sideF('som dör'), kindF, byF]),
-      onDestroyed: onCond('en byggnad förstörs', 'destroyed', [sideF('vems byggnad'), ['building', 'opt', 'sort', ANY(() => buildingTypes)], byF]),
-      onPickup:    onCond('en bärare hämtar en vara', 'pickup', [['resource', 'opt', 'vara', ANY(() => resourceIds)], sideF('bärare')]),
-      onDeliver:   onCond('en bärare lämnar en vara', 'deliver', [['resource', 'opt', 'vara', ANY(() => resourceIds)], sideF('bärare')]),
-      onMade:      onCond('en vara tillverkas', 'made', [['resource', 'opt', 'vara', ANY(() => resourceIds)]]),
-      onBuilt:     onCond('en byggnad blir klar', 'built', [['building', 'opt', 'sort', ANY(() => buildingTypes)], sideF('vems')]),
-      onCast:      onCond('en förtrollning görs', 'cast', []),
+      onHurt:      onCond('någon tar skada', 'hurt', [sideF('som skadas'), kindF, byF, nearF]),
+      onDefeated:  onCond('en enhet dödas', 'defeated', [sideF('som dör'), kindF, byF, nearF]),
+      onDestroyed: onCond('en byggnad förstörs', 'destroyed', [sideF('vems byggnad'), ['building', 'opt', 'sort', ANY(() => buildingTypes)], byF, nearF]),
+      onPickup:    onCond('en bärare hämtar en vara', 'pickup', [['resource', 'opt', 'vara', ANY(() => resourceIds)], sideF('bärare'), nearF]),
+      onDeliver:   onCond('en bärare lämnar en vara', 'deliver', [['resource', 'opt', 'vara', ANY(() => resourceIds)], sideF('bärare'), nearF]),
+      onMade:      onCond('en vara tillverkas', 'made', [['resource', 'opt', 'vara', ANY(() => resourceIds)], nearF]),
+      onBuilt:     onCond('en byggnad blir klar', 'built', [['building', 'opt', 'sort', ANY(() => buildingTypes)], sideF('vems'), nearF]),
+      onCast:      onCond('en förtrollning görs', 'cast', [nearF]),
       onWeather:   onCond('vädret byts', 'weather', [['weather', 'opt', 'till', ANY(() => Object.keys(Config.settings.weather?.chances || {}))]]),
     });
     const field = (type, id, hint, opts) => {
+      if (type === 'near') return `<span class="hint">${esc(hint)}</span> ${select(id, [['', 'var som helst'], ['hq', 'basen'], ...buildingTypes.filter(b => b !== 'hq').map(b => [b, 'byggnaden ' + b]), ['__map', 'en plats på kartan…']], '')} <input type="number" id="${id}r" value="5" min="1" style="width:55px" title="radie i rutor"> <span class="hint">rutor</span>`;
       if (type === 'opt') return `<span class="hint">${esc(hint || '')}</span> ${select(id, typeof opts === 'function' ? opts() : opts, '')}`;
       if (type === 'num') return `<input type="number" id="${id}" value="${/sekund/.test(hint) ? 60 : 1}" title="${esc(hint || '')}" style="width:70px"> <span class="hint">${esc(hint || '')}</span>`;
       if (type === 'res') return select(id, resourceIds, 'wood');
@@ -170,7 +172,7 @@
       if (type === 'scn') { const others = scenes.filter(sc => sc !== sceneNow()); return others.length ? select(id, others.map(sc => [sc.id, sc.name]), others[0].id) : '<span class="hint">Det finns ingen annan scen än.</span>'; }
       return '';
     };
-    const read = (spec, prefix) => Object.fromEntries(spec.f.map(([name], i) => [name, ($(`#${prefix}${i}`)?.value ?? '').trim()]));
+    const read = (spec, prefix) => { const v = Object.fromEntries(spec.f.map(([name], i) => [name, ($(`#${prefix}${i}`)?.value ?? '').trim()])); spec.f.forEach(([name, type], i) => { if (type === 'near') v.radius = ($(`#${prefix}${i}r`)?.value ?? '5').trim(); }); return v; };
 
     // ---------------------------------------------------------------- scener: en lista med steg i ordning
     const sceneNow = () => scenes[cur];
@@ -338,7 +340,7 @@
 
     // ---------------------------------------------------------------- rita om panelen
     function render() {
-      const armText = st.arm ? (st.arm.kind === 'sceneStep' ? 'Klicka på kartan: vart? (klicka på en byggnad för att gå till den)' : 'Klicka på kartan där personen ska stå när scenen börjar.') : '';
+      const armText = st.arm ? (st.arm.kind === 'sceneStep' ? 'Klicka på kartan: vart? (klicka på en byggnad för att gå till den)' : st.arm.kind === 'condNear' ? 'Klicka på kartan: var ska det hända nära?' : 'Klicka på kartan där personen ska stå när scenen börjar.') : '';
       const scrollTop = panel.scrollTop;
       panel.innerHTML = `<div class="se-head"><b>Story-editor</b><span class="hint" style="margin:0">${chapter() ? `kapitel ${chapter().number}: ${esc(chapter().name || '')}` : '(ingen story pågår)'}</span>
           <label title="Fryser kapitlet medan du arbetar"><input type="checkbox" id="sePause"${C.Game.paused ? ' checked' : ''}> paus</label></div>
@@ -393,7 +395,7 @@
     const actions = {
       newScene: () => { const n = scenes.length + 1; let id = 'scene' + n; while (scenes.some(sc => sc.id === id)) id += 'b'; scenes.push({ id, name: 'Scen ' + n, conds: [], cast: [], steps: [] }); cur = scenes.length - 1; render(); },
       deleteScene: () => { scenes.splice(cur, 1); cur = Math.max(0, cur - 1); render(); },
-      sceneCondAdd: () => { const sc = sceneNow(), spec = COND[sceneCond], v = read(spec, 'sc'); if (spec.f.some(([name, type]) => type !== 'text' && type !== 'opt' && v[name] === '')) { notice('Fyll i alla fält.'); return; } sc.conds.push({ kind: sceneCond, v }); render(); },
+      sceneCondAdd: () => { const sc = sceneNow(), spec = COND[sceneCond], v = read(spec, 'sc'); if (spec.f.some(([name, type]) => type !== 'text' && type !== 'opt' && type !== 'near' && v[name] === '')) { notice('Fyll i alla fält.'); return; } if (v.near === '__map') { st.arm = { kind: 'condNear', cond: { kind: sceneCond, v } }; render(); return; } sc.conds.push({ kind: sceneCond, v }); render(); },
       sceneCondDel: ({ i }) => { sceneNow().conds.splice(+i, 1); render(); },
       castAdd: () => { st.arm = { kind: 'cast' }; if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); if (characters[castDraft.image]) castDraft.race = characters[castDraft.image] === 'demon' ? 'demon' : ''; render(); },
       castLater: () => { const sc = sceneNow(); if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); sc.cast.push({ id: castDraft.id, image: castDraft.image, race: characters[castDraft.image] === 'demon' ? 'demon' : '', count: countOf(), at: null }); stepDraft.who = stepDraft.who || castDraft.id; castDraft = blankCast(); render(); },
@@ -497,6 +499,7 @@
     function armClick(tile) {
       const arm = st.arm; st.arm = null;
       if (arm.kind === 'cast') { const sc = sceneNow(); if (sc) { const id = castDraft.id.trim() || uniqueId('person'); sc.cast.push({ id, image: castDraft.image, race: castDraft.race, count: countOf(), at: [tile.x - hq().x, tile.y - hq().y] }); castDraft = blankCast(); stepDraft.who = stepDraft.who || id; } }
+      else if (arm.kind === 'condNear') { const sc = sceneNow(); if (sc) { arm.cond.v.near = tileTarget(tile); sc.conds.push(arm.cond); } }
       else if (arm.kind === 'castMove') { const c = sceneNow()?.cast[arm.i]; if (c) c.at = [tile.x - hq().x, tile.y - hq().y]; }
       else if (arm.kind === 'sceneStep') { const sc = sceneNow(); if (sc) { const list = arm.parent === null || arm.parent === undefined ? sc.steps : sc.steps[arm.parent].otherwise, step = { who: arm.who, type: arm.type, arg: tileTarget(tile) }; if (arm.zoom) step.zoom = arm.zoom; if ((arm.parent === null || arm.parent === undefined) && arm.together && (arm.edit ?? list.length) > 0) step.together = true; if (arm.edit !== null && arm.edit !== undefined) { if (list[arm.edit]?.otherwise) step.otherwise = list[arm.edit].otherwise; list[arm.edit] = step; } else list.push(step); resetStep(); } }
       render();
