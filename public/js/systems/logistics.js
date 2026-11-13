@@ -97,13 +97,17 @@
     },
     releaseReservation(source, resourceId) { if (!source.removed) this.reservationsOf(source)[resourceId]--; },
 
-    createTask(source, destination, resourceId, soft = false) {
+    // Reparationsvaror räknas under nyckeln 'repair:<vara>' hos målet, så de inte blandas ihop med byggnadens vanliga indata (se slot)
+    slot: task => task.repair ? 'repair:' + task.resource : task.resource,
+    createTask(source, destination, resourceId, soft = false, repair = false) {
       if (!soft && this.freeAt(source, resourceId) <= 0) this.takeOverSoft(source, resourceId);
       this.reserve(source, resourceId);
-      if (!this.stores(destination)) destination.incomingCount[resourceId] = (destination.incomingCount[resourceId] || 0) + 1;
+      const key = repair ? 'repair:' + resourceId : resourceId;
+      if (!this.stores(destination)) destination.incomingCount[key] = (destination.incomingCount[key] || 0) + 1;
       else this.addIncoming(destination, resourceId, 1);
       this.countTask(source);
       const task = { source, destination, resource: resourceId, seq: this.seq = (this.seq || 0) + 1, created: this.time || 0, soft };
+      if (repair) task.repair = true;
       this.tasks.push(task);
       if (soft && this.soft) this.softTasks(source, resourceId).push({ task, carrier: null });
     },
@@ -129,11 +133,76 @@
         Economy.updateStats();
         this.clearPiles();
         this.startRound();
-        this.stepOffWalls(); this.parkIdle(); this.balanceCarriers(); this.purgeInvalidTasks(); this.redirectOrphans(); this.rebuildCounters(); this.requestMissingInputs(); this.orders = null; this.flushSurplusToStorage(); this.orders = null;
+        this.stepOffWalls(); this.parkIdle(); this.balanceCarriers(); this.purgeInvalidTasks(); this.redirectOrphans(); this.rebuildCounters(); this.scanRepairs(cfg().planningIntervalSeconds); this.requestMissingInputs(); this.orders = null; this.flushSurplusToStorage(); this.orders = null;
         this.round = null; this.soft = null;
       }
       this.time = (this.time || 0) + deltaSeconds;
       this.assignTasksToCarriers();
+      this.runRepairs(deltaSeconds);
+    },
+
+    // ---- Reparation ----
+    // En skadad byggnad (all skada: strid, meteorer, eld, vulkan) lagas av bärare som annars står still: efter en kort väntan (cooldown) beställer den den skadade andelen av sin byggkostnad
+    // (avrundat uppåt), högst maxCarriers bärare på väg samtidigt. När allt material är framme tar lagningen byggtiden x skadad andel, och först då förbrukas materialet.
+    // Den väntar medan byggnaden brinner eller en fiende (soldat eller monster) finns inom radius rutor. Inställningar: Config.settings.repair { radius, maxCarriers, cooldown: [min, max] }.
+    repairCfg: () => Object.assign({ radius: 10, maxCarriers: 4, cooldown: [2, 5] }, Config.settings.repair),
+    repairing: new Set(),   // byggnader som lagas just nu (allt material framme)
+    damaged: [],            // byggnader som får beställa material
+    need(building) {
+      const missing = 1 - building.hp / building.maxHp, need = {};
+      for (const [resourceId, cost] of Object.entries(building.definition.buildCost || {})) need[resourceId] = Math.ceil(cost * missing - 1e-9);
+      return need;
+    },
+    burningBuildings() {
+      const set = new Set();
+      for (const list of [CityBuilder.Weather?.fires, CityBuilder.Combat?.fires]) for (const fire of list || []) { const building = World.buildingAt(fire.x, fire.y); if (building) set.add(building); }
+      return set;
+    },
+    scanRepairs(seconds) {
+      const config = this.repairCfg(), { Players } = CityBuilder, radius2 = config.radius * config.radius;
+      const burning = this.burningBuildings(), foes = World.units.filter(unit => !unit.removed && unit.definition.isSoldier && unit.hp > 0);
+      this.damaged = []; this.repairing.clear();
+      for (const building of World.buildings) {
+        if (building.hp == null || building.removed || building.dead || building.buildProgress < 1) { building.repairState = null; continue; }
+        if (building.repairSeen === undefined || building.hp < building.repairSeen) building.repairCool = config.cooldown[0] + Utils.random() * (config.cooldown[1] - config.cooldown[0]);   // nyskadad: vänta en stund
+        building.repairSeen = building.hp;
+        if (building.hp >= building.maxHp) { building.repairState = null; building.repairProgress = 0; continue; }
+        if ((building.repairCool -= seconds) > 0 || burning.has(building)) { building.repairState = null; continue; }
+        if (foes.some(unit => Players.isHostile(building.player, unit.player) && (unit.x - building.x) ** 2 + (unit.y - building.y) ** 2 <= radius2)) { building.repairState = null; continue; }
+        const need = this.need(building), stock = building.repairStock || {};
+        building.repairState = Object.entries(need).every(([resourceId, amount]) => (stock[resourceId] || 0) >= amount) ? 'work' : 'wait';
+        if (building.repairState === 'work') this.repairing.add(building); else this.damaged.push(building);
+      }
+    },
+    runRepairs(deltaSeconds) {
+      for (const building of this.repairing) {
+        if (building.removed || building.hp >= building.maxHp) { this.repairing.delete(building); continue; }
+        const duration = Math.max(1, building.definition.buildDuration * (1 - building.hp / building.maxHp));
+        building.repairFraction = Math.min(1, (building.repairProgress = (building.repairProgress || 0) + deltaSeconds) / duration);
+        if (building.repairProgress < duration) continue;
+        const stock = building.repairStock || {};
+        for (const [resourceId, amount] of Object.entries(this.need(building))) stock[resourceId] = Math.max(0, (stock[resourceId] || 0) - amount);
+        building.hp = building.maxHp; building.repairSeen = building.hp; building.repairProgress = 0; building.repairFraction = 0; building.repairState = null;
+        this.repairing.delete(building);
+        CityBuilder.Story?.emit('repaired', building);   // händelsebussen
+      }
+    },
+    // Beställer reparationsmaterial med de bärare som är lediga (mjuka uppdrag: vanliga beställningar går före)
+    requestRepairs(slack, room) {
+      const { maxCarriers } = this.repairCfg();
+      for (const building of this.damaged) {
+        const need = this.need(building), stock = building.repairStock || {};
+        let onTheWay = 0;
+        for (const resourceId in need) onTheWay += building.incomingCount['repair:' + resourceId] || 0;
+        for (const [resourceId, amount] of Object.entries(need)) {
+          let missing = amount - (stock[resourceId] || 0) - (building.incomingCount['repair:' + resourceId] || 0);
+          for (; missing > 0 && slack[building.player] > 0 && onTheWay < maxCarriers && !this.full(building.player, building); missing--) {
+            const supplier = this.findSupplier(resourceId, building, true);
+            if (!supplier || !room(building, supplier, resourceId)) break;
+            this.createTask(supplier, building, resourceId, true, true); slack[building.player]--; onTheWay++;
+          }
+        }
+      }
     },
 
     // Ledig bärare: inget uppdrag, ingen last och ingen kö, eller på väg till lagret för att vänta där (då kan ett uppdrag ta över direkt)
@@ -196,7 +265,7 @@
         const destination = task.destination;
         if (destination.removed) return;
         if (this.stores(destination)) this.addIncoming(destination, task.resource, 1);
-        else destination.incomingCount[task.resource] = (destination.incomingCount[task.resource] || 0) + 1;
+        else { const key = this.slot(task); destination.incomingCount[key] = (destination.incomingCount[key] || 0) + 1; }
       };
       for (const task of this.tasks) { count(task, false); this.countTask(task.source); }
       for (const unit of World.units) if (unit.deliveryTask) count(unit.deliveryTask, unit.hasPickedUp);
@@ -248,7 +317,7 @@
     releaseIncoming(task) {
       const destination = task.destination;
       if (this.stores(destination)) this.addIncoming(destination, task.resource, -1);
-      else if (!destination.removed) destination.incomingCount[task.resource]--;
+      else if (!destination.removed) destination.incomingCount[this.slot(task)]--;
     },
 
     // En dödad bärare ersätts först när det är dess tur i kön, så att en bas under angrepp inte fylls på lika fort som den töms
@@ -349,6 +418,7 @@
         const pendingOf = pending[building.player] ||= CityBuilder.Construction.pendingNeed(building.player);
         return CityBuilder.Construction.available(resourceId, building.player, pendingOf) > 0;
       };
+      this.requestRepairs(slack, room);
       for (const building of order) {
         if (!(slack[building.player] > 0) || building.buildProgress < 1 || !building.definition.job) continue;
         for (const [resourceId, capacity] of Object.entries(Behaviors.requiredResources(building))) {
@@ -599,7 +669,11 @@
       if (this.stores(destination)) this.addIncoming(destination, task.resource, -1);
       if (destination.removed) Economy.addToNearestStorage(task.resource, 1, carrier);
       else if (this.stores(destination)) destination.storedGoods[task.resource] = (destination.storedGoods[task.resource] || 0) + 1;
-      else {
+      else if (task.repair) {   // reparationsvara: läggs i byggnadens reparationsförråd och förbrukas när lagningen är klar
+        (destination.repairStock ||= {})[task.resource] = (destination.repairStock[task.resource] || 0) + 1;
+        destination.incomingCount[this.slot(task)]--;
+        Economy.record(destination.player, 'use', task.resource, 'repair');
+      } else {
         destination.inputStock[task.resource] = (destination.inputStock[task.resource] || 0) + 1;
         destination.incomingCount[task.resource]--;
         if (destination.needsMaterials) Economy.record(destination.player, 'use', task.resource, 'construction');
@@ -615,7 +689,7 @@
       const task = carrier.deliveryTask;
       if (!task) return;
       this.unreachable.set(this.pairKey(task.source, task.destination), (this.time || 0) + cfg().unreachableSeconds);
-      const relay = carrier.hasPickedUp && !this.stores(task.destination) ? this.findRelay(task) : null;
+      const relay = carrier.hasPickedUp && !this.stores(task.destination) && !task.repair ? this.findRelay(task) : null;
       if (!relay) return this.abortTask(carrier);
 
       this.releaseIncoming(task);

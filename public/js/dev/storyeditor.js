@@ -162,6 +162,7 @@
       onMade:      onCond('en vara tillverkas', 'made', [['resource', 'opt', 'vara', ANY(() => resourceIds)], nearF]),
       onBuilt:     onCond('en byggnad blir klar', 'built', [['building', 'opt', 'sort', ANY(() => buildingTypes)], sideF('vems'), nearF]),
       onCast:      onCond('en förtrollning görs', 'cast', [nearF]),
+      onRepaired:  onCond('en byggnad lagas klart', 'repaired', [['building', 'opt', 'sort', ANY(() => buildingTypes)], sideF('vems'), nearF]),
       onWeather:   onCond('vädret byts', 'weather', [['weather', 'opt', 'till', ANY(() => Object.keys(Config.settings.weather?.chances || {}))]]),
     });
     // Rullistan delas i grupper; händelserna i spelet körs direkt när något sker
