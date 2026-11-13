@@ -148,6 +148,7 @@
       const { expiry, sight } = this.pass, reach = radius => Math.max(2, Math.round(radius * sight));
       if (phase === 0) {
         for (const building of World.buildings) {
+          if (building.sight) this.stamp(Players.HUMAN, building.x + .5, building.y + .5, building.sight, expiry);   // död byggnad som alltid syns (story.js, sight): spelarens egen syn, oberoende av dimman
           if (building.buildProgress < 1 || building.definition.pile) continue;
           this.stamp(building.player, building.x + .5, building.y + .5, reach(building.definition.vision ?? settings.building), expiry);
         }

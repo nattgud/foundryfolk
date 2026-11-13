@@ -64,14 +64,20 @@
 
     // Kapitlets start: byggnaderna från föregående mål står redo och Eye of Shades står mot fienden.
     // En byggnad i start.buildings är antingen { type, dx, dy } (exakt plats, mätt i rutor från HQ) eller bara ett id (automatisk plats runt HQ).
-    // { type, dx, dy, dead: true } är en död byggnad: bara en kuliss som ingen kan använda (se deadOwner).
+    // { type, dx, dy, dead: true } är en död byggnad: bara en kuliss som ingen kan använda (se deadOwner). Lägg till sight: 6 för att den alltid ska synas genom dimman
+    // (radie i rutor, som en egen byggnad) och arrow: true (eller en färg, t.ex. '#ff4fd8') för en pil mot den på minimapen när den ligger utanför.
     // Inriktningen är själva typen: layout() skriver t.ex. 'herb_gatherer' eller 'copper_mine'. Ett 'gatherer' eller 'mine' får den inriktning som passar platsen.
     // eye: true placerar Eye of Shades automatiskt mot fienden, eye: { reach } längre eller kortare dit (andel av avståndet mellan baserna), eye: { dx, dy } på en bestämd plats.
     begin() {
       const chapter = this.chapter, hq = World.headquarters;
       if (!chapter || !hq) return;
       (chapter.start?.buildings || []).forEach((entry, i) => {
-        if (entry.type) return this.placeAt(entry.type, entry.dx, entry.dy, entry.dead);
+        if (entry.type) {
+          const building = this.placeAt(entry.type, entry.dx, entry.dy, entry.dead);
+          // En död byggnad med sight (radie i rutor) syns alltid för spelaren, genom dimman, som en egen byggnad; arrow: true (eller en färg) ger en pil mot den på minimapen
+          if (building && entry.dead) { if (entry.sight) building.sight = entry.sight; if (entry.arrow) building.arrow = entry.arrow; }
+          return building;
+        }
         const angle = i * 2.4 + chapter.number, distance = 6 + (i % 4) * 2;
         this.place(entry, hq.x + Math.cos(angle) * distance, hq.y + Math.sin(angle) * distance);
       });

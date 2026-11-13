@@ -795,6 +795,17 @@
         this.drawArrow(context, Math.atan2(attack.y + 0.5 - centerY, attack.x + 0.5 - centerX), radius, '#ff3b30');
       }
 
+      // Byggnader med arrow (en död byggnad som berättelsen vill att man ska hitta, story.js): en pulserande ring, eller en pil i kanten när den ligger utanför kartan
+      if (this.beaconVersion !== World.buildingVersion) { this.beaconVersion = World.buildingVersion; this.beacons = World.buildings.filter(building => building.arrow); }
+      for (const building of this.beacons) {
+        if (building.removed) continue;
+        const color = typeof building.arrow === 'string' ? building.arrow : '#4cc9ff', x = toX(building.x + 0.5), y = toY(building.y + 0.5);
+        if (Math.hypot(x - radius, y - radius) <= radius) {
+          context.strokeStyle = color; context.lineWidth = 2;
+          context.beginPath(); context.arc(x, y, marker + 3 + Math.abs(Math.sin(performance.now() / 300)) * 2, 0, Math.PI * 2); context.stroke();
+        } else this.drawArrow(context, Math.atan2(building.y + 0.5 - centerY, building.x + 0.5 - centerX), radius, color);
+      }
+
       // Pilar mot flaggor som ligger utanför kartans synfält
       for (const { flag, color } of flags) {
         if (!(flag.x >= range.minX && flag.x <= range.maxX && flag.y >= range.minY && flag.y <= range.maxY)) {
