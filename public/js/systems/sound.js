@@ -155,6 +155,9 @@
     arrow: { synth: render(0.25, (time, p) => (noise() * 0.22 * Math.sin(Math.PI * p) + note(240, time, 0, 0.12) * 0.25)), volume: 0.6, ...EFFECT },
     swing: { synth: render(0.18, (time, p) => noise() * 0.28 * Math.sin(Math.PI * p)), volume: 0.6, ...EFFECT },
     hit: { synth: render(0.12, (time, p) => (Math.sin(TAU * (130 - 70 * p) * time) * 0.6 + noise() * 0.25 * (1 - p)) * Math.pow(1 - p, 2)), volume: 0.6, ...EFFECT, cooldown: 0.08 },
+    // Skadeljud per slag (egna filer: settings.audio.sounds.hit_human, hit_monster, hit_building; en art eller byggnad kan ha ett eget med hitSound). hit_human saknar inbyggt ljud och faller tillbaka på hit.
+    hit_building: { synth: (() => { let low = 0; return render(0.22, (time, p) => { low += (noise() - low) * 0.3; return (low * 1.5 + Math.sin(TAU * (85 - 35 * p) * time) * 0.5 + noise() * 0.4 * Math.pow(1 - p, 14)) * Math.pow(1 - p, 2.5); }); })(), volume: 0.7, ...EFFECT, cooldown: 0.08 },
+    hit_monster: { synth: (() => { let low = 0; return render(0.24, (time, p) => { low += (noise() - low) * 0.12; return (low * 1.2 + Math.sin(TAU * (190 - 110 * p) * time + Math.sin(TAU * 30 * time) * 1.2) * 0.35) * Math.pow(1 - p, 1.6); }); })(), volume: 0.6, ...EFFECT, cooldown: 0.08 },
     died: { synth: render(0.4, (time, p) => Math.sin(TAU * (320 - 200 * p) * time) * 0.35 * Math.pow(1 - p, 1.5)), volume: 0.6, ...EFFECT },
     destroyed: { synth: (() => { let low = 0; return render(0.6, (time, p) => { low += (noise() - low) * 0.25; return low * 1.4 * Math.pow(1 - p, 1.5); }); })(), volume: 0.8, ...EFFECT },
     drop: { synth: render(0.04, (time, p) => Math.sin(TAU * 900 * time) * Math.pow(1 - p, 3) * 0.3), volume: 0.5, cooldown: 0.05, maxVoices: 4 },

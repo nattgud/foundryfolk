@@ -210,7 +210,8 @@
       this.raiseAlarm(target, attacker);
       if (attacker && target.definition?.isSoldier && Players.isHostile(target.player, attacker.player)) { target.attackedAt = this.time; target.attacker = attacker; }
       const Sound = CityBuilder.Sound;
-      Sound?.play(Sound.known(target.definition?.hitSound, 'hit'), { x: centreX(target), y: centreY(target) });   // monster kan ha ett eget skadeljud
+      const kind = target.buildProgress !== undefined ? 'hit_building' : target.definition?.isMonster ? 'hit_monster' : 'hit_human';
+      Sound?.play(Sound.known(target.definition?.hitSound, Sound.known(kind, 'hit')), { x: centreX(target), y: centreY(target) });   // eget ljud per art (hitSound), annars ett per slag: byggnad, monster, människa (och till sist hit)
       target.hp -= amount;
       this.hits.set(target, HIT_SECONDS);
       CityBuilder.Story?.emit('hurt', target, attacker, undefined, amount);   // händelsebussen (systems/story.js)
