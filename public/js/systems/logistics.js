@@ -137,8 +137,52 @@
         this.round = null; this.soft = null;
       }
       this.time = (this.time || 0) + deltaSeconds;
+      if ((this.scareTimer = (this.scareTimer || 0) - deltaSeconds) <= 0) { this.scareTimer = .5; this.scareCarriers(); }
       this.assignTasksToCarriers();
       this.runRepairs(deltaSeconds);
+    },
+
+    // ---- Flykt ----
+    // En bärare som får en fiendesoldat eller ett monster inom radius rutor släpper sitt uppdrag och går till ett lager som ligger längre från hotet (lasten lämnas där).
+    // Efteråt får den inga nya uppdrag på pause sekunder. Gäller alla spelares bärare. Kollas två gånger i sekunden, och hoppas över helt när inga soldater finns.
+    // Inställningar: Config.settings.flee { radius, pause }.
+    fleeCfg: () => Object.assign({ radius: 7, pause: 6 }, Config.settings.flee),
+    scareCarriers() {
+      const threats = World.units.filter(unit => !unit.removed && unit.definition.isSoldier && (unit.hp == null || unit.hp > 0));
+      if (!threats.length) return;
+      const { radius, pause } = this.fleeCfg(), radiusSquared = radius * radius, now = this.time || 0;
+      for (const unit of World.units) {
+        if (unit.removed || !unit.definition.isHauler) continue;
+        if (unit.scared) { if (!unit.stepQueue.length) { unit.scared = false; unit.fleeUntil = now + pause; } continue; }
+        let foe = null, nearest = radiusSquared;
+        for (const threat of threats) {
+          if (!Players.isHostile(unit.player, threat.player)) continue;
+          const distance = (threat.x - unit.x) ** 2 + (threat.y - unit.y) ** 2;
+          if (distance < nearest) { nearest = distance; foe = threat; }
+        }
+        if (!foe) continue;
+        const safe = this.safeStorage(unit, foe);
+        if (!safe) continue;   // inget lager att fly till: bäraren stannar och gör sitt jobb
+        if (unit.deliveryTask) this.abortTask(unit);
+        unit.repairing = false; unit.parking = false; unit.scared = true;
+        unit.stepQueue = [Jobs.walkTo(safe.x, safe.y), Jobs.run(carrier => {
+          if (carrier.carriedResource) { Economy.addToNearestStorage(carrier.carriedResource, 1, carrier); carrier.carriedResource = null; carrier.hasPickedUp = false; }
+          carrier.scared = false; carrier.fleeUntil = (this.time || 0) + pause;
+        })];
+      }
+    },
+
+    // Egna färdiga lager längre från hotet än bäraren själv: det närmaste av dem. Finns inget sådant tas det som ligger längst från hotet (om det inte är bärarens egen plats).
+    safeStorage(unit, foe) {
+      const from = (x, y) => Math.abs(x - foe.x) + Math.abs(y - foe.y), mine = from(unit.x, unit.y);
+      let away = null, awayDistance = Infinity, farthest = null, farthestFrom = -1;
+      for (const storage of Economy.storages(unit.player)) {
+        const danger = from(storage.x, storage.y);
+        if (danger > mine) { const distance = Utils.manhattanDistance(unit, storage); if (distance < awayDistance) { away = storage; awayDistance = distance; } }
+        if (danger > farthestFrom) { farthest = storage; farthestFrom = danger; }
+      }
+      const pick = away || (farthestFrom > mine ? farthest : null);
+      return pick && Utils.manhattanDistance(unit, pick) > 1 ? pick : null;
     },
 
     // ---- Reparation ----
@@ -241,7 +285,7 @@
 
     // Ledig bärare: inget uppdrag, ingen last och ingen kö, eller på väg till lagret för att vänta där (då kan ett uppdrag ta över direkt)
     isIdle(unit) {
-      if (!unit.definition.isHauler || unit.carriedResource || unit.deliveryTask || unit.repairing) return false;   // repairing: står intill en byggnad och lagar den
+      if (!unit.definition.isHauler || unit.carriedResource || unit.deliveryTask || unit.repairing || unit.scared || unit.fleeUntil > (this.time || 0)) return false;   // repairing: står intill en byggnad och lagar den
       if (unit.parking && !unit.stepQueue.length) unit.parking = false;
       return !unit.stepQueue.length || !!unit.parking;
     },
