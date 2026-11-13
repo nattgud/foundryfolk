@@ -157,13 +157,13 @@
     // ---- scener: en lista steg som sker i ordning (en dirigent, ingen skådespelare äger scenen) ----
     // scene: [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { who: id, say: ... } ... ]
     // Ett steg börjar när det förra är klart. Dialoger hör till scenen, inte till en person.
-    startScene(id, steps, ctx) {
+    startScene(id, steps, ctx, cast) {
       const progress = levels().progressRef?.(); if (!progress) return;
       const saved = state(); (saved.scenes ||= []);
       if (saved.scenes.some(scene => scene.id === id)) return;
       for (const key of Object.keys(progress.told)) if (key.startsWith(`scene:${id}:`)) delete progress.told[key];   // en upprepad scen börjar om: dialogerna får läsas igen
       // ctx: vad som utlöste scenen (händelsebussen, systems/story.js). Det som sparas är bara det enkla; själva enheten ligger i ctxUnits
-      saved.scenes.push({ id, steps: JSON.parse(JSON.stringify(steps)), index: 0, running: [], ctx: ctx ? { x: ctx.x, y: ctx.y, side: ctx.side, kind: ctx.kind, resource: ctx.resource, type: ctx.type } : undefined });
+      saved.scenes.push({ id, steps: JSON.parse(JSON.stringify(steps)), index: 0, running: [], cast: [...(cast || [])], ctx: ctx ? { x: ctx.x, y: ctx.y, side: ctx.side, kind: ctx.kind, resource: ctx.resource, type: ctx.type } : undefined });
       if (ctx?.unit) this.ctxUnits.set(id, ctx.unit); else this.ctxUnits.delete(id);
     },
     // En enhet i spelet som en scen pekar ut (who: { pick: 'trigger' | 'nearest' | 'random', side, kind, near }). Bara enheter som spelaren ser kommer i fråga. null = ingen passar (steget faller då tillbaka på sitt alternativ, otherwise)
@@ -190,16 +190,38 @@
       const data = this.data(run.who);
       return !data || data.gone || (!data.act && data.index >= data.script.length);
     },
+    // Skyddsnät: en scen som hänger sig nollställs. Hänger sig = ingen skådespelare har rört sig eller gått vidare på stallSeconds sekunder (en dialog som spelaren läser räknas inte), eller scenen har pågått orimligt länge.
+    // Då tas alla som scenen skapat bort, resten av scenen hoppas över och scenen räknas som klar, så att inget står kvar och väntar och det som väntar på scenen kan gå vidare.
+    stallSeconds: 25, maxSceneSeconds: 900,
+    watch(scene, dt) {
+      const runs = scene.running;
+      if (runs.some(run => run.kind === 'tell')) { scene.stall = 0; return false; }
+      scene.age = (scene.age || 0) + dt;
+      let sig = '';
+      for (const run of runs) {
+        if (run.kind !== 'actor') { sig = null; break; }   // en väntan eller bubbla tar slut av sig själv
+        const data = this.data(run.who);
+        sig += `${run.who}:${data ? `${Math.floor(data.x)},${Math.floor(data.y)},${data.index}` : 'x'};`;
+      }
+      if (sig === null || !runs.length) scene.stall = 0; else if (sig !== scene.sig) { scene.sig = sig; scene.stall = 0; } else scene.stall = (scene.stall || 0) + dt;
+      if (scene.stall <= this.stallSeconds && scene.age <= this.maxSceneSeconds) return false;
+      console.warn(`Actors: scenen '${scene.id}' hängde sig och nollställdes.`);
+      for (const id of scene.cast || []) for (const data of [this.data(id), ...this.members(id)]) if (data && !data.gone) this.remove(data);
+      for (const run of runs) if (run.kind === 'actor') { const data = this.data(run.who); if (data && !data.gone) this.remove(data); }
+      scene.running = []; scene.index = scene.steps.length;
+      return true;
+    },
     updateScenes(dt) {
       for (const scene of state().scenes || []) {
         scene.running = scene.running.filter(run => !this.sceneDone(scene, run, dt));
+        if (this.watch(scene, dt)) continue;
         let guard = 0;
         while ((!scene.running.length || scene.steps[scene.index]?.together) && scene.index < scene.steps.length && guard++ < 100) {   // together: true = börjar direkt, utan att vänta på förra steget
           {
             const step = scene.steps[scene.index], i = scene.index++;
             let failed = false;   // kunde steget inte göras? Då körs dess otherwise (ett alternativt flöde) i stället
             if (step.camera !== undefined) { const tile = this.resolve(step.camera, null); if (tile) { CityBuilder.Game.scrollTo(Math.floor(tile.x), Math.floor(tile.y), true, step.zoom); scene.running.push({ kind: 'wait', left: .8 }); } else failed = true; }
-            else if (step.spawn) { const made = this.spawn({ ...step.spawn, script: [] }); failed = !made && !this.data(step.spawn.id); }
+            else if (step.spawn) { const made = this.spawn({ ...step.spawn, script: [] }); failed = !made && !this.data(step.spawn.id); if (!failed) (scene.cast ||= []).push(step.spawn.id); }
             else if (step.tell) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'dialogue', lines: step.tell, part: 'events', mark }]); scene.running.push({ kind: 'tell', mark }); } }
             else if (step.wait !== undefined && !step.who) scene.running.push({ kind: 'wait', left: +step.wait || 0 });
             else if (step.who && typeof step.who === 'object') {   // en enhet i spelet, utpekad av en regel: den kan bara säga något
@@ -255,7 +277,7 @@
     // Händelser i kapitlet: spawn och act
     fire(event, ctx) {
       for (const spec of [].concat(event.spawn || [])) this.spawn(spec);
-      if (event.scene) this.startScene(event.id || 'scene' + Date.now(), event.scene, ctx);
+      if (event.scene) this.startScene(event.id || 'scene' + Date.now(), event.scene, ctx, [].concat(event.spawn || []).map(spec => spec.id));
       for (const [id, script] of Object.entries(event.act || {})) this.setScript(id, script);
     },
 
