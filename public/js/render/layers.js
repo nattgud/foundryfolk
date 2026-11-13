@@ -689,10 +689,8 @@
       if (building.hp < building.maxHp) { // skadad byggnad: livsmätare
         context.fillStyle = '#000'; context.fillRect(x + 2, y, tileSize - 4, 3);
         context.fillStyle = '#d65a4a'; context.fillRect(x + 3, y + 1, (tileSize - 6) * Math.max(0, building.hp) / building.maxHp, 1);
-        if (building.repairState) {   // bärare lagar den: skiftnyckel (svag medan material hämtas) och en grön framstegsmätare under livsmätaren
-          const work = building.repairState === 'work';
-          if (work) { context.fillStyle = '#000'; context.fillRect(x + 2, y + 3, tileSize - 4, 3); context.fillStyle = '#6fd36f'; context.fillRect(x + 3, y + 4, (tileSize - 6) * (building.repairFraction || 0), 1); }
-          context.globalAlpha = work ? 1 : .55; context.font = `${Math.round(tileSize * .36)}px sans-serif`; context.textBaseline = 'top'; context.fillText('🔧', x + tileSize - tileSize * .4, y + 6); context.globalAlpha = 1;
+        if (building.repairActive) {   // bärarna står intill och lagar: skiftnyckel medan hp faktiskt stiger (hp-mätaren visar framsteget)
+          context.font = `${Math.round(tileSize * .36)}px sans-serif`; context.textBaseline = 'top'; context.fillText('🔧', x + tileSize - tileSize * .4, y + 4);
         }
       }
       const problem = isFinished && !building.paused && building.player === CityBuilder.Players.HUMAN ? building.eff?.problem : null;

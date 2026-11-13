@@ -166,23 +166,57 @@
         if (building.hp == null || building.removed || building.dead || building.buildProgress < 1) { building.repairState = null; continue; }
         if (building.repairSeen === undefined || building.hp < building.repairSeen) building.repairCool = config.cooldown[0] + Utils.random() * (config.cooldown[1] - config.cooldown[0]);   // nyskadad: vänta en stund
         building.repairSeen = building.hp;
-        if (building.hp >= building.maxHp) { building.repairState = null; building.repairProgress = 0; continue; }
+        if (building.hp >= building.maxHp) { building.repairState = null; continue; }
         if ((building.repairCool -= seconds) > 0 || burning.has(building)) { building.repairState = null; continue; }
         if (foes.some(unit => Players.isHostile(building.player, unit.player) && (unit.x - building.x) ** 2 + (unit.y - building.y) ** 2 <= radius2)) { building.repairState = null; continue; }
         const need = this.need(building), stock = building.repairStock || {};
         building.repairState = Object.entries(need).every(([resourceId, amount]) => (stock[resourceId] || 0) >= amount) ? 'work' : 'wait';
         if (building.repairState === 'work') this.repairing.add(building); else this.damaged.push(building);
       }
+      for (const building of World.buildings) if (building.repairActive && !this.repairing.has(building)) building.repairActive = false;
+      this.manageHelpers();
+    },
+    // Bärare som står intill och lagar: en på varje sida (upp till 4, lika många som varor lagningen kräver). Lagningen går bara medan någon av dem är på plats, och hp stiger då stegvis.
+    helpers: new Map(),   // byggnad -> [{ unit, key, tx, ty }] (sparas inte: efter en inläsning släpps bärarna fria av manageHelpers)
+    manageHelpers() {
+      for (const unit of World.units) if (unit.repairing && !unit.removed && ![...this.helpers.values()].some(list => list.some(helper => helper.unit === unit))) unit.repairing = false;
+      for (const [building, list] of this.helpers) if (!this.repairing.has(building)) { for (const helper of list) helper.unit.repairing = false; this.helpers.delete(building); }
+      for (const building of this.repairing) {
+        const list = (this.helpers.get(building) || []).filter(helper => !helper.unit.removed && helper.unit.repairing);
+        const want = Math.min(4, Math.max(1, Object.values(this.need(building)).reduce((sum, amount) => sum + amount, 0)));
+        if (list.length < want) {
+          const taken = new Set(list.map(helper => helper.key));
+          const sides = [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dx, dy]) => ({ key: dx + ',' + dy, tx: building.x + dx, ty: building.y + dy })).filter(side => !taken.has(side.key) && CityBuilder.Pathfinder.tileCost(side.tx, side.ty) < Infinity);
+          const idle = World.units.filter(unit => !unit.removed && unit.player === building.player && this.isIdle(unit)).sort((a, b) => Utils.manhattanDistance(a, building) - Utils.manhattanDistance(b, building));
+          for (const side of sides) {
+            const unit = idle.shift();
+            if (!unit || list.length >= want) break;
+            unit.repairing = true; unit.parking = false; unit.stepQueue = [Jobs.walkTo(side.tx, side.ty)];
+            list.push({ unit, key: side.key, tx: side.tx, ty: side.ty });
+          }
+        }
+        this.helpers.set(building, list);
+      }
     },
     runRepairs(deltaSeconds) {
       for (const building of this.repairing) {
-        if (building.removed || building.hp >= building.maxHp) { this.repairing.delete(building); continue; }
-        const duration = Math.max(1, building.definition.buildDuration * (1 - building.hp / building.maxHp));
-        building.repairFraction = Math.min(1, (building.repairProgress = (building.repairProgress || 0) + deltaSeconds) / duration);
-        if (building.repairProgress < duration) continue;
-        const stock = building.repairStock || {};
-        for (const [resourceId, amount] of Object.entries(this.need(building))) stock[resourceId] = Math.max(0, (stock[resourceId] || 0) - amount);
-        building.hp = building.maxHp; building.repairSeen = building.hp; building.repairProgress = 0; building.repairFraction = 0; building.repairState = null;
+        if (building.removed || building.hp >= building.maxHp) { this.repairing.delete(building); building.repairActive = false; continue; }
+        const list = this.helpers.get(building) || [];
+        const present = list.filter(helper => !helper.unit.removed && Math.abs(helper.unit.x - helper.tx - .5) < .9 && Math.abs(helper.unit.y - helper.ty - .5) < .9).length;   // på sin sida (bärarna knuffar lite på varandra)
+        building.repairActive = present > 0;
+        if (!present) continue;
+        const gain = Math.min(building.maxHp - building.hp, building.maxHp / building.definition.buildDuration * deltaSeconds * present / Math.max(1, list.length));   // full fart = byggtiden för hela byggnaden
+        building.hp += gain; building.repairSeen = building.hp;
+        const stock = building.repairStock || (building.repairStock = {}), spent = building.repairSpent || (building.repairSpent = {});
+        const done = building.hp >= building.maxHp - 1e-6;
+        for (const [resourceId, cost] of Object.entries(building.definition.buildCost || {})) {   // materialet förbrukas i takt med lagningen (heltal, resten avrundas uppåt när den är klar)
+          spent[resourceId] = (spent[resourceId] || 0) + cost * gain / building.maxHp;
+          const take = Math.min(stock[resourceId] || 0, done ? Math.ceil(spent[resourceId] - 1e-9) : Math.floor(spent[resourceId]));
+          if (take > 0) { stock[resourceId] -= take; spent[resourceId] -= take; }
+          if (done) spent[resourceId] = 0;
+        }
+        if (!done) continue;
+        building.hp = building.maxHp; building.repairState = null; building.repairActive = false;
         this.repairing.delete(building);
         CityBuilder.Story?.emit('repaired', building);   // händelsebussen
       }
@@ -207,7 +241,7 @@
 
     // Ledig bärare: inget uppdrag, ingen last och ingen kö, eller på väg till lagret för att vänta där (då kan ett uppdrag ta över direkt)
     isIdle(unit) {
-      if (!unit.definition.isHauler || unit.carriedResource || unit.deliveryTask) return false;
+      if (!unit.definition.isHauler || unit.carriedResource || unit.deliveryTask || unit.repairing) return false;   // repairing: står intill en byggnad och lagar den
       if (unit.parking && !unit.stepQueue.length) unit.parking = false;
       return !unit.stepQueue.length || !!unit.parking;
     },
