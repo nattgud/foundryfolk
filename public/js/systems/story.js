@@ -132,6 +132,7 @@
     // Händelser på bestämda tider (Weather sköter själva vädret)
     fire(event, ctx) {
       const Weather = CityBuilder.Weather, hq = World.headquarters;
+      CityBuilder.Game?.resetSpeed();   // varje händelse sätter hastigheten till 1x
       if (event.give && hq) for (const [resourceId, amount] of Object.entries(event.give)) hq.storedGoods[resourceId] = (hq.storedGoods[resourceId] || 0) + amount;   // give: varor till spelarens huvudlager
       if (event.tell) this.tell([{ type: 'dialogue', lines: event.tell, part: 'events', scene: event.scene, mark: event.id ? 'read:' + event.id : undefined }]);   // id: händelsens namn, så att { read: id } kan vänta på att dialogen lästs
       CityBuilder.Actors?.fire(event, ctx);   // spawn och act: skådespelare

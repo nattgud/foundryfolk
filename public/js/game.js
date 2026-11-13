@@ -327,6 +327,13 @@
       byId('speedButton').textContent = speeds[this.speedIndex] + 'x';
     },
 
+    // Tillbaka till 1x (en händelse i storyn inträffar: spelaren ska hinna se och läsa)
+    resetSpeed() {
+      if (!this.speedIndex) return;
+      this.speedIndex = 0;
+      const button = byId('speedButton'); if (button) button.textContent = Config.settings.gameSpeeds[0] + 'x';
+    },
+
     // En simuleringsruta (anropas av loopen, och kan anropas direkt av tester)
     advanceSimulation(deltaSeconds) {
       this.deltaSeconds = deltaSeconds;
