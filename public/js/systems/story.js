@@ -196,7 +196,7 @@
     emit(name, subject, by, what, amount) {
       const chapter = this.chapter;
       if (!chapter?.events) return;
-      if (this.indexed !== chapter || this.indexedCount !== chapter.events.length) this.index(chapter);
+      if (this.indexed !== chapter || this.indexedCount !== (chapter.events?.length ?? 0)) this.index(chapter);
       if (this.driven.has(name)) this.dirty.add(name);   // en händelse med villkor som den här kan ändra kollas i nästa steg (se update)
       const list = this.listen.get(name);
       if (!list) return;
@@ -211,8 +211,8 @@
     // 2. Villkor som bara ändras av ett meddelande (byggt, besegrat, förstört, förtrollat, tillverkat, dimman) kollas först när det meddelandet kommit (driven), med en säkerhetskoll var 2:a sekund.
     // 3. Allt annat (tid, mål, lager, soldater, bärare, syn, scener, upprepning) kollas två gånger per sekund (ticking).
     index(chapter) {
-      this.indexed = chapter; this.indexedCount = chapter.events.length; this.listen = new Map(); this.driven = new Map(); this.ticking = []; this.dirty = new Set(['*']); this.nextTick = 0; this.nextSweep = 0;
-      chapter.events.forEach((event, i) => {
+      this.indexed = chapter; this.indexedCount = chapter.events?.length ?? 0; this.listen = new Map(); this.driven = new Map(); this.ticking = []; this.dirty = new Set(['*']); this.nextTick = 0; this.nextSweep = 0;
+      (chapter.events || []).forEach((event, i) => {
         const key = typeof event.on === 'string' ? event.on : event.on?.event;
         if (key) { (this.listen.get(key) || this.listen.set(key, []).get(key)).push(i); return; }
         const signals = this.signalsOf(event);
@@ -342,7 +342,7 @@
       // (ett mål av samma slag som kapitlets: { resource | type, id, amount }, som att man har 50 järn eller har byggt en förtrollare)
       // En händelse med on väntar på ett meddelande från spelet (se emit nedan) och kollas inte här.
       this.watchWeather();
-      if (this.indexed !== chapter || this.indexedCount !== chapter.events.length) this.index(chapter);
+      if (this.indexed !== chapter || this.indexedCount !== (chapter.events?.length ?? 0)) this.index(chapter);
       const now = Levels.seconds, events = chapter.events || [];
       if (now >= this.nextSweep || now < this.nextSweep - 3) { this.nextSweep = now + 2; this.dirty.add('*'); }
       if (this.dirty.size) {   // villkor som väntar på ett meddelande
