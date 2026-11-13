@@ -166,6 +166,12 @@
       saved.scenes.push({ id, steps: JSON.parse(JSON.stringify(steps)), index: 0, running: [], cast: [...(cast || [])], ctx: ctx ? { x: ctx.x, y: ctx.y, side: ctx.side, kind: ctx.kind, resource: ctx.resource, type: ctx.type } : undefined });
       if (ctx?.unit) this.ctxUnits.set(id, ctx.unit); else this.ctxUnits.delete(id);
     },
+    // Platsen för det som utlöste scenen ({ trigger: true } som mål): enheten om den finns kvar, annars där det hände. null = scenen utlöstes inte av en händelse
+    triggerSpot(scene) {
+      const unit = this.ctxUnits.get(scene.id);
+      if (unit && !unit.removed) return { x: Math.floor(unit.x), y: Math.floor(unit.y) };
+      return scene.ctx?.x !== undefined ? { x: scene.ctx.x, y: scene.ctx.y } : null;
+    },
     // En enhet i spelet som en scen pekar ut (who: { pick: 'trigger' | 'nearest' | 'random', side, kind, near }). Bara enheter som spelaren ser kommer i fråga. null = ingen passar (steget faller då tillbaka på sitt alternativ, otherwise)
     pickUnit(selector, scene) {
       const Story = CityBuilder.Story, Vision = CityBuilder.Vision, ctx = scene.ctx || {};
@@ -220,8 +226,8 @@
           {
             const step = scene.steps[scene.index], i = scene.index++;
             let failed = false;   // kunde steget inte göras? Då körs dess otherwise (ett alternativt flöde) i stället
-            if (step.camera !== undefined) { const tile = this.resolve(step.camera, null); if (tile) { CityBuilder.Game.scrollTo(Math.floor(tile.x), Math.floor(tile.y), true, step.zoom); scene.running.push({ kind: 'wait', left: .8 }); } else failed = true; }
-            else if (step.spawn) { const made = this.spawn({ ...step.spawn, script: [] }); failed = !made && !this.data(step.spawn.id); if (!failed) (scene.cast ||= []).push(step.spawn.id); }
+            if (step.camera !== undefined) { const tile = this.resolve(step.camera?.trigger ? this.triggerSpot(scene) : step.camera, null); if (tile) { CityBuilder.Game.scrollTo(Math.floor(tile.x), Math.floor(tile.y), true, step.zoom); scene.running.push({ kind: 'wait', left: .8 }); } else failed = true; }
+            else if (step.spawn) { const spot = step.spawn.at?.trigger ? this.triggerSpot(scene) : null, made = step.spawn.at?.trigger && !spot ? null : this.spawn({ ...step.spawn, ...(spot ? { at: spot } : {}), script: [] }); failed = !made && !this.data(step.spawn.id); if (!failed) (scene.cast ||= []).push(step.spawn.id); }
             else if (step.tell) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'dialogue', lines: step.tell, part: 'events', mark }]); scene.running.push({ kind: 'tell', mark }); } }
             else if (step.wait !== undefined && !step.who) scene.running.push({ kind: 'wait', left: +step.wait || 0 });
             else if (step.who && typeof step.who === 'object') {   // en enhet i spelet, utpekad av en regel: den kan bara säga något
@@ -235,11 +241,12 @@
               const [type] = Object.entries(step).find(([key]) => key !== 'who' && Actions[key]) || [], one = this.data(step.who);
               // Ett steg för en grupp gäller alla i den: de går och lämnar med en liten fördröjning var (ett led), bara den första talar
               let started = 0;
-              const unreachable = type === 'walk' && !this.resolve(step.walk, null);   // målet finns inte (t.ex. en byggnad som inte är byggd): steget går inte att göra
+              const target = type === 'walk' && step.walk?.trigger ? this.triggerSpot(scene) : step[type];   // { trigger: true } = dit det som utlöste scenen hände
+              const unreachable = type === 'walk' && !this.resolve(target, null);   // målet finns inte (t.ex. en byggnad som inte är byggd): steget går inte att göra
               for (const data of type && !unreachable ? one ? [one] : this.members(step.who) : []) {
                 if (data.gone || (data.group && type === 'say' && data.nth > 1)) continue;
                 const delay = data.group && (type === 'walk' || type === 'leave') ? (data.nth - 1) * (data.gap ?? GROUP_GAP) : 0;
-                this.setScript(data.id, delay ? [{ wait: delay }, { [type]: step[type] }] : [{ [type]: step[type] }]);
+                this.setScript(data.id, delay ? [{ wait: delay }, { [type]: target }] : [{ [type]: target }]);
                 scene.running.push({ kind: 'actor', who: data.id }); started++;
               }
               if (type && (!started || unreachable)) failed = true;

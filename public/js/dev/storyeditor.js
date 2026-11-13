@@ -51,6 +51,7 @@
 
     // ---------------------------------------------------------------- hjälpare
     const hq = () => World.headquarters;
+    const TRIGGER = '__trigger';   // mål: det som utlöste händelsen (bara för en scen som startar av en händelse)
     const keyOf = (x, y) => Utils.tileKey(x, y);
     const esc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
     const ser = value => value && typeof value === 'object'
@@ -63,7 +64,7 @@
     const actorIds = () => [...new Set([...scenes.flatMap(sc => sc.cast.map(c => c.id)), ...existingEvents().flatMap(event => [].concat(event.spawn || []).map(spec => spec.id))])];
     const imageSrc = (path, race) => { const m = /^images\/units\/([^/]+\.png)$/.exec(path || ''); return m ? `images/units/${race || 'human'}/${m[1]}` : path; };   // spelets sökväg saknar rasmappen (som i Config.units): den sätts in här, annars ger förhandsvisningen 404
     const nameOf = path => images.find(item => item.path === path)?.label || (path || '').replace('images/units/', '').replace('.png', '');
-    const targetText = target => Array.isArray(target) ? `ruta (${target[0]}, ${target[1]})` : typeof target === 'string' ? (target === 'hq' ? 'basen' : target) : JSON.stringify(target);
+    const targetText = target => target === TRIGGER ? 'det som utlöste händelsen' : Array.isArray(target) ? `ruta (${target[0]}, ${target[1]})` : typeof target === 'string' ? (target === 'hq' ? 'basen' : target) : JSON.stringify(target);
     const select = (id, options, current, bind) => `<select ${id ? `id="${id}"` : ''} ${bind ? `data-bind="${bind}"` : ''}>${options.map(option => { const [value, label] = Array.isArray(option) ? option : [option, option]; return `<option value="${esc(value)}"${String(value) === String(current) ? ' selected' : ''}>${esc(label)}</option>`; }).join('')}</select>`;
 
     // ---------------------------------------------------------------- spara och ladda (webbläsaren, per kapitel)
@@ -209,9 +210,9 @@
         let step;
         const who = s.who === UNIT ? selectorOf(s) : s.who;
         switch (s.type) {
-          case 'appear': step = { spawn: specOf(cast.get(s.who) || { id: s.who, image: '' }, s.arg) }; break;
-          case 'walk': step = { who, walk: s.arg }; break;
-          case 'camera': step = { camera: s.arg }; if (s.zoom) step.zoom = s.zoom; break;
+          case 'appear': step = { spawn: specOf(cast.get(s.who) || { id: s.who, image: '' }, s.arg === TRIGGER ? { trigger: true } : s.arg) }; break;
+          case 'walk': step = { who, walk: s.arg === TRIGGER ? { trigger: true } : s.arg }; break;
+          case 'camera': step = { camera: s.arg === TRIGGER ? { trigger: true } : s.arg }; if (s.zoom) step.zoom = s.zoom; break;
           case 'say': step = { who, say: { text: s.arg.text, wait: true } }; break;
           case 'dialog': step = { tell: s.arg.map(line => ({ who: line.who, text: line.text })) }; break;
           case 'leave': step = { who, leave: true }; break;
@@ -257,7 +258,7 @@
       if (!sc) return `<p>En <b>scen</b> är något som händer i berättelsen: du väljer vilka som är med och skriver sedan vad som händer, steg för steg, i ordning.</p><div class="row"><button class="primary" data-act="newScene">Skapa en scen</button></div>`;
       const cond = COND[sceneCond];
       const castIds = sc.cast.map(c => c.id), chars = Object.entries(characters);
-      const targets = [['hq', 'basen'], ...buildingTypes.filter(b => b !== 'hq').map(b => [b, 'byggnaden ' + b]), ...castIds.map(id => [id, 'personen ' + id]), ['__map', 'en plats på kartan…']];
+      const targets = [['hq', 'basen'], ...(sc.conds.some(c => c.kind.startsWith('on')) ? [[TRIGGER, '★ det som utlöste händelsen']] : []), ...buildingTypes.filter(b => b !== 'hq').map(b => [b, 'byggnaden ' + b]), ...castIds.map(id => [id, 'personen ' + id]), ['__map', 'en plats på kartan…']];
       if (stepDraft.parent !== null && !sc.steps[stepDraft.parent]) stepDraft.parent = null;
       const inFs = stepDraft.parent !== null, list = inFs ? sc.steps[stepDraft.parent].otherwise || [] : sc.steps;
       if (stepDraft.who === UNIT && stepDraft.type !== 'say') stepDraft.type = 'say';
