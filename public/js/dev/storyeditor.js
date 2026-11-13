@@ -231,6 +231,7 @@
       const out = [], tag = `Scenen "${sc.name}"`, ids = new Set(sc.cast.map(c => c.id));
       if (!sc.cast.length && flatSteps(sc.steps).some(s => !NO_WHO.includes(s.type) && s.who !== UNIT)) out.push({ text: `${tag} har ingen med.` });
       if (!sc.steps.length) out.push({ text: `${tag} har inga steg.` });
+      if (!sc.conds.some(c => c.kind.startsWith('on')) && flatSteps(sc.steps).some(s => s.arg === TRIGGER || (s.who === UNIT && (s.pick || 'trigger') === 'trigger'))) out.push({ text: `${tag} använder "det som utlöste händelsen", men startar inte av en händelse. Lägg till ett villkor under "Händelser i spelet".` });
       for (const cond of sc.conds) if (cond.kind === 'sceneDone' && !scenes.some(other => other !== sc && other.id === cond.v.sc)) out.push({ text: `${tag} väntar på en scen som inte finns längre.` });
       const here = new Set(sc.cast.filter(c => c.at).map(c => c.id));
       let busy = new Set();   // personer som redan gör något i en grupp av steg som börjar samtidigt
@@ -396,10 +397,13 @@
       }
     }
     const listAt = p => p === undefined ? sceneNow().steps : sceneNow().steps[+p].otherwise;
+    // Ett villkor av samma slag ersätter det förra (en scen har bara en starttid, ett mål, en händelse...), så det inte tyst vinner det sista
+    const topKey = cond => Object.keys(COND[cond.kind].make(cond.v).top || {})[0];
+    const addCond = (sc, cond) => { const key = topKey(cond); sc.conds = sc.conds.filter(c => !(key && (topKey(c) === key || (key === 'on' && topKey(c) === 'on')))); sc.conds.push(cond); };
     const actions = {
       newScene: () => { const n = scenes.length + 1; let id = 'scene' + n; while (scenes.some(sc => sc.id === id)) id += 'b'; scenes.push({ id, name: 'Scen ' + n, conds: [], cast: [], steps: [] }); cur = scenes.length - 1; render(); },
       deleteScene: () => { scenes.splice(cur, 1); cur = Math.max(0, cur - 1); render(); },
-      sceneCondAdd: () => { const sc = sceneNow(), spec = COND[sceneCond], v = read(spec, 'sc'); if (spec.f.some(([name, type]) => type !== 'text' && type !== 'opt' && type !== 'near' && v[name] === '')) { notice('Fyll i alla fält.'); return; } if (v.near === '__map') { st.arm = { kind: 'condNear', cond: { kind: sceneCond, v } }; render(); return; } sc.conds.push({ kind: sceneCond, v }); render(); },
+      sceneCondAdd: () => { const sc = sceneNow(), spec = COND[sceneCond], v = read(spec, 'sc'); if (spec.f.some(([name, type]) => type !== 'text' && type !== 'opt' && type !== 'near' && v[name] === '')) { notice('Fyll i alla fält.'); return; } if (v.near === '__map') { st.arm = { kind: 'condNear', cond: { kind: sceneCond, v } }; render(); return; } addCond(sc, { kind: sceneCond, v }); render(); },
       sceneCondDel: ({ i }) => { sceneNow().conds.splice(+i, 1); render(); },
       castAdd: () => { st.arm = { kind: 'cast' }; if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); if (characters[castDraft.image]) castDraft.race = characters[castDraft.image] === 'demon' ? 'demon' : ''; render(); },
       castLater: () => { const sc = sceneNow(); if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); sc.cast.push({ id: castDraft.id, image: castDraft.image, race: characters[castDraft.image] === 'demon' ? 'demon' : '', count: countOf(), at: null }); stepDraft.who = stepDraft.who || castDraft.id; castDraft = blankCast(); render(); },
@@ -503,7 +507,7 @@
     function armClick(tile) {
       const arm = st.arm; st.arm = null;
       if (arm.kind === 'cast') { const sc = sceneNow(); if (sc) { const id = castDraft.id.trim() || uniqueId('person'); sc.cast.push({ id, image: castDraft.image, race: castDraft.race, count: countOf(), at: [tile.x - hq().x, tile.y - hq().y] }); castDraft = blankCast(); stepDraft.who = stepDraft.who || id; } }
-      else if (arm.kind === 'condNear') { const sc = sceneNow(); if (sc) { arm.cond.v.near = tileTarget(tile); sc.conds.push(arm.cond); } }
+      else if (arm.kind === 'condNear') { const sc = sceneNow(); if (sc) { arm.cond.v.near = tileTarget(tile); addCond(sc, arm.cond); } }
       else if (arm.kind === 'castMove') { const c = sceneNow()?.cast[arm.i]; if (c) c.at = [tile.x - hq().x, tile.y - hq().y]; }
       else if (arm.kind === 'sceneStep') { const sc = sceneNow(); if (sc) { const list = arm.parent === null || arm.parent === undefined ? sc.steps : sc.steps[arm.parent].otherwise, step = { who: arm.who, type: arm.type, arg: tileTarget(tile) }; if (arm.zoom) step.zoom = arm.zoom; if ((arm.parent === null || arm.parent === undefined) && arm.together && (arm.edit ?? list.length) > 0) step.together = true; if (arm.edit !== null && arm.edit !== undefined) { if (list[arm.edit]?.otherwise) step.otherwise = list[arm.edit].otherwise; list[arm.edit] = step; } else list.push(step); resetStep(); } }
       render();

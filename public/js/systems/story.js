@@ -212,7 +212,9 @@
     // 3. Allt annat (tid, mål, lager, soldater, bärare, syn, scener, upprepning) kollas två gånger per sekund (ticking).
     index(chapter) {
       this.indexed = chapter; this.indexedCount = chapter.events?.length ?? 0; this.listen = new Map(); this.driven = new Map(); this.ticking = []; this.dirty = new Set(['*']); this.nextTick = 0; this.nextSweep = 0;
+      const seen = new Set();
       (chapter.events || []).forEach((event, i) => {
+        if (event.scene && event.id) { if (seen.has(event.id)) console.warn(`Story: två scener i kapitlet har id '${event.id}'; den andra körs aldrig medan den första pågår och de delar sina 'läst'-markeringar. Ge dem olika id.`); seen.add(event.id); }
         const key = typeof event.on === 'string' ? event.on : event.on?.event;
         if (key) { (this.listen.get(key) || this.listen.set(key, []).get(key)).push(i); return; }
         const signals = this.signalsOf(event);

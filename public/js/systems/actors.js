@@ -182,7 +182,7 @@
         const worker = World.units.find(unit => !unit.removed && !unit.actor && unit.homeBuilding === subject && Vision.sees(Players.HUMAN, unit));
         return worker || { x: subject.x + .5, y: subject.y + .5, removed: false };
       }
-      const side = selector.side || (selector.pick === 'trigger' ? ctx.side : undefined) || 'any', kind = selector.kind || (selector.pick === 'trigger' && ctx.kind !== 'building' ? ctx.kind : undefined) || 'any';
+      const side = selector.side || (selector.pick === 'trigger' && ctx.kind !== 'building' ? ctx.side : undefined) || 'any', kind = selector.kind || (selector.pick === 'trigger' && ctx.kind !== 'building' ? ctx.kind : undefined) || 'any';
       const fits = unit => !unit.removed && !unit.actor && Story.sideOf(unit) !== undefined && (side === 'any' || Story.sideOf(unit) === side) && (kind === 'any' || Story.kindOf(unit) === kind) && Vision.sees(Players.HUMAN, unit);
       const direct = selector.pick === 'trigger' ? this.ctxUnits.get(scene.id) : null;
       if (direct && fits(direct)) return direct;
@@ -205,7 +205,7 @@
     },
     // Skyddsnät: en scen som hänger sig nollställs. Hänger sig = ingen skådespelare har rört sig eller gått vidare på stallSeconds sekunder (en dialog som spelaren läser räknas inte), eller scenen har pågått orimligt länge.
     // Då tas alla som scenen skapat bort, resten av scenen hoppas över och scenen räknas som klar, så att inget står kvar och väntar och det som väntar på scenen kan gå vidare.
-    stallSeconds: 25, maxSceneSeconds: 900,
+    stallSeconds: 40, maxSceneSeconds: 900,
     watch(scene, dt) {
       const runs = scene.running;
       if (runs.some(run => run.kind === 'tell')) { scene.stall = 0; return false; }
