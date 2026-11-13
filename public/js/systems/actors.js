@@ -164,7 +164,8 @@
       for (const key of Object.keys(progress.told)) if (key.startsWith(`scene:${id}:`)) delete progress.told[key];   // en upprepad scen börjar om: dialogerna får läsas igen
       // ctx: vad som utlöste scenen (händelsebussen, systems/story.js). Det som sparas är bara det enkla; själva enheten ligger i ctxUnits
       saved.scenes.push({ id, steps: JSON.parse(JSON.stringify(steps)), index: 0, running: [], cast: [...(cast || [])], ctx: ctx ? { x: ctx.x, y: ctx.y, side: ctx.side, kind: ctx.kind, resource: ctx.resource, type: ctx.type } : undefined });
-      if (ctx?.unit) this.ctxUnits.set(id, ctx.unit); else this.ctxUnits.delete(id);
+      const subject = ctx?.unit || ctx?.building;   // en enhet, eller en byggnad (t.ex. när något tillverkats)
+      if (subject) this.ctxUnits.set(id, subject); else this.ctxUnits.delete(id);
     },
     // Platsen för det som utlöste scenen ({ trigger: true } som mål): enheten om den finns kvar, annars där det hände. null = scenen utlöstes inte av en händelse
     triggerSpot(scene) {
@@ -175,7 +176,13 @@
     // En enhet i spelet som en scen pekar ut (who: { pick: 'trigger' | 'nearest' | 'random', side, kind, near }). Bara enheter som spelaren ser kommer i fråga. null = ingen passar (steget faller då tillbaka på sitt alternativ, otherwise)
     pickUnit(selector, scene) {
       const Story = CityBuilder.Story, Vision = CityBuilder.Vision, ctx = scene.ctx || {};
-      const side = selector.side || (selector.pick === 'trigger' ? ctx.side : undefined) || 'any', kind = selector.kind || (selector.pick === 'trigger' ? ctx.kind : undefined) || 'any';
+      // Utlöstes scenen av en byggnad (tillverkat, byggt...) och inget slag är valt: en av dess arbetare talar, annars byggnaden själv (bubblan står över den)
+      const subject = selector.pick === 'trigger' ? this.ctxUnits.get(scene.id) : null;
+      if (subject?.buildProgress !== undefined && !subject.removed && (!selector.kind || selector.kind === 'building') && (!selector.side || selector.side === Story.sideOf(subject))) {
+        const worker = World.units.find(unit => !unit.removed && !unit.actor && unit.homeBuilding === subject && Vision.sees(Players.HUMAN, unit));
+        return worker || { x: subject.x + .5, y: subject.y + .5, removed: false };
+      }
+      const side = selector.side || (selector.pick === 'trigger' ? ctx.side : undefined) || 'any', kind = selector.kind || (selector.pick === 'trigger' && ctx.kind !== 'building' ? ctx.kind : undefined) || 'any';
       const fits = unit => !unit.removed && !unit.actor && Story.sideOf(unit) !== undefined && (side === 'any' || Story.sideOf(unit) === side) && (kind === 'any' || Story.kindOf(unit) === kind) && Vision.sees(Players.HUMAN, unit);
       const direct = selector.pick === 'trigger' ? this.ctxUnits.get(scene.id) : null;
       if (direct && fits(direct)) return direct;
