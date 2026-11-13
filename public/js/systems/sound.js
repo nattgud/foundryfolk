@@ -214,7 +214,7 @@
       this.workLoops = new Set();   // byggnader som har en arbetsloop
       for (const [type, phases] of Object.entries(custom.buildings || {})) for (const phase of ['start', 'loop', 'done']) {
         if (!phases[phase]) continue;
-        this.define(`${phase}.${type}`, spec(phases[phase]));
+        this.define(`${phase}.${type}`, { ...spec(phases[phase]), blend: true });   // blend: flera likadana som hörs samtidigt sänks så att summan inte blir för hög (se play och updateAmbient)
         if (phase === 'loop') this.workLoops.add(type);
       }
       this.channels = { calm: this.channel(custom.music), battle: this.channel(custom.battleMusic), disaster: this.channel(custom.disasterMusic), tornado: this.channel(custom.tornadoMusic), scene: this.channel([]) };
@@ -410,7 +410,8 @@
       source.buffer = buffer;
       source.playbackRate.value = 1 + (Math.random() * 2 - 1) * definition.pitch;
       const gain = context.createGain();
-      gain.gain.value = (options.volume ?? 1) * definition.volume * (spot ? 1 - DRY_LOSS * spot.wet : 1);   // längre bort: mindre direktljud, mer eko
+      const together = definition.blend ? 1 / Math.sqrt(1 + definition.voices) : 1;   // samma ljud som redan spelas: sänkt, så två likadana byggnader inte låter dubbelt så högt
+      gain.gain.value = (options.volume ?? 1) * definition.volume * together * (spot ? 1 - DRY_LOSS * spot.wet : 1);   // längre bort: mindre direktljud, mer eko
       source.connect(gain);
       let node = gain;
       if (spot && this.dull > 0.01) {   // dimma: längre bort låter dovare
@@ -475,9 +476,11 @@
           const spot = hearing(building.x, building.y);
           if (spot && spot.level > 0.01) heard.push({ building, ...spot });
         }
-        for (const { building, level, pan, cut, wet } of heard.sort((a, b) => b.level - a.level).slice(0, 3)) {
+        const loud = heard.sort((a, b) => b.level - a.level).slice(0, 3), same = {};
+        for (const { building } of loud) same[building.type] = (same[building.type] || 0) + 1;
+        for (const { building, level, pan, cut, wet } of loud) {
           const definition = this.sounds.get('loop.' + building.type);
-          targets.set(building, { definition, volume: definition.volume, level, pan, cut, wet, fade: 0.3 });
+          targets.set(building, { definition, volume: definition.volume / Math.sqrt(same[building.type]), level, pan, cut, wet, fade: 0.3 });   // flera likadana som hörs: var och en sänks (2 st: x0.71, 3 st: x0.58) så att summan blir ungefär lika hög
         }
       }
       return targets;
