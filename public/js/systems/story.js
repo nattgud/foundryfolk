@@ -136,12 +136,14 @@
       if (event.tell) this.tell([{ type: 'dialogue', lines: event.tell, part: 'events', scene: event.scene, mark: event.id ? 'read:' + event.id : undefined }]);   // id: händelsens namn, så att { read: id } kan vänta på att dialogen lästs
       CityBuilder.Actors?.fire(event, ctx);   // spawn och act: skådespelare
       if (event.weather) { Weather.type = event.weather; Weather.left = 90; Weather.flashIn = 1; CityBuilder.Sound?.play('weather.' + event.weather); }
+      // where: var tornado, superstorm och meteorer slår till (samma mål som i scener: 'hq', en byggnadstyp, [dx, dy] från basen, { trigger: true } = där det som utlöste händelsen hände). Utan where: tornadons egen plats, meteorer vid basen.
+      const place = !event.where ? null : event.where.trigger ? (ctx?.x !== undefined ? { x: ctx.x, y: ctx.y } : null) : CityBuilder.Actors?.resolve(event.where, null);
+      const here = place && { x: place.x + .5, y: place.y + .5, player: Players.HUMAN };
       if (event.tornado || event.super) {
-        const spot = Weather.tornadoSpot() || (hq && { x: hq.x + 10, y: hq.y + 6, player: Players.HUMAN });
-        if (!spot) return;
-        if (event.super) Weather.spawnSuper(spot.x, spot.y, event.super, TORNADO_LIFE, spot.player); else Weather.spawnTornado(spot.x, spot.y, event.tornado, TORNADO_LIFE, spot.player);
+        const spot = here || Weather.tornadoSpot() || (hq && { x: hq.x + 10, y: hq.y + 6, player: Players.HUMAN });
+        if (spot) { if (event.super) Weather.spawnSuper(spot.x, spot.y, event.super, TORNADO_LIFE, spot.player); else Weather.spawnTornado(spot.x, spot.y, event.tornado, TORNADO_LIFE, spot.player); }
       }
-      if (event.meteors && hq) Weather.spawnMeteors(hq.x + 8, hq.y + 6, 10, event.meteors);
+      if (event.meteors && (here || hq)) Weather.spawnMeteors(here ? here.x : hq.x + 8, here ? here.y : hq.y + 6, 10, event.meteors);
     },
 
     // Anfallsvågor: kapitlets egna fiender, oberoende av datorns vanliga anfallsregler (ai.js). chapter.waves:

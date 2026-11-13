@@ -218,6 +218,7 @@
       if (sc.give?.length) { out.give = {}; for (const { res, n } of sc.give) out.give[res] = (out.give[res] || 0) + (+n || 0); }
       if (sc.weather) out.weather = sc.weather;
       for (const key of ['tornado', 'super', 'meteors']) if (+sc[key] > 0) out[key] = +sc[key];
+      if (sc.where !== undefined && ['tornado', 'super', 'meteors'].some(key => +sc[key] > 0)) out.where = sc.where === TRIGGER ? { trigger: true } : sc.where;
       if (sc.whileFog) out.whileFog = true;
       return out;
     }
@@ -254,6 +255,7 @@
     function sceneProblems(sc) {
       const out = [], tag = `Scenen "${sc.name}"`, ids = new Set(sc.cast.map(c => c.id));
       if (!sc.cast.length && flatSteps(sc.steps).some(s => !NO_WHO.includes(s.type) && s.who !== UNIT)) out.push({ text: `${tag} har ingen med.` });
+      if (sc.where === TRIGGER && !hasTrigger(sc)) out.push({ text: `${tag}: vädret ska slå till där det som utlöste händelsen hände, men scenen startar inte av en händelse eller något spelaren ser.` });
       if (!sc.steps.length && !Object.keys(fxOf(sc)).length) out.push({ text: `${tag} gör ingenting: lägg till steg, musik, varor eller väder.` });
       if (sc.music === 'set' && !listOf(sc.musicCalm).length && !listOf(sc.musicBattle).length && !sc.battleOff) out.push({ text: `${tag}: skriv en musikfil, eller välj något annat än "Byt musik".` });
       if (!hasTrigger(sc) && flatSteps(sc.steps).some(s => s.arg === TRIGGER || (s.who === UNIT && (s.pick || 'trigger') === 'trigger'))) out.push({ text: `${tag} använder "det som utlöste händelsen", men startar inte av en händelse eller något spelaren ser. Lägg till ett villkor under "Händelser i spelet" eller "Syn".` });
@@ -330,7 +332,8 @@
           <div class="row">${select('', resourceIds, fxDraft.res, 'fxDraft.res')} <input type="number" min="1" data-bind="fxDraft.n" value="${esc(fxDraft.n)}" style="width:70px"> <button data-act="giveAdd">Lägg till</button></div></div>
         <div class="card"><div class="row">Väder ${select('', [['', 'ingen ändring'], ...Object.keys(Config.settings.weather?.chances || {}).map(x => [x, x])], sc.weather || '', 'scene.weather')}</div>
           <div class="row">Tornado, radie <input type="number" min="0" data-bind="scene.tornado" value="${esc(sc.tornado || '')}" style="width:60px"> Superstorm, radie <input type="number" min="0" data-bind="scene.super" value="${esc(sc.super || '')}" style="width:60px"></div>
-          <div class="row">Meteorer, sekunder <input type="number" min="0" data-bind="scene.meteors" value="${esc(sc.meteors || '')}" style="width:60px"> <span class="hint">tomt = ingen</span></div></div>
+          <div class="row">Meteorer, sekunder <input type="number" min="0" data-bind="scene.meteors" value="${esc(sc.meteors || '')}" style="width:60px"> <span class="hint">tomt = ingen</span></div>
+          ${['tornado', 'super', 'meteors'].some(key => +sc[key] > 0) ? `<div class="row">Plats ${select('', [['', 'som vanligt (nära basen)'], ...(sc.where !== undefined && !['hq', TRIGGER].includes(sc.where) && !buildingTypes.includes(sc.where) ? [['__keep', targetText(sc.where)]] : []), ['hq', 'basen'], ...(hasTrigger(sc) ? [[TRIGGER, '★ det som utlöste händelsen']] : []), ...buildingTypes.map(b => [b, 'byggnaden ' + b]), ['__map', 'en plats på kartan…']], sc.where === undefined ? '' : Array.isArray(sc.where) ? '__keep' : sc.where, 'fxDraft.where')}</div>` : ''}</div>
         <div class="row"><label><input type="checkbox" data-bind="scene.whileFog"${sc.whileFog ? ' checked' : ''}> Hoppa över om dimman redan lyft (Eye of Shades borta)</label></div>
         <div class="row"><button class="primary" data-act="scenePlay">▶ Spela upp scenen</button><button data-act="stopPreview">Rensa</button></div>
         <p class="hint">Uppspelningen visar scenen direkt, oavsett villkor. Ladda om kapitlet för att nollställa spelet efteråt. Under fliken Exportera ligger färdig kod.</p>`;
@@ -383,7 +386,7 @@
 
     // ---------------------------------------------------------------- rita om panelen
     function render() {
-      const armText = st.arm ? (st.arm.kind === 'sceneStep' ? 'Klicka på kartan: vart? (klicka på en byggnad för att gå till den)' : st.arm.kind === 'condNear' ? 'Klicka på kartan: var ska det hända nära?' : 'Klicka på kartan där personen ska stå när scenen börjar.') : '';
+      const armText = st.arm ? (st.arm.kind === 'sceneStep' ? 'Klicka på kartan: vart? (klicka på en byggnad för att gå till den)' : st.arm.kind === 'condNear' ? 'Klicka på kartan: var ska det hända nära?' : st.arm.kind === 'fxWhere' ? 'Klicka på kartan: var ska det slå till?' : 'Klicka på kartan där personen ska stå när scenen börjar.') : '';
       const scrollTop = panel.scrollTop;
       panel.innerHTML = `<div class="se-head"><b>Story-editor</b><span class="hint" style="margin:0">${chapter() ? `kapitel ${chapter().number}: ${esc(chapter().name || '')}` : '(ingen story pågår)'}</span>
           <label title="Fryser kapitlet medan du arbetar"><input type="checkbox" id="sePause"${C.Game.paused ? ' checked' : ''}> paus</label></div>
@@ -408,8 +411,9 @@
       if (target.id === 'sePause') { C.Game.paused = target.checked; return; }
       const bind = target.dataset?.bind; if (!bind) return;
       setPath(bind, target.type === 'checkbox' ? target.checked : target.value);
+      if (bind === 'fxDraft.where') { const sc = sceneNow(); if (sc) { if (target.value === '') delete sc.where; else if (target.value === '__map') st.arm = { kind: 'fxWhere' }; else if (target.value !== '__keep') sc.where = target.value; } render(); return; }
       if (bind === 'castDraft.image') { castDraft.race = characters[target.value] === 'demon' ? 'demon' : ''; castDraft.id = uniqueId(nameOf(target.value).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); }
-      if (target.tagName === 'SELECT' || target.type === 'radio' || bind === 'scene.repeat' || bind === 'scene.battleOff' || bind === 'beacon') render();
+      if (target.tagName === 'SELECT' || target.type === 'radio' || bind === 'scene.repeat' || bind === 'scene.battleOff' || ['scene.tornado', 'scene.super', 'scene.meteors'].includes(bind) || bind === 'beacon') render();
     });
     panel.addEventListener('click', event => {
       const button = event.target.closest('[data-act]'); if (!button) return;
@@ -547,6 +551,7 @@
     function armClick(tile) {
       const arm = st.arm; st.arm = null;
       if (arm.kind === 'cast') { const sc = sceneNow(); if (sc) { const id = castDraft.id.trim() || uniqueId('person'); sc.cast.push({ id, image: castDraft.image, race: castDraft.race, count: countOf(), at: [tile.x - hq().x, tile.y - hq().y] }); castDraft = blankCast(); stepDraft.who = stepDraft.who || id; } }
+      else if (arm.kind === 'fxWhere') { const sc = sceneNow(); if (sc) sc.where = tileTarget(tile); }
       else if (arm.kind === 'condNear') { const sc = sceneNow(); if (sc) { arm.cond.v.near = tileTarget(tile); addCond(sc, arm.cond); } }
       else if (arm.kind === 'castMove') { const c = sceneNow()?.cast[arm.i]; if (c) c.at = [tile.x - hq().x, tile.y - hq().y]; }
       else if (arm.kind === 'sceneStep') { const sc = sceneNow(); if (sc) { const list = arm.parent === null || arm.parent === undefined ? sc.steps : sc.steps[arm.parent].otherwise, step = { who: arm.who, type: arm.type, arg: tileTarget(tile) }; if (arm.zoom) step.zoom = arm.zoom; if ((arm.parent === null || arm.parent === undefined) && arm.together && (arm.edit ?? list.length) > 0) step.together = true; if (arm.edit !== null && arm.edit !== undefined) { if (list[arm.edit]?.otherwise) step.otherwise = list[arm.edit].otherwise; list[arm.edit] = step; } else list.push(step); resetStep(); } }
