@@ -235,15 +235,16 @@
               const [type] = Object.entries(step).find(([key]) => key !== 'who' && Actions[key]) || [], one = this.data(step.who);
               // Ett steg för en grupp gäller alla i den: de går och lämnar med en liten fördröjning var (ett led), bara den första talar
               let started = 0;
-              for (const data of type ? one ? [one] : this.members(step.who) : []) {
+              const unreachable = type === 'walk' && !this.resolve(step.walk, null);   // målet finns inte (t.ex. en byggnad som inte är byggd): steget går inte att göra
+              for (const data of type && !unreachable ? one ? [one] : this.members(step.who) : []) {
                 if (data.gone || (data.group && type === 'say' && data.nth > 1)) continue;
                 const delay = data.group && (type === 'walk' || type === 'leave') ? (data.nth - 1) * (data.gap ?? GROUP_GAP) : 0;
                 this.setScript(data.id, delay ? [{ wait: delay }, { [type]: step[type] }] : [{ [type]: step[type] }]);
                 scene.running.push({ kind: 'actor', who: data.id }); started++;
               }
-              if (type && !started) failed = true;
+              if (type && (!started || unreachable)) failed = true;
             }
-            if (failed && step.otherwise?.length) scene.steps.splice(scene.index, 0, ...JSON.parse(JSON.stringify(step.otherwise)));
+            if (failed && step.otherwise?.length) scene.steps.splice(scene.index, scene.steps.length, ...JSON.parse(JSON.stringify(step.otherwise)));   // det alternativa flödet ersätter resten av scenen
           }
         }
       }
