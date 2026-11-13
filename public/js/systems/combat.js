@@ -352,6 +352,7 @@
       const big = (this.peakFoes?.get(unit.player) || 0) >= (Config.ai.attack.bigForce ?? 8);
       return target => {
         if (!isBuilding(target)) return target.definition.isSoldier ? 0 : 6;
+        if (unit.wave && target.type === 'eye_of_shades') return .5;   // vågsoldater (story) går på Eye of Shades före allt annat än soldater, även före HQ
         if (target.definition.job?.kind === 'garrison') return 1;
         const hq = target.type === 'hq';
         if (hq) return Utils.distance(target.x - unit.x, target.y - unit.y) <= HQ_NEAR ? 1.5 : big ? 2 : 5;

@@ -149,16 +149,27 @@
     // Anfallsvågor: kapitlets egna fiender, oberoende av datorns vanliga anfallsregler (ai.js). chapter.waves:
     //   { from, every (sekunder), size: [första, växer 1 var N:e våg, högst (valfritt: utan tak växer vågorna hela tiden)], kinds: [soldattyper i turordning], maxAlive (valfritt), until: 'fog',
     //     spawn: [[dx, dy], ...] (valfritt) }
-    // Soldaterna tillhör första datorspelaren och går mot spelarens huvudlager, där de slår det de ser. Utan spawn skapas de vid dess HQ. Med spawn kommer de från platser dx, dy
+    // Soldaterna tillhör första datorspelaren och går mot spelarens Eye of Shades om den står (annars huvudlagret), där de slår det de ser. Utan spawn skapas de vid dess HQ. Med spawn kommer de från platser dx, dy
     // rutor från spelarens HQ (t.ex. [[50, 0], [-50, 0]] = 50 rutor åt höger och vänster), jämnt fördelade, och går därifrån. until: 'fog' avslutar vågorna
     // när dimman lyft (Eye of Shades förstörd), annars fortsätter de tills kapitlet är klart.
     waves(chapter) {
       const wave = chapter.waves, Levels = CityBuilder.Levels;
+      if (wave && !Levels.complete && Math.floor(Levels.seconds) !== this.waveSync) { this.waveSync = Math.floor(Levels.seconds); this.syncWaves(); }
       if (!wave || Levels.complete || Levels.seconds < wave.from || (wave.until === 'fog' && Levels.told('fog:lifted'))) return;
       const n = Math.floor((Levels.seconds - wave.from) / wave.every), key = 'wave:' + n;
       if (Levels.told(key)) return;
       Levels.markTold(key);
       this.launchWave(wave, n);
+    },
+
+    // Vågsoldaternas mål: Eye of Shades så länge den står (den ska de försöka förstöra först), annars spelarens HQ. Kollas en gång i sekunden så att de byter mål när Eye faller.
+    waveTarget() {
+      const target = World.buildings.find(building => building.type === 'eye_of_shades' && !building.removed) || World.headquarters;
+      return target && { x: target.x + .5, y: target.y + .5 };
+    },
+    syncWaves() {
+      const spot = this.waveTarget();
+      if (spot) for (const unit of World.units) if (unit.wave && !unit.removed && (unit.post?.x !== spot.x || unit.post?.y !== spot.y)) unit.post = spot;
     },
 
     launchWave(wave, n) {
@@ -184,7 +195,7 @@
         if (!spots.length) continue;
         const spot = spots.splice(Math.floor(Utils.random() * spots.length), 1)[0];
         const unit = CityBuilder.Combat.spawnSoldier(wave.kinds[i % wave.kinds.length], spot.x, spot.y, Players.ENEMY);
-        unit.post = { x: home.x + .5, y: home.y + .5 };
+        unit.post = this.waveTarget() || { x: home.x + .5, y: home.y + .5 };   // Eye of Shades först, annars HQ
         unit.wave = true;   // en vågsoldat söker aldrig en garnison utan går till posten (Combat.standDown)
       }
     },
