@@ -183,6 +183,8 @@
             return;
           }
 
+          const dieSound = CityBuilder.Sound?.known(prey.kind + '_die', null);   // djurets eget läte (deer_die ...), tyst utan
+          if (dieSound) CityBuilder.Sound.play(dieSound, { x: prey.x, y: prey.y });
           Behaviors.removeUnit(prey);
           unit.carriedResource = step.outputResource;
 

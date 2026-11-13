@@ -204,14 +204,23 @@
     },
     alarmArrow() { return this.time < this.alarm.arrowUntil ? this.alarm : null; },
 
+    // Skadeljud får inte upprepas för snabbt: samma ljud hörs högst en gång per settings.audio.hitCooldown sekunder (0.5)
+    heardAt: new Map(),
+    hearable(id) {
+      const cooldown = Config.settings.audio?.hitCooldown ?? 0.5, last = this.heardAt.get(id);
+      if (last !== undefined && this.time - last < cooldown) return false;
+      this.heardAt.set(id, this.time);
+      return true;
+    },
+
     damage(target, amount, attacker) {
       if (target.hp == null || target.removed) return;
       if (attacker && (target.player === Players.HUMAN || attacker.player === Players.HUMAN) && Players.isHostile(target.player, attacker.player)) this.fightAt = this.time;
       this.raiseAlarm(target, attacker);
       if (attacker && target.definition?.isSoldier && Players.isHostile(target.player, attacker.player)) { target.attackedAt = this.time; target.attacker = attacker; }
       const Sound = CityBuilder.Sound;
-      const kind = target.buildProgress !== undefined ? 'hit_building' : target.definition?.isMonster ? 'hit_monster' : 'hit_human';
-      Sound?.play(Sound.known(target.definition?.hitSound, Sound.known(kind, 'hit')), { x: centreX(target), y: centreY(target) });   // eget ljud per art (hitSound), annars ett per slag: byggnad, monster, människa (och till sist hit)
+      const hitSound = Sound?.forUnit(target, 'hit');   // eget ljud per art, ras eller grupp (Sound.forUnit)
+      if (hitSound && this.hearable(hitSound)) Sound.play(hitSound, { x: centreX(target), y: centreY(target) });
       target.hp -= amount;
       this.hits.set(target, HIT_SECONDS);
       CityBuilder.Story?.emit('hurt', target, attacker, undefined, amount);   // händelsebussen (systems/story.js)
@@ -232,7 +241,7 @@
         for (const resourceId in loot || {}) if (!Economy.isFull(resourceId, attacker.player)) { Economy.addToNearestStorage(resourceId, loot[resourceId], World.hqOf(attacker.player), attacker.player); Economy.record(attacker.player, 'make', resourceId, 'kills', loot[resourceId]); }
       }
       const Sound = CityBuilder.Sound;
-      if (unit.definition.isSoldier) Sound?.play(unit.definition.isMonster ? Sound.known(unit.definition.dieSound, 'monster_die') : 'died', { x: unit.x, y: unit.y });
+      Sound?.play(Sound.forUnit(unit, 'die'), { x: unit.x, y: unit.y });   // alla enheter som dör: art, ras eller grupp
       if (unit.animalRecordId) CityBuilder.Animals.markDead(unit);   // ett dödat monster kommer inte tillbaka
       CityBuilder.Logistics.abortTask(unit); // en bärare som dör släpper sina reservationer
       if (unit.definition.isHauler) CityBuilder.Logistics.carrierLost(unit);
