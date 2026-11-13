@@ -411,6 +411,7 @@
       if (target.id === 'sePause') { C.Game.paused = target.checked; return; }
       const bind = target.dataset?.bind; if (!bind) return;
       setPath(bind, target.type === 'checkbox' ? target.checked : target.value);
+      if (bind === 'stepDraft.target' && target.value === '__map') { actions.stepAdd(); return; }   // "en plats på kartan": väntar direkt på ett klick (utan att man behöver trycka Lägg till)
       if (bind === 'fxDraft.where') { const sc = sceneNow(); if (sc) { if (target.value === '') delete sc.where; else if (target.value === '__map') st.arm = { kind: 'fxWhere' }; else if (target.value !== '__keep') sc.where = target.value; } render(); return; }
       if (bind === 'castDraft.image') { castDraft.race = characters[target.value] === 'demon' ? 'demon' : ''; castDraft.id = uniqueId(nameOf(target.value).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); }
       if (target.tagName === 'SELECT' || target.type === 'radio' || bind === 'scene.repeat' || bind === 'scene.battleOff' || ['scene.tornado', 'scene.super', 'scene.meteors'].includes(bind) || bind === 'beacon') render();
