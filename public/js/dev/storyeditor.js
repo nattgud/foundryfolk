@@ -762,7 +762,7 @@
     function placeBuilding(type, x, y, dead, beacon) {
       if (!World.canPlace(type, x, y)) { notice(`${type} kan inte stå på ${x}, ${y}.`); return null; }
       const building = World.placeBuilding(C.Construction.variantFor(type, x, y) || type, x, y, true, dead ? Story.deadOwner() : Players.HUMAN);
-      if (!dead) return Story.ready(building);
+      if (!dead) return Story.equip(building);
       World.makeDead(building); if (beacon) { Object.assign(building, beacon); World.buildingVersion++; }
       return building;
     }

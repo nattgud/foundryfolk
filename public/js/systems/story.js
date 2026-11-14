@@ -33,7 +33,7 @@
     },
 
     // Förbyggda hus har sina verktyg från början: de hämtas inte från lagret, så startresurserna är orörda (och målen räknar exakt från dem)
-    ready(building) {
+    equip(building) {
       for (const [resourceId, amount] of Object.entries(building.definition.requiredEquipment || {})) building.inputStock[resourceId] = amount;
       if (building.definition.job) CityBuilder.Behaviors.forBuilding(building)?.onBuilt?.(building);
       return building;
@@ -43,7 +43,7 @@
       const spot = this.freeSpot(type, x, y);
       if (!spot) return null;
       const building = World.placeBuilding(CityBuilder.Construction.variantFor(type, spot.x, spot.y) || type, spot.x, spot.y, true, dead ? this.deadOwner() : Players.HUMAN);   // en samlare eller gruva får inriktningen som passar rutan
-      return dead ? World.makeDead(building) : this.ready(building);
+      return dead ? World.makeDead(building) : this.equip(building);
     },
 
     // Döda byggnader (dead: true i start.buildings): kulisser som ingen kan använda. De ägs av första fienden, så spelarens soldater kan slå sönder dem
@@ -59,7 +59,7 @@
         return this.place(type, x, y, dead);
       }
       const building = World.placeBuilding(type, x, y, true, dead ? this.deadOwner() : Players.HUMAN);
-      return dead ? World.makeDead(building) : this.ready(building);
+      return dead ? World.makeDead(building) : this.equip(building);
     },
 
     // Kapitlets start: byggnaderna från föregående mål står redo och Eye of Shades står mot fienden.
