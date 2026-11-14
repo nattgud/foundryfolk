@@ -405,7 +405,11 @@
         if (act.skip) return true;
         if (!act.tile) { Actions.walk.start(data, arg, act, unit); return false; }   // efter inläsning: räkna om målet och gå från där den står
         if (!unit.stepQueue.length && !unit.pathFailed) { data.arrived = true; return true; }
-        if (unit.pathFailed || act.elapsed > act.limit) { place(unit, data, act.tile); data.arrived = true; return true; }   // fastnat: teleportera
+        if (unit.pathFailed && !act.near) {   // målet går inte att nå (inringat av eld, bakom berg): gå så nära som det går i stället för att hoppa dit
+          const here = { x: Math.floor(unit.x), y: Math.floor(unit.y) }, near = CityBuilder.Pathfinder.assess(here.x, here.y, act.tile.x, act.tile.y, CityBuilder.Players.HUMAN)?.near;
+          if (near && (near.x !== here.x || near.y !== here.y)) { act.near = near; unit.pathFailed = false; unit.stepQueue = [Jobs.walkTo(near.x, near.y)]; return false; }
+        }
+        if (unit.pathFailed || act.elapsed > act.limit) { place(unit, data, act.near || act.tile); data.arrived = true; return true; }   // fastnat: teleportera (till närmaste nåbara ruta om målet inte gick att nå)
         return false;
       },
     },
