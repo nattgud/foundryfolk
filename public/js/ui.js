@@ -1797,7 +1797,7 @@
         className: 'map-flag',
         label: t('Flag'),
         icon: { image: `images/ui/categories/flag.png?v=${version}`, symbol: '⚑' },
-        tooltip: () => this.tooltipContent(t('Flag'), null, [t('Soldiers in buildings set to attack mode go to the flag and fight everything near it and on the way'), t('Tap the map to place or move it. Tap the flag to remove it'), ...this.hotkeyLines('a')]),
+        tooltip: () => this.tooltipContent(t('Flag'), null, [t('Soldiers in buildings set to attack mode go to the flag and fight everything near it and on the way'), t('Tap the map to place or move it. Tap the flag to remove it'), t('Right-click the map (long-press on a touch screen) to place, move or remove it without the flag button'), ...this.hotkeyLines('a')]),
         showOnTouch: true,
       });
       flagButton.onclick = () => this.toggleFlagging();

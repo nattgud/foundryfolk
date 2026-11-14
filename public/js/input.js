@@ -4,6 +4,7 @@
   const { Config, Utils, Renderer } = CityBuilder;
 
   const TOUCH_TIP_MS = 4000;   // hur länge tooltipen står kvar efter ett tryck
+  const LONG_PRESS_MS = 500;   // pekskärm: så länge ett finger hålls still på kartan för att lägga flaggan (som högerklick med musen)
 
   const Input = {
     mouseOverMap: false, // musen är över kartan (UI använder det för hover-tooltips)
@@ -41,6 +42,7 @@
 
       document.addEventListener('contextmenu', event => { if (!event.target.closest?.('input, textarea, [contenteditable]')) event.preventDefault(); });   // ingen webbläsarmeny vid högerklick (utom i textfält, där man klistrar in)
       canvas.addEventListener('pointerdown', event => {
+        if (event.pointerType === 'mouse' && event.button === 2) { this.placeFlagAt(event.clientX, event.clientY); return; }   // högerklick lägger (flyttar, tar bort) flaggan
         if (event.pointerType !== 'mouse') this.mouseOverMap = false; // inga hover-tooltips vid pekning
 
         activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -48,7 +50,16 @@
 
         if (activePointers.size === 1) {
           gesture = { startX: event.clientX, startY: event.clientY, cameraX: Renderer.camera.x, cameraY: Renderer.camera.y, isDragging: false, isPinching: false };
+          if (event.pointerType !== 'mouse') {   // långt tryck på pekskärm: flaggan (avbryts av panorering, nypning eller att fingret lyfts)
+            const current = gesture;
+            current.press = setTimeout(() => {
+              if (gesture !== current || current.isDragging || current.isPinching || activePointers.size !== 1) return;
+              current.longPressed = true; navigator.vibrate?.(15);
+              this.placeFlagAt(current.startX, current.startY);
+            }, LONG_PRESS_MS);
+          }
         } else if (activePointers.size === 2) {
+          clearTimeout(gesture.press);
           gesture.isPinching = true;
           this.dragging = false;
           beginPinch();
@@ -73,7 +84,7 @@
         if (activePointers.size !== 1 || gesture.isPinching) return;
 
         const deltaX = event.clientX - gesture.startX, deltaY = event.clientY - gesture.startY;
-        if (Math.hypot(deltaX, deltaY) > DRAG_THRESHOLD_PIXELS) gesture.isDragging = true;
+        if (Math.hypot(deltaX, deltaY) > DRAG_THRESHOLD_PIXELS) { gesture.isDragging = true; clearTimeout(gesture.press); }
         if (gesture.isDragging) {
           this.dragging = true;
           this.touchTipUntil = 0;
@@ -84,11 +95,12 @@
 
       const releasePointer = event => {
         activePointers.delete(event.pointerId);
+        if (gesture) clearTimeout(gesture.press);
         pinch = null;
         if (!activePointers.size) { gesture = null; this.dragging = false; }
       };
       canvas.addEventListener('pointerup', event => {
-        const wasTap = activePointers.size === 1 && gesture && !gesture.isDragging && !gesture.isPinching;
+        const wasTap = activePointers.size === 1 && gesture && !gesture.isDragging && !gesture.isPinching && !gesture.longPressed;
         if (wasTap) this.handleTap(event.clientX, event.clientY, event.pointerType);
         releasePointer(event);
       });
@@ -106,6 +118,16 @@
         Renderer.camera.x = worldX - event.clientX / Renderer.zoom;
         Renderer.camera.y = worldY - event.clientY / Renderer.zoom;
       }, { passive: false });
+    },
+
+    // Högerklick (mus) och långt tryck (pekskärm) på kartan: lägger flaggan där, flyttar den eller tar bort den om den redan står där (Game.placeFlag).
+    // Bara när flaggan är upplåst (flaggknappen syns), och inte mitt i att placera en byggnad eller läsa en formel.
+    placeFlagAt(screenX, screenY) {
+      const game = CityBuilder.Game, button = document.getElementById('flagButton');
+      if (!button || button.hidden || game.placingType || game.casting) return;
+      const tile = Renderer.screenToTile(screenX, screenY);
+      Renderer.hoverTile = tile;
+      game.placeFlag(tile.x, tile.y);
     },
 
     handleTap(screenX, screenY, pointerType = 'mouse') {
