@@ -215,6 +215,12 @@
         if (sc.battleOff) spec.battle = false; else if (battle.length) spec.battle = oneOrList(battle);
         if (spec.calm && Object.keys(spec).length === 1) out.music = spec.calm; else if (Object.keys(spec).length) out.music = spec;
       }
+      const letterLines = String(sc.letterText || '').split('\n').map(line => line.trim()).filter(Boolean);
+      if (letterLines.length) {
+        out.letter = { lines: letterLines };
+        if (sc.letterGreeting) out.letter.greeting = sc.letterGreeting;
+        if (sc.letterThrone) out.letter.throne = true; else if (sc.letterFrom) out.letter.signature = sc.letterFrom;
+      }
       if (sc.give?.length) { out.give = {}; for (const { res, n } of sc.give) out.give[res] = (out.give[res] || 0) + (+n || 0); }
       if (sc.weather) out.weather = sc.weather;
       for (const key of ['tornado', 'super', 'meteors']) if (+sc[key] > 0) out[key] = +sc[key];
@@ -327,6 +333,10 @@
           <div class="row">Strid <input data-bind="scene.musicBattle" list="seTracks" value="${esc(sc.musicBattle || '')}" placeholder="music/fil.mp3"${sc.battleOff ? ' disabled' : ''} style="flex:1"> <label><input type="checkbox" data-bind="scene.battleOff"${sc.battleOff ? ' checked' : ''}> ingen stridsmusik</label></div>
           <datalist id="seTracks">${musicTracks().map(track => `<option value="${esc(track)}">`).join('')}</datalist>
           <p class="hint" style="margin:0">Ett tomt läge behåller den vanliga musiken. Musiken gäller tills en senare scen byter den.</p>` : ''}</div>
+        <div class="card"><div class="hint" style="margin:0">Brev (visas när scenen startar, före dialogen):</div>
+          <div class="row">Hälsning <input data-bind="scene.letterGreeting" value="${esc(sc.letterGreeting || '')}" placeholder="valfritt, t.ex. Reeve," style="flex:1"></div>
+          <div class="row"><textarea data-bind="scene.letterText" style="height:80px;font:12px sans-serif;flex:1" placeholder="Brevets text. En rad = ett stycke. Tomt = inget brev.">${esc(sc.letterText || '')}</textarea></div>
+          <div class="row">Underskrift <input data-bind="scene.letterFrom" value="${esc(sc.letterFrom || '')}" placeholder="t.ex. In service of the throne" style="flex:1"${sc.letterThrone ? ' disabled' : ''}> <label><input type="checkbox" data-bind="scene.letterThrone"${sc.letterThrone ? ' checked' : ''}> från tronen</label></div></div>
         <div class="card"><div class="hint" style="margin:0">Ge spelaren varor (läggs i huvudlagret):</div>
           ${(sc.give || []).map((g, i) => `<div class="step"><span>${esc(g.n)} ${esc(g.res)}</span><button class="small danger" data-act="giveDel" data-i="${i}">✕</button></div>`).join('')}
           <div class="row">${select('', resourceIds, fxDraft.res, 'fxDraft.res')} <input type="number" min="1" data-bind="fxDraft.n" value="${esc(fxDraft.n)}" style="width:70px"> <button data-act="giveAdd">Lägg till</button></div></div>
@@ -414,7 +424,7 @@
       if (bind === 'stepDraft.target' && target.value === '__map') { actions.stepAdd(); return; }   // "en plats på kartan": väntar direkt på ett klick (utan att man behöver trycka Lägg till)
       if (bind === 'fxDraft.where') { const sc = sceneNow(); if (sc) { if (target.value === '') delete sc.where; else if (target.value === '__map') st.arm = { kind: 'fxWhere' }; else if (target.value !== '__keep') sc.where = target.value; } render(); return; }
       if (bind === 'castDraft.image') { castDraft.race = characters[target.value] === 'demon' ? 'demon' : ''; castDraft.id = uniqueId(nameOf(target.value).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); }
-      if (target.tagName === 'SELECT' || target.type === 'radio' || bind === 'scene.repeat' || bind === 'scene.battleOff' || ['scene.tornado', 'scene.super', 'scene.meteors'].includes(bind) || bind === 'beacon') render();
+      if (target.tagName === 'SELECT' || target.type === 'radio' || bind === 'scene.repeat' || bind === 'scene.battleOff' || bind === 'scene.letterThrone' || ['scene.tornado', 'scene.super', 'scene.meteors'].includes(bind) || bind === 'beacon') render();
     });
     panel.addEventListener('click', event => {
       const button = event.target.closest('[data-act]'); if (!button) return;
