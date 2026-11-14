@@ -100,13 +100,13 @@
       await this.warm(step);
     },
 
-    // Kapitlets kulisser (chapter.scenery: [typ, x, y, bredd, höjd, lager], de tre sista valfria; null/false/undefined = standard), på exakta rutor. Spelarens bas ligger alltid på 0, 0.
+    // Kapitlets kulisser (chapter.scenery: [typ, x, y, bredd, höjd, lager, vridning, spegla], de fem sista valfria; null/false/undefined = standard; vridning = kvarts varv medurs 0-3, spegla = 1 speglar bilden i sidled före vridningen), på exakta rutor. Spelarens bas ligger alltid på 0, 0.
     placeScenery() {
       this.scenery.clear();
       this.sceneryList = [];
-      for (const [type, x, y, width, height, layer] of CityBuilder.Levels?.current?.story?.scenery || [])
+      for (const [type, x, y, width, height, layer, turn, flip] of CityBuilder.Levels?.current?.story?.scenery || [])
         for (let dy = 0; dy < (height || 1); dy++) for (let dx = 0; dx < (width || 1); dx++) {
-          const item = { type, x: x + dx, y: y + dy, layer: layer || 0 }, key = Utils.tileKey(item.x, item.y);
+          const item = { type, x: x + dx, y: y + dy, layer: layer || 0, ...(turn & 3 ? { turn: turn & 3 } : {}), ...(flip ? { flip: true } : {}) }, key = Utils.tileKey(item.x, item.y);
           if (!this.scenery.has(key)) this.scenery.set(key, []);
           this.scenery.get(key).push(item); this.sceneryList.push(item);
         }
@@ -220,8 +220,8 @@
 
     // player = vem byggnaden tillhör (se core/players.js)
     // Lägger till en kuliss under spelets gång (Actors: blodpöl efter en död skådespelare)
-    addScenery(type, x, y, layer = 0) {
-      const item = { type, x, y, layer }, key = Utils.tileKey(x, y);
+    addScenery(type, x, y, layer = 0, turn = 0, flip = false) {
+      const item = { type, x, y, layer, ...(turn & 3 ? { turn: turn & 3 } : {}), ...(flip ? { flip: true } : {}) }, key = Utils.tileKey(x, y);
       if (!this.scenery.has(key)) this.scenery.set(key, []);
       this.scenery.get(key).push(item); this.sceneryList.push(item);
       this.sceneryList.sort((a, b) => a.layer - b.layer);

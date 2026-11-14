@@ -22,7 +22,7 @@
      Steg utan person (hela scenen): letter: { lines, signature | throne, greeting } (brev, scenen väntar tills det läses), music: spec | null, give: { resurs: n }, weather: 'rain', tornado: radie, super: radie, meteors: sekunder (+ where: mål),
                           meteor: { at, radius (slumpad ruta inom den), big: true } (en enda meteor, utan varning),
                           ground: { at, radius, share, to: 'grass' | 'dirt' | 'sand' } (marken), terrain: { at, radius, share, to: terrängtyp (utan = behåll), amount } (träd, malm, berg ... på marken; to: 'grass' = tom),
-                          scenery: { at, radius, share, add: typ, layer } eller { at, radius, remove: typ | 'all' } (kulisser)
+                          scenery: { at, radius, share, add: typ, layer, turn (0-3 kvarts varv medurs), flip (true = spegla) } eller { at, radius, remove: typ | 'all' } (kulisser)
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
    Mål (walk, teleport, spawn.at): [dx, dy] (rutor från spelarens HQ), 'hq', ett byggnads-id ('bakery' = närmaste), ett skådespelar-id, { x, y } (absolut ruta),
      { building: 'bakery' }, { actor: 'baker' }.
@@ -151,7 +151,7 @@
       for (const scene of saved.scenes || []) for (const run of scene.running) if (run.kind === 'tell' && !levels().told(run.mark)) { const i = +run.mark.split(':').pop(); CityBuilder.Story.tell([{ type: 'dialogue', lines: scene.steps[i].tell, part: 'events', mark: run.mark }]); }
       for (const data of saved.list) if (!data.gone) { data.act = data.act && data.act.type ? { ...data.act, started: false } : null; this.build(data); }
       for (const item of saved.cleared || []) World.removeScenery(item.x, item.y, item.type);   // bortplockade kulisser (kapitlets egna) först, sedan det som lagts till
-      for (const item of saved.leftovers) World.addScenery(item.type, item.x, item.y, item.layer);
+      for (const item of saved.leftovers) World.addScenery(item.type, item.x, item.y, item.layer, item.turn, item.flip);
     },
 
     // Byter manus (en händelse med act) eller sätter ett nytt
@@ -270,8 +270,8 @@
           if (!CityBuilder.Config.story.sceneryTypes?.[spec.add]) return false;
           for (const { x, y } of tiles) {
             if (World.scenery.get(Utils.tileKey(x, y))?.some(item => item.type === spec.add)) continue;
-            const item = { type: spec.add, x, y, layer: +spec.layer || LEAVE_LAYER[spec.add] || 0 };
-            saved.leftovers.push(item); World.addScenery(item.type, item.x, item.y, item.layer);
+            const item = { type: spec.add, x, y, layer: +spec.layer || LEAVE_LAYER[spec.add] || 0, ...(spec.turn & 3 ? { turn: spec.turn & 3 } : {}), ...(spec.flip ? { flip: true } : {}) };
+            saved.leftovers.push(item); World.addScenery(item.type, item.x, item.y, item.layer, item.turn, item.flip);
           }
         } else {
           const type = spec.remove && spec.remove !== 'all' ? spec.remove : null;

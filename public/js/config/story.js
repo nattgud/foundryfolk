@@ -32,7 +32,7 @@
      events       [{ at (sekunder), goal, when, tell: dialog | give: { vara: antal, ... } (läggs i spelarens huvudlager) | music: byter musiken (samma form som kapitlets music, och läggs läge för läge ovanpå kapitlets och tidigare händelsers; null = tillbaka till standardmusiken) | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]. En händelse sker en gång, när alla
                   villkor den har slår till. at: sekunder in i kapitlet. goal: målet med det numret (1 = första målet) är klart. whileFog: true = bara så länge dimman ligger (en händelse som kommer för sent hoppas över). when: { resource, amount } (har så mycket av en vara)
                   eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { goal: n, left: k } = mål nummer n har högst k kvar (t.ex. näst sista yxan, utan att upprepa målets siffror); { resource, made: n } = n har tillverkats eller samlats i kapitlet, oavsett vart varan tog vägen (också direkt till nästa hus, utan att passera lagret); { resource, more: n } = lagret har n fler än man började med; { sees: 'rival' } = man har sett någon av fiendens byggnader (soldater räknas inte); { sees: 'soldier' } = en av datorns soldater syns (t.ex. en anfallsvåg, som inte har någon byggnad). T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
-     scenery      [[typ, x, y, bredd, höjd, lager], ...] kulisser på exakta rutor (bredd, höjd och lager valfria, null/false hoppar över: fyller en rektangel; lager 0 är standard, högre ritas ovanpå, negativa under). Bara bilder, ingen byggnad: går att gå över, men inget kan byggas där.
+     scenery      [[typ, x, y, bredd, höjd, lager, vridning, spegla], ...] kulisser på exakta rutor (bredd, höjd, lager, vridning och spegla valfria, null/false hoppar över: fyller en rektangel; lager 0 är standard, högre ritas ovanpå, negativa under; vridning 0-3 = kvarts varv medurs, spegla 1 = speglad i sidled före vridningen). Bara bilder, ingen byggnad: går att gå över, men inget kan byggas där.
                   Typerna står i sceneryTypes. Spelarens bas ligger på 0, 0. Exempel: scenery: [['ruin', 4, -3], ['ruin', 5, -3, 3, 2], ['fire', 6, -2, null, null, 1]]
      meteorProof  enhetstyper som meteorer inte skadar */
 (function (CityBuilder) {
@@ -227,7 +227,7 @@
 			// walkable: ligger bara på marken. Alla går över den och man kan bygga över den (då försvinner den). Ritas under byggnader och enheter.
 			corpse: { variants: 6, walkable: true, fallback: 'corpse' },
 			blood: { variants: 3, walkable: true, fallback: 'blood' },
-			skeleton: { walkable: true },   // images/scenery/skeleton.png (samma bild som skeletten efter lik, systems/corpses.js)
+			skeleton: { variants: 2, walkable: true },   // images/scenery/skeleton1.png, skeleton2.png (samma bilder som skeletten efter lik, systems/corpses.js)
 			// Markeringar och föremål på marken. Gåbara (bara mark, går att bygga över): runes (ritualtecken), burnt (bränd mark), baggage (kvarlämnad packning), weapons (kasserade vapen), tracks (spår).
 			// wagon är en vält vagn: den blockerar som en ruin. Bilderna heter <typ><nummer>.png i images/scenery (variants = hur många).
 			runes: { variants: 2, walkable: true },

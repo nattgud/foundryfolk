@@ -622,7 +622,11 @@
       if (image) {
         if (kind.frames > 1) {
           const frame = Math.floor(now * (kind.fps || 6) + seed * kind.frames) % kind.frames, width = image.width / kind.frames;
-          context.drawImage(image, frame * width, 0, width, image.height, x, y, tileSize, tileSize);
+          if (item.turn || item.flip) { context.save(); context.translate(x + tileSize / 2, y + tileSize / 2); context.rotate((item.turn || 0) * Math.PI / 2); if (item.flip) context.scale(-1, 1); context.drawImage(image, frame * width, 0, width, image.height, -tileSize / 2, -tileSize / 2, tileSize, tileSize); context.restore(); }
+          else context.drawImage(image, frame * width, 0, width, image.height, x, y, tileSize, tileSize);
+        } else if (item.turn || item.flip) {   // vriden (kvarts varv medurs) och/eller speglad kuliss: speglas först, vrids sedan
+          context.save(); context.translate(x + tileSize / 2, y + tileSize / 2); context.rotate((item.turn || 0) * Math.PI / 2); if (item.flip) context.scale(-1, 1);
+          context.drawImage(image, -tileSize / 2, -tileSize / 2, tileSize, tileSize); context.restore();
         } else context.drawImage(image, x, y, tileSize, tileSize);
       } else if (kind.fallback === 'corpse') {   // reservbild: en liggande figur, vriden olika för varje ruta
         context.save(); context.translate(x + tileSize / 2, y + tileSize / 2); context.rotate(seed * Math.PI * 2);

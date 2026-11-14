@@ -17,7 +17,7 @@
     const { World, Renderer, Story, Config, Utils, Players } = C, canvas = Renderer.canvas, A = C.Actors;
 
     // ---------------------------------------------------------------- data
-    const st = { tab: 'scene', mode: 'place', type: 's:corpse', layer: '', drag: null, painting: false, hover: null, last: null, arm: null, note: '' };
+    const st = { tab: 'scene', mode: 'place', type: 's:corpse', layer: '', turn: 0, flip: false, drag: null, painting: false, hover: null, last: null, arm: null, note: '' };
     let scenes = [], cur = 0, chapterNumber = null;
     const previews = [], previewScenes = [], previewAppear = []; let previewBase = 0;
 
@@ -151,7 +151,7 @@
         else if (raw.meteor && raw.meteor.at !== undefined) step = { type: 'meteor', arg: { at: targetIn(raw.meteor.at), radius: raw.meteor.radius || 0, big: !!raw.meteor.big } };
         else if (raw.ground && raw.ground.at !== undefined && ['grass', 'dirt', 'sand'].includes(raw.ground.to)) step = { type: 'ground', arg: { at: targetIn(raw.ground.at), radius: raw.ground.radius || 0, share: raw.ground.share ?? 100, to: raw.ground.to } };
         else if (raw.terrain && raw.terrain.at !== undefined) step = { type: 'terrain', arg: { at: targetIn(raw.terrain.at), radius: raw.terrain.radius || 0, share: raw.terrain.share ?? 100, to: raw.terrain.to || '', amount: raw.terrain.amount ?? '' } };
-        else if (raw.scenery && raw.scenery.at !== undefined && (raw.scenery.add || raw.scenery.remove)) step = { type: 'scenery', arg: { at: targetIn(raw.scenery.at), radius: raw.scenery.radius || 0, share: raw.scenery.share ?? 100, mode: raw.scenery.add ? 'add' : 'remove', type: raw.scenery.add || (raw.scenery.remove === 'all' ? '' : raw.scenery.remove), layer: raw.scenery.layer ?? '' } };
+        else if (raw.scenery && raw.scenery.at !== undefined && (raw.scenery.add || raw.scenery.remove)) step = { type: 'scenery', arg: { at: targetIn(raw.scenery.at), radius: raw.scenery.radius || 0, share: raw.scenery.share ?? 100, mode: raw.scenery.add ? 'add' : 'remove', type: raw.scenery.add || (raw.scenery.remove === 'all' ? '' : raw.scenery.remove), layer: raw.scenery.layer ?? '', turn: raw.scenery.turn || 0, flip: !!raw.scenery.flip } };
         if (!step) return null;
         if (raw.together) step.together = true;
         if (raw.otherwise) { const alt = raw.otherwise.map(stepOf); if (alt.some(x => !x)) return null; step.otherwise = alt; }
@@ -260,6 +260,7 @@
         <div class="row"><select data-bind="type" style="width:100%"><optgroup label="Kulisser">${sceneryTypes.map(t => `<option value="s:${t}"${st.type === 's:' + t ? ' selected' : ''}>${t}</option>`).join('')}</optgroup>
         <optgroup label="Döda byggnader">${buildingTypes.map(t => `<option value="b:${t}"${st.type === 'b:' + t ? ' selected' : ''}>${t}</option>`).join('')}</optgroup></select></div>
         <div class="row">Lager <input type="number" data-bind="layer" value="${esc(st.layer)}" placeholder="auto" style="width:60px"> <span class="hint">(auto = blod under lik)</span></div>
+        <div class="row">Vridning <select data-bind="turn">${[0, 1, 2, 3].map(n => `<option value="${n}"${+st.turn === n ? ' selected' : ''}>${n * 90}°</option>`).join('')}</select> <label><input type="checkbox" data-bind="flip"${st.flip ? ' checked' : ''}> Spegla</label> <span class="hint">(tangent R vrider, F speglar. Måla över en kuliss för att ändra den)</span></div>
         <div class="row"><label title="Gäller de döda byggnader du placerar härefter"><input type="checkbox" data-bind="beacon"${st.beacon ? ' checked' : ''}> Döda byggnader syns alltid (även i dimman)</label></div>
         ${st.beacon ? `<div class="row">Radie <input type="number" min="1" data-bind="beaconRadius" value="${esc(st.beaconRadius ?? 6)}" style="width:60px"> rutor <label><input type="checkbox" data-bind="beaconArrow"${st.beaconArrow ? ' checked' : ''}> pil mot den på minimapen</label></div><p class="hint">Gäller byggnader du placerar härefter. Ta bort och placera om för att ändra en som redan står.</p>` : ''}
         <p class="hint">Högerklick eller Delete tar bort det under pekaren. Skift + dra styr kameran.</p>
@@ -354,7 +355,7 @@
         case 'meteor': return `${s.arg.big ? 'En stor' : 'En liten'} meteor faller ${s.arg.radius > 0 ? 'inom ' + s.arg.radius + ' rutor från ' : 'på '}${targetText(s.arg.at)}`;
         case 'ground': return `Marken blir ${groundName(s.arg.to)} ${areaText(s.arg)}`;
         case 'terrain': return `${s.arg.to ? (s.arg.to === 'grass' ? 'Tar bort det som ligger på marken' : 'Lägger ' + terrainName(s.arg.to)) : 'Ändrar mängden'}${s.arg.amount !== '' && s.arg.amount !== undefined ? ' (mängd ' + s.arg.amount + ')' : ''} ${areaText(s.arg)}`;
-        case 'scenery': return `${s.arg.mode === 'add' ? 'Lägger kulissen ' + s.arg.type : 'Tar bort ' + (s.arg.type ? 'kulissen ' + s.arg.type : 'alla kulisser')} ${areaText(s.arg)}`;
+        case 'scenery': return `${s.arg.mode === 'add' ? 'Lägger kulissen ' + s.arg.type + (+s.arg.turn ? ` (vriden ${90 * s.arg.turn}°)` : '') + (s.arg.flip ? ' (speglad)' : '') : 'Tar bort ' + (s.arg.type ? 'kulissen ' + s.arg.type : 'alla kulisser')} ${areaText(s.arg)}`;
       }
       return s.type;
     };
@@ -399,7 +400,7 @@
           case 'meteor': step = { meteor: { at: s.arg.at === TRIGGER ? { trigger: true } : s.arg.at, ...(+s.arg.radius > 0 ? { radius: Math.floor(+s.arg.radius) } : {}), ...(s.arg.big ? { big: true } : {}) } }; break;
           case 'ground': step = { ground: { ...areaOf(s.arg), to: s.arg.to } }; break;
           case 'terrain': step = { terrain: { ...areaOf(s.arg), ...(s.arg.to ? { to: s.arg.to } : {}), ...(s.arg.amount !== '' && s.arg.amount !== undefined ? { amount: Math.max(0, Math.floor(+s.arg.amount) || 0) } : {}) } }; break;
-          case 'scenery': step = { scenery: { ...areaOf(s.arg), ...(s.arg.mode === 'add' ? { add: s.arg.type, ...(s.arg.layer !== '' && s.arg.layer !== undefined ? { layer: +s.arg.layer || 0 } : {}) } : { remove: s.arg.type || 'all' }) } }; break;
+          case 'scenery': step = { scenery: { ...areaOf(s.arg), ...(s.arg.mode === 'add' ? { add: s.arg.type, ...(s.arg.layer !== '' && s.arg.layer !== undefined ? { layer: +s.arg.layer || 0 } : {}), ...(+s.arg.turn ? { turn: +s.arg.turn } : {}), ...(s.arg.flip ? { flip: true } : {}) } : { remove: s.arg.type || 'all' }) } }; break;
         }
         if (s.together) step.together = true;
         if (s.otherwise?.length) step.otherwise = s.otherwise.map(compileStep);
@@ -431,7 +432,7 @@
       return out;
     }
     const sceneryIds = Object.keys(Config.story.sceneryTypes || {}), weatherIds = Object.keys(Config.settings.weather?.chances || {}), terrainIds = Object.keys(Config.terrain).filter(id => !['water', 'dirt', 'lava'].includes(id));
-    const FXD = () => ({ letterText: '', letterGreeting: '', letterFrom: '', letterThrone: false, musicMode: 'set', musicCalm: '', musicBattle: '', battleOff: false, giveRes: resourceIds[0] || 'wood', giveN: 10, weatherType: weatherIds[0] || '', fxNum: '', radius: 0, share: 100, groundTo: 'sand', terrainTo: '', amount: '', scenMode: 'add', scenType: sceneryIds[0] || '', scenLayer: '', meteorBig: false });
+    const FXD = () => ({ letterText: '', letterGreeting: '', letterFrom: '', letterThrone: false, musicMode: 'set', musicCalm: '', musicBattle: '', battleOff: false, giveRes: resourceIds[0] || 'wood', giveN: 10, weatherType: weatherIds[0] || '', fxNum: '', radius: 0, share: 100, groundTo: 'sand', terrainTo: '', amount: '', scenMode: 'add', scenType: sceneryIds[0] || '', scenLayer: '', scenTurn: 0, scenFlip: false, meteorBig: false });
     let castDraft = { id: '', image: defaultImage, race: '', count: 1 }, stepDraft = { who: '', type: 'walk', target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineWho: speakerIds[0] || 'narrator', lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '', together: false, parent: null, pick: 'trigger', side: '', kind: '', follow: false, ...FXD() };
     const resetStep = () => { if (stepDraft.who === UNIT) stepDraft.who = ''; stepDraft = { ...stepDraft, target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '', together: false, pick: 'trigger', side: '', kind: '', follow: false, ...FXD() }; };
     const moodIds = () => Object.keys(Config.story.voice?.moods || { calm: 1 });
@@ -471,7 +472,7 @@
         case 'terrain': return `${area}<div class="row">Blir ${select('', [['', 'samma (ändra bara mängden)'], ['grass', 'ingenting / gräs (tar bort)'], ...terrainIds.filter(id => id !== 'grass').map(id => [id, terrainName(id)])], d.terrainTo, 'stepDraft.terrainTo')}</div>
           <div class="row">Mängd ${num('amount', 70)} <span class="hint">tomt = full mängd; 0 = slut (blir gräs)</span></div>
           <div class="hint" style="margin:0">Som när en samlare tömmer en ruta eller en formel skapar en fyndighet. Vatten och rutor med byggnader rörs inte.</div>`;
-        case 'scenery': return `${area}<div class="row">${select('', [['add', 'lägg till'], ['remove', 'ta bort']], d.scenMode, 'stepDraft.scenMode')} ${select('', [...(d.scenMode === 'remove' ? [['', 'alla kulisser']] : []), ...sceneryIds.map(id => [id, id])], d.scenType, 'stepDraft.scenType')}${d.scenMode === 'add' ? ` lager ${num('scenLayer', 50)}` : ''}</div>`;
+        case 'scenery': return `${area}<div class="row">${select('', [['add', 'lägg till'], ['remove', 'ta bort']], d.scenMode, 'stepDraft.scenMode')} ${select('', [...(d.scenMode === 'remove' ? [['', 'alla kulisser']] : []), ...sceneryIds.map(id => [id, id])], d.scenType, 'stepDraft.scenType')}${d.scenMode === 'add' ? ` lager ${num('scenLayer', 50)} ${select('', [[0, 'ingen vridning'], [1, 'vriden 90°'], [2, 'vriden 180°'], [3, 'vriden 270°']], d.scenTurn, 'stepDraft.scenTurn')} <label><input type="checkbox" data-bind="stepDraft.scenFlip"${d.scenFlip ? ' checked' : ''}> spegla</label>` : ''}</div>`;
       }
       return '';
     }
@@ -535,14 +536,14 @@
     function problems() { return scenes.flatMap(sceneProblems); }
     function sceneryRows() {   // kulisser slås ihop till rektanglar per typ och lager
       const groups = new Map();
-      for (const item of World.sceneryList) { const id = item.type + '|' + item.layer; if (!groups.has(id)) groups.set(id, new Set()); groups.get(id).add(`${item.x},${item.y}`); }
+      for (const item of World.sceneryList) { const id = `${item.type}|${item.layer}|${item.turn || 0}|${item.flip ? 1 : 0}`; if (!groups.has(id)) groups.set(id, new Set()); groups.get(id).add(`${item.x},${item.y}`); }
       const rows = [];
       for (const [id, cells] of groups) {
-        const [type, layer] = id.split('|'), tiles = [...cells].map(text => text.split(',').map(Number)).sort((a, b) => a[1] - b[1] || a[0] - b[0]), runs = [];
+        const [type, layer, turn, flip] = id.split('|'), tiles = [...cells].map(text => text.split(',').map(Number)).sort((a, b) => a[1] - b[1] || a[0] - b[0]), runs = [];
         for (const [x, y] of tiles) { const last = runs[runs.length - 1]; if (last && last.y === y && last.x + last.w === x) last.w++; else runs.push({ x, y, w: 1, h: 1 }); }
         const merged = [];
         for (const run of runs) { const above = merged.find(other => other.x === run.x && other.w === run.w && other.y + other.h === run.y); if (above) above.h++; else merged.push(run); }
-        for (const { x, y, w, h } of merged) rows.push({ type, layer: +layer, text: +layer ? `["${type}", ${x}, ${y}, ${w}, ${h}, ${layer}]` : (w > 1 || h > 1 ? `["${type}", ${x}, ${y}, ${w}, ${h}]` : `["${type}", ${x}, ${y}]`) });
+        for (const { x, y, w, h } of merged) rows.push({ type, layer: +layer, text: +turn || +flip ? `["${type}", ${x}, ${y}, ${w}, ${h}, ${layer}, ${turn}, ${flip}]` : +layer ? `["${type}", ${x}, ${y}, ${w}, ${h}, ${layer}]` : (w > 1 || h > 1 ? `["${type}", ${x}, ${y}, ${w}, ${h}]` : `["${type}", ${x}, ${y}]`) });
       }
       return rows.sort((a, b) => a.layer - b.layer || a.type.localeCompare(b.type)).map(row => row.text);
     }
@@ -679,7 +680,7 @@
             case 'meteor': step.arg = { at: target, radius: Math.max(0, Math.floor(+d.radius) || 0), big: !!d.meteorBig }; break;
             case 'ground': step.arg = { ...area(target), to: d.groundTo }; break;
             case 'terrain': step.arg = { ...area(target), to: d.terrainTo, amount: d.amount === '' ? '' : Math.max(0, Math.floor(+d.amount) || 0) }; break;
-            case 'scenery': if (d.scenMode === 'add' && !d.scenType) { notice('Välj en kuliss.'); return null; } step.arg = { ...area(target), mode: d.scenMode, type: d.scenType, layer: d.scenLayer }; break;
+            case 'scenery': if (d.scenMode === 'add' && !d.scenType) { notice('Välj en kuliss.'); return null; } step.arg = { ...area(target), mode: d.scenMode, type: d.scenType, layer: d.scenLayer, turn: +d.scenTurn || 0, flip: !!d.scenFlip }; break;
           }
           if (d.type === 'walk' && d.follow && who !== UNIT) step.follow = true;
           if (d.parent === null && d.together && (d.editing === null ? list.length : d.editing) > 0) step.together = true;
@@ -699,7 +700,7 @@
         if (s.who) stepDraft.who = s.who;
         const a = s.arg;
         if (['walk', 'appear', 'camera'].includes(s.type)) { stepDraft.keepArg = s.arg; stepDraft.target = '__keep'; stepDraft.zoom = s.zoom || ''; }
-        else if (['ground', 'terrain', 'scenery'].includes(s.type)) { stepDraft.keepArg = a.at; stepDraft.target = '__keep'; Object.assign(stepDraft, { radius: a.radius || 0, share: a.share ?? 100 }); if (s.type === 'ground') stepDraft.groundTo = a.to; else if (s.type === 'terrain') Object.assign(stepDraft, { terrainTo: a.to || '', amount: a.amount ?? '' }); else Object.assign(stepDraft, { scenMode: a.mode, scenType: a.type, scenLayer: a.layer ?? '' }); }
+        else if (['ground', 'terrain', 'scenery'].includes(s.type)) { stepDraft.keepArg = a.at; stepDraft.target = '__keep'; Object.assign(stepDraft, { radius: a.radius || 0, share: a.share ?? 100 }); if (s.type === 'ground') stepDraft.groundTo = a.to; else if (s.type === 'terrain') Object.assign(stepDraft, { terrainTo: a.to || '', amount: a.amount ?? '' }); else Object.assign(stepDraft, { scenMode: a.mode, scenType: a.type, scenLayer: a.layer ?? '', scenTurn: a.turn || 0, scenFlip: !!a.flip }); }
         else if (s.type === 'meteor') { stepDraft.keepArg = a.at; stepDraft.target = '__keep'; Object.assign(stepDraft, { radius: a.radius || 0, meteorBig: a.big ? '1' : '' }); }
         else if (STORMS.includes(s.type)) { stepDraft.fxNum = a; if (s.where !== undefined) { stepDraft.keepArg = s.where; stepDraft.target = '__keep'; } else stepDraft.target = ''; }
         else if (s.type === 'letter') Object.assign(stepDraft, { letterText: a.text, letterGreeting: a.greeting || '', letterFrom: a.from || '', letterThrone: !!a.throne });
@@ -744,9 +745,11 @@
     // ---------------------------------------------------------------- kartan: pekaren
     const sceneryOn = (x, y) => World.scenery.get(keyOf(x, y)) || [];
     const sortScenery = () => World.sceneryList.sort((a, b) => a.layer - b.layer);
-    function addScenery(type, x, y, layer) {
-      if (sceneryOn(x, y).some(item => item.type === type && item.layer === layer)) return;
-      const item = { type, x, y, layer }, key = keyOf(x, y);
+    function addScenery(type, x, y, layer, turn = 0, flip = false) {
+      turn &= 3;
+      const same = sceneryOn(x, y).find(item => item.type === type && item.layer === layer);
+      if (same) { delete same.turn; delete same.flip; if (turn) same.turn = turn; if (flip) same.flip = true; return; }   // redan där: vridningen och speglingen ändras
+      const item = { type, x, y, layer, ...(turn ? { turn } : {}), ...(flip ? { flip: true } : {}) }, key = keyOf(x, y);
       if (!World.scenery.has(key)) World.scenery.set(key, []);
       World.scenery.get(key).push(item); World.sceneryList.push(item); sortScenery();
     }
@@ -767,7 +770,7 @@
     const tileOf = event => Renderer.screenToTile(event.clientX, event.clientY);
     function put(tile) {
       const [kind, type] = st.type.split(':');
-      if (kind === 's') addScenery(type, tile.x, tile.y, layerFor(type)); else placeBuilding(type, tile.x, tile.y, true, st.beacon ? { sight: Math.max(1, +st.beaconRadius || 6), ...(st.beaconArrow ? { arrow: true } : {}) } : null);
+      if (kind === 's') addScenery(type, tile.x, tile.y, layerFor(type), +st.turn || 0, !!st.flip); else placeBuilding(type, tile.x, tile.y, true, st.beacon ? { sight: Math.max(1, +st.beaconRadius || 6), ...(st.beaconArrow ? { arrow: true } : {}) } : null);
     }
     function removeAt(tile) {
       const items = sceneryOn(tile.x, tile.y), building = buildingAt(tile.x, tile.y);
@@ -804,12 +807,16 @@
       if (!drag) return;
       event.stopImmediatePropagation();
       const tile = tileOf(event);
-      if (drag.item) { const { type, layer } = drag.item; removeScenery(drag.item); addScenery(type, tile.x, tile.y, layer); }
+      if (drag.item) { const { type, layer, turn, flip } = drag.item; removeScenery(drag.item); addScenery(type, tile.x, tile.y, layer, turn, flip); }
       else { const { building } = drag, { type, dead, sight, arrow } = building, from = { x: building.x, y: building.y }, beacon = sight || arrow ? { ...(sight ? { sight } : {}), ...(arrow ? { arrow } : {}) } : null; World.removeBuilding(building); if (!placeBuilding(type, tile.x, tile.y, dead, beacon)) placeBuilding(type, from.x, from.y, dead, beacon); }
     }, true);
     window.addEventListener('contextmenu', event => { if (event.target === canvas && !event.shiftKey && mine(event)) event.preventDefault(); }, true);
     window.addEventListener('keydown', event => {
       if (event.key === 'Escape' && st.arm) { st.arm = null; render(); return; }
+      if (st.tab === 'map' && !event.ctrlKey && !event.metaKey && !event.altKey && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) {   // R vrider, F speglar det som målas
+        if (event.key === 'r' || event.key === 'R') { st.turn = ((+st.turn || 0) + 1) & 3; event.preventDefault(); event.stopImmediatePropagation(); render(); return; }
+        if (event.key === 'f' || event.key === 'F') { st.flip = !st.flip; event.preventDefault(); event.stopImmediatePropagation(); render(); return; }
+      }
       if ((event.key === 'Delete' || event.key === 'Backspace') && st.tab === 'map' && st.hover && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) { removeAt(st.hover); event.stopImmediatePropagation(); }
     }, true);
 
