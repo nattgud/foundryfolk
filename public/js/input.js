@@ -39,6 +39,7 @@
         };
       };
 
+      document.addEventListener('contextmenu', event => { if (!event.target.closest?.('input, textarea, [contenteditable]')) event.preventDefault(); });   // ingen webbläsarmeny vid högerklick (utom i textfält, där man klistrar in)
       canvas.addEventListener('pointerdown', event => {
         if (event.pointerType !== 'mouse') this.mouseOverMap = false; // inga hover-tooltips vid pekning
 
