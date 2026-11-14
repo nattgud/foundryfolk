@@ -766,7 +766,7 @@
       World.makeDead(building); if (beacon) { Object.assign(building, beacon); World.buildingVersion++; }
       return building;
     }
-    const layerFor = type => st.layer !== '' && !isNaN(+st.layer) ? +st.layer : defaultLayer[type] ?? 0;
+    const layerFor = type => st.layer !== '' && !isNaN(+st.layer) ? +st.layer : defaultLayer[type] ?? (/^(corpse|skeleton)\d*$/.test(type) ? 1 : 0);
     const tileOf = event => Renderer.screenToTile(event.clientX, event.clientY);
     function put(tile) {
       const [kind, type] = st.type.split(':');

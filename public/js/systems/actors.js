@@ -44,6 +44,7 @@
   const { World, Config, Players, Utils, Jobs } = CityBuilder;
 
   const LEAVE_LAYER = { blood: 0, corpse: 1, skeleton: 1 };
+  const layerOf = type => LEAVE_LAYER[type] ?? (/^(corpse|skeleton)\d*$/.test(type) ? 1 : 0);   // lik och skelett ligger ovanpå blod, även de enskilda bilderna (corpse3, skeleton1)
   const EFFECTS = ['music', 'give', 'weather', 'tornado', 'super', 'meteors', 'meteor', 'ground', 'terrain', 'scenery'];   // steg utan person (se effect)
   const GROUP_GAP = .1, GROUP_MAX = 100, PER_TILE = 20;   // grupp: sekunder mellan två medlemmars start, högst så många på en ruta (resten flödar över till rutorna runt)
   // Rutorna kring målet i den ordning de fylls: målrutan först, sedan de närmaste
@@ -270,7 +271,7 @@
           if (!CityBuilder.Config.story.sceneryTypes?.[spec.add]) return false;
           for (const { x, y } of tiles) {
             if (World.scenery.get(Utils.tileKey(x, y))?.some(item => item.type === spec.add)) continue;
-            const item = { type: spec.add, x, y, layer: +spec.layer || LEAVE_LAYER[spec.add] || 0, ...(spec.turn & 3 ? { turn: spec.turn & 3 } : {}), ...(spec.flip ? { flip: true } : {}) };
+            const item = { type: spec.add, x, y, layer: +spec.layer || layerOf(spec.add), ...(spec.turn & 3 ? { turn: spec.turn & 3 } : {}), ...(spec.flip ? { flip: true } : {}) };
             saved.leftovers.push(item); World.addScenery(item.type, item.x, item.y, item.layer, item.turn, item.flip);
           }
         } else {

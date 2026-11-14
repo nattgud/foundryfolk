@@ -226,11 +226,20 @@
 			fire: { frames: 16, fps: 8, light: 3 },
 			// walkable: ligger bara på marken. Alla går över den och man kan bygga över den (då försvinner den). Ritas under byggnader och enheter.
 			corpse: { variants: 6, walkable: true, fallback: 'corpse' },
+			// De enskilda liken som egna typer (corpse1.png ... corpse6.png), för att välja en viss bild. corpse ovan slumpar bland dem.
+			corpse1: { walkable: true, fallback: 'corpse' },
+			corpse2: { walkable: true, fallback: 'corpse' },
+			corpse3: { walkable: true, fallback: 'corpse' },
+			corpse4: { walkable: true, fallback: 'corpse' },
+			corpse5: { walkable: true, fallback: 'corpse' },
+			corpse6: { walkable: true, fallback: 'corpse' },
 			blood: { variants: 3, walkable: true, fallback: 'blood' },
 			skeleton: { variants: 2, walkable: true },   // images/scenery/skeleton1.png, skeleton2.png (samma bilder som skeletten efter lik, systems/corpses.js)
 			// Markeringar och föremål på marken. Gåbara (bara mark, går att bygga över): runes (ritualtecken), burnt (bränd mark), baggage (kvarlämnad packning), weapons (kasserade vapen), tracks (spår).
 			// wagon är en vält vagn: den blockerar som en ruin. Bilderna heter <typ><nummer>.png i images/scenery (variants = hur många).
-			runes: { variants: 2, walkable: true },
+			runes: { variants: 2, walkable: true },   // slumpar bland de två
+			runes1: { walkable: true },   // runes1.png
+			runes2: { walkable: true },   // runes2.png
 			burnt: { variants: 2, walkable: true },
 			baggage: { variants: 2, walkable: true },
 			weapons: { variants: 4, walkable: true },
