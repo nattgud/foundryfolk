@@ -7,7 +7,7 @@
 
    Bilder (se sourcesFor): liket för en enhet ligger i images/units/<ras>/dead/ (djur: animals/dead, monster: monster/dead). Först <enhetens id>.png
    (archer.png, knight.png), annars default1.png, default2.png ... (en slumpas). Saknas rasens bild används människans, och finns ingen alls används
-   kulissens lik (images/scenery/corpse1-6.png). Skelettet är images/scenery/skeleton.png (skeleton1.png ... med settings.corpses.variants.skeleton > 1).
+   kulissens lik (images/scenery/corpse1-6.png). Skelettet är images/scenery/skeleton1.png, skeleton2.png (settings.corpses.variants.skeleton = antal, standard 2).
    Bildlistan i js/config/raceimages.js (node tools/racemanifest.js) måste ha dead-bilderna. Storleken är enhetens egen bildstorlek (definition.imageSize) x scale,
    bilden speglas slumpmässigt. Saknas allt ritas en enkel reserv.
 
@@ -20,7 +20,7 @@
   const { Config, World, Players } = CityBuilder;
 
   const BUCKET = 8;   // rutor per hink och led
-  const DEFAULTS = { life: 120, maxBones: 4000, scale: 1, variants: { corpse: 1, skeleton: 1 } };
+  const DEFAULTS = { life: 120, maxBones: 4000, scale: 1, variants: { corpse: 1, skeleton: 2 } };
   const options = () => ({ ...DEFAULTS, ...Config.settings?.corpses });
   const bucketKey = (bx, by) => (bx + 32768) * 65536 + (by + 32768);
   const round = value => Math.round(value * 100) / 100;
