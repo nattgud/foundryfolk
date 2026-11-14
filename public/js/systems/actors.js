@@ -242,6 +242,7 @@
         if (!hit) return false;
         const angle = Utils.random() * Math.PI * 2, reach = (+step.meteor.radius || 0) * Math.sqrt(Utils.random());
         CityBuilder.Weather.dropMeteorAt(hit.x + Math.cos(angle) * reach, hit.y + Math.sin(angle) * reach, step.meteor.big);
+        scene.running.push({ kind: 'wait', left: CityBuilder.Config.settings.weather.meteor.fall });   // nästa steg väntar tills meteoren har landat
         return true;
       }
       const spec = step.ground || step.terrain || step.scenery || {}, tile = this.resolve(spec.at?.trigger ? this.triggerSpot(scene) : spec.at, null);
