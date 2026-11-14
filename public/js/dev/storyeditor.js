@@ -132,7 +132,7 @@
       const selector = who => who && typeof who === 'object' ? { who: UNIT, pick: who.pick || 'trigger', side: who.side || '', kind: who.kind || '' } : { who };
       const stepOf = raw => {
         if (!raw || typeof raw !== 'object') return null;
-        const known = ['spawn', 'who', 'walk', 'say', 'leave', 'vanish', 'tell', 'wait', 'camera', 'zoom', 'together', 'follow', 'otherwise', 'letter', 'music', 'give', 'weather', 'tornado', 'super', 'meteors', 'where', 'ground', 'terrain', 'scenery'];
+        const known = ['spawn', 'who', 'walk', 'say', 'leave', 'vanish', 'tell', 'wait', 'camera', 'zoom', 'together', 'follow', 'otherwise', 'letter', 'music', 'give', 'weather', 'tornado', 'super', 'meteors', 'where', 'ground', 'terrain', 'scenery', 'meteor'];
         if (Object.keys(raw).some(key => !known.includes(key))) return null;
         let step = null;
         if (raw.spawn && raw.spawn.id && Object.keys(raw.spawn).every(key => ['id', 'image', 'race', 'count', 'at'].includes(key))) { const c = castOf(raw.spawn); step = { type: 'appear', who: c.id, arg: targetIn(raw.spawn.at) }; }
@@ -148,6 +148,7 @@
         else if (raw.give && typeof raw.give === 'object' && Object.keys(raw.give).length === 1) { const [res, n] = Object.entries(raw.give)[0]; step = { type: 'give', arg: { res, n } }; }
         else if (typeof raw.weather === 'string') step = { type: 'weather', arg: raw.weather };
         else if (['tornado', 'super', 'meteors'].some(key => +raw[key] > 0)) { const key = ['tornado', 'super', 'meteors'].find(k => +raw[k] > 0); step = { type: key, arg: +raw[key], ...(raw.where !== undefined ? { where: targetIn(raw.where) } : {}) }; }
+        else if (raw.meteor && raw.meteor.at !== undefined) step = { type: 'meteor', arg: { at: targetIn(raw.meteor.at), radius: raw.meteor.radius || 0, big: !!raw.meteor.big } };
         else if (raw.ground && raw.ground.at !== undefined && ['grass', 'dirt', 'sand'].includes(raw.ground.to)) step = { type: 'ground', arg: { at: targetIn(raw.ground.at), radius: raw.ground.radius || 0, share: raw.ground.share ?? 100, to: raw.ground.to } };
         else if (raw.terrain && raw.terrain.at !== undefined) step = { type: 'terrain', arg: { at: targetIn(raw.terrain.at), radius: raw.terrain.radius || 0, share: raw.terrain.share ?? 100, to: raw.terrain.to || '', amount: raw.terrain.amount ?? '' } };
         else if (raw.scenery && raw.scenery.at !== undefined && (raw.scenery.add || raw.scenery.remove)) step = { type: 'scenery', arg: { at: targetIn(raw.scenery.at), radius: raw.scenery.radius || 0, share: raw.scenery.share ?? 100, mode: raw.scenery.add ? 'add' : 'remove', type: raw.scenery.add || (raw.scenery.remove === 'all' ? '' : raw.scenery.remove), layer: raw.scenery.layer ?? '' } };
@@ -327,8 +328,8 @@
     const UNIT = '__unit';   // "en enhet i spelet" i stället för en person i scenen
     const flatSteps = steps => steps.flatMap(s => [s, ...flatSteps(s.otherwise || [])]);
     const PICK_OPT = [['trigger', 'den som utlöste händelsen'], ['nearest', 'den som är närmast basen'], ['random', 'en slumpad']];
-    const TARGETED = ['walk', 'appear', 'camera', 'ground', 'terrain', 'scenery'], STORMS = ['tornado', 'super', 'meteors'];   // steg med en plats; stormarnas plats är valfri
-    const NO_WHO = ['dialog', 'wait', 'camera', 'letter', 'music', 'give', 'weather', 'ground', 'terrain', 'scenery', ...STORMS];   // dessa hör till scenen, inte till en person
+    const TARGETED = ['walk', 'appear', 'camera', 'ground', 'terrain', 'scenery', 'meteor'], STORMS = ['tornado', 'super', 'meteors'];   // steg med en plats; stormarnas plats är valfri
+    const NO_WHO = ['dialog', 'wait', 'camera', 'letter', 'music', 'give', 'weather', 'ground', 'terrain', 'scenery', 'meteor', ...STORMS];   // dessa hör till scenen, inte till en person
     const groundName = id => ({ grass: 'gräs', dirt: 'jord', sand: 'sand' })[id] || id;
     const terrainName = id => Config.terrain[id]?.name || id;
     const areaText = a => `vid ${targetText(a.at)}${+a.radius > 0 ? ', radie ' + a.radius : ''}${a.share !== undefined && +a.share < 100 ? ', ' + a.share + ' % av rutorna' : ''}`;
@@ -350,6 +351,7 @@
         case 'tornado': return `Tornado, radie ${s.arg}, ${s.where === undefined ? 'som vanligt (nära basen)' : 'vid ' + targetText(s.where)}`;
         case 'super': return `Superstorm, radie ${s.arg}, ${s.where === undefined ? 'som vanligt (nära basen)' : 'vid ' + targetText(s.where)}`;
         case 'meteors': return `Meteorer i ${s.arg} s, ${s.where === undefined ? 'som vanligt (nära basen)' : 'vid ' + targetText(s.where)}`;
+        case 'meteor': return `${s.arg.big ? 'En stor' : 'En liten'} meteor faller ${s.arg.radius > 0 ? 'inom ' + s.arg.radius + ' rutor från ' : 'på '}${targetText(s.arg.at)}`;
         case 'ground': return `Marken blir ${groundName(s.arg.to)} ${areaText(s.arg)}`;
         case 'terrain': return `${s.arg.to ? (s.arg.to === 'grass' ? 'Tar bort det som ligger på marken' : 'Lägger ' + terrainName(s.arg.to)) : 'Ändrar mängden'}${s.arg.amount !== '' && s.arg.amount !== undefined ? ' (mängd ' + s.arg.amount + ')' : ''} ${areaText(s.arg)}`;
         case 'scenery': return `${s.arg.mode === 'add' ? 'Lägger kulissen ' + s.arg.type : 'Tar bort ' + (s.arg.type ? 'kulissen ' + s.arg.type : 'alla kulisser')} ${areaText(s.arg)}`;
@@ -394,6 +396,7 @@
           case 'give': step = { give: { [s.arg.res]: Math.max(1, Math.floor(+s.arg.n) || 1) } }; break;
           case 'weather': step = { weather: s.arg }; break;
           case 'tornado': case 'super': case 'meteors': step = { [s.type]: +s.arg || 1 }; if (s.where !== undefined) step.where = s.where === TRIGGER ? { trigger: true } : s.where; break;
+          case 'meteor': step = { meteor: { at: s.arg.at === TRIGGER ? { trigger: true } : s.arg.at, ...(+s.arg.radius > 0 ? { radius: Math.floor(+s.arg.radius) } : {}), ...(s.arg.big ? { big: true } : {}) } }; break;
           case 'ground': step = { ground: { ...areaOf(s.arg), to: s.arg.to } }; break;
           case 'terrain': step = { terrain: { ...areaOf(s.arg), ...(s.arg.to ? { to: s.arg.to } : {}), ...(s.arg.amount !== '' && s.arg.amount !== undefined ? { amount: Math.max(0, Math.floor(+s.arg.amount) || 0) } : {}) } }; break;
           case 'scenery': step = { scenery: { ...areaOf(s.arg), ...(s.arg.mode === 'add' ? { add: s.arg.type, ...(s.arg.layer !== '' && s.arg.layer !== undefined ? { layer: +s.arg.layer || 0 } : {}) } : { remove: s.arg.type || 'all' }) } }; break;
@@ -428,7 +431,7 @@
       return out;
     }
     const sceneryIds = Object.keys(Config.story.sceneryTypes || {}), weatherIds = Object.keys(Config.settings.weather?.chances || {}), terrainIds = Object.keys(Config.terrain).filter(id => !['water', 'dirt', 'lava'].includes(id));
-    const FXD = () => ({ letterText: '', letterGreeting: '', letterFrom: '', letterThrone: false, musicMode: 'set', musicCalm: '', musicBattle: '', battleOff: false, giveRes: resourceIds[0] || 'wood', giveN: 10, weatherType: weatherIds[0] || '', fxNum: '', radius: 0, share: 100, groundTo: 'sand', terrainTo: '', amount: '', scenMode: 'add', scenType: sceneryIds[0] || '', scenLayer: '' });
+    const FXD = () => ({ letterText: '', letterGreeting: '', letterFrom: '', letterThrone: false, musicMode: 'set', musicCalm: '', musicBattle: '', battleOff: false, giveRes: resourceIds[0] || 'wood', giveN: 10, weatherType: weatherIds[0] || '', fxNum: '', radius: 0, share: 100, groundTo: 'sand', terrainTo: '', amount: '', scenMode: 'add', scenType: sceneryIds[0] || '', scenLayer: '', meteorBig: false });
     let castDraft = { id: '', image: defaultImage, race: '', count: 1 }, stepDraft = { who: '', type: 'walk', target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineWho: speakerIds[0] || 'narrator', lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '', together: false, parent: null, pick: 'trigger', side: '', kind: '', follow: false, ...FXD() };
     const resetStep = () => { if (stepDraft.who === UNIT) stepDraft.who = ''; stepDraft = { ...stepDraft, target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '', together: false, pick: 'trigger', side: '', kind: '', follow: false, ...FXD() }; };
     const moodIds = () => Object.keys(Config.story.voice?.moods || { calm: 1 });
@@ -441,7 +444,7 @@
     const STEP_TYPES = [
       ['Personer', [['walk', 'går till…'], ['appear', 'dyker upp vid…'], ['say', 'säger (pratbubbla)'], ['leave', 'lämnar scenen (går mot dimman)'], ['vanish', 'försvinner direkt']]],
       ['Berättelse och kamera', [['dialog', 'DIALOG (dialogruta, flera personer)'], ['letter', 'BREV'], ['camera', 'KAMERAN flyttar till…'], ['wait', 'VÄNTA (sekunder)']]],
-      ['Ljud och väder', [['music', 'MUSIK byts'], ['weather', 'VÄDER ändras'], ['tornado', 'TORNADO'], ['super', 'SUPERSTORM'], ['meteors', 'METEORER']]],
+      ['Ljud och väder', [['music', 'MUSIK byts'], ['weather', 'VÄDER ändras'], ['tornado', 'TORNADO'], ['super', 'SUPERSTORM'], ['meteors', 'METEORER (en storm)'], ['meteor', 'METEOR (en enda)']]],
       ['Världen', [['ground', 'MARKEN ändras (gräs, jord, sand)'], ['terrain', 'TERRÄNG / RESURS ändras (träd, malm, berg ...)'], ['scenery', 'KULISSER läggs till / tas bort']]],
       ['Spelaren', [['give', 'SPELAREN får varor']]],
     ];
@@ -463,6 +466,7 @@
         case 'weather': return `<div class="row">${select('', weatherIds, d.weatherType, 'stepDraft.weatherType')}</div>`;
         case 'tornado': case 'super': return `<div class="row">Radie ${num('fxNum', 60)}</div>`;
         case 'meteors': return `<div class="row">Under ${num('fxNum', 60)} sekunder</div>`;
+        case 'meteor': return `<div class="row">Storlek ${select('', [['', 'liten'], ['1', 'stor (krater och eldar)']], d.meteorBig ? '1' : '', 'stepDraft.meteorBig')} Slumpas inom ${num('radius', 60)} rutor <span class="hint">0 = exakt på rutan</span></div>`;
         case 'ground': return `${area}<div class="row">Blir ${select('', [['grass', 'gräs'], ['dirt', 'jord'], ['sand', 'sand']], d.groundTo, 'stepDraft.groundTo')} <span class="hint">vatten rörs inte</span></div>`;
         case 'terrain': return `${area}<div class="row">Blir ${select('', [['', 'samma (ändra bara mängden)'], ['grass', 'ingenting / gräs (tar bort)'], ...terrainIds.filter(id => id !== 'grass').map(id => [id, terrainName(id)])], d.terrainTo, 'stepDraft.terrainTo')}</div>
           <div class="row">Mängd ${num('amount', 70)} <span class="hint">tomt = full mängd; 0 = slut (blir gräs)</span></div>
@@ -672,6 +676,7 @@
             case 'give': if (!(+d.giveN > 0)) { notice('Skriv ett antal.'); return null; } step.arg = { res: d.giveRes, n: Math.floor(+d.giveN) }; break;
             case 'weather': if (!d.weatherType) { notice('Välj ett väder.'); return null; } step.arg = d.weatherType; break;
             case 'tornado': case 'super': case 'meteors': if (!(+d.fxNum > 0)) { notice(d.type === 'meteors' ? 'Skriv hur många sekunder.' : 'Skriv en radie.'); return null; } step.arg = +d.fxNum; if (target) step.where = target; break;
+            case 'meteor': step.arg = { at: target, radius: Math.max(0, Math.floor(+d.radius) || 0), big: !!d.meteorBig }; break;
             case 'ground': step.arg = { ...area(target), to: d.groundTo }; break;
             case 'terrain': step.arg = { ...area(target), to: d.terrainTo, amount: d.amount === '' ? '' : Math.max(0, Math.floor(+d.amount) || 0) }; break;
             case 'scenery': if (d.scenMode === 'add' && !d.scenType) { notice('Välj en kuliss.'); return null; } step.arg = { ...area(target), mode: d.scenMode, type: d.scenType, layer: d.scenLayer }; break;
@@ -683,7 +688,7 @@
         const put = step => { if (d.editing !== null) { if (d.parent === null && list[d.editing]?.otherwise) step.otherwise = list[d.editing].otherwise; list[d.editing] = step; } else list.push(step); resetStep(); };
         const target = d.target === '__keep' ? d.keepArg : d.target === '' ? undefined : d.target;
         if (d.target === '__map' && (TARGETED.includes(d.type) || STORMS.includes(d.type))) {   // "en plats på kartan": väntar på ett klick, och steget byggs med rutan
-          if (!build(null) && !['walk', 'appear', 'camera', 'ground', 'terrain', 'scenery'].includes(d.type)) return;
+          if (!build(null) && !['walk', 'appear', 'camera', 'ground', 'terrain', 'scenery', 'meteor'].includes(d.type)) return;
           st.arm = { kind: 'sceneStep', make: tile => build(tileTarget(tile)), put }; render(); return;
         }
         const step = build(target); if (!step) return;
@@ -695,6 +700,7 @@
         const a = s.arg;
         if (['walk', 'appear', 'camera'].includes(s.type)) { stepDraft.keepArg = s.arg; stepDraft.target = '__keep'; stepDraft.zoom = s.zoom || ''; }
         else if (['ground', 'terrain', 'scenery'].includes(s.type)) { stepDraft.keepArg = a.at; stepDraft.target = '__keep'; Object.assign(stepDraft, { radius: a.radius || 0, share: a.share ?? 100 }); if (s.type === 'ground') stepDraft.groundTo = a.to; else if (s.type === 'terrain') Object.assign(stepDraft, { terrainTo: a.to || '', amount: a.amount ?? '' }); else Object.assign(stepDraft, { scenMode: a.mode, scenType: a.type, scenLayer: a.layer ?? '' }); }
+        else if (s.type === 'meteor') { stepDraft.keepArg = a.at; stepDraft.target = '__keep'; Object.assign(stepDraft, { radius: a.radius || 0, meteorBig: a.big ? '1' : '' }); }
         else if (STORMS.includes(s.type)) { stepDraft.fxNum = a; if (s.where !== undefined) { stepDraft.keepArg = s.where; stepDraft.target = '__keep'; } else stepDraft.target = ''; }
         else if (s.type === 'letter') Object.assign(stepDraft, { letterText: a.text, letterGreeting: a.greeting || '', letterFrom: a.from || '', letterThrone: !!a.throne });
         else if (s.type === 'music') Object.assign(stepDraft, { musicMode: a.mode, musicCalm: a.calm || '', musicBattle: a.battle || '', battleOff: !!a.battleOff });

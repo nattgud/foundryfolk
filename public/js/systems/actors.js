@@ -20,6 +20,7 @@
      Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { camera: mål, zoom: 1-5 (valfritt) }, ... ]. Stegen sker i ordning, ett i taget (together: true på ett steg = det börjar samtidigt som förra steget, och nästa steg väntar på båda).
      Grupp: spawn med count: n skapar n st (id#1 ... id#n) på samma ruta. Ett steg med gruppens id gäller alla: de går med en kort fördröjning var (ett led) och slutar på samma ruta (högst 20 per ruta, resten på rutorna runt); bara den första talar.
      Steg utan person (hela scenen): letter: { lines, signature | throne, greeting } (brev, scenen väntar tills det läses), music: spec | null, give: { resurs: n }, weather: 'rain', tornado: radie, super: radie, meteors: sekunder (+ where: mål),
+                          meteor: { at, radius (slumpad ruta inom den), big: true } (en enda meteor, utan varning),
                           ground: { at, radius, share, to: 'grass' | 'dirt' | 'sand' } (marken), terrain: { at, radius, share, to: terrängtyp (utan = behåll), amount } (träd, malm, berg ... på marken; to: 'grass' = tom),
                           scenery: { at, radius, share, add: typ, layer } eller { at, radius, remove: typ | 'all' } (kulisser)
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
@@ -43,7 +44,7 @@
   const { World, Config, Players, Utils, Jobs } = CityBuilder;
 
   const LEAVE_LAYER = { blood: 0, corpse: 1 };
-  const EFFECTS = ['music', 'give', 'weather', 'tornado', 'super', 'meteors', 'ground', 'terrain', 'scenery'];   // steg utan person (se effect)
+  const EFFECTS = ['music', 'give', 'weather', 'tornado', 'super', 'meteors', 'meteor', 'ground', 'terrain', 'scenery'];   // steg utan person (se effect)
   const GROUP_GAP = .1, GROUP_MAX = 100, PER_TILE = 20;   // grupp: sekunder mellan två medlemmars start, högst så många på en ruta (resten flödar över till rutorna runt)
   // Rutorna kring målet i den ordning de fylls: målrutan först, sedan de närmaste
   const TILE_ORDER = (() => { const list = []; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) list.push([dx, dy]); return list.sort((a, b) => a[0] * a[0] + a[1] * a[1] - b[0] * b[0] - b[1] * b[1] || a[1] - b[1] || a[0] - b[0]); })();
@@ -236,6 +237,13 @@
       const Story = CityBuilder.Story;
       if (step.music !== undefined) { levels().progressRef().told[`scene:${scene.id}:${i}:music`] = true; return true; }   // Story.update läser av dem
       for (const key of ['give', 'weather', 'tornado', 'super', 'meteors']) if (step[key] !== undefined) { Story.fire({ [key]: step[key], where: step.where }, scene.ctx); return true; }
+      if (step.meteor) {   // en enda meteor: { at, radius (slumpad ruta inom den), big }
+        const hit = this.resolve(step.meteor.at?.trigger ? this.triggerSpot(scene) : step.meteor.at, null);
+        if (!hit) return false;
+        const angle = Utils.random() * Math.PI * 2, reach = (+step.meteor.radius || 0) * Math.sqrt(Utils.random());
+        CityBuilder.Weather.dropMeteorAt(hit.x + Math.cos(angle) * reach, hit.y + Math.sin(angle) * reach, step.meteor.big);
+        return true;
+      }
       const spec = step.ground || step.terrain || step.scenery || {}, tile = this.resolve(spec.at?.trigger ? this.triggerSpot(scene) : spec.at, null);
       if (!tile) return false;
       const radius = Math.max(0, +spec.radius || 0), share = spec.share === undefined ? 100 : +spec.share, tiles = [];

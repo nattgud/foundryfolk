@@ -650,6 +650,9 @@
       CityBuilder.Sound?.play('alarm');
     },
 
+    // En enda meteor på väg ner mot en ruta (berättelsens meteor-steg): samma fall och nedslag som i en storm, utan varning
+    dropMeteorAt(x, y, big) { this.meteors.push({ x: Math.round(x), y: Math.round(y), age: 0, big: !!big }); },
+
     // En storm släpper nästa meteor när varningen är över och det är dags: slumpad plats inom radien
     dropMeteor(storm, deltaSeconds) {
       const settings = Config.settings.weather.meteor;
