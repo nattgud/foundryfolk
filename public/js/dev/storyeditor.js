@@ -261,7 +261,7 @@
       carriers:  { label: 'När spelaren har så här många bärare', f: [['n', 'num', 'antal']], make: v => ({ when: { type: 'carriers', amount: +v.n } }), text: v => `när spelaren har ${v.n} bärare` },
       casts:     { label: 'När spelaren har trollat så här många gånger', f: [['n', 'num', 'antal']], make: v => ({ when: { type: 'casts', amount: +v.n } }), text: v => `när ${v.n} förtrollningar är gjorda` },
       fogLifted: { label: 'När dimman har lyft', f: [], make: () => ({ when: { type: 'fog', amount: 1 } }), text: () => 'när dimman har lyft' },
-      sceneDone: { label: 'När en annan scen är klar', f: [['sc', 'scn']], make: v => ({ when: { scene: v.sc } }), text: v => `när scenen ${v.sc} är klar` },
+      sceneDone: { label: 'När en annan scen är klar', f: [['sc', 'scn']], make: v => ({ when: { scene: v.sc } }), text: v => `när scenen “${scenes.find(other => other.id === v.sc)?.name || v.sc}” är klar` },
       end:   { label: 'När alla mål är uppnådda (banan avslutas efter scenen)', f: [], make: () => ({ top: { end: true } }), text: () => 'när alla mål är uppnådda' },
       made:  { label: 'När så här mycket har tillverkats', f: [['res', 'res'], ['n', 'num', 'antal']], make: v => ({ when: { resource: v.res, made: +v.n } }), text: v => `när ${v.n} ${v.res} är tillverkat` },
     };
@@ -558,7 +558,7 @@
       if (root === 'sceneCond') sceneCond = value; else if (root === 'sceneIndex') cur = +value; else if (key === undefined) st[root] = value; else ({ castDraft, stepDraft, fxDraft, scene: sceneNow() || {} })[root][key] = value;
     };
     panel.addEventListener('input', event => { const bind = event.target.dataset?.bind; if (bind && event.target.type !== 'radio' && event.target.tagName !== 'SELECT') setPath(bind, event.target.type === 'checkbox' ? event.target.checked : event.target.value);
-      if (bind === 'scene.name') { const option = $('select[data-bind=sceneIndex]')?.selectedOptions[0]; if (option) option.textContent = event.target.value || '(namnlös)'; persist(); }   // namnet syns direkt i scenlistan medan du skriver
+      if (bind === 'scene.name') { const option = $('select[data-bind=sceneIndex]')?.selectedOptions[0]; const label = event.target.value || '(namnlös)'; if (option) option.textContent = label; persist(); }   // namnet syns direkt i scenlistan medan du skriver
     });
     panel.addEventListener('keydown', event => { if (event.key === 'Enter' && event.target.dataset?.bind === 'scene.name') { event.preventDefault(); event.target.blur(); } });
     panel.addEventListener('change', event => {
@@ -566,6 +566,14 @@
       if (target.id === 'sePause') { C.Game.paused = target.checked; return; }
       const bind = target.dataset?.bind; if (!bind) return;
       setPath(bind, target.type === 'checkbox' ? target.checked : target.value);
+      if (bind === 'scene.name') {   // namnet är också scenens id i den exporterade koden: id följer namnet, och andra scener som väntar på den pekar om
+        const sc = sceneNow(); if (sc) {
+          sc.name = sc.name.trim() || sc.id;
+          const slug = sc.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'scen';
+          let id = slug, n = 2; while (scenes.some(other => other !== sc && other.id === id)) id = slug + n++;
+          if (id !== sc.id) { for (const other of scenes) for (const cond of other.conds || []) if (cond.kind === 'sceneDone' && cond.v.sc === sc.id) cond.v.sc = id; sc.id = id; }
+        }
+      }
       if (bind === 'stepDraft.target' && target.value === '__map') { actions.stepAdd(); return; }   // "en plats på kartan": väntar direkt på ett klick (utan att man behöver trycka Lägg till)
       if (bind === 'fxDraft.kind') { const sc = sceneNow(); if (sc && target.value) { sc.fxOpen = [...(sc.fxOpen || []).filter(x => x !== target.value), target.value]; if (target.value === 'music') sc.music = 'set'; } fxDraft.kind = ''; render(); return; }
       if (bind === 'fxDraft.where') { const sc = sceneNow(); if (sc) { if (target.value === '') delete sc.where; else if (target.value === '__map') st.arm = { kind: 'fxWhere' }; else if (target.value !== '__keep') sc.where = target.value; } render(); return; }
