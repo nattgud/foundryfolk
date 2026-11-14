@@ -385,7 +385,7 @@
       const farX = centerX + (point.x - centerX) / reach, farY = centerY + (point.y - centerY) / reach;
       const outside = Math.hypot(Math.max(0, -farX, farX - innerWidth), Math.max(0, -farY, farY - innerHeight));
       const far = Math.min(1, Math.hypot(farX - centerX, farY - centerY) / Math.hypot(centerX, centerY)), amount = far + (1 - far) * fog.center * this.dull;   // i dimma finns lite dämpning och eko även i mitten
-      return { outside, pan: clamp((point.x / innerWidth - 0.5) * 1.2, -0.7, 0.7), cut: OPEN * (fog.farMuffle / OPEN) ** (this.dull * amount), wet: (echo.clear + (echo.fog - echo.clear) * this.dull) * amount };
+      return { outside, pan: clamp((point.x / innerWidth - 0.5) * 1.2, -0.7, 0.7), cut: OPEN * (fog.farMuffle / OPEN) ** (this.dull * amount), wet: echo.fog * this.dull * amount };
     },
 
     // Ljudet med id:t om det finns, annars reservljudet (t.ex. ett eget skadeljud för en art som annars delar ett)
