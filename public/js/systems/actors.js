@@ -14,7 +14,7 @@
                           Manuset går vidare direkt, eller med wait: true först när bubblan är borta (räknat från att den syns)
      follow: true         (på ett walk-steg) kameran följer skådespelaren medan den går. together: true på ett say-steg = den pratar medan den gör sitt förra steg (t.ex. går)
      leave: true          går mot närmaste ruta som spelaren inte ser (dimman) och försvinner när den inte syns längre
-     kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
+     kill: id | { actor: id, leave: 'blood' | 'corpse' | 'skeleton' | ['blood','corpse'] | 'none' }
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
      tell: [dialograder]  visar en dialog och väntar tills den lästs
      Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { camera: mål, zoom: 1-5 (valfritt) }, ... ]. Stegen sker i ordning, ett i taget (together: true på ett steg = det börjar samtidigt som förra steget, och nästa steg väntar på båda).
@@ -43,7 +43,7 @@
   'use strict';
   const { World, Config, Players, Utils, Jobs } = CityBuilder;
 
-  const LEAVE_LAYER = { blood: 0, corpse: 1 };
+  const LEAVE_LAYER = { blood: 0, corpse: 1, skeleton: 1 };
   const EFFECTS = ['music', 'give', 'weather', 'tornado', 'super', 'meteors', 'meteor', 'ground', 'terrain', 'scenery'];   // steg utan person (se effect)
   const GROUP_GAP = .1, GROUP_MAX = 100, PER_TILE = 20;   // grupp: sekunder mellan två medlemmars start, högst så många på en ruta (resten flödar över till rutorna runt)
   // Rutorna kring målet i den ordning de fylls: målrutan först, sedan de närmaste

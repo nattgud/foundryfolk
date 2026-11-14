@@ -27,6 +27,8 @@
   const HOME_SEARCH_SECONDS = 2;      // hur ofta en fri soldat letar efter en ledig garnison
   const POST_TOLERANCE = 3;           // så nära posten räknas en fri soldat som på plats
   const SETTLE_SPEED = 1;             // hur fort en stillastående soldat glider till sin plats i rutan (rutor per sekund)
+  const ROUT_RADIUS = 40;             // rutor: så långt ut letar en flyende enhet efter dimma
+  const ROUT_SECONDS = 60;            // en flyende enhet som inte hunnit ur sikte på så här lång tid försvinner ändå
   const HQ_NEAR = 12;                // rutor: så nära fiendens HQ är HQ målet för datorns soldater (om inget militärt finns)
   const BLOCKER_SECONDS = 90;        // så länge slår en soldat det som stänger vägen (blocker) innan den prövar vägen igen
   const ATTACKED_SECONDS = 4;        // blev soldaten slagen så nyligen försvarar den sig i stället för att slå det som stänger vägen
@@ -66,6 +68,7 @@
     fires: [],                        // eld på rutor (katapultens skott): { x, y (rutan), left, total, damage, every, tick, player }. Bränner fiendens soldater på rutan (updateFires)
     projectiles: [],                  // pilar i luften: { x, y, fromX, fromY, toX, toY, target, attacker, damage, time, duration }
     time: 0,                          // simuleringstid i sekunder
+    routed: new Set(),                // enheter som flyr mot dimman efter att deras spelare slagits ut (rout, updateRouted)
     unstuck: 0,                       // hur många gånger vakten (watchStuck) behövt rensa en fast soldat; ska helst stå still
     fightAt: -Infinity,               // när något av spelarens senast slogs med en fiende eller träffades av en (Sound väljer stridsmusik efter det)
     targetCache: null,                // kandidater med rutnät (se targets)
@@ -250,6 +253,51 @@
       Behaviors.removeUnit(unit);
     },
 
+    // Utslagen spelares enhet: slutar jobba och strida, och springer mot närmaste dimma (ruta som människan inte ser). Försvinner utan lik när den inte syns längre.
+    rout(unit) {
+      if (unit.removed || unit.actor || unit.routed !== undefined) return;
+      CityBuilder.Logistics.abortTask(unit);
+      if (unit.definition.isHauler) CityBuilder.Logistics.carrierLost(unit);
+      Garrison.release(unit);
+      Object.assign(unit, { routed: this.time, routeTries: 0, target: null, goal: null, post: null, mode: 'routed', carriedResource: null, carriedOutputs: null });
+      unit.stepQueue = [];
+      this.routed.add(unit);
+    },
+
+    // Den närmaste rutan (ringvis utåt) som går att stå på och som människan inte ser. null om ingen finns inom ROUT_RADIUS.
+    nearestFog(x, y) {
+      for (let ring = 1; ring <= ROUT_RADIUS; ring++) {
+        let best = null, bestDistance = Infinity;
+        for (let dy = -ring; dy <= ring; dy++) {
+          const edge = Math.abs(dy) === ring, step = edge ? 1 : ring * 2;
+          for (let dx = -ring; dx <= ring; dx += step) {
+            const tx = x + dx, ty = y + dy, tile = World.getTile(tx, ty), distance = dx * dx + dy * dy;
+            if (distance >= bestDistance || !tile || !Number.isFinite(Config.terrain[tile.terrainType].walkCost) || World.buildingAt(tx, ty) || Vision.visible(Players.HUMAN, tx, ty)) continue;
+            best = { x: tx, y: ty }; bestDistance = distance;
+          }
+        }
+        if (best) return best;
+      }
+      return null;
+    },
+
+    // De som flyr: försvinner så fort de inte syns (eller efter ROUT_SECONDS, eller om ingen dimma går att nå), annars går de mot närmaste dimma
+    updateRouted() {
+      if (!this.routed.size) return;
+      for (const unit of [...this.routed]) {
+        if (unit.removed) { this.routed.delete(unit); continue; }
+        const x = Math.floor(unit.x), y = Math.floor(unit.y);
+        let spot = null;
+        if (Vision.visible(Players.HUMAN, x, y) && this.time - unit.routed <= ROUT_SECONDS) {
+          if (unit.stepQueue.length) continue;
+          spot = ++unit.routeTries <= 5 ? this.nearestFog(x, y) : null;
+          if (spot) { unit.stepQueue = [Jobs.walkTo(spot.x, spot.y)]; unit.status = 'Fleeing'; continue; }
+        }
+        this.routed.delete(unit);
+        Behaviors.removeUnit(unit);
+      }
+    },
+
     // En förstörd byggnad är som en riven, men inget lämnas tillbaka (innehållet går förlorat)
     destroyBuilding(building) {
       CityBuilder.Sound?.play('destroyed', { x: building.x, y: building.y });
@@ -262,7 +310,7 @@
     // En spelare utan bas är utslagen: allt hens byggnader och enheter försvinner. Utslagen spelare = förlust, sista datorspelaren = seger.
     eliminate(player, restoring = false) {
       for (const building of [...World.buildings]) if (building.player === player) CityBuilder.Construction.dismantle(building, false);
-      for (const unit of [...World.units]) if (unit.player === player) this.kill(unit);
+      for (const unit of [...World.units]) if (unit.player === player) { if (player === Players.HUMAN) this.kill(unit); else this.rout(unit); }   // en utslagen dator: enheterna flyr mot närmaste dimma och försvinner när de inte syns
       if (player !== Players.HUMAN) Players.active = Players.active.filter(other => other !== player);
       // Kapitel som slutar när dimman lyfter (end: 'fog'): faller basen faller också Eye of Shades, och dimman lyfter. Det är målet, inte en förlust. Och när dimman väl lyft är banan klarad:
       // faller basen medan scenerna efteråt spelas (dimman lyfter-händelsen) är det inte heller en förlust.
@@ -317,9 +365,10 @@
       this.time += deltaSeconds;
       this.alertGarrisons(deltaSeconds);
       this.watchForces(deltaSeconds);
+      this.updateRouted();
 
       for (const unit of [...World.units]) { // kopia: enheter kan dö eller försvinna under varvet
-        if (unit.definition.isSoldier && !unit.removed) this.updateSoldier(unit, deltaSeconds);
+        if (unit.definition.isSoldier && !unit.removed && !unit.routed) this.updateSoldier(unit, deltaSeconds);
       }
 
       this.settle(deltaSeconds);

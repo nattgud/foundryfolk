@@ -227,6 +227,7 @@
 			// walkable: ligger bara på marken. Alla går över den och man kan bygga över den (då försvinner den). Ritas under byggnader och enheter.
 			corpse: { variants: 6, walkable: true, fallback: 'corpse' },
 			blood: { variants: 3, walkable: true, fallback: 'blood' },
+			skeleton: { walkable: true },   // images/scenery/skeleton.png (samma bild som skeletten efter lik, systems/corpses.js)
 			// Markeringar och föremål på marken. Gåbara (bara mark, går att bygga över): runes (ritualtecken), burnt (bränd mark), baggage (kvarlämnad packning), weapons (kasserade vapen), tracks (spår).
 			// wagon är en vält vagn: den blockerar som en ruin. Bilderna heter <typ><nummer>.png i images/scenery (variants = hur många).
 			runes: { variants: 2, walkable: true },

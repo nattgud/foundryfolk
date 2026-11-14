@@ -16,6 +16,12 @@ function generate() {
       for (const name of fs.readdirSync(folder)) if (/\.png$/.test(name)) files.push(`images/${kind}/${race}/${name}`);
     }
   }
+  // Liken: images/units/<mapp>/dead/*.png (ras, animals och monster), se systems/corpses.js
+  const units = path.join(root, 'images', 'units');
+  if (fs.existsSync(units)) for (const folder of fs.readdirSync(units)) {
+    const dead = path.join(units, folder, 'dead');
+    if (fs.existsSync(dead) && fs.statSync(dead).isDirectory()) for (const name of fs.readdirSync(dead)) if (/\.png$/.test(name)) files.push(`images/units/${folder}/dead/${name}`);
+  }
   files.sort();
   const text = `/* GENERERAD FIL (node tools/racemanifest.js): vilka rasbilder som finns, se tools/racemanifest.js. Redigera inte för hand. */\n` +
     `(function (CityBuilder) {\n  'use strict';\n  CityBuilder.RaceImages = new Set([\n${files.map(file => `    '${file}',`).join('\n')}\n  ]);\n})(window.CityBuilder);\n`;

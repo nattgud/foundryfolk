@@ -5,9 +5,11 @@
    - en tornado far över det (update nedan: tornadons radie).
    Bara bilder, ingen påverkan på gång eller byggande. Ritas under byggnader och enheter (lagret 'corpses' i render/layers.js).
 
-   Bilder: images/corpses/corpse.png och images/corpses/skeleton.png, eller corpse1.png, corpse2.png ... om settings.corpses.variants.corpse > 1
-   (samma för skeleton). Varje lik slumpar en variant och en vinkel. Storleken är enhetens egen bildstorlek (definition.imageSize) x scale. Saknas bilden
-   ritas en enkel reserv.
+   Bilder (se sourcesFor): liket för en enhet ligger i images/units/<ras>/dead/ (djur: animals/dead, monster: monster/dead). Först <enhetens id>.png
+   (archer.png, knight.png), annars default1.png, default2.png ... (en slumpas). Saknas rasens bild används människans, och finns ingen alls används
+   kulissens lik (images/scenery/corpse1-6.png). Skelettet är images/scenery/skeleton.png (skeleton1.png ... med settings.corpses.variants.skeleton > 1).
+   Bildlistan i js/config/raceimages.js (node tools/racemanifest.js) måste ha dead-bilderna. Storleken är enhetens egen bildstorlek (definition.imageSize) x scale,
+   bilden speglas slumpmässigt. Saknas allt ritas en enkel reserv.
 
    Prestanda: allt ligger i rutnätshinkar (BUCKET x BUCKET rutor). Ritningen går bara över hinkarna på skärmen, borttagning (meteor, tornado, vatten) bara
    över hinkarna i närheten, och tiden för likens förvandling tas från en kö i dödsordning (bara det första liket behöver tittas på).
@@ -15,13 +17,31 @@
    Inställningar (settings.corpses, alla valfria): { life: 120, maxBones: 4000, scale: 1, variants: { corpse: 1, skeleton: 1 } }. */
 (function (CityBuilder) {
   'use strict';
-  const { Config, World } = CityBuilder;
+  const { Config, World, Players } = CityBuilder;
 
   const BUCKET = 8;   // rutor per hink och led
   const DEFAULTS = { life: 120, maxBones: 4000, scale: 1, variants: { corpse: 1, skeleton: 1 } };
   const options = () => ({ ...DEFAULTS, ...Config.settings?.corpses });
   const bucketKey = (bx, by) => (bx + 32768) * 65536 + (by + 32768);
   const round = value => Math.round(value * 100) / 100;
+  const exists = source => !!CityBuilder.RaceImages?.has(source);   // listan över bilder som finns (så ingen bild som saknas begärs)
+
+  // Bilderna för liket av en enhet: [källa, ...] (en av dem slumpas), eller [] om det inte finns någon. folder = ras, 'animals' eller 'monster'.
+  const sourceCache = new Map();
+  const sourcesFor = (folder, kind) => {
+    const key = folder + '|' + kind;
+    let list = sourceCache.get(key);
+    if (list) return list;
+    const dead = name => `images/units/${name}/dead/`, races = folder === 'animals' || folder === 'monster' ? [folder] : [folder, 'human'];
+    list = [];
+    for (const race of races) {
+      if (exists(`${dead(race)}${kind}.png`)) { list = [`${dead(race)}${kind}.png`]; break; }
+      for (let n = 1; exists(`${dead(race)}default${n}.png`); n++) list.push(`${dead(race)}default${n}.png`);
+      if (list.length) break;
+    }
+    sourceCache.set(key, list);
+    return list;
+  };
 
   const Corpses = {
     buckets: new Map(),   // hinknyckel -> [{ x, y, seed, size, born, bones, gone }]
@@ -39,7 +59,8 @@
       if (!unit || !Number.isFinite(unit.x) || !Number.isFinite(unit.y)) return;
       const tile = World.getTile(Math.floor(unit.x), Math.floor(unit.y));
       if (!tile || tile.terrainType === 'water' || tile.terrainType === 'lava') return;
-      this.put({ x: unit.x, y: unit.y, seed: Math.random(), size: unit.definition?.imageSize || 16, born: this.time, bones: false, gone: false });
+      const definition = unit.definition || {};
+      this.put({ x: unit.x, y: unit.y, seed: Math.random(), size: definition.imageSize || 16, born: this.time, bones: false, gone: false, folder: definition.isAnimal ? 'animals' : definition.isMonster ? 'monster' : Players.imageRace(definition, unit.player), kind: unit.kind });
     },
 
     put(item) {
@@ -58,7 +79,7 @@
         const item = this.fresh[this.head];
         if (!item.gone) {
           if (this.time - item.born < settings.life) break;
-          item.bones = true; this.order.push(item); this.bones++;
+          item.bones = true; item.src = null; this.order.push(item); this.bones++;
         }
         this.head++;
       }
@@ -98,20 +119,29 @@
     // Allt på rutan (x, y): den blev vatten
     clearTile(x, y) { this.clearWhere(x, y, x + 0.999, y + 0.999, item => Math.floor(item.x) === x && Math.floor(item.y) === y); },
 
-    // Sparning: [[x, y, slumptal, storlek, ålder i sekunder (-1 = skelett)], ...], äldst först så ordningen består
+    // Sparning: [[x, y, slumptal, storlek, ålder i sekunder (-1 = skelett), ras, enhetens id], ...], äldst först så ordningen består
     pack() {
       const list = [];
-      for (let i = this.orderHead; i < this.order.length; i++) { const item = this.order[i]; if (!item.gone) list.push([round(item.x), round(item.y), round(item.seed), item.size, -1]); }
-      for (let i = this.head; i < this.fresh.length; i++) { const item = this.fresh[i]; if (!item.gone) list.push([round(item.x), round(item.y), round(item.seed), item.size, round(this.time - item.born)]); }
+      for (let i = this.orderHead; i < this.order.length; i++) { const item = this.order[i]; if (!item.gone) list.push([round(item.x), round(item.y), round(item.seed), item.size, -1]); }   // skelett behöver varken ras eller id
+      for (let i = this.head; i < this.fresh.length; i++) { const item = this.fresh[i]; if (!item.gone) list.push([round(item.x), round(item.y), round(item.seed), item.size, round(this.time - item.born), item.folder, item.kind]); }
       return list;
     },
     restore(list) {
       this.reset();
-      for (const [x, y, seed, size, age] of Array.isArray(list) ? list : []) {
+      for (const [x, y, seed, size, age, folder, kind] of Array.isArray(list) ? list : []) {
         if (![x, y].every(Number.isFinite)) continue;
-        this.put({ x, y, seed: seed ?? Math.random(), size: size || 16, born: age >= 0 ? this.time - age : 0, bones: !(age >= 0), gone: false });
+        this.put({ x, y, seed: seed ?? Math.random(), size: size || 16, born: age >= 0 ? this.time - age : 0, bones: !(age >= 0), gone: false, folder, kind });
       }
       this.fresh.sort((a, b) => a.born - b.born);   // äldst först (kön tittar bara på det första)
+    },
+
+    // Bildens sökväg: skelettet, liket av enhetens art (dead-mappen) eller kulissens lik. Väljs av liketts slumptal.
+    sourceOf(item, settings) {
+      if (item.bones) { const count = settings.variants?.skeleton || 1; return `images/scenery/skeleton${count > 1 ? 1 + Math.floor(item.seed * count) : ''}.png`; }
+      const own = sourcesFor(item.folder, item.kind);
+      if (own.length) return own[Math.floor(item.seed * own.length)];
+      const variants = Config.story.sceneryTypes?.corpse?.variants || 1;
+      return `images/scenery/corpse${variants > 1 ? 1 + Math.floor(item.seed * variants) : ''}.png`;
     },
 
     // Ritar de som syns (anropas av lagret 'corpses'). Reserv: en liggande figur, eller några ben.
@@ -126,17 +156,20 @@
           for (const item of list) {
             const x = item.x * tileSize, y = item.y * tileSize;
             if (x < view.left || x > view.right || y < view.top || y > view.bottom) continue;
-            const kind = item.bones ? 'skeleton' : 'corpse', count = settings.variants?.[kind] || 1, size = item.size * settings.scale;
-            const image = Assets.get(`images/corpses/${kind}${count > 1 ? 1 + Math.floor(item.seed * count) : ''}.png`);
-            context.save(); context.translate(x, y); context.rotate(item.seed * Math.PI * 2);
-            if (image) context.drawImage(image, -size / 2, -size / 2, size, size);
-            else if (item.bones) {   // reserv: ett par ben och en skalle
-              context.strokeStyle = '#d8d2c0'; context.lineWidth = Math.max(1, size * .08); context.lineCap = 'round';
-              context.beginPath(); context.moveTo(-size * .35, -size * .1); context.lineTo(size * .2, size * .1); context.moveTo(-size * .3, size * .12); context.lineTo(size * .2, -size * .12); context.stroke();
-              context.fillStyle = '#e6e0d0'; context.beginPath(); context.arc(size * .3, 0, size * .1, 0, Math.PI * 2); context.fill();
-            } else {   // reserv: en liggande figur
-              context.fillStyle = '#3d3530'; context.beginPath(); context.ellipse(0, 0, size * .38, size * .13, 0, 0, Math.PI * 2); context.fill();
-              context.fillStyle = '#b89a82'; context.beginPath(); context.arc(size * .38, 0, size * .1, 0, Math.PI * 2); context.fill();
+            const scale = item.size * settings.scale;
+            const image = Assets.get(item.src ??= this.sourceOf(item, settings));   // bildens sökväg väljs en gång per lik
+            context.save(); context.translate(x, y);
+            if (image) { if (item.seed > .5) context.scale(-1, 1); context.drawImage(image, -scale / 2, -scale * image.height / image.width / 2, scale, scale * image.height / image.width); }
+            else {
+              context.rotate(item.seed * Math.PI * 2); const size = scale;
+              if (item.bones) {   // reserv: ett par ben och en skalle
+                context.strokeStyle = '#d8d2c0'; context.lineWidth = Math.max(1, size * .08); context.lineCap = 'round';
+                context.beginPath(); context.moveTo(-size * .35, -size * .1); context.lineTo(size * .2, size * .1); context.moveTo(-size * .3, size * .12); context.lineTo(size * .2, -size * .12); context.stroke();
+                context.fillStyle = '#e6e0d0'; context.beginPath(); context.arc(size * .3, 0, size * .1, 0, Math.PI * 2); context.fill();
+              } else {   // reserv: en liggande figur
+                context.fillStyle = '#3d3530'; context.beginPath(); context.ellipse(0, 0, size * .38, size * .13, 0, 0, Math.PI * 2); context.fill();
+                context.fillStyle = '#b89a82'; context.beginPath(); context.arc(size * .38, 0, size * .1, 0, Math.PI * 2); context.fill();
+              }
             }
             context.restore();
           }

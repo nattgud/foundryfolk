@@ -22,7 +22,7 @@
     const previews = [], previewScenes = [], previewAppear = []; let previewBase = 0;
 
     const sceneryTypes = Object.keys(Config.story.sceneryTypes || {});
-    const defaultLayer = { blood: 0, corpse: 1, ruin: 0, fire: 1 };
+    const defaultLayer = { blood: 0, corpse: 1, skeleton: 1, ruin: 0, fire: 1 };
     const buildingTypes = Object.keys(Config.buildings).filter(id => !Config.buildings[id].pile && id !== 'hq' && id !== 'monument').sort();
     const resourceIds = Object.keys(Config.resources).sort();
     const speakerIds = Object.keys(Config.story.speakers || {});
