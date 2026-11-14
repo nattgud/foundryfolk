@@ -175,13 +175,22 @@
       try { saved = JSON.parse(localStorage.getItem(storeKey(number)) || 'null'); } catch (error) { /* tomt */ }
       if (saved && Array.isArray(saved.scenes)) { scenes = saved.scenes.filter(sc => sc && typeof sc === 'object'); importedIds = Array.isArray(saved.imported) ? saved.imported : []; }
       scenes.forEach((sc, index) => { sc.id = sc.id || 'scen' + (index + 1); sc.name = sc.name || sc.id; for (const key of ['conds', 'cast', 'steps']) if (!Array.isArray(sc[key])) sc[key] = []; });
-      (chapter()?.events || []).forEach((event, index) => {
-        const known = event.id && (importedIds.includes(event.id) || scenes.some(sc => sc.id === event.id));
-        if (known || (saved && !event.id)) return;   // utan id går det inte att känna igen: bara första gången
+      const keyOf = event => event.id || 'h' + JSON.stringify(event).split('').reduce((hash, ch) => (hash * 31 + ch.charCodeAt(0)) | 0, 7);   // händelser utan id känns igen på sitt innehåll
+      const pull = (event, index, key) => {
+        if (importedIds.includes(key) || (event.id && scenes.some(sc => sc.id === event.id))) return;
         let sc; try { sc = importEvent(event, index + 1); } catch (error) { console.warn('Story-editor: kunde inte läsa in händelse', index, error); return; }
+        const shape = scene => { const out = JSON.stringify({ ...compileScene(scene), id: 0 }); return out; };
+        let twin = false; try { const mine = shape(sc); twin = scenes.some(other => shape(other) === mine); } catch (error) { /* ingen tvilling */ }
+        importedIds.push(key);
+        if (twin) return;   // samma händelse ligger redan som scen (inläst en tidigare gång)
         while (scenes.some(other => other.id === sc.id)) sc.id += 'b';
-        scenes.push(sc); if (event.id) importedIds.push(event.id);
-      });
+        scenes.push(sc);
+      };
+      const events = chapter()?.events || [];
+      // kapitlets eget brev (chapter.letter) blir en vanlig scen, så att du kan välja när det inträffar
+      const own = chapter()?.letter, ownJson = own && JSON.stringify(own.lines);
+      if (own && Array.isArray(own.lines) && !events.some(event => event.letter && JSON.stringify(event.letter.lines) === ownJson)) pull({ id: 'letter', name: 'Brev', letter: own }, -1, 'chapter-letter');
+      events.forEach((event, index) => pull(event, index, keyOf(event)));
     };
 
     // ---------------------------------------------------------------- panel
@@ -490,6 +499,7 @@
       const parts = [];
       parts.push({ title: 'Kulisser (ersätter kapitlets scenery)', text: `scenery: [\n${sceneryRows().map(line => '\t' + line + ',').join('\n')}\n],` });
       parts.push({ title: 'Startbyggnader och döda byggnader (ersätter kapitlets start)', text: `start: { buildings: [\n${list.filter(building => building !== eye).map(building => '\t' + row(building) + ',').join('\n')}\n] },` + (eye ? `\neye: { dx: ${eye.x - base.x}, dy: ${eye.y - base.y} },` : '') });
+      if (chapter()?.letter) parts.push({ title: 'Kapitlets egen letter-rad (ta bort den om brevet ligger som scen, annars visas det först av allt)', text: '// letter: ... (raden direkt i kapitlet)' });
       if (scenes.length) parts.push({ title: 'Scener (lägg till i kapitlets events)', text: `events: [\n${scenes.map(sc => compileScene(sc)).map(event => '\t' + ser(event) + ',').join('\n')}\n],` });
       return parts;
     }
