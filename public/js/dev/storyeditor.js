@@ -109,6 +109,18 @@
       }
       return { conds, leftover };
     }
+    // Äldre scener (och importerade händelser) har brev, musik, varor och väder som egna fält på scenen. De blir steg först i listan, i samma ordning som motorn körde dem.
+    function migrateFx(sc) {
+      const lead = [], where = sc.where;
+      if (String(sc.letterText || '').trim()) lead.push({ type: 'letter', arg: { text: sc.letterText.trim(), greeting: sc.letterGreeting || '', from: sc.letterFrom || '', throne: !!sc.letterThrone } });
+      if (sc.music) lead.push({ type: 'music', arg: { mode: sc.music, calm: sc.musicCalm || '', battle: sc.musicBattle || '', battleOff: !!sc.battleOff } });
+      for (const { res, n } of sc.give || []) lead.push({ type: 'give', arg: { res, n } });
+      if (sc.weather) lead.push({ type: 'weather', arg: sc.weather });
+      for (const key of ['tornado', 'super', 'meteors']) if (+sc[key] > 0) lead.push({ type: key, arg: +sc[key], ...(where !== undefined ? { where } : {}) });
+      for (const key of ['letterText', 'letterGreeting', 'letterFrom', 'letterThrone', 'music', 'musicCalm', 'musicBattle', 'battleOff', 'give', 'weather', 'tornado', 'super', 'meteors', 'where', 'fxOpen']) delete sc[key];
+      if (lead.length) sc.steps = [...lead, ...sc.steps];
+      return sc;
+    }
     function importEvent(event, number) {
       const sc = { id: event.id || 'scene' + number, name: event.id || 'Scen ' + number, conds: [], cast: [], steps: [] }, extra = {};
       const { conds, leftover } = condsOf(event);
@@ -120,7 +132,7 @@
       const selector = who => who && typeof who === 'object' ? { who: UNIT, pick: who.pick || 'trigger', side: who.side || '', kind: who.kind || '' } : { who };
       const stepOf = raw => {
         if (!raw || typeof raw !== 'object') return null;
-        const known = ['spawn', 'who', 'walk', 'say', 'leave', 'vanish', 'tell', 'wait', 'camera', 'zoom', 'together', 'follow', 'otherwise'];
+        const known = ['spawn', 'who', 'walk', 'say', 'leave', 'vanish', 'tell', 'wait', 'camera', 'zoom', 'together', 'follow', 'otherwise', 'letter', 'music', 'give', 'weather', 'tornado', 'super', 'meteors', 'where', 'ground', 'terrain', 'scenery'];
         if (Object.keys(raw).some(key => !known.includes(key))) return null;
         let step = null;
         if (raw.spawn && raw.spawn.id && Object.keys(raw.spawn).every(key => ['id', 'image', 'race', 'count', 'at'].includes(key))) { const c = castOf(raw.spawn); step = { type: 'appear', who: c.id, arg: targetIn(raw.spawn.at) }; }
@@ -131,6 +143,14 @@
         else if (raw.vanish && typeof raw.who === 'string') step = { type: 'vanish', who: raw.who };
         else if (Array.isArray(raw.tell)) step = { type: 'dialog', arg: raw.tell.map(line => ({ who: line.who, text: line.text })) };
         else if (raw.wait !== undefined) step = { type: 'wait', arg: raw.wait };
+        else if (raw.letter && Array.isArray(raw.letter.lines) && Object.keys(raw.letter).every(key => ['lines', 'greeting', 'signature', 'throne'].includes(key))) step = { type: 'letter', arg: { text: raw.letter.lines.join('\n'), greeting: raw.letter.greeting || '', from: raw.letter.throne ? '' : raw.letter.signature || '', throne: !!raw.letter.throne } };
+        else if (raw.music !== undefined) { const m = raw.music; if (m === null) step = { type: 'music', arg: { mode: 'default' } }; else if (typeof m === 'string' || Array.isArray(m)) step = { type: 'music', arg: { mode: 'set', calm: [].concat(m).join(', '), battle: '', battleOff: false } }; else if (m && typeof m === 'object' && Object.keys(m).every(key => key === 'calm' || key === 'battle')) step = { type: 'music', arg: { mode: 'set', calm: [].concat(m.calm || []).join(', '), battle: m.battle === false ? '' : [].concat(m.battle || []).join(', '), battleOff: m.battle === false } }; }
+        else if (raw.give && typeof raw.give === 'object' && Object.keys(raw.give).length === 1) { const [res, n] = Object.entries(raw.give)[0]; step = { type: 'give', arg: { res, n } }; }
+        else if (typeof raw.weather === 'string') step = { type: 'weather', arg: raw.weather };
+        else if (['tornado', 'super', 'meteors'].some(key => +raw[key] > 0)) { const key = ['tornado', 'super', 'meteors'].find(k => +raw[k] > 0); step = { type: key, arg: +raw[key], ...(raw.where !== undefined ? { where: targetIn(raw.where) } : {}) }; }
+        else if (raw.ground && raw.ground.at !== undefined && ['grass', 'dirt', 'sand'].includes(raw.ground.to)) step = { type: 'ground', arg: { at: targetIn(raw.ground.at), radius: raw.ground.radius || 0, share: raw.ground.share ?? 100, to: raw.ground.to } };
+        else if (raw.terrain && raw.terrain.at !== undefined) step = { type: 'terrain', arg: { at: targetIn(raw.terrain.at), radius: raw.terrain.radius || 0, share: raw.terrain.share ?? 100, to: raw.terrain.to || '', amount: raw.terrain.amount ?? '' } };
+        else if (raw.scenery && raw.scenery.at !== undefined && (raw.scenery.add || raw.scenery.remove)) step = { type: 'scenery', arg: { at: targetIn(raw.scenery.at), radius: raw.scenery.radius || 0, share: raw.scenery.share ?? 100, mode: raw.scenery.add ? 'add' : 'remove', type: raw.scenery.add || (raw.scenery.remove === 'all' ? '' : raw.scenery.remove), layer: raw.scenery.layer ?? '' } };
         if (!step) return null;
         if (raw.together) step.together = true;
         if (raw.otherwise) { const alt = raw.otherwise.map(stepOf); if (alt.some(x => !x)) return null; step.otherwise = alt; }
@@ -161,7 +181,7 @@
       } else if (event.letter) extra.letter = event.letter;
       for (const key of Object.keys(event)) if (!HANDLED.includes(key)) extra[key] = event[key];
       if (Object.keys(extra).length) sc.extra = extra;
-      return sc;
+      return migrateFx(sc);
     }
 
     // ---------------------------------------------------------------- spara och ladda (webbläsaren, per kapitel)
@@ -174,6 +194,7 @@
       let saved = null;
       try { saved = JSON.parse(localStorage.getItem(storeKey(number)) || 'null'); } catch (error) { /* tomt */ }
       if (saved && Array.isArray(saved.scenes)) { scenes = saved.scenes.filter(sc => sc && typeof sc === 'object'); importedIds = Array.isArray(saved.imported) ? saved.imported : []; }
+      scenes.forEach(migrateFx);
       scenes.forEach((sc, index) => { sc.id = sc.id || 'scen' + (index + 1); sc.name = sc.name || sc.id; for (const key of ['conds', 'cast', 'steps']) if (!Array.isArray(sc[key])) sc[key] = []; });
       const keyOf = event => event.id || 'h' + JSON.stringify(event).split('').reduce((hash, ch) => (hash * 31 + ch.charCodeAt(0)) | 0, 7);   // händelser utan id känns igen på sitt innehåll
       const pull = (event, index, key) => {
@@ -189,7 +210,7 @@
       const events = chapter()?.events || [];
       // kapitlets eget brev (chapter.letter) blir en vanlig scen, så att du kan välja när det inträffar
       const own = chapter()?.letter, ownJson = own && JSON.stringify(own.lines);
-      if (own && Array.isArray(own.lines) && !events.some(event => event.letter && JSON.stringify(event.letter.lines) === ownJson)) pull({ id: 'letter', name: 'Brev', letter: own }, -1, 'chapter-letter');
+      if (own && Array.isArray(own.lines) && !events.some(event => [event.letter, ...(Array.isArray(event.scene) ? event.scene.map(step => step.letter) : [])].some(letter => letter && JSON.stringify(letter.lines) === ownJson))) pull({ id: 'letter', name: 'Brev', letter: own }, -1, 'chapter-letter');
       events.forEach((event, index) => pull(event, index, keyOf(event)));
     };
 
@@ -306,7 +327,11 @@
     const UNIT = '__unit';   // "en enhet i spelet" i stället för en person i scenen
     const flatSteps = steps => steps.flatMap(s => [s, ...flatSteps(s.otherwise || [])]);
     const PICK_OPT = [['trigger', 'den som utlöste händelsen'], ['nearest', 'den som är närmast basen'], ['random', 'en slumpad']];
-    const NO_WHO = ['dialog', 'wait', 'camera'];   // dessa hör till scenen, inte till en person
+    const TARGETED = ['walk', 'appear', 'camera', 'ground', 'terrain', 'scenery'], STORMS = ['tornado', 'super', 'meteors'];   // steg med en plats; stormarnas plats är valfri
+    const NO_WHO = ['dialog', 'wait', 'camera', 'letter', 'music', 'give', 'weather', 'ground', 'terrain', 'scenery', ...STORMS];   // dessa hör till scenen, inte till en person
+    const groundName = id => ({ grass: 'gräs', dirt: 'jord', sand: 'sand' })[id] || id;
+    const terrainName = id => Config.terrain[id]?.name || id;
+    const areaText = a => `vid ${targetText(a.at)}${+a.radius > 0 ? ', radie ' + a.radius : ''}${a.share !== undefined && +a.share < 100 ? ', ' + a.share + ' % av rutorna' : ''}`;
     const stepLabel = (sc, s) => {
       const who = s.who === UNIT ? `${(PICK_OPT.find(o => o[0] === (s.pick || 'trigger')) || [])[1]}${s.side ? ', ' + SIDE_OPT.find(o => o[0] === s.side)[1] : ''}${s.kind ? ', ' + KIND_OPT.find(o => o[0] === s.kind)[1] : ''}` : s.who || '?';
       switch (s.type) {
@@ -318,39 +343,36 @@
         case 'leave': return `${who} lämnar scenen (går mot dimman)`;
         case 'vanish': return `${who} försvinner`;
         case 'wait': return `Väntar ${s.arg} s`;
+        case 'letter': return `Brev: “${String(s.arg.text).split('\n')[0].slice(0, 50)}…” (scenen väntar tills det är läst)`;
+        case 'music': return s.arg.mode === 'default' ? 'Tillbaka till standardmusiken' : `Byter musik${s.arg.calm ? ' (lugn: ' + s.arg.calm + ')' : ''}${s.arg.battleOff ? ', ingen stridsmusik' : s.arg.battle ? ' (strid: ' + s.arg.battle + ')' : ''}`;
+        case 'give': return `Spelaren får ${s.arg.n} ${s.arg.res}`;
+        case 'weather': return `Vädret blir ${s.arg}`;
+        case 'tornado': return `Tornado, radie ${s.arg}, ${s.where === undefined ? 'som vanligt (nära basen)' : 'vid ' + targetText(s.where)}`;
+        case 'super': return `Superstorm, radie ${s.arg}, ${s.where === undefined ? 'som vanligt (nära basen)' : 'vid ' + targetText(s.where)}`;
+        case 'meteors': return `Meteorer i ${s.arg} s, ${s.where === undefined ? 'som vanligt (nära basen)' : 'vid ' + targetText(s.where)}`;
+        case 'ground': return `Marken blir ${groundName(s.arg.to)} ${areaText(s.arg)}`;
+        case 'terrain': return `${s.arg.to ? (s.arg.to === 'grass' ? 'Tar bort det som ligger på marken' : 'Lägger ' + terrainName(s.arg.to)) : 'Ändrar mängden'}${s.arg.amount !== '' && s.arg.amount !== undefined ? ' (mängd ' + s.arg.amount + ')' : ''} ${areaText(s.arg)}`;
+        case 'scenery': return `${s.arg.mode === 'add' ? 'Lägger kulissen ' + s.arg.type : 'Tar bort ' + (s.arg.type ? 'kulissen ' + s.arg.type : 'alla kulisser')} ${areaText(s.arg)}`;
       }
       return s.type;
     };
     // Det en scen gör utöver stegen: byter musik, ger varor, ändrar vädret. Fälten ligger på scenen (musik, musikLugn, ...) och blir händelsens music, give, weather, tornado, super, meteors och whileFog.
     const listOf = text => String(text || '').split(',').map(item => item.trim()).filter(Boolean);
     const oneOrList = list => list.length === 1 ? list[0] : list;
-    function fxOf(sc) {
-      const out = {};
-      if (sc.music === 'default') out.music = null;
-      else if (sc.music === 'set') {
-        const calm = listOf(sc.musicCalm), battle = listOf(sc.musicBattle), spec = {};
-        if (calm.length) spec.calm = oneOrList(calm);
-        if (sc.battleOff) spec.battle = false; else if (battle.length) spec.battle = oneOrList(battle);
-        if (spec.calm && Object.keys(spec).length === 1) out.music = spec.calm; else if (Object.keys(spec).length) out.music = spec;
-      }
-      const letterLines = String(sc.letterText || '').split('\n').map(line => line.trim()).filter(Boolean);
-      if (letterLines.length) {
-        out.letter = { lines: letterLines };
-        if (sc.letterGreeting) out.letter.greeting = sc.letterGreeting;
-        if (sc.letterThrone) out.letter.throne = true; else if (sc.letterFrom) out.letter.signature = sc.letterFrom;
-      }
-      if (sc.give?.length) { out.give = {}; for (const { res, n } of sc.give) out.give[res] = (out.give[res] || 0) + (+n || 0); }
-      if (sc.weather) out.weather = sc.weather;
-      for (const key of ['tornado', 'super', 'meteors']) if (+sc[key] > 0) out[key] = +sc[key];
-      if (sc.where !== undefined && ['tornado', 'super', 'meteors'].some(key => +sc[key] > 0)) out.where = sc.where === TRIGGER ? { trigger: true } : sc.where;
-      if (sc.whileFog) out.whileFog = true;
-      return out;
-    }
+    function fxOf(sc) { return sc.whileFog ? { whileFog: true } : {}; }
     const musicTracks = () => [...new Set([...[].concat(Config.settings.audio?.music || [], Config.settings.audio?.battleMusic || [], Config.settings.audio?.disasterMusic || [], Config.settings.audio?.tornadoMusic || []), ...[...JSON.stringify(Config.story || {}).matchAll(/"(music\/[^"]+)"/g)].map(m => m[1])])];
+    const musicSpec = arg => {
+      if (arg.mode === 'default') return null;
+      const calm = listOf(arg.calm), battle = listOf(arg.battle), spec = {};
+      if (calm.length) spec.calm = oneOrList(calm);
+      if (arg.battleOff) spec.battle = false; else if (battle.length) spec.battle = oneOrList(battle);
+      return spec.calm && Object.keys(spec).length === 1 ? spec.calm : spec;
+    };
+    const areaOf = a => ({ at: a.at === TRIGGER ? { trigger: true } : a.at, ...(+a.radius > 0 ? { radius: Math.floor(+a.radius) } : {}), ...(a.share !== undefined && +a.share < 100 ? { share: Math.max(1, Math.floor(+a.share)) } : {}) });
     // En scen blir en händelse med scene: [steg]. Motorn kör stegen i ordning; dialogerna hör till scenen, så de spelas även när personen försvunnit.
     function compileScene(sc, withConds = true) {
       const out = compile({ id: sc.id, conds: withConds ? sc.conds : [], effects: [], extra: withConds ? sc.extra : null });
-      Object.assign(out, fxOf(sc));   // musik, varor, väder: händelsens egna fält (motorn läser dem för alla händelser)
+      Object.assign(out, fxOf(sc));   // whileFog
       const cast = new Map(sc.cast.map(c => [c.id, c]));
       const specOf = (c, at) => { const spec = { id: c.id, image: c.image }; if (c.race) spec.race = c.race; if (c.count > 1) spec.count = c.count; spec.at = at; return spec; };
       out.spawn = sc.cast.filter(c => c.at).map(c => ({ ...specOf(c, c.at), script: [] }));
@@ -367,6 +389,14 @@
           case 'leave': step = { who, leave: true }; break;
           case 'vanish': step = { who, vanish: true }; break;
           case 'wait': step = { wait: +s.arg || 1 }; break;
+          case 'letter': { const lines = String(s.arg.text || '').split('\n').map(line => line.trim()).filter(Boolean); step = { letter: { lines } }; if (s.arg.greeting) step.letter.greeting = s.arg.greeting; if (s.arg.throne) step.letter.throne = true; else if (s.arg.from) step.letter.signature = s.arg.from; break; }
+          case 'music': step = { music: musicSpec(s.arg) }; break;
+          case 'give': step = { give: { [s.arg.res]: Math.max(1, Math.floor(+s.arg.n) || 1) } }; break;
+          case 'weather': step = { weather: s.arg }; break;
+          case 'tornado': case 'super': case 'meteors': step = { [s.type]: +s.arg || 1 }; if (s.where !== undefined) step.where = s.where === TRIGGER ? { trigger: true } : s.where; break;
+          case 'ground': step = { ground: { ...areaOf(s.arg), to: s.arg.to } }; break;
+          case 'terrain': step = { terrain: { ...areaOf(s.arg), ...(s.arg.to ? { to: s.arg.to } : {}), ...(s.arg.amount !== '' && s.arg.amount !== undefined ? { amount: Math.max(0, Math.floor(+s.arg.amount) || 0) } : {}) } }; break;
+          case 'scenery': step = { scenery: { ...areaOf(s.arg), ...(s.arg.mode === 'add' ? { add: s.arg.type, ...(s.arg.layer !== '' && s.arg.layer !== undefined ? { layer: +s.arg.layer || 0 } : {}) } : { remove: s.arg.type || 'all' }) } }; break;
         }
         if (s.together) step.together = true;
         if (s.otherwise?.length) step.otherwise = s.otherwise.map(compileStep);
@@ -381,9 +411,8 @@
       const out = [], tag = `Scenen "${sc.name}"`, ids = new Set(sc.cast.map(c => c.id));
       if (!sc.cast.length && flatSteps(sc.steps).some(s => !NO_WHO.includes(s.type) && s.who !== UNIT)) out.push({ text: `${tag} har ingen med.` });
       if (sc.where === TRIGGER && !hasTrigger(sc)) out.push({ text: `${tag}: vädret ska slå till där det som utlöste händelsen hände, men scenen startar inte av en händelse eller något spelaren ser.` });
-      if (!sc.steps.length && !Object.keys(fxOf(sc)).length) out.push({ text: `${tag} gör ingenting: lägg till steg, musik, varor eller väder.` });
-      if (sc.music === 'set' && !listOf(sc.musicCalm).length && !listOf(sc.musicBattle).length && !sc.battleOff) out.push({ text: `${tag}: skriv en musikfil, eller välj något annat än "Byt musik".` });
-      if (!hasTrigger(sc) && flatSteps(sc.steps).some(s => s.arg === TRIGGER || (s.who === UNIT && (s.pick || 'trigger') === 'trigger'))) out.push({ text: `${tag} använder "det som utlöste händelsen", men startar inte av en händelse eller något spelaren ser. Lägg till ett villkor under "Händelser i spelet" eller "Syn".` });
+      if (!sc.steps.length) out.push({ text: `${tag} gör ingenting: lägg till ett steg.` });
+      if (!hasTrigger(sc) && flatSteps(sc.steps).some(s => s.arg === TRIGGER || s.arg?.at === TRIGGER || s.where === TRIGGER || (s.who === UNIT && (s.pick || 'trigger') === 'trigger'))) out.push({ text: `${tag} använder "det som utlöste händelsen", men startar inte av en händelse eller något spelaren ser. Lägg till ett villkor under "Händelser i spelet" eller "Syn".` });
       for (const cond of sc.conds) if (cond.kind === 'sceneDone' && !scenes.some(other => other !== sc && other.id === cond.v.sc)) out.push({ text: `${tag} väntar på en scen som inte finns längre.` });
       const here = new Set(sc.cast.filter(c => c.at).map(c => c.id));
       let busy = new Set();   // personer som redan gör något i en grupp av steg som börjar samtidigt
@@ -398,43 +427,49 @@
       });
       return out;
     }
-    let castDraft = { id: '', image: defaultImage, race: '', count: 1 }, stepDraft = { who: '', type: 'walk', target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineWho: speakerIds[0] || 'narrator', lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '', together: false, parent: null, pick: 'trigger', side: '', kind: '', follow: false };
-    const resetStep = () => { if (stepDraft.who === UNIT) stepDraft.who = ''; stepDraft = { ...stepDraft, target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '', together: false, pick: 'trigger', side: '', kind: '', follow: false }; };
+    const sceneryIds = Object.keys(Config.story.sceneryTypes || {}), weatherIds = Object.keys(Config.settings.weather?.chances || {}), terrainIds = Object.keys(Config.terrain).filter(id => !['water', 'dirt', 'lava'].includes(id));
+    const FXD = () => ({ letterText: '', letterGreeting: '', letterFrom: '', letterThrone: false, musicMode: 'set', musicCalm: '', musicBattle: '', battleOff: false, giveRes: resourceIds[0] || 'wood', giveN: 10, weatherType: weatherIds[0] || '', fxNum: '', radius: 0, share: 100, groundTo: 'sand', terrainTo: '', amount: '', scenMode: 'add', scenType: sceneryIds[0] || '', scenLayer: '' });
+    let castDraft = { id: '', image: defaultImage, race: '', count: 1 }, stepDraft = { who: '', type: 'walk', target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineWho: speakerIds[0] || 'narrator', lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '', together: false, parent: null, pick: 'trigger', side: '', kind: '', follow: false, ...FXD() };
+    const resetStep = () => { if (stepDraft.who === UNIT) stepDraft.who = ''; stepDraft = { ...stepDraft, target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '', together: false, pick: 'trigger', side: '', kind: '', follow: false, ...FXD() }; };
     const moodIds = () => Object.keys(Config.story.voice?.moods || { calm: 1 });
     const moodOfLine = text => { const m = /^\[(\w+)\]([\s\S]*)$/.exec(text); return m ? { mood: m[1], text: m[2] } : { mood: 'calm', text }; };
     const lineText = ln => ln.mood && ln.mood !== 'calm' ? `[${ln.mood}]${ln.text}` : ln.text;
     const blankCast = () => ({ id: '', image: castDraft.image, race: castDraft.race, count: 1 });
     const countOf = () => Math.max(1, Math.min(100, Math.floor(+castDraft.count) || 1));
-    let sceneCond = 'time'; const fxDraft = { res: resourceIds[0] || 'wood', n: 10, kind: '' };
+    let sceneCond = 'time'; 
 
-    // "Vad händer?": allt som sker direkt när scenen startar (brev, musik, väder, varor ...) väljs från samma lista; personernas steg kommer därefter.
-    const FX = [['letter', '✉ Brev'], ['music', '♪ Musik'], ['weather', '☁ Väder'], ['tornado', '🌪 Tornado'], ['super', '⚡ Superstorm'], ['meteors', '☄ Meteorer'], ['give', '📦 Ge varor']];
-    const fxHas = (sc, kind) => (sc.fxOpen || []).includes(kind) || (kind === 'letter' ? !!String(sc.letterText || '').trim() : kind === 'give' ? !!sc.give?.length : kind === 'music' ? !!sc.music : kind === 'weather' ? !!sc.weather : +sc[kind] > 0);
-    function fxHtml(sc) {
-      const active = FX.filter(([kind]) => fxHas(sc, kind)), free = FX.filter(([kind]) => !fxHas(sc, kind));
-      const card = (kind, title, body) => `<div class="card"><div class="row"><b>${title}</b><span style="flex:1"></span><button class="small danger" data-act="fxDel" data-k="${kind}" title="Ta bort">✕</button></div>${body}</div>`;
-      const cards = {
-        letter: () => card('letter', '✉ Brev', `<div class="hint" style="margin:0">Visas när scenen startar, före dialogen.</div>
-          <div class="row">Hälsning <input data-bind="scene.letterGreeting" value="${esc(sc.letterGreeting || '')}" placeholder="valfritt, t.ex. Reeve," style="flex:1"></div>
-          <div class="row"><textarea data-bind="scene.letterText" style="height:80px;font:12px sans-serif;flex:1" placeholder="Brevets text. En rad = ett stycke. Tomt = inget brev.">${esc(sc.letterText || '')}</textarea></div>
-          <div class="row">Underskrift <input data-bind="scene.letterFrom" value="${esc(sc.letterFrom || '')}" placeholder="t.ex. In service of the throne" style="flex:1"${sc.letterThrone ? ' disabled' : ''}> <label><input type="checkbox" data-bind="scene.letterThrone"${sc.letterThrone ? ' checked' : ''}> från tronen</label></div>`),
-        music: () => card('music', '♪ Musik', `<div class="row">${select('', [['', 'ingen ändring'], ['set', 'byt musik'], ['default', 'tillbaka till standardmusiken']], sc.music || '', 'scene.music')}</div>
-          ${sc.music === 'set' ? `<div class="row">Lugn <input data-bind="scene.musicCalm" list="seTracks" value="${esc(sc.musicCalm || '')}" placeholder="music/fil.mp3 (flera: komma)" style="flex:1"></div>
-          <div class="row">Strid <input data-bind="scene.musicBattle" list="seTracks" value="${esc(sc.musicBattle || '')}" placeholder="music/fil.mp3"${sc.battleOff ? ' disabled' : ''} style="flex:1"> <label><input type="checkbox" data-bind="scene.battleOff"${sc.battleOff ? ' checked' : ''}> ingen stridsmusik</label></div>
+    const STEP_TYPES = [
+      ['Personer', [['walk', 'går till…'], ['appear', 'dyker upp vid…'], ['say', 'säger (pratbubbla)'], ['leave', 'lämnar scenen (går mot dimman)'], ['vanish', 'försvinner direkt']]],
+      ['Berättelse och kamera', [['dialog', 'DIALOG (dialogruta, flera personer)'], ['letter', 'BREV'], ['camera', 'KAMERAN flyttar till…'], ['wait', 'VÄNTA (sekunder)']]],
+      ['Ljud och väder', [['music', 'MUSIK byts'], ['weather', 'VÄDER ändras'], ['tornado', 'TORNADO'], ['super', 'SUPERSTORM'], ['meteors', 'METEORER']]],
+      ['Världen', [['ground', 'MARKEN ändras (gräs, jord, sand)'], ['terrain', 'TERRÄNG / RESURS ändras (träd, malm, berg ...)'], ['scenery', 'KULISSER läggs till / tas bort']]],
+      ['Spelaren', [['give', 'SPELAREN får varor']]],
+    ];
+    const typeSelect = t => `<select data-bind="stepDraft.type">${STEP_TYPES.map(([group, options]) => `<optgroup label="${group}">${options.map(([v, l]) => `<option value="${v}"${v === t ? ' selected' : ''}>${l}</option>`).join('')}</optgroup>`).join('')}</select>`;
+    function fxForm(t) {
+      const d = stepDraft, num = (key, width = 70, extra = '') => `<input type="number" min="0" data-bind="stepDraft.${key}" value="${esc(d[key])}" style="width:${width}px"${extra}>`;
+      const area = `<div class="row">Radie ${num('radius', 60)} rutor <span class="hint">0 = en ruta</span> &nbsp; Andel ${num('share', 60)} % <span class="hint">av rutorna</span></div>`;
+      switch (t) {
+        case 'letter': return `<div class="row">Hälsning <input data-bind="stepDraft.letterGreeting" value="${esc(d.letterGreeting)}" placeholder="valfritt, t.ex. Reeve," style="flex:1"></div>
+          <div class="row"><textarea data-bind="stepDraft.letterText" style="height:80px;font:12px sans-serif;flex:1" placeholder="Brevets text. En rad = ett stycke.">${esc(d.letterText)}</textarea></div>
+          <div class="row">Underskrift <input data-bind="stepDraft.letterFrom" value="${esc(d.letterFrom)}" placeholder="t.ex. In service of the throne" style="flex:1"${d.letterThrone ? ' disabled' : ''}> <label><input type="checkbox" data-bind="stepDraft.letterThrone"${d.letterThrone ? ' checked' : ''}> från tronen</label></div>
+          <div class="hint" style="margin:0">Scenen väntar tills brevet är läst.</div>`;
+        case 'music': return `<div class="row">${select('', [['set', 'byt musik'], ['default', 'tillbaka till standardmusiken']], d.musicMode, 'stepDraft.musicMode')}</div>
+          ${d.musicMode === 'set' ? `<div class="row">Lugn <input data-bind="stepDraft.musicCalm" list="seTracks" value="${esc(d.musicCalm)}" placeholder="music/fil.mp3 (flera: komma)" style="flex:1"></div>
+          <div class="row">Strid <input data-bind="stepDraft.musicBattle" list="seTracks" value="${esc(d.musicBattle)}" placeholder="music/fil.mp3"${d.battleOff ? ' disabled' : ''} style="flex:1"> <label><input type="checkbox" data-bind="stepDraft.battleOff"${d.battleOff ? ' checked' : ''}> ingen stridsmusik</label></div>
           <datalist id="seTracks">${musicTracks().map(track => `<option value="${esc(track)}">`).join('')}</datalist>
-          <p class="hint" style="margin:0">Ett tomt läge behåller den vanliga musiken. Musiken gäller tills en senare scen byter den.</p>` : ''}`),
-        weather: () => card('weather', '☁ Väder', `<div class="row">${select('', [['', 'ingen ändring'], ...Object.keys(Config.settings.weather?.chances || {}).map(x => [x, x])], sc.weather || '', 'scene.weather')}</div>`),
-        tornado: () => card('tornado', '🌪 Tornado', `<div class="row">Radie <input type="number" min="0" data-bind="scene.tornado" value="${esc(sc.tornado || '')}" style="width:60px"> <span class="hint">tomt = ingen</span></div>`),
-        super: () => card('super', '⚡ Superstorm', `<div class="row">Radie <input type="number" min="0" data-bind="scene.super" value="${esc(sc.super || '')}" style="width:60px"> <span class="hint">tomt = ingen</span></div>`),
-        meteors: () => card('meteors', '☄ Meteorer', `<div class="row">Under <input type="number" min="0" data-bind="scene.meteors" value="${esc(sc.meteors || '')}" style="width:60px"> sekunder <span class="hint">tomt = ingen</span></div>`),
-        give: () => card('give', '📦 Ge varor', `<div class="hint" style="margin:0">Läggs i huvudlagret.</div>
-          ${(sc.give || []).map((g, i) => `<div class="step"><span>${esc(g.n)} ${esc(g.res)}</span><button class="small danger" data-act="giveDel" data-i="${i}">✕</button></div>`).join('')}
-          <div class="row">${select('', resourceIds, fxDraft.res, 'fxDraft.res')} <input type="number" min="1" data-bind="fxDraft.n" value="${esc(fxDraft.n)}" style="width:70px"> <button data-act="giveAdd">Lägg till</button></div>`)
-      };
-      const wherePicker = ['tornado', 'super', 'meteors'].some(key => +sc[key] > 0) ? `<div class="card"><div class="row">Plats för tornado, storm och meteorer ${select('', [['', 'som vanligt (nära basen)'], ...(sc.where !== undefined && !['hq', TRIGGER].includes(sc.where) && !buildingTypes.includes(sc.where) ? [['__keep', targetText(sc.where)]] : []), ['hq', 'basen'], ...(hasTrigger(sc) ? [[TRIGGER, '★ det som utlöste händelsen']] : []), ...buildingTypes.map(b => [b, 'byggnaden ' + b]), ['__map', 'en plats på kartan…']], sc.where === undefined ? '' : Array.isArray(sc.where) ? '__keep' : sc.where, 'fxDraft.where')}</div></div>` : '';
-      return `<h5>Direkt när scenen startar</h5>
-        ${active.length ? active.map(([kind]) => cards[kind]()).join('') + wherePicker : '<p class="hint">Inget än. Lägg till ett brev, byt musik, ändra vädret eller ge spelaren varor:</p>'}
-        ${free.length ? `<div class="row">${select('', [['', '+ Lägg till…'], ...free], '', 'fxDraft.kind')}</div>` : ''}`;
+          <div class="hint" style="margin:0">Ett tomt läge behåller den vanliga musiken. Musiken gäller tills ett senare steg byter den.</div>` : ''}`;
+        case 'give': return `<div class="row">${select('', resourceIds, d.giveRes, 'stepDraft.giveRes')} ${num('giveN', 70, ' min="1"')} <span class="hint">läggs i huvudlagret</span></div>`;
+        case 'weather': return `<div class="row">${select('', weatherIds, d.weatherType, 'stepDraft.weatherType')}</div>`;
+        case 'tornado': case 'super': return `<div class="row">Radie ${num('fxNum', 60)}</div>`;
+        case 'meteors': return `<div class="row">Under ${num('fxNum', 60)} sekunder</div>`;
+        case 'ground': return `${area}<div class="row">Blir ${select('', [['grass', 'gräs'], ['dirt', 'jord'], ['sand', 'sand']], d.groundTo, 'stepDraft.groundTo')} <span class="hint">vatten rörs inte</span></div>`;
+        case 'terrain': return `${area}<div class="row">Blir ${select('', [['', 'samma (ändra bara mängden)'], ['grass', 'ingenting / gräs (tar bort)'], ...terrainIds.filter(id => id !== 'grass').map(id => [id, terrainName(id)])], d.terrainTo, 'stepDraft.terrainTo')}</div>
+          <div class="row">Mängd ${num('amount', 70)} <span class="hint">tomt = full mängd; 0 = slut (blir gräs)</span></div>
+          <div class="hint" style="margin:0">Som när en samlare tömmer en ruta eller en formel skapar en fyndighet. Vatten och rutor med byggnader rörs inte.</div>`;
+        case 'scenery': return `${area}<div class="row">${select('', [['add', 'lägg till'], ['remove', 'ta bort']], d.scenMode, 'stepDraft.scenMode')} ${select('', [...(d.scenMode === 'remove' ? [['', 'alla kulisser']] : []), ...sceneryIds.map(id => [id, id])], d.scenType, 'stepDraft.scenType')}${d.scenMode === 'add' ? ` lager ${num('scenLayer', 50)}` : ''}</div>`;
+      }
+      return '';
     }
     function viewScene() {
       const sc = sceneNow();
@@ -449,7 +484,7 @@
       if (!castIds.includes(stepDraft.who) && !(stepDraft.who === UNIT && t === 'say')) stepDraft.who = castIds[0] || '';
       const unitWho = stepDraft.who === UNIT;
       const stepRow = (s, i, p) => `<div class="step"${p !== undefined ? ' style="margin-left:18px;border-left:2px solid #c80"' : ''}><b>${p !== undefined ? '↳' : i + 1 + '.'}</b><span${stepDraft.editing === i && (stepDraft.parent === null ? p === undefined : stepDraft.parent === p) ? ' class="ok"' : ''}>${s.together ? '<i class="hint">samtidigt: </i>' : ''}${esc(stepLabel(sc, s))}</span><button class="small" data-act="sEdit" data-i="${i}"${p !== undefined ? ` data-p="${p}"` : ''} title="Redigera steget">✎</button><button class="small" data-act="sUp" data-i="${i}"${p !== undefined ? ` data-p="${p}"` : ''}>↑</button><button class="small" data-act="sDown" data-i="${i}"${p !== undefined ? ` data-p="${p}"` : ''}>↓</button><button class="small danger" data-act="sDel" data-i="${i}"${p !== undefined ? ` data-p="${p}"` : ''}>✕</button></div>`;
-      const needTarget = t === 'walk' || t === 'appear' || t === 'camera', needWho = !NO_WHO.includes(t);
+      const needTarget = TARGETED.includes(t) || STORMS.includes(t), needWho = !NO_WHO.includes(t);
       return `<div class="row">${select('', scenes.map((s, i) => [i, s.name]), cur, 'sceneIndex')}<button class="small" data-act="newScene">+ Ny</button><button class="small danger" data-act="deleteScene" title="Radera scenen">✕</button></div>
         <div class="row">Namn <input data-bind="scene.name" value="${esc(sc.name)}" style="flex:1"></div>
         <h4>1. När startar scenen?</h4>
@@ -458,17 +493,16 @@
           <div class="row">${cond.f.map(([, type, hint, opts], i) => field(type, 'sc' + i, hint, opts)).join(' ')}</div><div class="row"><button data-act="sceneCondAdd">Lägg till</button></div></div>
         ${sc.conds.some(c => c.kind.startsWith('on')) ? `<div class="row"><label><input type="checkbox" data-bind="scene.repeat"${sc.repeat ? ' checked' : ''}> Kan hända flera gånger</label>${sc.repeat ? ` vänta <input type="number" min="1" data-bind="scene.cooldown" value="${esc(sc.cooldown ?? 30)}" style="width:60px"> s mellan gångerna` : ' <span class="hint">(annars bara första gången)</span>'}</div>` : ''}
         <div class="row"><label><input type="checkbox" data-bind="scene.whileFog"${sc.whileFog ? ' checked' : ''}> Hoppa över scenen om dimman redan har lyft (Eye of Shades borta)</label></div>
-        <h4>2. Vad händer?</h4>
-        ${fxHtml(sc)}
-        <h5>Personer i scenen</h5>
+        <h4>2. Vilka är med?</h4>
         ${sc.cast.length ? sc.cast.map((c, i) => `<div class="card"><div class="row"><img class="pv" src="${esc(imageSrc(c.image, c.race))}" onerror="this.style.display='none'"><b>${esc(c.id)}${c.count > 1 ? ' ×' + c.count : ''}</b><span class="hint">${c.at ? 'finns från början, vid ruta ' + c.at.join(', ') : 'dyker upp senare (i ett steg)'}</span></div><div class="row"><button class="small" data-act="castMove" data-i="${i}">${c.at ? 'Flytta på kartan' : 'Placera från början'}</button><button class="small danger" data-act="castDel" data-i="${i}">Ta bort</button></div></div>`).join('') : '<p class="hint">Ingen än.</p>'}
         <div class="card"><div class="row">Antal <input type="number" min="1" max="100" data-bind="castDraft.count" value="${esc(castDraft.count)}" style="width:70px"> <span class="hint">fler än 1 = en grupp som går i led</span></div><div class="row">Ny person <select data-bind="castDraft.image">${chars.length ? `<optgroup label="Karaktärer">${chars.map(([path, race]) => `<option value="${esc(path)}"${castDraft.image === path ? ' selected' : ''}>${esc(nameOf(path))}</option>`).join('')}</optgroup>` : ''}<optgroup label="Enheter">${images.map(item => `<option value="${esc(item.path)}"${castDraft.image === item.path ? ' selected' : ''}>${esc(item.label)}</option>`).join('')}</optgroup></select></div>
           <div class="row"><button class="primary" data-act="castAdd">Finns från början (klicka på kartan)</button></div><div class="row"><button data-act="castLater">Dyker upp senare</button></div></div>
-        <h5>Händelseförlopp: steg för steg (uppifrån och ned)</h5>
+        <h4>3. Vad händer? (uppifrån och ned)</h4>
         ${sc.steps.length ? sc.steps.map((s, i) => stepRow(s, i) + (s.otherwise || []).map((alt, j) => stepRow(alt, j, i)).join('') + `<div style="margin-left:18px"><button class="small" data-act="fsOpen" data-i="${i}" title="Vad ska hända i stället för resten av scenen om det här steget inte går att göra (t.ex. byggnaden finns inte eller ingen enhet hittas)?">+ Om det inte går…</button></div>`).join('') : '<p class="hint">Inga steg än. Allt som står här händer efter varandra. En dialog tillhör scenen och spelas även om personerna försvunnit.</p>'}
-        <div class="card">${inFs ? `<div class="banner"><span>Failsafe för steg ${stepDraft.parent + 1}: om steget inte går att göra (t.ex. byggnaden finns inte) händer det här i stället för resten av scenen.</span><button data-act="fsDone">Klar</button></div>` : ''}<div class="row">${needWho ? select('', whoOpts, stepDraft.who, 'stepDraft.who') : ''} ${select('', unitWho ? [['say', 'säger (pratbubbla)']] : [['walk', 'går till…'], ['appear', 'dyker upp vid…'], ['say', 'säger (pratbubbla)'], ['leave', 'lämnar scenen (går mot dimman)'], ['vanish', 'försvinner direkt'], ['camera', 'KAMERAN flyttar till…'], ['dialog', 'DIALOG (dialogruta, flera personer)'], ['wait', 'VÄNTA (sekunder)']], t, 'stepDraft.type')}</div>
+        <div class="card">${inFs ? `<div class="banner"><span>Failsafe för steg ${stepDraft.parent + 1}: om steget inte går att göra (t.ex. byggnaden finns inte) händer det här i stället för resten av scenen.</span><button data-act="fsDone">Klar</button></div>` : ''}<div class="row">${needWho ? select('', whoOpts, stepDraft.who, 'stepDraft.who') : ''} ${unitWho ? select('', [['say', 'säger (pratbubbla)']], t, 'stepDraft.type') : typeSelect(t)}</div>
           ${unitWho ? `<div class="row">${select('', PICK_OPT, stepDraft.pick, 'stepDraft.pick')}</div><div class="row">${select('', SIDE_OPT.map(([v, l]) => [v, v ? l : stepDraft.pick === 'trigger' ? 'samma sida som utlösaren' : 'vilken sida som helst']), stepDraft.side, 'stepDraft.side')} ${select('', KIND_OPT.map(([v, l]) => [v, v ? l : stepDraft.pick === 'trigger' ? 'samma sort som utlösaren' : 'vilken sort som helst']), stepDraft.kind, 'stepDraft.kind')}</div><div class="hint" style="margin:0">Bara enheter som spelaren ser. Hittas ingen går steget inte att göra – lägg då till en failsafe under steget.</div>` : ''}
-          ${needTarget ? `<div class="row">${select('', stepDraft.keepArg ? [['__keep', 'oförändrat: ' + targetText(stepDraft.keepArg)], ...targets] : targets, stepDraft.target, 'stepDraft.target')}</div>` : ''}
+          ${needTarget ? `<div class="row">${STORMS.includes(t) ? 'Plats ' : ''}${select('', [...(STORMS.includes(t) ? [['', 'som vanligt (nära basen)']] : []), ...(stepDraft.keepArg ? [['__keep', 'oförändrat: ' + targetText(stepDraft.keepArg)]] : []), ...targets], stepDraft.target, 'stepDraft.target')}</div>` : ''}
+          ${fxForm(t)}
           ${t === 'walk' && !unitWho ? `<div class="row"><label><input type="checkbox" data-bind="stepDraft.follow"${stepDraft.follow ? ' checked' : ''}> Kameran följer med medan hen går</label></div>` : ''}
           ${t === 'camera' ? `<div class="row">Zoom ${select('', [['', 'oförändrad'], [1, '1 (längst ut)'], [2, '2'], [3, '3'], [4, '4'], [5, '5 (längst in)']], stepDraft.zoom, 'stepDraft.zoom')}</div>` : ''}
           ${t === 'say' ? `<div class="row"><input data-bind="stepDraft.text" value="${esc(stepDraft.text)}" placeholder="vad sägs?" style="width:100%"></div><div class="hint" style="margin:0">Personen väntar tills bubblan är klar. Rösten följer med om hen har en.</div>` : ''}
@@ -538,7 +572,7 @@
       }
     }
     function renderPanel() {
-      const armText = st.arm ? (st.arm.kind === 'sceneStep' ? 'Klicka på kartan: vart? (klicka på en byggnad för att gå till den)' : st.arm.kind === 'condNear' ? 'Klicka på kartan: var ska det hända nära?' : st.arm.kind === 'fxWhere' ? 'Klicka på kartan: var ska det slå till?' : 'Klicka på kartan där personen ska stå när scenen börjar.') : '';
+      const armText = st.arm ? (st.arm.kind === 'sceneStep' ? 'Klicka på kartan: vart? (klicka på en byggnad för att gå till den)' : st.arm.kind === 'condNear' ? 'Klicka på kartan: var ska det hända nära?'  : 'Klicka på kartan där personen ska stå när scenen börjar.') : '';
       const scrollTop = panel.scrollTop;
       panel.innerHTML = `<div class="se-head"><b>Story-editor</b><span class="hint" style="margin:0">${chapter() ? `kapitel ${chapter().number}: ${esc(chapter().name || '')}` : '(ingen story pågår)'}</span>
           <label title="Fryser kapitlet medan du arbetar"><input type="checkbox" id="sePause"${C.Game.paused ? ' checked' : ''}> paus</label></div>
@@ -555,7 +589,7 @@
     // ---------------------------------------------------------------- inmatning i panelen
     const setPath = (path, value) => {
       const [root, key] = path.split('.');
-      if (root === 'sceneCond') sceneCond = value; else if (root === 'sceneIndex') cur = +value; else if (key === undefined) st[root] = value; else ({ castDraft, stepDraft, fxDraft, scene: sceneNow() || {} })[root][key] = value;
+      if (root === 'sceneCond') sceneCond = value; else if (root === 'sceneIndex') cur = +value; else if (key === undefined) st[root] = value; else ({ castDraft, stepDraft, scene: sceneNow() || {} })[root][key] = value;
     };
     panel.addEventListener('input', event => { const bind = event.target.dataset?.bind; if (bind && event.target.type !== 'radio' && event.target.tagName !== 'SELECT') setPath(bind, event.target.type === 'checkbox' ? event.target.checked : event.target.value);
       if (bind === 'scene.name') { const option = $('select[data-bind=sceneIndex]')?.selectedOptions[0]; const label = event.target.value || '(namnlös)'; if (option) option.textContent = label; persist(); }   // namnet syns direkt i scenlistan medan du skriver
@@ -575,10 +609,10 @@
         }
       }
       if (bind === 'stepDraft.target' && target.value === '__map') { actions.stepAdd(); return; }   // "en plats på kartan": väntar direkt på ett klick (utan att man behöver trycka Lägg till)
-      if (bind === 'fxDraft.kind') { const sc = sceneNow(); if (sc && target.value) { sc.fxOpen = [...(sc.fxOpen || []).filter(x => x !== target.value), target.value]; if (target.value === 'music') sc.music = 'set'; } fxDraft.kind = ''; render(); return; }
-      if (bind === 'fxDraft.where') { const sc = sceneNow(); if (sc) { if (target.value === '') delete sc.where; else if (target.value === '__map') st.arm = { kind: 'fxWhere' }; else if (target.value !== '__keep') sc.where = target.value; } render(); return; }
+      if (bind === 'stepDraft.type') { if (STORMS.includes(target.value) && stepDraft.target === 'hq') stepDraft.target = ''; else if (!STORMS.includes(target.value) && stepDraft.target === '') stepDraft.target = 'hq'; if (stepDraft.target === '__keep' && !stepDraft.keepArg) stepDraft.target = 'hq'; }
+      if (bind === 'stepDraft.scenMode') stepDraft.scenType = target.value === 'remove' ? '' : sceneryIds[0] || '';
       if (bind === 'castDraft.image') { castDraft.race = characters[target.value] === 'demon' ? 'demon' : ''; castDraft.id = uniqueId(nameOf(target.value).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); }
-      if (target.tagName === 'SELECT' || target.type === 'radio' || bind === 'scene.name' || bind === 'stepDraft.together' || bind === 'scene.repeat' || bind === 'scene.battleOff' || bind === 'scene.letterThrone' || ['scene.tornado', 'scene.super', 'scene.meteors'].includes(bind) || bind === 'beacon') render();
+      if (target.tagName === 'SELECT' || target.type === 'radio' || bind === 'scene.name' || bind === 'stepDraft.together' || bind === 'stepDraft.letterThrone' || bind === 'stepDraft.battleOff' || bind === 'scene.repeat' || bind === 'scene.battleOff' || bind === 'scene.letterThrone' || ['scene.tornado', 'scene.super', 'scene.meteors'].includes(bind) || bind === 'beacon') render();
     });
     panel.addEventListener('click', event => {
       const button = event.target.closest('[data-act]'); if (!button) return;
@@ -611,9 +645,6 @@
       newScene: () => { const n = scenes.length + 1; let id = 'scene' + n; while (scenes.some(sc => sc.id === id)) id += 'b'; scenes.push({ id, name: 'Scen ' + n, conds: [], cast: [], steps: [] }); cur = scenes.length - 1; render(); },
       deleteScene: () => { scenes.splice(cur, 1); cur = Math.max(0, cur - 1); render(); },
       sceneCondAdd: () => { const sc = sceneNow(), spec = COND[sceneCond], v = read(spec, 'sc'); if (spec.f.some(([name, type]) => type !== 'text' && type !== 'opt' && type !== 'near' && v[name] === '')) { notice('Fyll i alla fält.'); return; } if (v.near === '__map') { st.arm = { kind: 'condNear', cond: { kind: sceneCond, v } }; render(); return; } addCond(sc, { kind: sceneCond, v }); render(); },
-      fxDel: ({ k }) => { const sc = sceneNow(); if (!sc) return; const clear = { letter: ['letterText', 'letterGreeting', 'letterFrom', 'letterThrone'], music: ['music', 'musicCalm', 'musicBattle', 'battleOff'], weather: ['weather'], tornado: ['tornado'], super: ['super'], meteors: ['meteors'], give: ['give'] }[k] || []; for (const key of clear) delete sc[key]; sc.fxOpen = (sc.fxOpen || []).filter(x => x !== k); if (!['tornado', 'super', 'meteors'].some(key => +sc[key] > 0)) delete sc.where; render(); },
-      giveAdd: () => { const sc = sceneNow(); if (!sc || !(+fxDraft.n > 0)) { notice('Skriv ett antal.'); return; } (sc.give ||= []).push({ res: fxDraft.res, n: Math.floor(+fxDraft.n) }); render(); },
-      giveDel: ({ i }) => { const sc = sceneNow(); sc.give.splice(+i, 1); if (!sc.give.length) delete sc.give; render(); },
       sceneCondDel: ({ i }) => { sceneNow().conds.splice(+i, 1); render(); },
       castAdd: () => { st.arm = { kind: 'cast' }; if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); if (characters[castDraft.image]) castDraft.race = characters[castDraft.image] === 'demon' ? 'demon' : ''; render(); },
       castLater: () => { const sc = sceneNow(); if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); sc.cast.push({ id: castDraft.id, image: castDraft.image, race: characters[castDraft.image] === 'demon' ? 'demon' : '', count: countOf(), at: null }); stepDraft.who = stepDraft.who || castDraft.id; castDraft = blankCast(); render(); },
@@ -626,29 +657,49 @@
       fsDone: () => { resetStep(); stepDraft.parent = null; const sc = sceneNow(); for (const s of sc.steps) if (s.otherwise && !s.otherwise.length) delete s.otherwise; render(); },
       stepAdd: () => {
         const sc = sceneNow(), d = stepDraft, who = NO_WHO.includes(d.type) ? '' : d.who; if (!who && !NO_WHO.includes(d.type)) { notice('Lägg först till någon som är med i scenen.'); return; }
-        const list = d.parent === null ? sc.steps : sc.steps[d.parent].otherwise, step = { who, type: d.type };
-        if (who === UNIT) Object.assign(step, { pick: d.pick, side: d.side, kind: d.kind });
-        if (d.type === 'walk' || d.type === 'appear' || d.type === 'camera') {
-          if (d.type === 'camera' && d.zoom) step.zoom = +d.zoom;
-          if (d.target === '__map') { st.arm = { kind: 'sceneStep', who, type: d.type, edit: d.editing, zoom: step.zoom, together: d.together, follow: d.follow, parent: d.parent }; render(); return; }
-          step.arg = d.target === '__keep' ? d.keepArg : d.target;
+        const list = d.parent === null ? sc.steps : sc.steps[d.parent].otherwise;
+        const area = target => ({ at: target, radius: Math.max(0, Math.floor(+d.radius) || 0), share: Math.min(100, Math.max(1, Math.floor(+d.share) || 100)) });
+        const build = target => {   // själva steget; null = något saknas (ett meddelande är visat)
+          const step = { who, type: d.type };
+          if (who === UNIT) Object.assign(step, { pick: d.pick, side: d.side, kind: d.kind });
+          switch (d.type) {
+            case 'walk': case 'appear': case 'camera': step.arg = target; if (d.type === 'camera' && d.zoom) step.zoom = +d.zoom; break;
+            case 'say': if (!d.text.trim()) { notice('Skriv vad som sägs.'); return null; } step.arg = { text: d.text.trim(), secs: d.secs || 2 }; break;
+            case 'dialog': if (d.lineText.trim()) actions.lineAdd(true); if (!d.lines.length) { notice('Lägg till minst en replik.'); return null; } step.arg = d.lines.map(ln => ({ who: ln.who, text: lineText(ln) })); break;
+            case 'wait': step.arg = +d.wait || 1; break;
+            case 'letter': if (!d.letterText.trim()) { notice('Skriv brevets text.'); return null; } step.arg = { text: d.letterText.trim(), greeting: d.letterGreeting.trim(), from: d.letterFrom.trim(), throne: !!d.letterThrone }; break;
+            case 'music': if (d.musicMode === 'set' && !listOf(d.musicCalm).length && !listOf(d.musicBattle).length && !d.battleOff) { notice('Skriv en musikfil, eller välj "tillbaka till standardmusiken".'); return null; } step.arg = { mode: d.musicMode, calm: d.musicCalm, battle: d.musicBattle, battleOff: !!d.battleOff }; break;
+            case 'give': if (!(+d.giveN > 0)) { notice('Skriv ett antal.'); return null; } step.arg = { res: d.giveRes, n: Math.floor(+d.giveN) }; break;
+            case 'weather': if (!d.weatherType) { notice('Välj ett väder.'); return null; } step.arg = d.weatherType; break;
+            case 'tornado': case 'super': case 'meteors': if (!(+d.fxNum > 0)) { notice(d.type === 'meteors' ? 'Skriv hur många sekunder.' : 'Skriv en radie.'); return null; } step.arg = +d.fxNum; if (target) step.where = target; break;
+            case 'ground': step.arg = { ...area(target), to: d.groundTo }; break;
+            case 'terrain': step.arg = { ...area(target), to: d.terrainTo, amount: d.amount === '' ? '' : Math.max(0, Math.floor(+d.amount) || 0) }; break;
+            case 'scenery': if (d.scenMode === 'add' && !d.scenType) { notice('Välj en kuliss.'); return null; } step.arg = { ...area(target), mode: d.scenMode, type: d.scenType, layer: d.scenLayer }; break;
+          }
+          if (d.type === 'walk' && d.follow && who !== UNIT) step.follow = true;
+          if (d.parent === null && d.together && (d.editing === null ? list.length : d.editing) > 0) step.together = true;
+          return step;
+        };
+        const put = step => { if (d.editing !== null) { if (d.parent === null && list[d.editing]?.otherwise) step.otherwise = list[d.editing].otherwise; list[d.editing] = step; } else list.push(step); resetStep(); };
+        const target = d.target === '__keep' ? d.keepArg : d.target === '' ? undefined : d.target;
+        if (d.target === '__map' && (TARGETED.includes(d.type) || STORMS.includes(d.type))) {   // "en plats på kartan": väntar på ett klick, och steget byggs med rutan
+          if (!build(null) && !['walk', 'appear', 'camera', 'ground', 'terrain', 'scenery'].includes(d.type)) return;
+          st.arm = { kind: 'sceneStep', make: tile => build(tileTarget(tile)), put }; render(); return;
         }
-        else if (d.type === 'say') { if (!d.text.trim()) { notice('Skriv vad som sägs.'); return; } step.arg = { text: d.text.trim(), secs: d.secs || 2 }; }
-        else if (d.type === 'dialog') {
-          if (d.lineText.trim()) actions.lineAdd(true);
-          if (!d.lines.length) { notice('Lägg till minst en replik.'); return; }
-          step.arg = d.lines.map(ln => ({ who: ln.who, text: lineText(ln) }));
-        }
-        else if (d.type === 'wait') step.arg = +d.wait || 1;
-        if (d.type === 'walk' && d.follow && who !== UNIT) step.follow = true;
-        if (d.parent === null && d.together && (d.editing === null ? list.length : d.editing) > 0) step.together = true;
-        if (d.editing !== null) { if (d.parent === null && list[d.editing]?.otherwise) step.otherwise = list[d.editing].otherwise; list[d.editing] = step; } else list.push(step);
-        resetStep(); render();
+        const step = build(target); if (!step) return;
+        put(step); render();
       },
       sEdit: ({ i, p }) => {
         const s = listAt(p)[+i]; resetStep(); Object.assign(stepDraft, { type: s.type, editing: +i, together: !!s.together, follow: !!s.follow, parent: p === undefined ? null : +p, pick: s.pick || 'trigger', side: s.side || '', kind: s.kind || '' });
         if (s.who) stepDraft.who = s.who;
+        const a = s.arg;
         if (['walk', 'appear', 'camera'].includes(s.type)) { stepDraft.keepArg = s.arg; stepDraft.target = '__keep'; stepDraft.zoom = s.zoom || ''; }
+        else if (['ground', 'terrain', 'scenery'].includes(s.type)) { stepDraft.keepArg = a.at; stepDraft.target = '__keep'; Object.assign(stepDraft, { radius: a.radius || 0, share: a.share ?? 100 }); if (s.type === 'ground') stepDraft.groundTo = a.to; else if (s.type === 'terrain') Object.assign(stepDraft, { terrainTo: a.to || '', amount: a.amount ?? '' }); else Object.assign(stepDraft, { scenMode: a.mode, scenType: a.type, scenLayer: a.layer ?? '' }); }
+        else if (STORMS.includes(s.type)) { stepDraft.fxNum = a; if (s.where !== undefined) { stepDraft.keepArg = s.where; stepDraft.target = '__keep'; } else stepDraft.target = ''; }
+        else if (s.type === 'letter') Object.assign(stepDraft, { letterText: a.text, letterGreeting: a.greeting || '', letterFrom: a.from || '', letterThrone: !!a.throne });
+        else if (s.type === 'music') Object.assign(stepDraft, { musicMode: a.mode, musicCalm: a.calm || '', musicBattle: a.battle || '', battleOff: !!a.battleOff });
+        else if (s.type === 'give') Object.assign(stepDraft, { giveRes: a.res, giveN: a.n });
+        else if (s.type === 'weather') stepDraft.weatherType = a;
         else if (s.type === 'say') { stepDraft.text = s.arg.text; stepDraft.secs = s.arg.secs || 2; }
         else if (s.type === 'wait') stepDraft.wait = s.arg;
         else if (s.type === 'dialog') stepDraft.lines = s.arg.map(ln => ({ who: ln.who, ...moodOfLine(ln.text) }));
@@ -719,10 +770,9 @@
     function armClick(tile) {
       const arm = st.arm; st.arm = null;
       if (arm.kind === 'cast') { const sc = sceneNow(); if (sc) { const id = castDraft.id.trim() || uniqueId('person'); sc.cast.push({ id, image: castDraft.image, race: castDraft.race, count: countOf(), at: [tile.x - hq().x, tile.y - hq().y] }); castDraft = blankCast(); stepDraft.who = stepDraft.who || id; } }
-      else if (arm.kind === 'fxWhere') { const sc = sceneNow(); if (sc) sc.where = tileTarget(tile); }
       else if (arm.kind === 'condNear') { const sc = sceneNow(); if (sc) { arm.cond.v.near = tileTarget(tile); addCond(sc, arm.cond); } }
       else if (arm.kind === 'castMove') { const c = sceneNow()?.cast[arm.i]; if (c) c.at = [tile.x - hq().x, tile.y - hq().y]; }
-      else if (arm.kind === 'sceneStep') { const sc = sceneNow(); if (sc) { const list = arm.parent === null || arm.parent === undefined ? sc.steps : sc.steps[arm.parent].otherwise, step = { who: arm.who, type: arm.type, arg: tileTarget(tile) }; if (arm.zoom) step.zoom = arm.zoom; if (arm.type === 'walk' && arm.follow) step.follow = true; if ((arm.parent === null || arm.parent === undefined) && arm.together && (arm.edit ?? list.length) > 0) step.together = true; if (arm.edit !== null && arm.edit !== undefined) { if (list[arm.edit]?.otherwise) step.otherwise = list[arm.edit].otherwise; list[arm.edit] = step; } else list.push(step); resetStep(); } }
+      else if (arm.kind === 'sceneStep') { const step = arm.make(tile); if (step) arm.put(step); }
       render();
     }
     const mine = event => !event.shiftKey && event.target === canvas && event.button !== 1 && (st.tab === 'map' || !!st.arm);

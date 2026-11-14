@@ -19,6 +19,9 @@
      tell: [dialograder]  visar en dialog och väntar tills den lästs
      Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { camera: mål, zoom: 1-5 (valfritt) }, ... ]. Stegen sker i ordning, ett i taget (together: true på ett steg = det börjar samtidigt som förra steget, och nästa steg väntar på båda).
      Grupp: spawn med count: n skapar n st (id#1 ... id#n) på samma ruta. Ett steg med gruppens id gäller alla: de går med en kort fördröjning var (ett led) och slutar på samma ruta (högst 20 per ruta, resten på rutorna runt); bara den första talar.
+     Steg utan person (hela scenen): letter: { lines, signature | throne, greeting } (brev, scenen väntar tills det läses), music: spec | null, give: { resurs: n }, weather: 'rain', tornado: radie, super: radie, meteors: sekunder (+ where: mål),
+                          ground: { at, radius, share, to: 'grass' | 'dirt' | 'sand' } (marken), terrain: { at, radius, share, to: terrängtyp (utan = behåll), amount } (träd, malm, berg ... på marken; to: 'grass' = tom),
+                          scenery: { at, radius, share, add: typ, layer } eller { at, radius, remove: typ | 'all' } (kulisser)
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
    Mål (walk, teleport, spawn.at): [dx, dy] (rutor från spelarens HQ), 'hq', ett byggnads-id ('bakery' = närmaste), ett skådespelar-id, { x, y } (absolut ruta),
      { building: 'bakery' }, { actor: 'baker' }.
@@ -40,6 +43,7 @@
   const { World, Config, Players, Utils, Jobs } = CityBuilder;
 
   const LEAVE_LAYER = { blood: 0, corpse: 1 };
+  const EFFECTS = ['music', 'give', 'weather', 'tornado', 'super', 'meteors', 'ground', 'terrain', 'scenery'];   // steg utan person (se effect)
   const GROUP_GAP = .1, GROUP_MAX = 100, PER_TILE = 20;   // grupp: sekunder mellan två medlemmars start, högst så många på en ruta (resten flödar över till rutorna runt)
   // Rutorna kring målet i den ordning de fylls: målrutan först, sedan de närmaste
   const TILE_ORDER = (() => { const list = []; for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) list.push([dx, dy]); return list.sort((a, b) => a[0] * a[0] + a[1] * a[1] - b[0] * b[0] - b[1] * b[1] || a[1] - b[1] || a[0] - b[0]); })();
@@ -145,6 +149,7 @@
       const saved = state();
       for (const scene of saved.scenes || []) for (const run of scene.running) if (run.kind === 'tell' && !levels().told(run.mark)) { const i = +run.mark.split(':').pop(); CityBuilder.Story.tell([{ type: 'dialogue', lines: scene.steps[i].tell, part: 'events', mark: run.mark }]); }
       for (const data of saved.list) if (!data.gone) { data.act = data.act && data.act.type ? { ...data.act, started: false } : null; this.build(data); }
+      for (const item of saved.cleared || []) World.removeScenery(item.x, item.y, item.type);   // bortplockade kulisser (kapitlets egna) först, sedan det som lagts till
       for (const item of saved.leftovers) World.addScenery(item.type, item.x, item.y, item.layer);
     },
 
@@ -225,6 +230,49 @@
       scene.running = []; scene.index = scene.steps.length;
       return true;
     },
+    // Steg som inte rör någon person: musik, varor, väder, tornado, superstorm, meteorer, och ändringar av världen (mark, terräng/resurs, kulisser).
+    // Ändringar av världen: { ground | terrain | scenery: { at: mål, radius: rutor (0 = en ruta), share: % av rutorna (standard 100), ... } }. Returnerar false om steget inte gick att göra.
+    effect(step, scene, i) {
+      const Story = CityBuilder.Story;
+      if (step.music !== undefined) { levels().progressRef().told[`scene:${scene.id}:${i}:music`] = true; return true; }   // Story.update läser av dem
+      for (const key of ['give', 'weather', 'tornado', 'super', 'meteors']) if (step[key] !== undefined) { Story.fire({ [key]: step[key], where: step.where }, scene.ctx); return true; }
+      const spec = step.ground || step.terrain || step.scenery || {}, tile = this.resolve(spec.at?.trigger ? this.triggerSpot(scene) : spec.at, null);
+      if (!tile) return false;
+      const radius = Math.max(0, +spec.radius || 0), share = spec.share === undefined ? 100 : +spec.share, tiles = [];
+      for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) if (Utils.distance(dx, dy) <= radius + .01 && (share >= 100 || Utils.random() * 100 < share)) tiles.push({ x: tile.x + dx, y: tile.y + dy });
+      if (step.ground) {   // marken: gräs, jord eller sand (vatten rörs inte)
+        if (!['grass', 'dirt', 'sand'].includes(spec.to)) return false;
+        for (const { x, y } of tiles) { const here = World.getTile(x, y); if (here && here.terrainType !== 'water') here.ground = spec.to; }
+      } else if (step.terrain) {   // det som ligger på marken: träd, buskar, malm, berg ... (samma sak som när en samlare tömmer en ruta eller en formel skapar en fyndighet)
+        const type = spec.to || null, kind = type && Config.terrain[type];
+        if (type && (!kind || ['water', 'dirt', 'lava'].includes(type))) return false;
+        for (const { x, y } of tiles) {
+          const here = World.getTile(x, y);
+          if (!here || here.terrainType === 'water' || World.buildingAt(x, y)) continue;
+          let next = type || here.terrainType;
+          const amount = spec.amount === undefined || spec.amount === '' ? Config.terrain[next].resourceAmount || 0 : Math.max(0, Math.floor(+spec.amount) || 0);
+          if (next !== 'grass' && Config.terrain[next].resourceAmount && amount <= 0) next = 'grass';   // slut: blir gräs, och bar jord där det grävts
+          if (next === 'grass' && Config.exposesDirt.has(here.terrainType)) here.ground = 'dirt';
+          Utils.assign(here, Config.terrain[next], { terrainType: next, remainingAmount: next === 'grass' ? 0 : amount, wear: 0 });
+        }
+      } else if (step.scenery) {
+        const saved = state();
+        if (spec.add) {
+          if (!CityBuilder.Config.story.sceneryTypes?.[spec.add]) return false;
+          for (const { x, y } of tiles) {
+            if (World.scenery.get(Utils.tileKey(x, y))?.some(item => item.type === spec.add)) continue;
+            const item = { type: spec.add, x, y, layer: +spec.layer || LEAVE_LAYER[spec.add] || 0 };
+            saved.leftovers.push(item); World.addScenery(item.type, item.x, item.y, item.layer);
+          }
+        } else {
+          const type = spec.remove && spec.remove !== 'all' ? spec.remove : null;
+          for (const { x, y } of tiles) if (World.removeScenery(x, y, type)) { (saved.cleared ||= []).push({ x, y, type }); saved.leftovers = saved.leftovers.filter(item => !(item.x === x && item.y === y && (!type || item.type === type))); }
+        }
+      }
+      CityBuilder.Pathfinder?.clearCache();
+      return true;
+    },
+
     // En pratbubbla över skådespelaren utan att röra dess manus (så att den kan tala medan den går). Rösten: speaker i steget, annars skådespelarens id, annars bildfilens namn (images/units/pipwick.png -> pipwick, så 'pipwick1' också låter som Pipwick; en grupp som thordramandalbertha låter som den första)
     sayNow(data, unit, spec) {
       const speakers = CityBuilder.Config.story.speakers, byImage = (data.image || '').replace(/^.*\//, '').replace(/\.png$/, '');
@@ -245,6 +293,8 @@
             else if (step.spawn) { const spot = step.spawn.at?.trigger ? this.triggerSpot(scene) : null, made = step.spawn.at?.trigger && !spot ? null : this.spawn({ ...step.spawn, ...(spot ? { at: spot } : {}), script: [] }); failed = !made && !this.data(step.spawn.id); if (!failed) (scene.cast ||= []).push(step.spawn.id); }
             else if (step.tell) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'dialogue', lines: step.tell, part: 'events', mark }]); scene.running.push({ kind: 'tell', mark }); } }
             else if (step.wait !== undefined && !step.who) scene.running.push({ kind: 'wait', left: +step.wait || 0 });
+            else if (step.letter) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'letter', letter: step.letter, mark }]); scene.running.push({ kind: 'tell', mark }); } }   // ett brev: scenen väntar tills det är läst
+            else if (!step.who && EFFECTS.some(key => step[key] !== undefined)) failed = !this.effect(step, scene, i);   // effekter och ändringar av världen
             else if (step.who && typeof step.who === 'object') {   // en enhet i spelet, utpekad av en regel: den kan bara säga något
               const unit = step.say !== undefined ? this.pickUnit(step.who, scene) : null;
               if (unit) {

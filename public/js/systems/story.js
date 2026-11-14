@@ -350,15 +350,16 @@
       const modes = spec => spec && typeof spec === 'object' && !Array.isArray(spec) ? spec : spec ? { calm: spec } : {};
       let music = chapter?.music;
       (chapter?.events || []).forEach((event, i) => {
-        if (event.music === undefined || !CityBuilder.Levels.told('fired:' + i)) return;
-        music = event.music === null ? null : { ...modes(music), ...modes(event.music) };
+        if (!CityBuilder.Levels.told('fired:' + i)) return;
+        if (event.music !== undefined) music = event.music === null ? null : { ...modes(music), ...modes(event.music) };
+        if (Array.isArray(event.scene) && event.id) event.scene.forEach((step, n) => { if (step.music !== undefined && CityBuilder.Levels.told(`scene:${event.id}:${n}:music`)) music = step.music === null ? null : { ...modes(music), ...modes(step.music) }; });   // musik som ett steg i en scen
       });
       CityBuilder.Sound?.chapterMusic(music);
       if (!chapter) return;
       // Berättelsen i ordning: prolog (bara i kapitel 1), brev, dialog
       this.tell([
         ...(chapter.number === 1 ? this.once('prologue', [{ type: 'prose', lines: Config.story.prologue, music: Config.story.music?.prologue }, ...(Config.story.prologueDialogue ? [{ type: 'dialogue', lines: Config.story.prologueDialogue }] : [])]) : []),
-        ...(chapter.letter && !(chapter.events || []).some(event => event.letter && JSON.stringify(event.letter.lines) === JSON.stringify(chapter.letter.lines)) ? this.once('letter', [{ type: 'letter', letter: chapter.letter }]) : []),
+        ...(chapter.letter && !(chapter.events || []).some(event => [event.letter, ...(Array.isArray(event.scene) ? event.scene.map(step => step.letter) : [])].some(letter => letter && JSON.stringify(letter.lines) === JSON.stringify(chapter.letter.lines))) ? this.once('letter', [{ type: 'letter', letter: chapter.letter }]) : []),
         ...(chapter.dialogue ? this.once('dialogue', [{ type: 'dialogue', lines: chapter.dialogue }]) : []),
         ...(chapter.number === 1 && this.guideAsked !== chapter && !CityBuilder.UI.guideDone() ? (this.guideAsked = chapter, [{ type: 'guide' }]) : []),   // en gång varje gång kapitlet startas (omladdning, nytt försök) tills guiden är klar
       ]);

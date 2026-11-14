@@ -119,7 +119,7 @@
       const x = cx * N + i, y = cy * N + j, tile = World.getTile(x, y), type = tile.terrainType, terrain = Config.terrain[type];
       const left = edge(x, scale) - x0, top = edge(y, scale) - y0;
       const width = edge(x + 1, scale) - x0 - left, height = edge(y + 1, scale) - y0 - top;
-      if (types) types[j * N + i] = type;
+      if (types) types[j * N + i] = type + '|' + tile.ground;   // marken ingår, så att en ändrad mark ritas om
       let image = Assets.getVariant(terrain.image, x, y);
       const layered = type === 'grass' || !WHOLE_TILE.has(type);   // gräs är bara marken; allt annat utom hela rutor ligger ovanpå den
       const ground = layered ? Config.terrain[tile.ground] : terrain;
@@ -154,7 +154,8 @@
   const terrainChanged = (chunk, cx, cy) => {
     const N = TERRAIN_CHUNK;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      if (World.getTile(cx * N + i, cy * N + j).terrainType !== chunk.types[j * N + i]) return true;
+      const tile = World.getTile(cx * N + i, cy * N + j);
+      if (tile.terrainType + '|' + tile.ground !== chunk.types[j * N + i]) return true;
     }
     return false;
   };

@@ -227,6 +227,18 @@
       return item;
     },
 
+    // Tar bort kulisser på en ruta under spelets gång (type utelämnad = alla); returnerar hur många
+    removeScenery(x, y, type) {
+      const key = Utils.tileKey(x, y), items = this.scenery.get(key);
+      if (!items) return 0;
+      const gone = items.filter(item => !type || item.type === type);
+      if (!gone.length) return 0;
+      const rest = items.filter(item => !gone.includes(item));
+      if (rest.length) this.scenery.set(key, rest); else this.scenery.delete(key);
+      this.sceneryList = this.sceneryList.filter(item => !gone.includes(item));
+      return gone.length;
+    },
+
     // Det som ligger på marken (lik, blod) försvinner när något byggs ovanpå
     clearGroundScenery(x, y) {
       const key = Utils.tileKey(x, y), items = this.scenery.get(key);
