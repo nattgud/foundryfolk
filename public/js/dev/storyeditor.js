@@ -10,7 +10,7 @@
   'use strict';
   const wait = setInterval(() => {
     const C = window.CityBuilder;
-    if (C && C.Game && C.World && C.Renderer && C.Story && C.Config && C.Actors && C.Renderer.canvas) { clearInterval(wait); init(C); }
+    if (C && C.Game && C.World && C.Renderer && C.Story && C.Config && C.Actors && C.Renderer.canvas) { clearInterval(wait); try { init(C); } catch (error) { console.error('Story-editor: start misslyckades', error); } }
   }, 300);
 
   function init(C) {
@@ -173,7 +173,8 @@
       scenes = []; cur = 0; importedIds = [];
       let saved = null;
       try { saved = JSON.parse(localStorage.getItem(storeKey(number)) || 'null'); } catch (error) { /* tomt */ }
-      if (saved) { scenes = saved.scenes || []; importedIds = saved.imported || []; }
+      if (saved && Array.isArray(saved.scenes)) { scenes = saved.scenes.filter(sc => sc && typeof sc === 'object'); importedIds = Array.isArray(saved.imported) ? saved.imported : []; }
+      scenes.forEach((sc, index) => { sc.id = sc.id || 'scen' + (index + 1); sc.name = sc.name || sc.id; for (const key of ['conds', 'cast', 'steps']) if (!Array.isArray(sc[key])) sc[key] = []; });
       (chapter()?.events || []).forEach((event, index) => {
         const known = event.id && (importedIds.includes(event.id) || scenes.some(sc => sc.id === event.id));
         if (known || (saved && !event.id)) return;   // utan id går det inte att känna igen: bara första gången
@@ -504,6 +505,12 @@
 
     // ---------------------------------------------------------------- rita om panelen
     function render() {
+      try { renderPanel(); } catch (error) {
+        console.error('Story-editor: kunde inte rita panelen', error);
+        panel.innerHTML = `<div class="se-head"><b>Story-editor</b></div><div class="se-body"><p class="warn">Panelen kunde inte ritas: ${esc(String(error && error.message || error))}</p><button class="danger" data-act="resetSaved">Rensa sparade scener i det här kapitlet</button></div>`;
+      }
+    }
+    function renderPanel() {
       const armText = st.arm ? (st.arm.kind === 'sceneStep' ? 'Klicka på kartan: vart? (klicka på en byggnad för att gå till den)' : st.arm.kind === 'condNear' ? 'Klicka på kartan: var ska det hända nära?' : st.arm.kind === 'fxWhere' ? 'Klicka på kartan: var ska det slå till?' : 'Klicka på kartan där personen ska stå när scenen börjar.') : '';
       const scrollTop = panel.scrollTop;
       panel.innerHTML = `<div class="se-head"><b>Story-editor</b><span class="hint" style="margin:0">${chapter() ? `kapitel ${chapter().number}: ${esc(chapter().name || '')}` : '(ingen story pågår)'}</span>
@@ -625,6 +632,7 @@
       },
       tab: ({ tab }) => { st.tab = tab; st.arm = null; render(); },
       cancelArm: () => { st.arm = null; render(); },
+      resetSaved: () => { try { localStorage.removeItem(storeKey(chapterNumber)); } catch (error) {} restore(chapterNumber); render(); },
       clearScenery: () => { World.scenery.clear(); World.sceneryList = []; note('Alla kulisser är borttagna (ladda om kapitlet för att få tillbaka dem).'); },
       // skådespelare
       stopPreview: () => { stopPreview(); note('Uppspelningen är rensad.'); },
@@ -739,8 +747,11 @@
       } else ghost.style.display = 'none';
     }
     (function loop() {
-      if (chapter() && chapter().number !== chapterNumber) { persist(); chapterNumber = chapter().number; restore(chapterNumber); render(); }
-      drawMarks(); requestAnimationFrame(loop);
+      try {
+        if (chapter() && chapter().number !== chapterNumber) { persist(); chapterNumber = chapter().number; restore(chapterNumber); render(); }
+        drawMarks();
+      } catch (error) { console.error('Story-editor:', error); }
+      requestAnimationFrame(loop);
     })();
 
     render();
