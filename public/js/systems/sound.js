@@ -228,7 +228,7 @@
       for (const type of ['pagehide', 'beforeunload']) addEventListener(type, () => this.saveMusic());
       this.weather = custom.weather || {};
       for (const [id, value] of Object.entries(this.weather.start || {})) this.define('weather.' + id, { quiet: true, pitch: 0, maxVoices: 1, cooldown: 0, ...spec(value) });
-      setInterval(() => { this.syncPause(); this.updateMood(); if (!this.paused) this.updateAmbient(); }, AMBIENT_MS);
+      setInterval(() => { this.syncPause(); this.updateMood(); this.updateDull(); if (!this.paused) this.updateAmbient(); }, AMBIENT_MS);
       this.injectStyles();
 
       // Ljud får starta först efter en användaråtgärd
@@ -515,7 +515,8 @@
       for (const loop of this.loops?.values() || []) this.stopLoop(loop);
       this.loops?.clear();
       this.waiting.clear();
-      Object.assign(this, { hazards: 0, hazardUntil: 0, mood: 'calm' });
+      Object.assign(this, { hazards: 0, hazardUntil: 0, mood: 'calm', dull: 0, dullAt: undefined });   // ny värld: ingen kvarvarande dimma i hörseln
+      if (this.context && this.muffle) this.muffle.frequency.setValueAtTime(OPEN, this.context.currentTime);
       this.scene(null);
     },
 
@@ -539,13 +540,19 @@
       }
     },
 
+    // Dimma: hörseln dämpas och återhämtar sig mjukt (ca 2 s), mätt i tid och även medan spelet står stilla (en dialog när dimman lyfter ska inte hålla kvar ekot).
+    updateDull() {
+      const context = this.context, now = performance.now(), seconds = Math.min(0.5, (now - (this.dullAt ?? now)) / 1000);
+      this.dullAt = now;
+      this.dull += ((CityBuilder.Weather?.type === 'fog' ? 1 : 0) - this.dull) * (1 - Math.exp(-seconds / 1.95));
+      if (context && context.state === 'running') this.muffle.frequency.setTargetAtTime(OPEN * (Config.settings.weather.fog.hearing.muffle / OPEN) ** this.dull, context.currentTime, 0.2);
+    },
+
     updateAmbient() {
       const context = this.context;
       if (!context || context.state !== 'running') return;
       this.loops ||= new Map();
       const fade = this.weather.fade ?? 3, now = context.currentTime;
-      this.dull += ((CityBuilder.Weather?.type === 'fog' ? 1 : 0) - this.dull) * 0.05;   // dimma: hörseln dämpas och återhämtar sig mjukt (ca 2 s)
-      this.muffle.frequency.setTargetAtTime(OPEN * (Config.settings.weather.fog.hearing.muffle / OPEN) ** this.dull, now, 0.2);
       const targets = this.ambientTargets();
       for (const [key, target] of targets) {
         let loop = this.loops.get(key);
