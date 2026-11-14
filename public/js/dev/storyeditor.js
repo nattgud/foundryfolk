@@ -68,12 +68,119 @@
     const targetText = target => target === TRIGGER ? 'det som utlöste händelsen' : Array.isArray(target) ? `ruta (${target[0]}, ${target[1]})` : typeof target === 'string' ? (target === 'hq' ? 'basen' : target) : JSON.stringify(target);
     const select = (id, options, current, bind) => `<select ${id ? `id="${id}"` : ''} ${bind ? `data-bind="${bind}"` : ''}>${options.map(option => { const [value, label] = Array.isArray(option) ? option : [option, option]; return `<option value="${esc(value)}"${String(value) === String(current) ? ' selected' : ''}>${esc(label)}</option>`; }).join('')}</select>`;
 
+
+    // ---------------------------------------------------------------- läsa in kapitlets befintliga händelser (omvänt mot compileScene)
+    // Det editorn förstår blir en scen att redigera; allt annat i händelsen sparas orört i extra och skrivs ut igen vid export, så inget går förlorat.
+    const HANDLED = ['id', 'at', 'goal', 'end', 'when', 'on', 'repeat', 'cooldown', 'whileFog', 'spawn', 'scene', 'tell', 'music', 'give', 'weather', 'tornado', 'super', 'meteors', 'where', 'letter'];
+    const SEES = { rival: 'seesRival', soldier: 'seesSoldier', worker: 'seesWorker', carrier: 'seesCarrier', monster: 'seesMonster' };
+    const sameKeys = (object, keys) => Object.keys(object).length === keys.length && keys.every(key => key in object);
+    const targetIn = value => value && typeof value === 'object' && !Array.isArray(value) && value.trigger ? TRIGGER : value;
+    function condsOf(event) {
+      const conds = [], leftover = {};
+      const num = n => ({ n: String(n) });
+      if (event.at !== undefined && !(event.at === 0 && event.goal === undefined && !event.end && !event.on && event.when === undefined)) conds.push({ kind: 'time', v: num(event.at) });
+      if (event.goal !== undefined) conds.push({ kind: 'goal', v: num(event.goal) });
+      if (event.end) conds.push({ kind: 'end', v: {} });
+      if (event.on !== undefined) {
+        const on = typeof event.on === 'string' ? { event: event.on } : event.on;
+        const key = Object.keys(COND).find(k => /^on[A-Z]/.test(k) && COND[k].make({}).top.on.event === on.event);
+        const names = key ? COND[key].f.map(([name]) => name) : [];
+        if (key && Object.keys(on).every(name => name === 'event' || name === 'radius' || names.includes(name))) {
+          const v = {}; for (const name of names) v[name] = on[name] ?? '';
+          if (on.near !== undefined) v.radius = String(on.radius ?? 5);
+          conds.push({ kind: key, v });
+        } else leftover.on = event.on;
+      }
+      if (event.when !== undefined) {
+        const needs = [].concat(event.when), made = needs.map(need => {
+          const keys = Object.keys(need);
+          if (need.sees && sameKeys(need, ['sees']) && SEES[need.sees]) return { kind: SEES[need.sees], v: {} };
+          if (need.type === 'build' && keys.every(k => ['type', 'id', 'amount'].includes(k))) return { kind: 'built', v: { bld: need.id, n: String(need.amount ?? 1) } };
+          if (need.resource && sameKeys(need, ['resource', 'amount'])) return { kind: 'stock', v: { res: need.resource, n: String(need.amount) } };
+          if (need.resource && sameKeys(need, ['resource', 'made'])) return { kind: 'made', v: { res: need.resource, n: String(need.made) } };
+          if (need.type === 'kills' && sameKeys(need, ['type', 'amount'])) return { kind: 'kills', v: num(need.amount) };
+          if (need.type === 'destroy' && need.id === 'any' && sameKeys(need, ['type', 'id', 'amount'])) return { kind: 'destroyed', v: num(need.amount) };
+          for (const [type, kind] of [['soldiers', 'soldiers'], ['carriers', 'carriers'], ['casts', 'casts']]) if (need.type === type && sameKeys(need, ['type', 'amount'])) return { kind, v: num(need.amount) };
+          if (need.type === 'fog' && sameKeys(need, ['type', 'amount']) && need.amount === 1) return { kind: 'fogLifted', v: {} };
+          if (need.scene && sameKeys(need, ['scene'])) return { kind: 'sceneDone', v: { sc: need.scene } };
+          return null;
+        });
+        if (made.every(Boolean)) conds.push(...made); else leftover.when = event.when;
+      }
+      return { conds, leftover };
+    }
+    function importEvent(event, number) {
+      const sc = { id: event.id || 'scene' + number, name: event.id || 'Scen ' + number, conds: [], cast: [], steps: [] }, extra = {};
+      const { conds, leftover } = condsOf(event);
+      sc.conds = conds; Object.assign(extra, leftover);
+      // Medverkande: de som står på kartan från början (spawn), och de som dyker upp senare (spawn-steg)
+      const castOf = spec => { let c = sc.cast.find(x => x.id === spec.id); if (!c) { c = { id: spec.id, image: spec.image, race: spec.race || '', count: spec.count || 1, at: null }; sc.cast.push(c); } return c; };
+      const specs = [].concat(event.spawn || []), plain = spec => spec.id && Object.keys(spec).every(key => ['id', 'image', 'race', 'count', 'at', 'script'].includes(key)) && !(spec.script || []).length;
+      if (specs.every(plain)) for (const spec of specs) castOf(spec).at = spec.at; else extra.spawn = event.spawn;
+      const selector = who => who && typeof who === 'object' ? { who: UNIT, pick: who.pick || 'trigger', side: who.side || '', kind: who.kind || '' } : { who };
+      const stepOf = raw => {
+        if (!raw || typeof raw !== 'object') return null;
+        const known = ['spawn', 'who', 'walk', 'say', 'leave', 'vanish', 'tell', 'wait', 'camera', 'zoom', 'together', 'otherwise'];
+        if (Object.keys(raw).some(key => !known.includes(key))) return null;
+        let step = null;
+        if (raw.spawn && raw.spawn.id && Object.keys(raw.spawn).every(key => ['id', 'image', 'race', 'count', 'at'].includes(key))) { const c = castOf(raw.spawn); step = { type: 'appear', who: c.id, arg: targetIn(raw.spawn.at) }; }
+        else if (raw.camera !== undefined) step = { type: 'camera', arg: targetIn(raw.camera), ...(raw.zoom ? { zoom: raw.zoom } : {}) };
+        else if (raw.say && typeof raw.say === 'object' && typeof raw.say.text === 'string') step = { type: 'say', ...selector(raw.who), arg: { text: raw.say.text } };
+        else if (raw.walk !== undefined && typeof raw.who === 'string') step = { type: 'walk', who: raw.who, arg: targetIn(raw.walk) };
+        else if (raw.leave && typeof raw.who === 'string') step = { type: 'leave', who: raw.who };
+        else if (raw.vanish && typeof raw.who === 'string') step = { type: 'vanish', who: raw.who };
+        else if (Array.isArray(raw.tell)) step = { type: 'dialog', arg: raw.tell.map(line => ({ who: line.who, text: line.text })) };
+        else if (raw.wait !== undefined) step = { type: 'wait', arg: raw.wait };
+        if (!step) return null;
+        if (raw.together) step.together = true;
+        if (raw.otherwise) { const alt = raw.otherwise.map(stepOf); if (alt.some(x => !x)) return null; step.otherwise = alt; }
+        return step;
+      };
+      let steps = [];
+      if (Array.isArray(event.tell) && (event.scene === undefined || Array.isArray(event.scene))) steps.push({ type: 'dialog', arg: event.tell.map(line => ({ who: line.who, text: line.text })) });
+      if (Array.isArray(event.scene)) { const made = event.scene.map(stepOf); if (made.every(Boolean)) steps.push(...made); else { steps = []; extra.scene = event.scene; if (event.tell) extra.tell = event.tell; sc.cast = sc.cast.filter(c => c.at); } }
+      else if (event.scene !== undefined) { extra.scene = event.scene; if (event.tell) extra.tell = event.tell; steps = []; }
+      sc.steps = steps;
+      if (event.repeat) { sc.repeat = true; sc.cooldown = event.cooldown ?? 30; }
+      if (event.whileFog) sc.whileFog = true;
+      // Musik, varor, väder, brev
+      const music = event.music;
+      if (music === null) sc.music = 'default';
+      else if (typeof music === 'string' || Array.isArray(music)) { sc.music = 'set'; sc.musicCalm = [].concat(music).join(', '); }
+      else if (music && typeof music === 'object' && Object.keys(music).every(key => key === 'calm' || key === 'battle')) {
+        sc.music = 'set'; if (music.calm) sc.musicCalm = [].concat(music.calm).join(', ');
+        if (music.battle === false) sc.battleOff = true; else if (music.battle) sc.musicBattle = [].concat(music.battle).join(', ');
+      } else if (music !== undefined) extra.music = music;
+      if (event.give) sc.give = Object.entries(event.give).map(([res, n]) => ({ res, n }));
+      if (event.weather) sc.weather = event.weather;
+      for (const key of ['tornado', 'super', 'meteors']) if (event[key]) sc[key] = event[key];
+      if (event.where !== undefined) sc.where = targetIn(event.where);
+      if (event.letter && Array.isArray(event.letter.lines) && Object.keys(event.letter).every(key => ['lines', 'greeting', 'signature', 'throne'].includes(key))) {
+        sc.letterText = event.letter.lines.join('\n'); if (event.letter.greeting) sc.letterGreeting = event.letter.greeting;
+        if (event.letter.throne) sc.letterThrone = true; else if (event.letter.signature) sc.letterFrom = event.letter.signature;
+      } else if (event.letter) extra.letter = event.letter;
+      for (const key of Object.keys(event)) if (!HANDLED.includes(key)) extra[key] = event[key];
+      if (Object.keys(extra).length) sc.extra = extra;
+      return sc;
+    }
+
     // ---------------------------------------------------------------- spara och ladda (webbläsaren, per kapitel)
     const storeKey = number => `storyEditor.v2.chapter${number}`;
-    const persist = () => { try { if (chapterNumber !== null) localStorage.setItem(storeKey(chapterNumber), JSON.stringify({ scenes })); } catch (error) { /* ingen lagring */ } };
+    let importedIds = [];   // kapitlets händelser som redan lästs in i editorn (en raderad scen kommer inte tillbaka vid nästa laddning)
+    const persist = () => { try { if (chapterNumber !== null) localStorage.setItem(storeKey(chapterNumber), JSON.stringify({ scenes, imported: importedIds })); } catch (error) { /* ingen lagring */ } };
+    // Vid laddning av en bana: de scener du sparat i editorn, och dessutom kapitlets händelser (chapter.events) som inte lästs in förut. Är inget sparat läses alla in.
     const restore = number => {
-      scenes = []; cur = 0;
-      try { const saved = JSON.parse(localStorage.getItem(storeKey(number)) || 'null'); if (saved) scenes = saved.scenes || []; } catch (error) { /* tomt */ }
+      scenes = []; cur = 0; importedIds = [];
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(storeKey(number)) || 'null'); } catch (error) { /* tomt */ }
+      if (saved) { scenes = saved.scenes || []; importedIds = saved.imported || []; }
+      (chapter()?.events || []).forEach((event, index) => {
+        const known = event.id && (importedIds.includes(event.id) || scenes.some(sc => sc.id === event.id));
+        if (known || (saved && !event.id)) return;   // utan id går det inte att känna igen: bara första gången
+        let sc; try { sc = importEvent(event, index + 1); } catch (error) { console.warn('Story-editor: kunde inte läsa in händelse', index, error); return; }
+        while (scenes.some(other => other.id === sc.id)) sc.id += 'b';
+        scenes.push(sc); if (event.id) importedIds.push(event.id);
+      });
     };
 
     // ---------------------------------------------------------------- panel
@@ -231,7 +338,7 @@
     const musicTracks = () => [...new Set([...[].concat(Config.settings.audio?.music || [], Config.settings.audio?.battleMusic || [], Config.settings.audio?.disasterMusic || [], Config.settings.audio?.tornadoMusic || []), ...[...JSON.stringify(Config.story || {}).matchAll(/"(music\/[^"]+)"/g)].map(m => m[1])])];
     // En scen blir en händelse med scene: [steg]. Motorn kör stegen i ordning; dialogerna hör till scenen, så de spelas även när personen försvunnit.
     function compileScene(sc, withConds = true) {
-      const out = compile({ id: sc.id, conds: withConds ? sc.conds : [], effects: [] });
+      const out = compile({ id: sc.id, conds: withConds ? sc.conds : [], effects: [], extra: withConds ? sc.extra : null });
       Object.assign(out, fxOf(sc));   // musik, varor, väder: händelsens egna fält (motorn läser dem för alla händelser)
       const cast = new Map(sc.cast.map(c => [c.id, c]));
       const specOf = (c, at) => { const spec = { id: c.id, image: c.image }; if (c.race) spec.race = c.race; if (c.count > 1) spec.count = c.count; spec.at = at; return spec; };
@@ -256,6 +363,7 @@
       };
       if (sc.steps.length) out.scene = sc.steps.map(compileStep);
       if (sc.repeat && out.on) { out.repeat = true; out.cooldown = Math.max(1, +sc.cooldown || 30); }
+      if (sc.extra && withConds) Object.assign(out, sc.extra);   // det editorn inte förstår, orört
       return out;
     }
     function sceneProblems(sc) {
@@ -354,7 +462,7 @@
       const out = {}; if (event.id) out.id = event.id;
       const top = {}, when = [];
       for (const cond of event.conds) { const made = COND[cond.kind].make(cond.v); if (made.top) Object.assign(top, made.top); else when.push(made.when); }
-      if (top.at === undefined && top.goal === undefined && !top.end && !top.on && !when.length) top.at = 0;
+      if (top.at === undefined && top.goal === undefined && !top.end && !top.on && !when.length && !['at', 'goal', 'end', 'on', 'when'].some(key => event.extra && key in event.extra)) top.at = 0;
       Object.assign(out, top);
       if (when.length) out.when = when.length === 1 ? when[0] : when;
       return out;
@@ -636,6 +744,6 @@
     })();
 
     render();
-    window.StoryEditor = { get scenes() { return scenes; }, compileScene, export: () => exportParts().map(part => part.text).join('\n'), state: st, actions, render };
+    window.StoryEditor = { get scenes() { return scenes; }, compileScene, importEvent, export: () => exportParts().map(part => part.text).join('\n'), state: st, actions, render };
   }
 })();
