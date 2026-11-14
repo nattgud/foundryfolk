@@ -54,6 +54,7 @@ self.GAME_SCRIPTS = [
   'js/systems/animals.js',
   'js/systems/monsters.js',
   'js/systems/weather.js',
+  'js/systems/corpses.js',
   'js/systems/combat.js',
   'js/systems/story.js',
   'js/systems/actors.js',

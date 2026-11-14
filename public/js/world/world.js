@@ -81,6 +81,7 @@
       CityBuilder.Monsters.reset();
       CityBuilder.Spells.reset();
       CityBuilder.Weather.reset();
+      CityBuilder.Corpses?.reset();
       Players.team = { ...CityBuilder.Levels?.current?.teams };
       Players.race = { ...CityBuilder.Levels?.current?.races };
       CityBuilder.UI?.applyRace?.();   // byggmenyns bilder och menyernas färger följer spelarens ras

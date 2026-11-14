@@ -641,6 +641,8 @@
     }
   });
 
+  Renderer.addLayer('corpses', (context, renderer) => CityBuilder.Corpses.draw(context, renderer));   // liken och skeletten (systems/corpses.js), under byggnader och enheter
+
   Renderer.addLayer('buildings', (context, renderer) => {
     const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize);
     for (const building of World.buildings) {

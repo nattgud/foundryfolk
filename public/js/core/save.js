@@ -194,6 +194,7 @@
         haulers: haulerStates,
         tiles: this.collectTileChanges(),
         flags: CityBuilder.Flags.pack(),
+        corpses: CityBuilder.Corpses.pack(),
         monsters: CityBuilder.Monsters.pack(),
         animalChunks: (
           CityBuilder.Animals.syncActive(),
@@ -272,6 +273,7 @@
       });
 
       part('flags', () => CityBuilder.Flags.restore(data.flags));
+      part('corpses', () => CityBuilder.Corpses.restore(data.corpses));
 
       part('monsters', () => CityBuilder.Monsters.restore(data.monsters));
 

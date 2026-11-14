@@ -242,6 +242,7 @@
       }
       const Sound = CityBuilder.Sound;
       Sound?.play(Sound.forUnit(unit, 'die'), { x: unit.x, y: unit.y });   // alla enheter som dör: art, ras eller grupp
+      CityBuilder.Corpses?.add(unit);   // ett lik där den föll (systems/corpses.js)
       if (unit.animalRecordId) CityBuilder.Animals.markDead(unit);   // ett dödat monster kommer inte tillbaka
       CityBuilder.Logistics.abortTask(unit); // en bärare som dör släpper sina reservationer
       if (unit.definition.isHauler) CityBuilder.Logistics.carrierLost(unit);

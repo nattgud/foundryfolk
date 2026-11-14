@@ -509,6 +509,7 @@
         const tile = World.getTile(x, y);
         flood.tiles[Utils.tileKey(x, y)] = { x, y, type: tile.terrainType, amount: tile.remainingAmount, ring: index };
         Utils.assign(tile, Config.terrain.water, { terrainType: 'water', remainingAmount: Config.terrain.water.resourceAmount });
+        CityBuilder.Corpses?.clearTile(x, y);   // liken och skeletten på rutan försvinner
       }
       CityBuilder.Pathfinder.clearCache();
     },
@@ -623,6 +624,7 @@
     strike({ x, y, big }) {
       const settings = Config.settings.weather.meteor, hit = big ? settings.big : settings.small, tile = World.getTile(x, y), Sound = CityBuilder.Sound, seen = new Set();
       if (!tile) return;
+      CityBuilder.Corpses?.clearArea(x + .5, y + .5, hit.radius + .5);   // liken och skeletten där försvinner
       for (let dy = -hit.radius; dy <= hit.radius; dy++) for (let dx = -hit.radius; dx <= hit.radius; dx++) {
         const building = Utils.distance(dx, dy) <= hit.radius && World.buildingAt(x + dx, y + dy);
         if (!building || seen.has(building)) continue;
@@ -717,6 +719,7 @@
   CityBuilder.Systems.weather = {
     update(deltaSeconds) {
       Weather.time += deltaSeconds;
+      CityBuilder.Corpses?.update(deltaSeconds);   // liken åldras, tornados tar dem (systems/corpses.js)
       if ((Weather.left -= deltaSeconds) <= 0) Weather.next();
       if ((Weather.scanIn -= deltaSeconds) <= 0) {   // en ny skanning: chunkarna delas på flera steg (spridda över scanSpreadSeconds), så att kostnaden blir jämn
         Weather.scanIn = Config.settings.weather.scanSeconds;
