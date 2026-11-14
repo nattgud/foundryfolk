@@ -117,7 +117,7 @@
       this.reading = true;
       const guide = this.queue.findIndex(page => page.type === 'guide');   // guidens rörelsesidor (UI.openTutorial) kommer efter det som står före dem i kön
       const pages = this.queue.splice(0, guide < 0 ? this.queue.length : guide);
-      const next = () => { for (const page of pages) if (page.mark) CityBuilder.Levels.markTold(page.mark); this.reading = false; this.flush(); };
+      const next = () => { for (const page of pages) { if (page.mark) CityBuilder.Levels.markTold(page.mark); if (page.done) CityBuilder.Levels.markTold(page.done); } this.reading = false; this.flush(); };
       if (pages.length) CityBuilder.StoryUI.read(pages, next);
       else { this.queue.shift(); CityBuilder.UI.openTutorial('story', next); }
     },
@@ -135,8 +135,11 @@
       CityBuilder.Game?.resetSpeed();   // varje händelse sätter hastigheten till 1x
       if (event.give && hq) for (const [resourceId, amount] of Object.entries(event.give)) hq.storedGoods[resourceId] = (hq.storedGoods[resourceId] || 0) + amount;   // give: varor till spelarens huvudlager
       // letter: { lines, signature | throne: true, greeting }: ett brev (samma som kapitlets letter), före händelsens eventuella dialog
-      if (event.letter) this.tell([{ type: 'letter', letter: event.letter, mark: !event.tell && event.id ? 'read:' + event.id : undefined }]);
-      if (event.tell) this.tell([{ type: 'dialogue', lines: event.tell, part: 'events', scene: event.scene, mark: event.id ? 'read:' + event.id : undefined }]);   // id: händelsens namn, så att { read: id } kan vänta på att dialogen lästs
+      // En händelse utan skådespelarscen är "klar" när brevet och dialogen lästs (eller direkt om den bara gör något): då kan { scene: id } vänta på den, precis som på en scen med steg.
+      const doneKey = event.id && !event.scene ? `scene:${event.id}:done` : null, Levels = CityBuilder.Levels;
+      if (event.letter) this.tell([{ type: 'letter', letter: event.letter, mark: !event.tell && event.id ? 'read:' + event.id : undefined, done: !event.tell ? doneKey : undefined }]);
+      if (event.tell) this.tell([{ type: 'dialogue', lines: event.tell, part: 'events', scene: event.scene, mark: event.id ? 'read:' + event.id : undefined, done: doneKey }]);
+      else if (doneKey && !event.letter && !(event.spawn || []).length) Levels.markTold(doneKey);   // id: händelsens namn, så att { read: id } kan vänta på att dialogen lästs
       CityBuilder.Actors?.fire(event, ctx);   // spawn och act: skådespelare
       if (event.weather) { Weather.type = event.weather; Weather.left = 90; Weather.flashIn = 1; CityBuilder.Sound?.play('weather.' + event.weather); }
       // where: var tornado, superstorm och meteorer slår till (samma mål som i scener: 'hq', en byggnadstyp, [dx, dy] från basen, { trigger: true } = där det som utlöste händelsen hände). Utan where: tornadons egen plats, meteorer vid basen.
