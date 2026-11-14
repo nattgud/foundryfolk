@@ -224,6 +224,15 @@
       requestAnimationFrame(step);
     },
 
+    // Kameran glider mot en punkt (i rutor, med decimaler) och stannar på den medan man anropar den varje bildruta (berättelsens "följ med")
+    follow(x, y, dt) {
+      const renderer = CityBuilder.Renderer, size = renderer.tileSize;
+      this.scrollToken = {};   // avbryter en pågående rullning
+      const k = 1 - Math.exp(-6 * Math.min(dt, .25));
+      renderer.camera.x += (x * size - innerWidth / renderer.zoom / 2 - renderer.camera.x) * k;
+      renderer.camera.y += (y * size - innerHeight / renderer.zoom / 2 - renderer.camera.y) * k;
+    },
+
     selectBuilding(building) {
       if (building !== this.selectedBuilding) this.casting = null;
       this.selectedBuilding = building || null;

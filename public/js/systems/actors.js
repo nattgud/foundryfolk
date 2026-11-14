@@ -12,6 +12,7 @@
      say: text | { text, for: sekunder, wait: true, speaker: id, voice: false }   pratbubbla ovanför huvudet (fast storlek, i vägen för ingenting). Har skådespelaren en talare i
                           Config.story.speakers (samma id, samma namn som bildfilen, eller speaker) skrivs texten ut med dess röst (voice: false stänger av). for = sekunder kvar efter sista tecknet (utan värde räknas tiden efter textens längd, se Bubbles.stay).
                           Manuset går vidare direkt, eller med wait: true först när bubblan är borta (räknat från att den syns)
+     follow: true         (på ett walk-steg) kameran följer skådespelaren medan den går. together: true på ett say-steg = den pratar medan den gör sitt förra steg (t.ex. går)
      leave: true          går mot närmaste ruta som spelaren inte ser (dimman) och försvinner när den inte syns längre
      kill: id | { actor: id, leave: 'blood' | 'corpse' | ['blood','corpse'] | 'none' }
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
@@ -224,9 +225,16 @@
       scene.running = []; scene.index = scene.steps.length;
       return true;
     },
+    // En pratbubbla över skådespelaren utan att röra dess manus (så att den kan tala medan den går). Rösten: speaker i steget, annars skådespelarens id, annars bildfilens namn (images/units/pipwick.png -> pipwick, så 'pipwick1' också låter som Pipwick; en grupp som thordramandalbertha låter som den första)
+    sayNow(data, unit, spec) {
+      const speakers = CityBuilder.Config.story.speakers, byImage = (data.image || '').replace(/^.*\//, '').replace(/\.png$/, '');
+      const speaker = spec.voice === false ? null : spec.speaker || [data.id, byImage, ...byImage.split('and')].find(name => speakers[name]) || null;
+      return CityBuilder.Bubbles?.say(unit, spec.text, spec.for, null, speaker);
+    },
     updateScenes(dt) {
       for (const scene of state().scenes || []) {
         scene.running = scene.running.filter(run => !this.sceneDone(scene, run, dt));
+        for (const run of scene.running) if (run.follow) { const unit = this.unitOf(run.who); if (unit) CityBuilder.Game.follow(unit.x, unit.y, dt); }   // walk med follow: kameran följer med
         if (this.watch(scene, dt)) continue;
         let guard = 0;
         while ((!scene.running.length || scene.steps[scene.index]?.together) && scene.index < scene.steps.length && guard++ < 100) {   // together: true = börjar direkt, utan att vänta på förra steget
@@ -252,9 +260,15 @@
               const unreachable = type === 'walk' && !this.resolve(target, null);   // målet finns inte (t.ex. en byggnad som inte är byggd): steget går inte att göra
               for (const data of type && !unreachable ? one ? [one] : this.members(step.who) : []) {
                 if (data.gone || (data.group && type === 'say' && data.nth > 1)) continue;
+                if (type === 'say' && step.together) {   // talar medan den gör något annat (t.ex. går): bubblan läggs över, manuset rörs inte
+                  const unit = this.unitOf(data.id), spec = typeof target === 'string' ? { text: target } : target, handle = unit && this.sayNow(data, unit, spec);
+                  if (!unit) continue;
+                  if (handle && spec.wait) scene.running.push({ kind: 'bubble', left: 60, handle });
+                  started++; continue;
+                }
                 const delay = data.group && (type === 'walk' || type === 'leave') ? (data.nth - 1) * (data.gap ?? GROUP_GAP) : 0;
                 this.setScript(data.id, delay ? [{ wait: delay }, { [type]: target }] : [{ [type]: target }]);
-                scene.running.push({ kind: 'actor', who: data.id }); started++;
+                scene.running.push({ kind: 'actor', who: data.id, follow: type === 'walk' && step.follow && !started ? true : undefined }); started++;
               }
               if (type && (!started || unreachable)) failed = true;
             }
@@ -346,10 +360,8 @@
     },
     say: {
       start(data, arg, act, unit) {
-        const spec = typeof arg === 'string' ? { text: arg } : arg, speakers = CityBuilder.Config.story.speakers, byImage = (data.image || '').replace(/^.*\//, '').replace(/\.png$/, '');
-        // Rösten: speaker i steget, annars skådespelarens id, annars bildfilens namn (images/units/pipwick.png -> pipwick, så 'pipwick1' också låter som Pipwick; en grupp som thordramandalbertha låter som den första)
-        const speaker = spec.voice === false ? null : spec.speaker || [data.id, byImage, ...byImage.split('and')].find(name => speakers[name]) || null;
-        act.handle = CityBuilder.Bubbles?.say(unit, spec.text, spec.for, null, speaker);
+        const spec = typeof arg === 'string' ? { text: arg } : arg;
+        act.handle = Actors.sayNow(data, unit, spec);
         act.wait = !!spec.wait;
       },
       // Med wait väntar manuset tills bubblan är borta (och, om den talar, tills hela texten sagts): tiden räknas från att bubblan syns, inte från att steget börjar
