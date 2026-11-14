@@ -1105,7 +1105,7 @@
     }
     for (const unit of CityBuilder.World.units) {
       if (!(unit.burning > Weather.time) || !Vision.visible(Players.HUMAN, Math.floor(unit.x), Math.floor(unit.y))) continue;
-      drawFlames(context, shownX(unit) * size, shownY(unit) * size + size * .35, size * .6, size * .7, unit.x * 3.7 + unit.y * 5.1, now, 1);
+      drawFire(context, 'fire', shownX(unit) - .5, shownY(unit) - .65, size, (unit.x * 3.7 + unit.y * 5.1) % 1, now, 1);   // samma eld som på rutorna (kulissen 'fire'), med fötterna i nederkanten
     }
   };
 
