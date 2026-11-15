@@ -23,6 +23,7 @@
                           meteor: { at, radius (slumpad ruta inom den), big: true } (en enda meteor, utan varning),
                           ground: { at, radius, share, to: 'grass' | 'dirt' | 'sand' } (marken), terrain: { at, radius, share, to: terrängtyp (utan = behåll), amount } (träd, malm, berg ... på marken; to: 'grass' = tom),
                           scenery: { at, radius, share, add: typ, layer, turn (0-3 kvarts varv medurs), flip (true = spegla) } eller { at, radius, remove: typ | 'all' } (kulisser)
+     enter: true          (på ett spawn-steg i en scen) personen börjar på närmaste ruta utom synfältet (kanten av dimman) och går dit 'at' pekar; scenen väntar tills den är framme (spawn: { ..., fog: true } gör samma utanför scener)
      fire: händelse       kör en vanlig händelse (give, weather, ...) en gång
    Mål (walk, teleport, spawn.at): [dx, dy] (rutor från spelarens HQ), 'hq', ett byggnads-id ('bakery' = närmaste), ett skådespelar-id, { x, y } (absolut ruta),
      { building: 'bakery' }, { actor: 'baker' }.
@@ -105,6 +106,18 @@
       return null;
     },
 
+    // Närmaste ruta som går att gå på och som spelaren inte ser (kanten av dimman) runt (cx, cy); null om allt syns
+    hiddenNear(cx, cy, first = 1, gap = 1) {
+      const Vision = CityBuilder.Vision;
+      for (let radius = first; radius <= 80; radius += gap) {
+        for (let step = 0; step < 32; step++) {
+          const angle = step / 32 * Math.PI * 2, x = Math.round(cx + Math.cos(angle) * radius), y = Math.round(cy + Math.sin(angle) * radius);
+          if (!Vision.visible(Players.HUMAN, x + .5, y + .5) && Number.isFinite(CityBuilder.Pathfinder.tileCost(x, y))) return { x, y, kind: 'tile' };
+        }
+      }
+      return null;
+    },
+
     // ---- skapa, spara, bygga upp ----
     spawn(spec) {
       if (spec?.id && spec.count > 1) {   // en grupp: count st med samma utseende, id#1 ... id#n. Alla börjar på samma ruta och slutar på samma ruta (högst 20 per ruta, resten flödar över till rutorna runt)
@@ -115,11 +128,15 @@
       if (!spec?.id || this.data(spec.id) && !this.data(spec.id).gone) return null;
       const from = this.resolve(spec.at ?? 'hq');
       if (!from) { console.warn(`Actors: spawn ${spec.id} has no valid position`); return null; }
-      const at = from.kind === 'building' ? { x: from.x, y: from.y + 1 } : from;
+      let at = from.kind === 'building' ? { x: from.x, y: from.y + 1 } : from, script = spec.script || [];
+      if (spec.fog) {   // kommer ur dimman: börjar på närmaste ruta utom synfältet och går som första steg dit 'at' pekar
+        const edge = this.hiddenNear(at.x, at.y);
+        if (edge) { script = [{ walk: spec.at ?? 'hq' }, ...script]; at = edge; }
+      }
       const data = {
         group: spec.group, nth: spec.nth, slot: spec.slot, gap: spec.gap,
         id: spec.id, image: spec.image, race: spec.race, frame: spec.frame, size: spec.size, speed: spec.speed, faces: spec.faces,
-        x: at.x + .5, y: at.y + .5, script: spec.script || [], index: 0, act: null, arrived: false, gone: false, killed: false,
+        x: at.x + .5, y: at.y + .5, script, index: 0, act: null, arrived: false, gone: false, killed: false,
       };
       const list = state().list.filter(item => item.id !== spec.id);   // en gammal, försvunnen med samma id ersätts
       list.push(data); state().list = list;
@@ -300,7 +317,7 @@
             const step = scene.steps[scene.index], i = scene.index++;
             let failed = false;   // kunde steget inte göras? Då körs dess otherwise (ett alternativt flöde) i stället
             if (step.camera !== undefined) { const tile = this.resolve(step.camera?.trigger ? this.triggerSpot(scene) : step.camera, null); if (tile) { CityBuilder.Game.scrollTo(Math.floor(tile.x), Math.floor(tile.y), true, step.zoom); scene.running.push({ kind: 'wait', left: .8 }); } else failed = true; }
-            else if (step.spawn) { const spot = step.spawn.at?.trigger ? this.triggerSpot(scene) : null, made = step.spawn.at?.trigger && !spot ? null : this.spawn({ ...step.spawn, ...(spot ? { at: spot } : {}), script: [] }); failed = !made && !this.data(step.spawn.id); if (!failed) (scene.cast ||= []).push(step.spawn.id); }
+            else if (step.spawn) { const spot = step.spawn.at?.trigger ? this.triggerSpot(scene) : null, made = step.spawn.at?.trigger && !spot ? null : this.spawn({ ...step.spawn, ...(spot ? { at: spot } : {}), fog: step.enter || undefined, script: [] }); failed = !made && !this.data(step.spawn.id); if (!failed) { (scene.cast ||= []).push(step.spawn.id); if (step.enter) scene.running.push({ kind: 'actor', who: step.spawn.id }); } }
             else if (step.tell) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'dialogue', lines: step.tell, part: 'events', mark }]); scene.running.push({ kind: 'tell', mark }); } }
             else if (step.wait !== undefined && !step.who) scene.running.push({ kind: 'wait', left: +step.wait || 0 });
             else if (step.letter) { const mark = `scene:${scene.id}:${i}`; if (!levels().told(mark)) { CityBuilder.Story.tell([{ type: 'letter', letter: step.letter, mark }]); scene.running.push({ kind: 'tell', mark }); } }   // ett brev: scenen väntar tills det är läst
@@ -434,14 +451,8 @@
     // Lämnar scenen: går mot närmaste ruta utom spelarens synfält och försvinner så snart den inte syns (eller är framme, eller inte kommer fram)
     leave: {
       start(data, arg, act, unit) {
-        const Vision = CityBuilder.Vision, cx = Math.floor(unit.x), cy = Math.floor(unit.y);
-        let best = null;
-        for (let radius = 2; radius <= 80 && !best; radius += 2) {
-          for (let step = 0; step < 32 && !best; step++) {
-            const angle = step / 32 * Math.PI * 2, x = Math.round(cx + Math.cos(angle) * radius), y = Math.round(cy + Math.sin(angle) * radius);
-            if (!Vision.visible(Players.HUMAN, x + .5, y + .5) && Number.isFinite(CityBuilder.Pathfinder.tileCost(x, y))) best = { x, y, kind: 'tile' };
-          }
-        }
+        const cx = Math.floor(unit.x), cy = Math.floor(unit.y);
+        let best = Actors.hiddenNear(cx, cy, 2, 2);
         if (!best) {   // allt syns: gå bort från basen
           const hq = Actors.hq(), away = hq ? Math.atan2(unit.y - hq.y, unit.x - hq.x) : 0;
           best = { x: Math.round(cx + Math.cos(away) * 70), y: Math.round(cy + Math.sin(away) * 70), kind: 'tile' };

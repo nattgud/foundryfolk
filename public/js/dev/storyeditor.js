@@ -132,10 +132,10 @@
       const selector = who => who && typeof who === 'object' ? { who: UNIT, pick: who.pick || 'trigger', side: who.side || '', kind: who.kind || '' } : { who };
       const stepOf = raw => {
         if (!raw || typeof raw !== 'object') return null;
-        const known = ['spawn', 'who', 'walk', 'say', 'leave', 'vanish', 'tell', 'wait', 'camera', 'zoom', 'together', 'follow', 'otherwise', 'letter', 'music', 'give', 'weather', 'tornado', 'super', 'meteors', 'where', 'ground', 'terrain', 'scenery', 'meteor'];
+        const known = ['spawn', 'enter', 'who', 'walk', 'say', 'leave', 'vanish', 'tell', 'wait', 'camera', 'zoom', 'together', 'follow', 'otherwise', 'letter', 'music', 'give', 'weather', 'tornado', 'super', 'meteors', 'where', 'ground', 'terrain', 'scenery', 'meteor'];
         if (Object.keys(raw).some(key => !known.includes(key))) return null;
         let step = null;
-        if (raw.spawn && raw.spawn.id && Object.keys(raw.spawn).every(key => ['id', 'image', 'race', 'count', 'at'].includes(key))) { const c = castOf(raw.spawn); step = { type: 'appear', who: c.id, arg: targetIn(raw.spawn.at) }; }
+        if (raw.spawn && raw.spawn.id && Object.keys(raw.spawn).every(key => ['id', 'image', 'race', 'count', 'at'].includes(key))) { const c = castOf(raw.spawn); step = { type: raw.enter ? 'enter' : 'appear', who: c.id, arg: targetIn(raw.spawn.at) }; }
         else if (raw.camera !== undefined) step = { type: 'camera', arg: targetIn(raw.camera), ...(raw.zoom ? { zoom: raw.zoom } : {}) };
         else if (raw.say && typeof raw.say === 'object' && typeof raw.say.text === 'string') step = { type: 'say', ...selector(raw.who), arg: { text: raw.say.text } };
         else if (raw.walk !== undefined && typeof raw.who === 'string') step = { type: 'walk', who: raw.who, arg: targetIn(raw.walk), ...(raw.follow ? { follow: true } : {}) };
@@ -329,7 +329,7 @@
     const UNIT = '__unit';   // "en enhet i spelet" i stället för en person i scenen
     const flatSteps = steps => steps.flatMap(s => [s, ...flatSteps(s.otherwise || [])]);
     const PICK_OPT = [['trigger', 'den som utlöste händelsen'], ['nearest', 'den som är närmast basen'], ['random', 'en slumpad']];
-    const TARGETED = ['walk', 'appear', 'camera', 'ground', 'terrain', 'scenery', 'meteor'], STORMS = ['tornado', 'super', 'meteors'];   // steg med en plats; stormarnas plats är valfri
+    const TARGETED = ['walk', 'appear', 'enter', 'camera', 'ground', 'terrain', 'scenery', 'meteor'], STORMS = ['tornado', 'super', 'meteors'];   // steg med en plats; stormarnas plats är valfri
     const NO_WHO = ['dialog', 'wait', 'camera', 'letter', 'music', 'give', 'weather', 'ground', 'terrain', 'scenery', 'meteor', ...STORMS];   // dessa hör till scenen, inte till en person
     const groundName = id => ({ grass: 'gräs', dirt: 'jord', sand: 'sand' })[id] || id;
     const terrainName = id => Config.terrain[id]?.name || id;
@@ -340,6 +340,7 @@
         case 'walk': return `${who} går till ${targetText(s.arg)}${s.follow ? ' (kameran följer med)' : ''}`;
         case 'camera': return `Kameran flyttar till ${targetText(s.arg)}${s.zoom ? ', zoom ' + s.zoom : ''}`;
         case 'appear': return `${who} dyker upp vid ${targetText(s.arg)}`;
+        case 'enter': return `${who} kommer fram ur dimman och går till ${targetText(s.arg)}`;
         case 'say': return `${who} säger i en pratbubbla${s.together ? ' (medan det ovanför pågår)' : ''}: “${s.arg.text}”`;
         case 'dialog': return `Dialog: ${s.arg.map(line => `${line.who || '?'}: “${line.text}”`).join(' / ')}`;
         case 'leave': return `${who} lämnar scenen (går mot dimman)`;
@@ -384,7 +385,7 @@
         let step;
         const who = s.who === UNIT ? selectorOf(s) : s.who;
         switch (s.type) {
-          case 'appear': step = { spawn: specOf(cast.get(s.who) || { id: s.who, image: '' }, s.arg === TRIGGER ? { trigger: true } : s.arg) }; break;
+          case 'appear': case 'enter': step = { spawn: specOf(cast.get(s.who) || { id: s.who, image: '' }, s.arg === TRIGGER ? { trigger: true } : s.arg) }; if (s.type === 'enter') step.enter = true; break;
           case 'walk': step = { who, walk: s.arg === TRIGGER ? { trigger: true } : s.arg }; if (s.follow) step.follow = true; break;
           case 'camera': step = { camera: s.arg === TRIGGER ? { trigger: true } : s.arg }; if (s.zoom) step.zoom = s.zoom; break;
           case 'say': step = { who, say: { text: s.arg.text, wait: true } }; break;
@@ -422,8 +423,8 @@
       let busy = new Set();   // personer som redan gör något i en grupp av steg som börjar samtidigt
       sc.steps.forEach((s, i) => {
         if (!s.together || !i) busy = new Set();
-        if (s.who && s.who !== UNIT && s.type !== 'appear' && !NO_WHO.includes(s.type)) { if (busy.has(s.who)) out.push({ text: `${tag}: steg ${i + 1} börjar samtidigt som ett annat steg för ${s.who}. En person kan bara göra en sak i taget.` }); busy.add(s.who); }
-        if (s.type === 'appear') here.add(s.who);
+        if (s.who && s.who !== UNIT && s.type !== 'appear' && s.type !== 'enter' && !NO_WHO.includes(s.type)) { if (busy.has(s.who)) out.push({ text: `${tag}: steg ${i + 1} börjar samtidigt som ett annat steg för ${s.who}. En person kan bara göra en sak i taget.` }); busy.add(s.who); }
+        if (s.type === 'appear' || s.type === 'enter') here.add(s.who);
         else if (!NO_WHO.includes(s.type) && s.who !== UNIT && !here.has(s.who) && ids.has(s.who)) out.push({ text: `${tag}: steg ${i + 1} ("${stepLabel(sc, s)}") sker innan ${s.who} finns. Låt hen dyka upp först, eller placera hen på kartan från början.` });
         if (!NO_WHO.includes(s.type) && s.who !== UNIT && !ids.has(s.who)) out.push({ text: `${tag}: steg ${i + 1} – personen är inte med i scenen.` });
         for (const alt of s.otherwise || []) if (!NO_WHO.includes(alt.type) && alt.who !== UNIT && !ids.has(alt.who)) out.push({ text: `${tag}: failsafen för steg ${i + 1} – personen är inte med i scenen.` });
@@ -443,7 +444,7 @@
     let sceneCond = 'time'; 
 
     const STEP_TYPES = [
-      ['Personer', [['walk', 'går till…'], ['appear', 'dyker upp vid…'], ['say', 'säger (pratbubbla)'], ['leave', 'lämnar scenen (går mot dimman)'], ['vanish', 'försvinner direkt']]],
+      ['Personer', [['walk', 'går till…'], ['appear', 'dyker upp vid…'], ['enter', 'kommer fram ur dimman och går till…'], ['say', 'säger (pratbubbla)'], ['leave', 'lämnar scenen (går mot dimman)'], ['vanish', 'försvinner direkt']]],
       ['Berättelse och kamera', [['dialog', 'DIALOG (dialogruta, flera personer)'], ['letter', 'BREV'], ['camera', 'KAMERAN flyttar till…'], ['wait', 'VÄNTA (sekunder)']]],
       ['Ljud och väder', [['music', 'MUSIK byts'], ['weather', 'VÄDER ändras'], ['tornado', 'TORNADO'], ['super', 'SUPERSTORM'], ['meteors', 'METEORER (en storm)'], ['meteor', 'METEOR (en enda)']]],
       ['Världen', [['ground', 'MARKEN ändras (gräs, jord, sand)'], ['terrain', 'TERRÄNG / RESURS ändras (träd, malm, berg ...)'], ['scenery', 'KULISSER läggs till / tas bort']]],
@@ -668,7 +669,7 @@
           const step = { who, type: d.type };
           if (who === UNIT) Object.assign(step, { pick: d.pick, side: d.side, kind: d.kind });
           switch (d.type) {
-            case 'walk': case 'appear': case 'camera': step.arg = target; if (d.type === 'camera' && d.zoom) step.zoom = +d.zoom; break;
+            case 'walk': case 'appear': case 'enter': case 'camera': step.arg = target; if (d.type === 'camera' && d.zoom) step.zoom = +d.zoom; break;
             case 'say': if (!d.text.trim()) { notice('Skriv vad som sägs.'); return null; } step.arg = { text: d.text.trim(), secs: d.secs || 2 }; break;
             case 'dialog': if (d.lineText.trim()) actions.lineAdd(true); if (!d.lines.length) { notice('Lägg till minst en replik.'); return null; } step.arg = d.lines.map(ln => ({ who: ln.who, text: lineText(ln) })); break;
             case 'wait': step.arg = +d.wait || 1; break;
@@ -689,7 +690,7 @@
         const put = step => { if (d.editing !== null) { if (d.parent === null && list[d.editing]?.otherwise) step.otherwise = list[d.editing].otherwise; list[d.editing] = step; } else list.push(step); resetStep(); };
         const target = d.target === '__keep' ? d.keepArg : d.target === '' ? undefined : d.target;
         if (d.target === '__map' && (TARGETED.includes(d.type) || STORMS.includes(d.type))) {   // "en plats på kartan": väntar på ett klick, och steget byggs med rutan
-          if (!build(null) && !['walk', 'appear', 'camera', 'ground', 'terrain', 'scenery', 'meteor'].includes(d.type)) return;
+          if (!build(null) && !['walk', 'appear', 'enter', 'camera', 'ground', 'terrain', 'scenery', 'meteor'].includes(d.type)) return;
           st.arm = { kind: 'sceneStep', make: tile => build(tileTarget(tile)), put }; render(); return;
         }
         const step = build(target); if (!step) return;
@@ -699,7 +700,7 @@
         const s = listAt(p)[+i]; resetStep(); Object.assign(stepDraft, { type: s.type, editing: +i, together: !!s.together, follow: !!s.follow, parent: p === undefined ? null : +p, pick: s.pick || 'trigger', side: s.side || '', kind: s.kind || '' });
         if (s.who) stepDraft.who = s.who;
         const a = s.arg;
-        if (['walk', 'appear', 'camera'].includes(s.type)) { stepDraft.keepArg = s.arg; stepDraft.target = '__keep'; stepDraft.zoom = s.zoom || ''; }
+        if (['walk', 'appear', 'enter', 'camera'].includes(s.type)) { stepDraft.keepArg = s.arg; stepDraft.target = '__keep'; stepDraft.zoom = s.zoom || ''; }
         else if (['ground', 'terrain', 'scenery'].includes(s.type)) { stepDraft.keepArg = a.at; stepDraft.target = '__keep'; Object.assign(stepDraft, { radius: a.radius || 0, share: a.share ?? 100 }); if (s.type === 'ground') stepDraft.groundTo = a.to; else if (s.type === 'terrain') Object.assign(stepDraft, { terrainTo: a.to || '', amount: a.amount ?? '' }); else Object.assign(stepDraft, { scenMode: a.mode, scenType: a.type, scenLayer: a.layer ?? '', scenTurn: a.turn || 0, scenFlip: !!a.flip }); }
         else if (s.type === 'meteor') { stepDraft.keepArg = a.at; stepDraft.target = '__keep'; Object.assign(stepDraft, { radius: a.radius || 0, meteorBig: a.big ? '1' : '' }); }
         else if (STORMS.includes(s.type)) { stepDraft.fxNum = a; if (s.where !== undefined) { stepDraft.keepArg = s.where; stepDraft.target = '__keep'; } else stepDraft.target = ''; }
@@ -832,7 +833,7 @@
       if (base && st.tab === 'scene' && sceneNow()) {
         const sc = sceneNow();
         for (const c of sc.cast) if (c.at) wanted.push({ x: base.x + c.at[0], y: base.y + c.at[1], label: c.id.slice(0, 7), color: 'rgb(255 213 74 / 90%)', wide: true });
-        sc.steps.forEach((s, i) => { const tile = (s.type === 'walk' || s.type === 'appear' || s.type === 'camera') && (Array.isArray(s.arg) || typeof s.arg === 'string') && tileOfTarget(s.arg); if (tile) wanted.push({ ...tile, label: String(i + 1), color: 'rgb(120 200 255 / 90%)' }); });
+        sc.steps.forEach((s, i) => { const tile = (s.type === 'walk' || s.type === 'appear' || s.type === 'enter' || s.type === 'camera') && (Array.isArray(s.arg) || typeof s.arg === 'string') && tileOfTarget(s.arg); if (tile) wanted.push({ ...tile, label: String(i + 1), color: 'rgb(120 200 255 / 90%)' }); });
       }
       while (marks.length < wanted.length) { const div = document.createElement('div'); div.style.cssText = 'position:absolute;color:#000;font:bold 11px sans-serif;text-align:center;border-radius:10px;white-space:nowrap;padding:0 3px;box-sizing:border-box;min-width:16px'; markerBox.appendChild(div); marks.push(div); }
       marks.forEach((div, i) => {
