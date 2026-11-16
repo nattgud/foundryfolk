@@ -721,6 +721,9 @@
   // Fält som saknas, eller filer som inte laddas, hoppas över. Slutar det med null ritas reservgrafik.
     // Väljer bild (kan vara ett ark, se definition.frame): byggnadsspecifik (med last) -> byggnadsspecifik -> enhetens lastbild -> enhetens bild.
   // Fält som saknas, eller filer som inte laddas, hoppas över. Slutar det med null ritas reservgrafik.
+  // En bärare utan uppdrag som står på en byggnad ritas inte (den väntar inne i huset)
+  const restingInside = unit => unit.definition.isHauler && !unit.deliveryTask && !unit.carriedResource && !unit.stepQueue.length && !!World.buildingAt(Math.floor(unit.x), Math.floor(unit.y));
+
   const findUnitImage = unit => {
     const definition = unit.definition, isCarrying = !!unit.carriedResource, race = Players.imageRace(definition, unit.player);
     const getImage = source => source ? Assets.get(source, race) : null;
@@ -751,7 +754,7 @@
     const view = renderer.viewBounds(tileSize * 2);
     for (const unit of World.units) {
       const shownAtX = shownX(unit), shownAtY = shownY(unit);
-      if (outside(view, shownAtX * tileSize, shownAtY * tileSize) || hidden(unit)) { unit.lastX = shownAtX; unit.lastY = shownAtY; continue; } // förflyttningen utanför bild ger ingen riktning
+      if (outside(view, shownAtX * tileSize, shownAtY * tileSize) || hidden(unit) || restingInside(unit)) { unit.lastX = shownAtX; unit.lastY = shownAtY; continue; } // förflyttningen utanför bild ger ingen riktning
       const definition = unit.definition, image = findUnitImage(unit);
       const frameW = image && (definition.frame || image.naturalWidth), frameH = image && (definition.frame || image.naturalHeight);
       const cols = image ? Math.max(1, Math.floor(image.naturalWidth / frameW)) : 1, rows = image ? Math.max(1, Math.floor(image.naturalHeight / frameH)) : 1;
