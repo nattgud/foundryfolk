@@ -16,6 +16,12 @@
      leave: true          går mot närmaste ruta som spelaren inte ser (dimman) och försvinner när den inte syns längre
      kill: id | { actor: id, leave: 'blood' | 'corpse' | 'skeleton' | ['blood','corpse'] | 'none' }
                           en annan skådespelare dör och ersätts av en kuliss (blodpöl som standard)
+     attack: { target: mål, for: 'once' | sekunder | 'destroy', as: soldatsort, hits: n, leave: 'blood' ... }
+                          går fram till målet (en skådespelare, en byggnad eller en ruta) och slår eller skjuter på det. for: 'once' = ett slag, ett tal = så många sekunder, 'destroy' = tills målet är dött
+                          (en byggnad: förstörd, en skådespelare: dör efter hits slag, standard 3, och lämnar blod som kill). as = soldatsort ur units.js (swordsman, archer, knight ...) som ger skada, räckvidd och tid mellan slagen. Utan as: ett vanligt svärdsslag.
+                          En byggnad tar riktig skada (och kan förstöras, även en död byggnad), en skådespelare blinkar rött. I en scen: { who: id, attack: mål, for: ..., with: soldatsort }.
+     shoot: { target: mål, as: soldatsort }
+                          skjuter ett enda skott från där skådespelaren står mot målet (en ruta, även en tom; en byggnad; en skådespelare), med hela flygningen, träffen och elden (standard catapult). I en scen: { who: id, shoot: mål, with: soldatsort }.
      tell: [dialograder]  visar en dialog och väntar tills den lästs
      Scener: event.scene = [ { spawn: spec }, { who: id, walk: mål }, { tell: [rader] }, { wait: s }, { camera: mål, zoom: 1-5 (valfritt) }, ... ]. Stegen sker i ordning, ett i taget (together: true på ett steg = det börjar samtidigt som förra steget, och nästa steg väntar på båda).
      Grupp: spawn med count: n skapar n st (id#1 ... id#n) på samma ruta. Ett steg med gruppens id gäller alla: de går med en kort fördröjning var (ett led) och slutar på samma ruta (högst 20 per ruta, resten på rutorna runt); bara den första talar.
@@ -104,6 +110,18 @@
       if (target.x !== undefined) return { x: target.x, y: target.y, kind: 'tile' };
       if (target.at) return this.resolve(target.at, from);
       return null;
+    },
+
+    // Det en attack eller ett skott riktas mot, uppslaget på nytt varje gång (ingenting sparas): { kind: 'actor' | 'building' | 'tile', x, y (mitten, i kommatal), thing } eller null om det inte finns (längre)
+    targetOf(spec) {
+      const target = spec?.target, id = typeof target === 'string' && this.data(target) ? target : target?.actor;
+      if (id) { const unit = this.unitOf(id); return unit ? { kind: 'actor', x: unit.x, y: unit.y, thing: unit } : null; }
+      const tile = this.resolve(target, null);
+      if (!tile) return null;
+      const building = World.buildingAt(Math.floor(tile.x), Math.floor(tile.y));
+      if (building && !building.removed && !building.definition.pile) return { kind: 'building', x: building.x + .5, y: building.y + .5, thing: building };
+      if (tile.kind === 'building') return null;   // byggnaden som pekades ut finns inte
+      return { kind: 'tile', x: Math.floor(tile.x) + .5, y: Math.floor(tile.y) + .5, thing: { x: Math.floor(tile.x) + .5, y: Math.floor(tile.y) + .5, removed: false } };
     },
 
     // Närmaste ruta som går att gå på och som spelaren inte ser (kanten av dimman) runt (cx, cy); null om allt syns
@@ -333,8 +351,9 @@
               const [type] = Object.entries(step).find(([key]) => key !== 'who' && Actions[key]) || [], one = this.data(step.who);
               // Ett steg för en grupp gäller alla i den: de går och lämnar med en liten fördröjning var (ett led), bara den första talar
               let started = 0;
-              const target = type === 'walk' && step.walk?.trigger ? this.triggerSpot(scene) : step[type];   // { trigger: true } = dit det som utlöste scenen hände
-              const unreachable = type === 'walk' && !this.resolve(target, null);   // målet finns inte (t.ex. en byggnad som inte är byggd): steget går inte att göra
+              let target = ['walk', 'attack', 'shoot'].includes(type) && step[type]?.trigger ? this.triggerSpot(scene) : step[type];   // { trigger: true } = dit det som utlöste scenen hände
+              if (type === 'attack' || type === 'shoot') target = { target, for: step.for, as: step.with, hits: step.hits, leave: step.leave };   // slag och skott har fler uppgifter än ett mål
+              const unreachable = type === 'walk' ? !this.resolve(target, null) : type === 'attack' || type === 'shoot' ? !this.targetOf(target) : false;   // målet finns inte (t.ex. en byggnad som inte är byggd): steget går inte att göra
               for (const data of type && !unreachable ? one ? [one] : this.members(step.who) : []) {
                 if (data.gone || (data.group && type === 'say' && data.nth > 1)) continue;
                 if (type === 'say' && step.together) {   // talar medan den gör något annat (t.ex. går): bubblan läggs över, manuset rörs inte
@@ -343,7 +362,7 @@
                   if (handle && spec.wait) scene.running.push({ kind: 'bubble', left: 60, handle });
                   started++; continue;
                 }
-                const delay = data.group && (type === 'walk' || type === 'leave') ? (data.nth - 1) * (data.gap ?? GROUP_GAP) : 0;
+                const delay = data.group && (type === 'walk' || type === 'leave' || type === 'attack') ? (data.nth - 1) * (data.gap ?? GROUP_GAP) : 0;
                 this.setScript(data.id, delay ? [{ wait: delay }, { [type]: target }] : [{ [type]: target }]);
                 scene.running.push({ kind: 'actor', who: data.id, follow: type === 'walk' && step.follow && !started ? true : undefined }); started++;
               }
@@ -476,6 +495,63 @@
         Actors.leave(leave === 'none' ? [] : leave, unit.x, unit.y);
         victim.killed = true; Actors.remove(victim);
       },
+    },
+    // Slår eller skjuter på ett mål (se huvudet): går fram, slår tills tiden är ute eller målet är dött
+    attack: {
+      start(data, arg, act, unit) {
+        if (!Actors.targetOf(arg)) { act.skip = true; return; }
+        const def = Config.units[arg.as] || {};
+        act.range = def.attackRange ?? 1; act.cooldown = def.attackCooldown ?? 1; act.cool = 0; act.swings = 0; act.approach = 0; act.limit = STUCK_BASE + 20;
+        unit.pathFailed = false;
+      },
+      update(data, arg, dt, act, unit) {
+        if (act.skip) return true;
+        if (act.range === undefined) { Actions.attack.start(data, arg, act, unit); return false; }   // efter inläsning
+        const target = Actors.targetOf(arg), Combat = CityBuilder.Combat, def = Config.units[arg.as] || {}, duration = arg.for ?? 'once';
+        if (!target) return true;   // målet är borta (byggnaden förstörd, skådespelaren försvunnen)
+        if (act.endAt !== undefined && act.elapsed >= act.endAt) { unit.stepQueue.length = 0; return true; }
+        const ranged = act.range > 2, reach = ranged ? act.range : 1.7 + (target.kind === 'building' ? .5 : 0), dist = Utils.distance(target.x - unit.x, target.y - unit.y);
+        act.cool -= dt;
+        if (dist > reach && !act.forced) {   // fram till målet (fastnar den, hoppar den dit)
+          act.approach += dt;
+          if (unit.pathFailed || act.approach > act.limit + dist * STUCK_PER_TILE) {
+            const here = { x: Math.floor(unit.x), y: Math.floor(unit.y) }, tile = { x: Math.floor(target.x), y: Math.floor(target.y) };
+            place(unit, data, CityBuilder.Pathfinder.assess(here.x, here.y, tile.x, tile.y, Players.HUMAN)?.near || tile); unit.pathFailed = false; act.forced = true;
+          } else if (!unit.stepQueue.length) unit.stepQueue = [Jobs.walkTo(Math.floor(target.x), Math.floor(target.y), true)];
+          return false;
+        }
+        unit.stepQueue.length = 0;
+        if (act.cool > 0) return false;
+        act.cool = act.cooldown; act.swings++;
+        CityBuilder.Combat.glows.set(unit, .3);
+        CityBuilder.Sound?.play(def.attackSound || (ranged ? 'arrow' : 'swing'), { x: unit.x, y: unit.y });
+        const attackDef = { damageType: def.damageType, pierce: def.pierce, ...def, attackDamage: def.attackDamage ?? 6, attackRange: act.range };
+        let settle = .5;
+        if (target.kind !== 'tile' || ranged) {
+          const amount = target.thing.definition ? Combat.damageAmount(attackDef, target.thing.definition) : 0;
+          if (ranged) settle = Combat.launch(unit, def, target.thing, amount).duration + .2; else Combat.damage(target.thing, amount, unit);
+        }
+        if (duration === 'once') act.endAt = act.elapsed + settle;
+        else if (typeof duration === 'number' || +duration > 0) { act.endAt ??= act.elapsed + (+duration) ; }
+        else if (target.kind === 'tile') act.endAt = act.elapsed + settle;   // 'destroy' mot en tom ruta: ett slag
+        else if (target.kind === 'actor' && act.swings >= (arg.hits || 3)) {   // en skådespelare dör efter några slag och lämnar blod (eller det som valts)
+          Actions.kill.start(data, { actor: Actors.data(typeof arg.target === 'string' ? arg.target : arg.target.actor)?.id, leave: arg.leave }); act.endAt = act.elapsed + .3;
+        }
+        return false;
+      },
+    },
+    // Ett enda skott mot ett mål: hela flygningen, träffen och elden (sorten ger skada, flygtid och eld; standard catapult)
+    shoot: {
+      start(data, arg, act, unit) {
+        const target = Actors.targetOf(arg), def = Config.units[arg.as] || Config.units.catapult;
+        if (!target) { act.skip = true; return; }
+        const Combat = CityBuilder.Combat, attacker = { player: CityBuilder.Story.deadOwner(), x: unit.x, y: unit.y, definition: def, kind: arg.as || 'catapult', removed: false };   // skjuter åt fiendens sida: elden bränner spelarens soldater
+        CityBuilder.Sound?.play(def.attackSound || 'arrow', { x: unit.x, y: unit.y });
+        Combat.glows.set(unit, .3);
+        const amount = target.thing.definition ? Combat.damageAmount(def, target.thing.definition) : 0;
+        act.wait = Combat.launch(attacker, def, target.thing, amount).duration + (def.fire ? .6 : .3);
+      },
+      update(data, arg, dt, act) { return act.skip || act.elapsed >= act.wait; },
     },
     tell: {
       start(data, arg, act) {

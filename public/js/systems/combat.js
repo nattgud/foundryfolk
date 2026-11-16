@@ -138,13 +138,21 @@
         return;
       }
       CityBuilder.Sound?.play(definition.attackSound || 'arrow', { x: attacker.x, y: attacker.y });
+      this.launch(attacker, definition, target, amount);
+    },
+
+    // Ett skott (pil, sten) från attacker mot target med definitionens flygtid och eld. Returnerar skottet (duration = sekunder i luften).
+    // Används också av berättelsens skådespelare (actors.js, steget shoot).
+    launch(attacker, definition, target, amount) {
       const { projectileSpeed, projectileMinSeconds, projectileMaxSeconds } = settings();
       const distance = Utils.distance(centreX(target) - attacker.x, centreY(target) - attacker.y);
-      this.projectiles.push({
+      const shot = {
         x: attacker.x, y: attacker.y, fromX: attacker.x, fromY: attacker.y, toX: centreX(target), toY: centreY(target),
         target, attacker, damage: amount, time: 0, fire: definition.fire, kind: definition.projectile,
         duration: Math.min(definition.projectileMaxSeconds ?? projectileMaxSeconds, Math.max(projectileMinSeconds, distance / (definition.projectileSpeed ?? projectileSpeed))),
-      });
+      };
+      this.projectiles.push(shot);
+      return shot;
     },
 
     // Närstridsslag som träffar fler: alla fiender inom radius rutor från målet får också skada (definition.sweep, den stora demonen). Byggnader slås bara en i taget.
@@ -217,6 +225,7 @@
     },
 
     damage(target, amount, attacker) {
+      if (target.actor && !target.removed) { this.hits.set(target, HIT_SECONDS); return; }   // berättelsens skådespelare är odödliga men blinkar rött när de träffas
       if (target.hp == null || target.removed) return;
       if (attacker && (target.player === Players.HUMAN || attacker.player === Players.HUMAN) && Players.isHostile(target.player, attacker.player)) this.fightAt = this.time;
       this.raiseAlarm(target, attacker);

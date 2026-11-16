@@ -39,11 +39,11 @@
       return building;
     },
 
-    place(type, x, y, dead) {
+    place(type, x, y, dead, race) {
       const spot = this.freeSpot(type, x, y);
       if (!spot) return null;
       const building = World.placeBuilding(CityBuilder.Construction.variantFor(type, spot.x, spot.y) || type, spot.x, spot.y, true, dead ? this.deadOwner() : Players.HUMAN);   // en samlare eller gruva får inriktningen som passar rutan
-      return dead ? World.makeDead(building) : this.equip(building);
+      return dead ? World.makeDead(building, race) : this.equip(building);
     },
 
     // Döda byggnader (dead: true i start.buildings): kulisser som ingen kan använda. De ägs av första fienden, så spelarens soldater kan slå sönder dem
@@ -51,20 +51,20 @@
     deadOwner() { return Players.hostileAI()[0] ?? Players.ENEMY; },
 
     // Placerar en byggnad på exakt plats (dx, dy rutor från HQ). Går det inte (vatten, berg, upptaget) skrivs en varning och den närmaste lediga rutan används.
-    placeAt(type, dx, dy, dead) {
+    placeAt(type, dx, dy, dead, race) {
       const hq = World.headquarters, x = hq.x + dx, y = hq.y + dy;
       type = CityBuilder.Construction.variantFor(type, x, y) || type;   // 'gatherer' eller 'mine' ger inriktningen som passar rutan; ett variant-id (berry_gatherer ...) behålls
       if (!World.canPlace(type, x, y)) {
         console.warn(`Story: ${type} cannot stand at dx ${dx}, dy ${dy} in chapter ${this.chapter.number}; using the nearest free spot`);
-        return this.place(type, x, y, dead);
+        return this.place(type, x, y, dead, race);
       }
       const building = World.placeBuilding(type, x, y, true, dead ? this.deadOwner() : Players.HUMAN);
-      return dead ? World.makeDead(building) : this.equip(building);
+      return dead ? World.makeDead(building, race) : this.equip(building);
     },
 
     // Kapitlets start: byggnaderna från föregående mål står redo och Eye of Shades står mot fienden.
     // En byggnad i start.buildings är antingen { type, dx, dy } (exakt plats, mätt i rutor från HQ) eller bara ett id (automatisk plats runt HQ).
-    // { type, dx, dy, dead: true } är en död byggnad: bara en kuliss som ingen kan använda (se deadOwner). Lägg till sight: 6 för att den alltid ska synas genom dimman
+    // { type, dx, dy, dead: true, race: 'demon' (valfritt: byggnadens utseende, annars fiendens ras) } är en död byggnad: bara en kuliss som ingen kan använda (se deadOwner). Lägg till sight: 6 för att den alltid ska synas genom dimman
     // (radie i rutor, som en egen byggnad) och arrow: true (eller en färg, t.ex. '#ff4fd8') för en pil mot den på minimapen när den ligger utanför.
     // Inriktningen är själva typen: layout() skriver t.ex. 'herb_gatherer' eller 'copper_mine'. Ett 'gatherer' eller 'mine' får den inriktning som passar platsen.
     // eye: true placerar Eye of Shades automatiskt mot fienden, eye: { reach } längre eller kortare dit (andel av avståndet mellan baserna), eye: { dx, dy } på en bestämd plats.
@@ -73,7 +73,7 @@
       if (!chapter || !hq) return;
       (chapter.start?.buildings || []).forEach((entry, i) => {
         if (entry.type) {
-          const building = this.placeAt(entry.type, entry.dx, entry.dy, entry.dead);
+          const building = this.placeAt(entry.type, entry.dx, entry.dy, entry.dead, entry.race);
           // En död byggnad med sight (radie i rutor) syns alltid för spelaren, genom dimman, som en egen byggnad; arrow: true (eller en färg) ger en pil mot den på minimapen
           if (building && entry.dead) { if (entry.sight) building.sight = entry.sight; if (entry.arrow) building.arrow = entry.arrow; }
           return building;

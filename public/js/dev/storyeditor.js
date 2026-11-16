@@ -66,6 +66,7 @@
     const imageSrc = (path, race) => { const m = /^images\/units\/([^/]+\.png)$/.exec(path || ''); return m ? `images/units/${race || 'human'}/${m[1]}` : path; };   // spelets sökväg saknar rasmappen (som i Config.units): den sätts in här, annars ger förhandsvisningen 404
     const nameOf = path => images.find(item => item.path === path)?.label || (path || '').replace('images/units/', '').replace('.png', '');
     const targetText = target => target === TRIGGER ? 'det som utlöste händelsen' : Array.isArray(target) ? `ruta (${target[0]}, ${target[1]})` : typeof target === 'string' ? (target === 'hq' ? 'basen' : target) : JSON.stringify(target);
+    const raceChoices = [['', 'som bilden / kapitlet'], ...Object.entries(C.Config.races || {}).map(([id, race]) => [id, race.name || id])];   // ras för döda byggnader och personer
     const select = (id, options, current, bind) => `<select ${id ? `id="${id}"` : ''} ${bind ? `data-bind="${bind}"` : ''}>${options.map(option => { const [value, label] = Array.isArray(option) ? option : [option, option]; return `<option value="${esc(value)}"${String(value) === String(current) ? ' selected' : ''}>${esc(label)}</option>`; }).join('')}</select>`;
 
 
@@ -132,12 +133,14 @@
       const selector = who => who && typeof who === 'object' ? { who: UNIT, pick: who.pick || 'trigger', side: who.side || '', kind: who.kind || '' } : { who };
       const stepOf = raw => {
         if (!raw || typeof raw !== 'object') return null;
-        const known = ['spawn', 'enter', 'who', 'walk', 'say', 'leave', 'vanish', 'tell', 'wait', 'camera', 'zoom', 'together', 'follow', 'otherwise', 'letter', 'music', 'give', 'weather', 'tornado', 'super', 'meteors', 'where', 'ground', 'terrain', 'scenery', 'meteor'];
+        const known = ['spawn', 'enter', 'attack', 'shoot', 'for', 'with', 'hits', 'who', 'walk', 'say', 'leave', 'vanish', 'tell', 'wait', 'camera', 'zoom', 'together', 'follow', 'otherwise', 'letter', 'music', 'give', 'weather', 'tornado', 'super', 'meteors', 'where', 'ground', 'terrain', 'scenery', 'meteor'];
         if (Object.keys(raw).some(key => !known.includes(key))) return null;
         let step = null;
         if (raw.spawn && raw.spawn.id && Object.keys(raw.spawn).every(key => ['id', 'image', 'race', 'count', 'at'].includes(key))) { const c = castOf(raw.spawn); step = { type: raw.enter ? 'enter' : 'appear', who: c.id, arg: targetIn(raw.spawn.at) }; }
         else if (raw.camera !== undefined) step = { type: 'camera', arg: targetIn(raw.camera), ...(raw.zoom ? { zoom: raw.zoom } : {}) };
         else if (raw.say && typeof raw.say === 'object' && typeof raw.say.text === 'string') step = { type: 'say', ...selector(raw.who), arg: { text: raw.say.text } };
+        else if (raw.attack !== undefined && typeof raw.who === 'string' && raw.leave === undefined && (raw.for === undefined || raw.for === 'once' || raw.for === 'destroy' || +raw.for > 0)) step = { type: 'attack', who: raw.who, arg: targetIn(raw.attack), dur: raw.for ?? 'once', ...(raw.with ? { as: raw.with } : {}), ...(raw.hits ? { hits: raw.hits } : {}) };
+        else if (raw.shoot !== undefined && typeof raw.who === 'string') step = { type: 'shoot', who: raw.who, arg: targetIn(raw.shoot), ...(raw.with ? { as: raw.with } : {}) };
         else if (raw.walk !== undefined && typeof raw.who === 'string') step = { type: 'walk', who: raw.who, arg: targetIn(raw.walk), ...(raw.follow ? { follow: true } : {}) };
         else if (raw.leave && typeof raw.who === 'string') step = { type: 'leave', who: raw.who };
         else if (raw.vanish && typeof raw.who === 'string') step = { type: 'vanish', who: raw.who };
@@ -262,6 +265,7 @@
         <div class="row">Lager <input type="number" data-bind="layer" value="${esc(st.layer)}" placeholder="auto" style="width:60px"> <span class="hint">(auto = blod under lik)</span></div>
         <div class="row">Vridning <select data-bind="turn">${[0, 1, 2, 3].map(n => `<option value="${n}"${+st.turn === n ? ' selected' : ''}>${n * 90}°</option>`).join('')}</select> <label><input type="checkbox" data-bind="flip"${st.flip ? ' checked' : ''}> Spegla</label> <span class="hint">(tangent R vrider, F speglar. Måla över en kuliss för att ändra den)</span></div>
         <div class="row"><label title="Gäller de döda byggnader du placerar härefter"><input type="checkbox" data-bind="beacon"${st.beacon ? ' checked' : ''}> Döda byggnader syns alltid (även i dimman)</label></div>
+        <div class="row">Ras <select data-bind="deadRace">${raceChoices.map(([value, label]) => `<option value="${esc(value)}"${(st.deadRace || '') === value ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select> <span class="hint">(döda byggnader härefter)</span></div>
         ${st.beacon ? `<div class="row">Radie <input type="number" min="1" data-bind="beaconRadius" value="${esc(st.beaconRadius ?? 6)}" style="width:60px"> rutor <label><input type="checkbox" data-bind="beaconArrow"${st.beaconArrow ? ' checked' : ''}> pil mot den på minimapen</label></div><p class="hint">Gäller byggnader du placerar härefter. Ta bort och placera om för att ändra en som redan står.</p>` : ''}
         <p class="hint">Högerklick eller Delete tar bort det under pekaren. Skift + dra styr kameran.</p>
         <button class="danger" data-act="clearScenery">Ta bort alla kulisser i kapitlet</button>`;
@@ -329,7 +333,7 @@
     const UNIT = '__unit';   // "en enhet i spelet" i stället för en person i scenen
     const flatSteps = steps => steps.flatMap(s => [s, ...flatSteps(s.otherwise || [])]);
     const PICK_OPT = [['trigger', 'den som utlöste händelsen'], ['nearest', 'den som är närmast basen'], ['random', 'en slumpad']];
-    const TARGETED = ['walk', 'appear', 'enter', 'camera', 'ground', 'terrain', 'scenery', 'meteor'], STORMS = ['tornado', 'super', 'meteors'];   // steg med en plats; stormarnas plats är valfri
+    const TARGETED = ['walk', 'attack', 'shoot', 'appear', 'enter', 'camera', 'ground', 'terrain', 'scenery', 'meteor'], STORMS = ['tornado', 'super', 'meteors'];   // steg med en plats; stormarnas plats är valfri
     const NO_WHO = ['dialog', 'wait', 'camera', 'letter', 'music', 'give', 'weather', 'ground', 'terrain', 'scenery', 'meteor', ...STORMS];   // dessa hör till scenen, inte till en person
     const groundName = id => ({ grass: 'gräs', dirt: 'jord', sand: 'sand' })[id] || id;
     const terrainName = id => Config.terrain[id]?.name || id;
@@ -339,6 +343,8 @@
       switch (s.type) {
         case 'walk': return `${who} går till ${targetText(s.arg)}${s.follow ? ' (kameran följer med)' : ''}`;
         case 'camera': return `Kameran flyttar till ${targetText(s.arg)}${s.zoom ? ', zoom ' + s.zoom : ''}`;
+        case 'attack': return `${who} anfaller ${targetText(s.arg)}${s.as ? ' som ' + s.as : ''}, ${s.dur === 'once' ? 'ett slag' : s.dur === 'destroy' ? 'tills målet är dött' + (s.hits && +s.hits !== 3 ? ' (' + s.hits + ' slag på en person)' : '') : s.dur + ' sekunder'}`;
+        case 'shoot': return `${who} skjuter ett skott mot ${targetText(s.arg)}${s.as ? ' (' + s.as + ')' : ' (catapult)'}`;
         case 'appear': return `${who} dyker upp vid ${targetText(s.arg)}`;
         case 'enter': return `${who} kommer fram ur dimman och går till ${targetText(s.arg)}`;
         case 'say': return `${who} säger i en pratbubbla${s.together ? ' (medan det ovanför pågår)' : ''}: “${s.arg.text}”`;
@@ -387,6 +393,8 @@
         switch (s.type) {
           case 'appear': case 'enter': step = { spawn: specOf(cast.get(s.who) || { id: s.who, image: '' }, s.arg === TRIGGER ? { trigger: true } : s.arg) }; if (s.type === 'enter') step.enter = true; break;
           case 'walk': step = { who, walk: s.arg === TRIGGER ? { trigger: true } : s.arg }; if (s.follow) step.follow = true; break;
+          case 'attack': step = { who, attack: s.arg === TRIGGER ? { trigger: true } : s.arg, for: s.dur ?? 'once' }; if (s.as) step.with = s.as; if (s.dur === 'destroy' && s.hits && +s.hits !== 3) step.hits = +s.hits; break;
+          case 'shoot': step = { who, shoot: s.arg === TRIGGER ? { trigger: true } : s.arg }; if (s.as) step.with = s.as; break;
           case 'camera': step = { camera: s.arg === TRIGGER ? { trigger: true } : s.arg }; if (s.zoom) step.zoom = s.zoom; break;
           case 'say': step = { who, say: { text: s.arg.text, wait: true } }; break;
           case 'dialog': step = { tell: s.arg.map(line => ({ who: line.who, text: line.text })) }; break;
@@ -432,8 +440,9 @@
       });
       return out;
     }
+    const soldierKinds = Object.entries(Config.units).filter(([, d]) => d.isSoldier && !d.isMonster).map(([id]) => id);
     const sceneryIds = Object.keys(Config.story.sceneryTypes || {}), weatherIds = Object.keys(Config.settings.weather?.chances || {}), terrainIds = Object.keys(Config.terrain).filter(id => !['water', 'dirt', 'lava'].includes(id));
-    const FXD = () => ({ letterText: '', letterGreeting: '', letterFrom: '', letterThrone: false, musicMode: 'set', musicCalm: '', musicBattle: '', battleOff: false, giveRes: resourceIds[0] || 'wood', giveN: 10, weatherType: weatherIds[0] || '', fxNum: '', radius: 0, share: 100, groundTo: 'sand', terrainTo: '', amount: '', scenMode: 'add', scenType: sceneryIds[0] || '', scenLayer: '', scenTurn: 0, scenFlip: false, meteorBig: false });
+    const FXD = () => ({ letterText: '', letterGreeting: '', letterFrom: '', letterThrone: false, musicMode: 'set', musicCalm: '', musicBattle: '', battleOff: false, giveRes: resourceIds[0] || 'wood', giveN: 10, weatherType: weatherIds[0] || '', fxNum: '', radius: 0, share: 100, groundTo: 'sand', terrainTo: '', amount: '', scenMode: 'add', scenType: sceneryIds[0] || '', scenLayer: '', scenTurn: 0, scenFlip: false, meteorBig: false, atkFor: 'once', atkSecs: 5, atkHits: 3, atkWith: '' });
     let castDraft = { id: '', image: defaultImage, race: '', count: 1 }, stepDraft = { who: '', type: 'walk', target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineWho: speakerIds[0] || 'narrator', lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '', together: false, parent: null, pick: 'trigger', side: '', kind: '', follow: false, ...FXD() };
     const resetStep = () => { if (stepDraft.who === UNIT) stepDraft.who = ''; stepDraft = { ...stepDraft, target: 'hq', text: '', secs: 2, wait: 3, lines: [], lineMood: 'calm', lineText: '', lineEdit: null, editing: null, keepArg: null, zoom: '', together: false, pick: 'trigger', side: '', kind: '', follow: false, ...FXD() }; };
     const moodIds = () => Object.keys(Config.story.voice?.moods || { calm: 1 });
@@ -444,7 +453,7 @@
     let sceneCond = 'time'; 
 
     const STEP_TYPES = [
-      ['Personer', [['walk', 'går till…'], ['appear', 'dyker upp vid…'], ['enter', 'kommer fram ur dimman och går till…'], ['say', 'säger (pratbubbla)'], ['leave', 'lämnar scenen (går mot dimman)'], ['vanish', 'försvinner direkt']]],
+      ['Personer', [['walk', 'går till…'], ['appear', 'dyker upp vid…'], ['enter', 'kommer fram ur dimman och går till…'], ['say', 'säger (pratbubbla)'], ['attack', 'ANFALLER (slår eller skjuter på…)'], ['shoot', 'SKJUTER ett skott (katapult) mot…'], ['leave', 'lämnar scenen (går mot dimman)'], ['vanish', 'försvinner direkt']]],
       ['Berättelse och kamera', [['dialog', 'DIALOG (dialogruta, flera personer)'], ['letter', 'BREV'], ['camera', 'KAMERAN flyttar till…'], ['wait', 'VÄNTA (sekunder)']]],
       ['Ljud och väder', [['music', 'MUSIK byts'], ['weather', 'VÄDER ändras'], ['tornado', 'TORNADO'], ['super', 'SUPERSTORM'], ['meteors', 'METEORER (en storm)'], ['meteor', 'METEOR (en enda)']]],
       ['Världen', [['ground', 'MARKEN ändras (gräs, jord, sand)'], ['terrain', 'TERRÄNG / RESURS ändras (träd, malm, berg ...)'], ['scenery', 'KULISSER läggs till / tas bort']]],
@@ -465,6 +474,10 @@
           <datalist id="seTracks">${musicTracks().map(track => `<option value="${esc(track)}">`).join('')}</datalist>
           <div class="hint" style="margin:0">Ett tomt läge behåller den vanliga musiken. Musiken gäller tills ett senare steg byter den.</div>` : ''}`;
         case 'give': return `<div class="row">${select('', resourceIds, d.giveRes, 'stepDraft.giveRes')} ${num('giveN', 70, ' min="1"')} <span class="hint">läggs i huvudlagret</span></div>`;
+        case 'attack': return `<div class="row">Soldat ${select('', [['', 'vanlig (svärd)'], ...soldierKinds.map(id => [id, id])], d.atkWith, 'stepDraft.atkWith')} <span class="hint">ger skada, räckvidd och tempo</span></div>
+          <div class="row">Pågår ${select('', [['once', 'ett slag'], ['secs', 'en tid'], ['destroy', 'tills målet är dött']], d.atkFor, 'stepDraft.atkFor')}${d.atkFor === 'secs' ? ` ${num('atkSecs', 60)} sekunder` : ''}${d.atkFor === 'destroy' ? ` <span class="hint">person: dör efter</span> ${num('atkHits', 50)} <span class="hint">slag (byggnad: förstörs)</span>` : ''}</div>
+          <div class="hint" style="margin:0">En byggnad (även en död) tar riktig skada. En person blinkar rött. Målet kan också vara en tom ruta.</div>`;
+        case 'shoot': return `<div class="row">Skjutvapen ${select('', [['', 'catapult'], ...soldierKinds.filter(id => C.Config.units[id].attackRange > 2 && id !== 'catapult').map(id => [id, id])], d.atkWith, 'stepDraft.atkWith')} <span class="hint">hela skottet: flygning, träff och eld. Målet kan vara en tom ruta.</span></div>`;
         case 'weather': return `<div class="row">${select('', weatherIds, d.weatherType, 'stepDraft.weatherType')}</div>`;
         case 'tornado': case 'super': return `<div class="row">Radie ${num('fxNum', 60)}</div>`;
         case 'meteors': return `<div class="row">Under ${num('fxNum', 60)} sekunder</div>`;
@@ -501,7 +514,7 @@
         <div class="row"><label><input type="checkbox" data-bind="scene.whileFog"${sc.whileFog ? ' checked' : ''}> Hoppa över scenen om dimman redan har lyft (Eye of Shades borta)</label></div>
         <h4>2. Vilka är med?</h4>
         ${sc.cast.length ? sc.cast.map((c, i) => `<div class="card"><div class="row"><img class="pv" src="${esc(imageSrc(c.image, c.race))}" onerror="this.style.display='none'"><b>${esc(c.id)}${c.count > 1 ? ' ×' + c.count : ''}</b><span class="hint">${c.at ? 'finns från början, vid ruta ' + c.at.join(', ') : 'dyker upp senare (i ett steg)'}</span></div><div class="row"><button class="small" data-act="castMove" data-i="${i}">${c.at ? 'Flytta på kartan' : 'Placera från början'}</button><button class="small danger" data-act="castDel" data-i="${i}">Ta bort</button></div></div>`).join('') : '<p class="hint">Ingen än.</p>'}
-        <div class="card"><div class="row">Antal <input type="number" min="1" max="100" data-bind="castDraft.count" value="${esc(castDraft.count)}" style="width:70px"> <span class="hint">fler än 1 = en grupp som går i led</span></div><div class="row">Ny person <select data-bind="castDraft.image">${chars.length ? `<optgroup label="Karaktärer">${chars.map(([path, race]) => `<option value="${esc(path)}"${castDraft.image === path ? ' selected' : ''}>${esc(nameOf(path))}</option>`).join('')}</optgroup>` : ''}<optgroup label="Enheter">${images.map(item => `<option value="${esc(item.path)}"${castDraft.image === item.path ? ' selected' : ''}>${esc(item.label)}</option>`).join('')}</optgroup></select></div>
+        <div class="card"><div class="row">Antal <input type="number" min="1" max="100" data-bind="castDraft.count" value="${esc(castDraft.count)}" style="width:70px"> <span class="hint">fler än 1 = en grupp som går i led</span></div><div class="row">Ras ${select('', raceChoices, castDraft.race, 'castDraft.race')}</div><div class="row">Ny person <select data-bind="castDraft.image">${chars.length ? `<optgroup label="Karaktärer">${chars.map(([path, race]) => `<option value="${esc(path)}"${castDraft.image === path ? ' selected' : ''}>${esc(nameOf(path))}</option>`).join('')}</optgroup>` : ''}<optgroup label="Enheter">${images.map(item => `<option value="${esc(item.path)}"${castDraft.image === item.path ? ' selected' : ''}>${esc(item.label)}</option>`).join('')}</optgroup></select></div>
           <div class="row"><button class="primary" data-act="castAdd">Finns från början (klicka på kartan)</button></div><div class="row"><button data-act="castLater">Dyker upp senare</button></div></div>
         <h4>3. Vad händer? (uppifrån och ned)</h4>
         ${sc.steps.length ? sc.steps.map((s, i) => stepRow(s, i) + (s.otherwise || []).map((alt, j) => stepRow(alt, j, i)).join('') + `<div style="margin-left:18px"><button class="small" data-act="fsOpen" data-i="${i}" title="Vad ska hända i stället för resten av scenen om det här steget inte går att göra (t.ex. byggnaden finns inte eller ingen enhet hittas)?">+ Om det inte går…</button></div>`).join('') : '<p class="hint">Inga steg än. Allt som står här händer efter varandra. En dialog tillhör scenen och spelas även om personerna försvunnit.</p>'}
@@ -552,7 +565,7 @@
     function exportParts() {
       const base = hq(), list = World.buildings.filter(building => editable(building) && building.buildProgress >= 1 && (building.player === Players.HUMAN || building.dead)).sort((a, b) => a.y - b.y || a.x - b.x);
       const eye = list.find(building => building.type === 'eye_of_shades' && !building.dead);
-      const row = building => `{ type: '${building.type}', dx: ${building.x - base.x}, dy: ${building.y - base.y}${building.dead ? ', dead: true' : ''}${building.dead && building.sight ? ', sight: ' + building.sight : ''}${building.dead && building.arrow ? ', arrow: ' + (building.arrow === true ? 'true' : `'${building.arrow}'`) : ''} }`;
+      const row = building => `{ type: '${building.type}', dx: ${building.x - base.x}, dy: ${building.y - base.y}${building.dead ? ', dead: true' : ''}${building.dead && building.deadRace ? `, race: '${building.deadRace}'` : ''}${building.dead && building.sight ? ', sight: ' + building.sight : ''}${building.dead && building.arrow ? ', arrow: ' + (building.arrow === true ? 'true' : `'${building.arrow}'`) : ''} }`;
       const parts = [];
       parts.push({ title: 'Kulisser (ersätter kapitlets scenery)', text: `scenery: [\n${sceneryRows().map(line => '\t' + line + ',').join('\n')}\n],` });
       parts.push({ title: 'Startbyggnader och döda byggnader (ersätter kapitlets start)', text: `start: { buildings: [\n${list.filter(building => building !== eye).map(building => '\t' + row(building) + ',').join('\n')}\n] },` + (eye ? `\neye: { dx: ${eye.x - base.x}, dy: ${eye.y - base.y} },` : '') });
@@ -652,8 +665,8 @@
       deleteScene: () => { scenes.splice(cur, 1); cur = Math.max(0, cur - 1); render(); },
       sceneCondAdd: () => { const sc = sceneNow(), spec = COND[sceneCond], v = read(spec, 'sc'); if (spec.f.some(([name, type]) => type !== 'text' && type !== 'opt' && type !== 'near' && v[name] === '')) { notice('Fyll i alla fält.'); return; } if (v.near === '__map') { st.arm = { kind: 'condNear', cond: { kind: sceneCond, v } }; render(); return; } addCond(sc, { kind: sceneCond, v }); render(); },
       sceneCondDel: ({ i }) => { sceneNow().conds.splice(+i, 1); render(); },
-      castAdd: () => { st.arm = { kind: 'cast' }; if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); if (characters[castDraft.image]) castDraft.race = characters[castDraft.image] === 'demon' ? 'demon' : ''; render(); },
-      castLater: () => { const sc = sceneNow(); if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); sc.cast.push({ id: castDraft.id, image: castDraft.image, race: characters[castDraft.image] === 'demon' ? 'demon' : '', count: countOf(), at: null }); stepDraft.who = stepDraft.who || castDraft.id; castDraft = blankCast(); render(); },
+      castAdd: () => { st.arm = { kind: 'cast' }; if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); if (!castDraft.race && characters[castDraft.image] === 'demon') castDraft.race = 'demon'; render(); },
+      castLater: () => { const sc = sceneNow(); if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); sc.cast.push({ id: castDraft.id, image: castDraft.image, race: castDraft.race || (characters[castDraft.image] === 'demon' ? 'demon' : ''), count: countOf(), at: null }); stepDraft.who = stepDraft.who || castDraft.id; castDraft = blankCast(); render(); },
       castMove: ({ i }) => { st.arm = { kind: 'castMove', i: +i }; render(); },
       castDel: ({ i }) => { const sc = sceneNow(), [gone] = sc.cast.splice(+i, 1); const keep = s => s.who !== gone.id; sc.steps = sc.steps.filter(keep); for (const s of sc.steps) if (s.otherwise) s.otherwise = s.otherwise.filter(keep); stepDraft.parent = null; render(); },
       sUp: ({ i, p }) => { move(listAt(p), +i, -1); resetStep(); render(); },
@@ -669,6 +682,8 @@
           const step = { who, type: d.type };
           if (who === UNIT) Object.assign(step, { pick: d.pick, side: d.side, kind: d.kind });
           switch (d.type) {
+            case 'attack': step.arg = target; step.dur = d.atkFor === 'secs' ? Math.max(1, +d.atkSecs || 5) : d.atkFor; if (d.atkWith) step.as = d.atkWith; if (d.atkFor === 'destroy' && +d.atkHits > 0 && +d.atkHits !== 3) step.hits = Math.floor(+d.atkHits); break;
+            case 'shoot': step.arg = target; if (d.atkWith) step.as = d.atkWith; break;
             case 'walk': case 'appear': case 'enter': case 'camera': step.arg = target; if (d.type === 'camera' && d.zoom) step.zoom = +d.zoom; break;
             case 'say': if (!d.text.trim()) { notice('Skriv vad som sägs.'); return null; } step.arg = { text: d.text.trim(), secs: d.secs || 2 }; break;
             case 'dialog': if (d.lineText.trim()) actions.lineAdd(true); if (!d.lines.length) { notice('Lägg till minst en replik.'); return null; } step.arg = d.lines.map(ln => ({ who: ln.who, text: lineText(ln) })); break;
@@ -690,7 +705,7 @@
         const put = step => { if (d.editing !== null) { if (d.parent === null && list[d.editing]?.otherwise) step.otherwise = list[d.editing].otherwise; list[d.editing] = step; } else list.push(step); resetStep(); };
         const target = d.target === '__keep' ? d.keepArg : d.target === '' ? undefined : d.target;
         if (d.target === '__map' && (TARGETED.includes(d.type) || STORMS.includes(d.type))) {   // "en plats på kartan": väntar på ett klick, och steget byggs med rutan
-          if (!build(null) && !['walk', 'appear', 'enter', 'camera', 'ground', 'terrain', 'scenery', 'meteor'].includes(d.type)) return;
+          if (!build(null) && !['walk', 'attack', 'shoot', 'appear', 'enter', 'camera', 'ground', 'terrain', 'scenery', 'meteor'].includes(d.type)) return;
           st.arm = { kind: 'sceneStep', make: tile => build(tileTarget(tile)), put }; render(); return;
         }
         const step = build(target); if (!step) return;
@@ -700,7 +715,7 @@
         const s = listAt(p)[+i]; resetStep(); Object.assign(stepDraft, { type: s.type, editing: +i, together: !!s.together, follow: !!s.follow, parent: p === undefined ? null : +p, pick: s.pick || 'trigger', side: s.side || '', kind: s.kind || '' });
         if (s.who) stepDraft.who = s.who;
         const a = s.arg;
-        if (['walk', 'appear', 'enter', 'camera'].includes(s.type)) { stepDraft.keepArg = s.arg; stepDraft.target = '__keep'; stepDraft.zoom = s.zoom || ''; }
+        if (['walk', 'attack', 'shoot', 'appear', 'enter', 'camera'].includes(s.type)) { stepDraft.keepArg = s.arg; stepDraft.target = '__keep'; stepDraft.zoom = s.zoom || ''; if (s.type === 'attack') Object.assign(stepDraft, { atkFor: typeof s.dur === 'number' ? 'secs' : s.dur || 'once', atkSecs: typeof s.dur === 'number' ? s.dur : 5, atkHits: s.hits || 3, atkWith: s.as || '' }); else if (s.type === 'shoot') stepDraft.atkWith = s.as || ''; }
         else if (['ground', 'terrain', 'scenery'].includes(s.type)) { stepDraft.keepArg = a.at; stepDraft.target = '__keep'; Object.assign(stepDraft, { radius: a.radius || 0, share: a.share ?? 100 }); if (s.type === 'ground') stepDraft.groundTo = a.to; else if (s.type === 'terrain') Object.assign(stepDraft, { terrainTo: a.to || '', amount: a.amount ?? '' }); else Object.assign(stepDraft, { scenMode: a.mode, scenType: a.type, scenLayer: a.layer ?? '', scenTurn: a.turn || 0, scenFlip: !!a.flip }); }
         else if (s.type === 'meteor') { stepDraft.keepArg = a.at; stepDraft.target = '__keep'; Object.assign(stepDraft, { radius: a.radius || 0, meteorBig: a.big ? '1' : '' }); }
         else if (STORMS.includes(s.type)) { stepDraft.fxNum = a; if (s.where !== undefined) { stepDraft.keepArg = s.where; stepDraft.target = '__keep'; } else stepDraft.target = ''; }
@@ -764,14 +779,14 @@
       if (!World.canPlace(type, x, y)) { notice(`${type} kan inte stå på ${x}, ${y}.`); return null; }
       const building = World.placeBuilding(C.Construction.variantFor(type, x, y) || type, x, y, true, dead ? Story.deadOwner() : Players.HUMAN);
       if (!dead) return Story.equip(building);
-      World.makeDead(building); if (beacon) { Object.assign(building, beacon); World.buildingVersion++; }
+      World.makeDead(building, beacon?.deadRace); if (beacon) { Object.assign(building, beacon); World.buildingVersion++; }
       return building;
     }
     const layerFor = type => st.layer !== '' && !isNaN(+st.layer) ? +st.layer : defaultLayer[type] ?? (/^(corpse|skeleton)\d*$/.test(type) ? 1 : 0);
     const tileOf = event => Renderer.screenToTile(event.clientX, event.clientY);
     function put(tile) {
       const [kind, type] = st.type.split(':');
-      if (kind === 's') addScenery(type, tile.x, tile.y, layerFor(type), +st.turn || 0, !!st.flip); else placeBuilding(type, tile.x, tile.y, true, st.beacon ? { sight: Math.max(1, +st.beaconRadius || 6), ...(st.beaconArrow ? { arrow: true } : {}) } : null);
+      if (kind === 's') addScenery(type, tile.x, tile.y, layerFor(type), +st.turn || 0, !!st.flip); else placeBuilding(type, tile.x, tile.y, true, st.beacon || st.deadRace ? { ...(st.beacon ? { sight: Math.max(1, +st.beaconRadius || 6), ...(st.beaconArrow ? { arrow: true } : {}) } : {}), ...(st.deadRace ? { deadRace: st.deadRace } : {}) } : null);
     }
     function removeAt(tile) {
       const items = sceneryOn(tile.x, tile.y), building = buildingAt(tile.x, tile.y);
@@ -809,7 +824,7 @@
       event.stopImmediatePropagation();
       const tile = tileOf(event);
       if (drag.item) { const { type, layer, turn, flip } = drag.item; removeScenery(drag.item); addScenery(type, tile.x, tile.y, layer, turn, flip); }
-      else { const { building } = drag, { type, dead, sight, arrow } = building, from = { x: building.x, y: building.y }, beacon = sight || arrow ? { ...(sight ? { sight } : {}), ...(arrow ? { arrow } : {}) } : null; World.removeBuilding(building); if (!placeBuilding(type, tile.x, tile.y, dead, beacon)) placeBuilding(type, from.x, from.y, dead, beacon); }
+      else { const { building } = drag, { type, dead, sight, arrow, deadRace } = building, from = { x: building.x, y: building.y }, beacon = sight || arrow || deadRace ? { ...(sight ? { sight } : {}), ...(arrow ? { arrow } : {}), ...(deadRace ? { deadRace } : {}) } : null; World.removeBuilding(building); if (!placeBuilding(type, tile.x, tile.y, dead, beacon)) placeBuilding(type, from.x, from.y, dead, beacon); }
     }, true);
     window.addEventListener('contextmenu', event => { if (event.target === canvas && !event.shiftKey && mine(event)) event.preventDefault(); }, true);
     window.addEventListener('keydown', event => {
@@ -833,7 +848,7 @@
       if (base && st.tab === 'scene' && sceneNow()) {
         const sc = sceneNow();
         for (const c of sc.cast) if (c.at) wanted.push({ x: base.x + c.at[0], y: base.y + c.at[1], label: c.id.slice(0, 7), color: 'rgb(255 213 74 / 90%)', wide: true });
-        sc.steps.forEach((s, i) => { const tile = (s.type === 'walk' || s.type === 'appear' || s.type === 'enter' || s.type === 'camera') && (Array.isArray(s.arg) || typeof s.arg === 'string') && tileOfTarget(s.arg); if (tile) wanted.push({ ...tile, label: String(i + 1), color: 'rgb(120 200 255 / 90%)' }); });
+        sc.steps.forEach((s, i) => { const tile = (['walk', 'attack', 'shoot', 'appear', 'enter', 'camera'].includes(s.type)) && (Array.isArray(s.arg) || typeof s.arg === 'string') && tileOfTarget(s.arg); if (tile) wanted.push({ ...tile, label: String(i + 1), color: 'rgb(120 200 255 / 90%)' }); });
       }
       while (marks.length < wanted.length) { const div = document.createElement('div'); div.style.cssText = 'position:absolute;color:#000;font:bold 11px sans-serif;text-align:center;border-radius:10px;white-space:nowrap;padding:0 3px;box-sizing:border-box;min-width:16px'; markerBox.appendChild(div); marks.push(div); }
       marks.forEach((div, i) => {

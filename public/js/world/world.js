@@ -278,9 +278,12 @@
 
     // Död byggnad: syns och kan förstöras men gör ingenting. Definitionen byts mot en kopia utan jobb, så produktion, bärare, datorn och träning ser en byggnad
     // utan uppgift. Fältet dead sparas, och save.js kallar detta igen vid inläsning.
-    makeDead(building) {
+    // race (valfritt): byggnadens utseende och namn, annars ägarens (fiendens) ras
+    makeDead(building, race) {
       building.dead = true;
-      building.definition = { ...building.definition, job: undefined, soulCounter: undefined, requiredEquipment: undefined, isStorage: false, boost: null };
+      if (race) building.deadRace = race;
+      const base = building.deadRace ? Config.definitionOf(building.type, building.deadRace) || building.definition : building.definition;
+      building.definition = { ...base, ...(building.deadRace ? { race: building.deadRace } : {}), job: undefined, soulCounter: undefined, requiredEquipment: undefined, isStorage: false, boost: null };
       building.inputStock = {}; building.outputStock = {};
       return building;
     },
