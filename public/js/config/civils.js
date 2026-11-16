@@ -6,7 +6,7 @@
      decor  en liten sak, 16x16 (25 % av en ruta). Blommor, lyktstolpar ...   Bilden: images/buildings/<ras>/civil_<id>.png (16x16, samma namnregel)
    Rasmappen är human eller demon; saknas rasens bild används människans, och saknas den också ritas en enkel reservbild. Kör node tools/racemanifest.js efter nya bilder.
 
-   Var de byggs: en hel ruta bara på ledig gräs- eller sandruta som ligger intill en väg (stig, slitage >= roadWear) eller intill spelarens egen byggnad, aldrig på själva vägen.
+   Var de byggs: en hel ruta bara på tom gräsmark (aldrig på resurser, inte heller sand) som ligger intill en väg (stig, slitage >= roadWear) eller intill spelarens egen byggnad, aldrig på själva vägen.
    En liten detalj sitter i kanten av en sådan ruta, mot vägen (lite inne på vägkanten) eller byggnaden (tre platser per sida). anchor: 'road' eller 'building' på en sort begränsar den till vägar eller hus. När: 1-15 sekunder (delay) efter att en spelares byggnad byggts eller rivits,
    och dessutom var heartbeat:e sekund (så att tiden ensam också ger fler). Varje gång läggs en enda ny, av den sort som saknas mest. De tonar in under 5-10 sekunder (fade).
    Försvinner: bygger spelaren på rutan (direkt), vattnet stiger över den, en meteor slår ner vid den, en tornado far över den, eld bränner rutan, eller spelaren slås ut.

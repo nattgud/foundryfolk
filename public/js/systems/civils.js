@@ -4,7 +4,7 @@
    Växten: varje gång en spelares byggnad byggs eller rivs (World.placeBuilding / removeBuilding -> onBuilding) bokas ett försök 1-15 sekunder fram, och var
    heartbeat:e sekund bokas ett för varje spelare. Ett försök räknar ut vad som saknas mest (tabellen mot spelarens byggnader och speltiden), letar en lämplig plats nära byggnaden
    (en hel ruta intill en väg eller en egen byggnad; en liten detalj i kanten av en sådan ruta, mot vägen) och lägger en enda ny där. Den tonar in under några sekunder.
-   Bygger spelaren på rutan försvinner den direkt (clearTile i World.placeBuilding). Uppstår en stig under en tonar den ut (onWear/leave), och aldrig byggs något på en stig. Vatten, meteorer, tornados, eld och utslagning tar bort dem (clearTile, clearArea, update, clearPlayer).
+   Bygger spelaren på rutan försvinner den direkt (clearTile i World.placeBuilding). Försvinner vägen eller byggnaden den står intill, eller blir rutan en resurs, tonar den ut inom 10 sekunder (recheck, sweep). Uppstår en stig under en tonar den ut (onWear/leave), och aldrig byggs något på en stig. Vatten, meteorer, tornados, eld och utslagning tar bort dem (clearTile, clearArea, update, clearPlayer).
 
    Prestanda: allt ligger i rutnätshinkar (BUCKET x BUCKET rutor) som liken. Ritningen går bara över hinkarna på skärmen, borttagning bara över hinkarna i närheten, och växten
    söker bara i en liten ruta runt byggnaden, högst ett fåtal gånger per sekund. Slumpen är Math.random (bara utseende, påverkar aldrig spelets gång). */
@@ -29,13 +29,14 @@
     counts: new Map(),    // spelare -> Map(sort -> antal)
     queue: [],            // bokade försök, tidigast först: { at, player, x, y, building, gone }
     leaving: [],          // föremål som tonar ut: en stig har uppstått under dem
+    sweepKeys: [],        // hinkar som återstår att kontrollera i den löpande genomgången (sweep)
     ghost: 1,             // genomskinlighet medan spelaren placerar en byggnad (rena utseendet, nollställs inte)
     drawn: 0,
     time: 0,              // speltid (sekunder) sedan världen började
     beat: 0,              // när nästa heartbeat kontrolleras
     nextBeat: new Map(),  // spelare -> när tiden ensam nästa gång ger den ett försök
 
-    reset() { Object.assign(this, { buckets: new Map(), tiles: new Map(), counts: new Map(), queue: [], leaving: [], time: 0, beat: 0, nextBeat: new Map() }); },
+    reset() { Object.assign(this, { buckets: new Map(), tiles: new Map(), counts: new Map(), queue: [], leaving: [], sweepKeys: [], time: 0, beat: 0, nextBeat: new Map() }); },
 
     // ---- föremålen ----
     // Ett föremål: { type, kind, x, y (mitten, i kommatal), tx, ty (rutan), player, variant, born, fade, size (andel av en ruta), gone }
@@ -96,6 +97,7 @@
       const limit = this.limit();
       if (before < limit && after >= limit) { if (this.tiles.size) this.leave(x, y); return; }
       if (before < limit || after >= limit || !enabled()) return;
+      this.bookRecheck(x, y);   // det som stod vid stigen får tona ut
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {   // en ledig ruta: ge närmaste spelares by ett nytt försök
         const building = World.buildingAt(x + dx, y + dy);
         if (building && countsAs(building)) { this.book(building.player, x, y, building, false); return; }
@@ -104,7 +106,34 @@
     leave(x, y) {
       const use = this.tiles.get(Utils.tileKey(x, y));
       if (!use || !this.path(x, y)) return;
-      for (const item of [use.big, ...use.decor]) if (item && item.dying === undefined) { item.dying = this.time; item.dieFor = between(options().leave || [2, 4]); this.leaving.push(item); }
+      for (const item of [use.big, ...use.decor]) if (item) this.startLeaving(item, 0);
+    },
+    // Börjar tona ut om delay sekunder (delay + utfadningen blir aldrig mer än 10 sekunder)
+    startLeaving(item, delay) {
+      if (item.dying !== undefined || item.gone) return;
+      item.dying = this.time + delay; item.dieFor = between(options().leave || [2, 4]); this.leaving.push(item);
+    },
+    // Står föremålet kvar med rätta? Rutan är fortfarande tom gräsmark, och det finns fortfarande något att stå intill (en väg eller egen byggnad; en detalj av en sort
+    // som bara står vid vägar eller hus kräver just det)
+    supported(item) {
+      if (!this.free(item.tx, item.ty)) return false;
+      const wanted = item.kind === 'decor' ? options().types?.[item.type]?.anchor : null;
+      for (const [sx, sy] of SIDES) { const kind = this.anchorKind(item.tx + sx, item.ty + sy, item.player); if (kind && (!wanted || wanted === kind)) return true; }
+      return false;
+    },
+    // Kontrollerar föremålen runt (cx, cy): de som förlorat sin väg eller byggnad tonar ut inom ett par sekunder
+    recheck(cx, cy, radius = 2) {
+      for (let y = cy - radius; y <= cy + radius; y++) for (let x = cx - radius; x <= cx + radius; x++) {
+        const use = this.tiles.get(Utils.tileKey(x, y));
+        if (use) for (const item of [use.big, ...use.decor]) if (item && item.dying === undefined && !this.supported(item)) this.startLeaving(item, Math.random() * 5);
+      }
+    },
+    bookRecheck(x, y) { this.enqueue({ at: this.time + .5, x, y, recheck: true }); },
+    // Den löpande genomgången: en hink åt gången, så att inget blir kvar av någon orsak som inget anrop fångade (en byggnad som blev kuliss, ny terräng ...)
+    sweep() {
+      if (!this.sweepKeys.length) { if (!this.buckets.size) return; this.sweepKeys = [...this.buckets.keys()]; }
+      const list = this.buckets.get(this.sweepKeys.pop());
+      if (list) for (const item of list) if (item.dying === undefined && !this.supported(item)) this.startLeaving(item, Math.random() * 5);
     },
 
     // ---- byggnader som byggs och rivs ----
@@ -113,12 +142,15 @@
       if (!enabled()) return;
       const definition = building.definition;
       if (built && !definition.pile) this.clearTile(building.x, building.y);
+      if (!built) this.bookRecheck(building.x, building.y);   // det som stod intill den får tona ut
       if (definition.pile || definition.linePlacement || building.dead || !Players.isPlayer(building.player)) return;
       this.book(building.player, building.x, building.y, building, !built);
     },
     book(player, x, y, building, gone) {
       if (this.queue.length >= MAX_QUEUE) return;
-      const event = { at: this.time + between(options().delay || [1, 15]), player, x, y, building, gone };
+      this.enqueue({ at: this.time + between(options().delay || [1, 15]), player, x, y, building, gone });
+    },
+    enqueue(event) {
       let i = this.queue.length;
       while (i > 0 && this.queue[i - 1].at > event.at) i--;
       this.queue.splice(i, 0, event);
@@ -131,9 +163,11 @@
       if (this.leaving.length) this.leaving = this.leaving.filter(item => { if (item.gone) return false; if (this.time - item.dying < item.dieFor) return true; this.drop(item); return false; });
       for (let n = 0; n < PER_FRAME && this.queue.length && this.queue[0].at <= this.time; n++) {
         const event = this.queue.shift();
+        if (event.recheck) { this.recheck(event.x, event.y); continue; }
         if (!event.gone && (event.building.removed || event.building.dead)) continue;   // byggnaden hann försvinna eller bli en kuliss
         this.attempt(event.player, event.x, event.y);
       }
+      this.sweep();
       if (this.time >= this.beat) { this.beat = this.time + 5; this.heartbeat(); }
       if (this.buckets.size) {   // tornados och eld tar det de rör vid
         for (const tornado of CityBuilder.Weather?.tornadoes || []) this.clearArea(tornado.x, tornado.y, (tornado.radius || 1) + .5);
@@ -178,10 +212,10 @@
       return false;
     },
 
-    // Går en ruta att bygga en civil byggnad på? Ledig gräs- eller sandruta utan byggnad eller kuliss
+    // Går en ruta att bygga en civil byggnad på? Tom gräsmark, inte stig, utan byggnad eller kuliss
     free(x, y) {
       const tile = World.getTile(x, y);
-      if (!tile || (tile.terrainType !== 'grass' && !Config.terrain[tile.terrainType]?.buildable) || this.path(x, y)) return false;
+      if (!tile || tile.terrainType !== 'grass' || this.path(x, y)) return false;   // bara tom gräsmark (alla undergrunder, grus också): aldrig resurser, inte heller sandfyndigheter
       return !World.buildingAt(x, y) && !World.sceneryAt(x, y);
     },
     road(x, y) {
@@ -281,7 +315,7 @@
               const px = item.x * tileSize, py = item.y * tileSize;
               if (px < view.left || px > view.right || py < view.top || py > view.bottom) continue;
               if (item.player !== Players.HUMAN && !Vision.visible(Players.HUMAN, item.x, item.y)) continue;   // andras byggnader syns bara när spelaren ser dem
-              const alpha = this.ghost * Math.min(1, (this.time - item.born) / item.fade) * (item.dying === undefined ? 1 : 1 - (this.time - item.dying) / item.dieFor);
+              const alpha = this.ghost * Math.min(1, (this.time - item.born) / item.fade) * (item.dying === undefined ? 1 : Math.max(0, Math.min(1, 1 - (this.time - item.dying) / item.dieFor)));
               if (alpha <= 0) continue;
               const size = item.size * tileSize, image = this.imageOf(item);
               context.globalAlpha = alpha;
