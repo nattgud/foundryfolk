@@ -46,13 +46,13 @@ CityBuilder.Config.civils = {
   types: {
     // ---- hela rutor ----
     house:      { kind: 'big', variants: 4, from: 1,  after: 0,  rate: 0.5,   perMinute: 0.15,  max: 400, weight: 3, color: '#b98a5a', roof: '#8a3b2d' },   // boningshus: hyddor och hus
-    park:       { kind: 'big', variants: 2, from: 5,  after: 2,  rate: 0.09,  perMinute: 0.02,  max: 40,  color: '#4f8f45', roof: '#3d7a3a' },   // park och trädgård
+    park:       { kind: 'big', enter: false, variants: 2, from: 5,  after: 2,  rate: 0.09,  perMinute: 0.02,  max: 40,  color: '#4f8f45', roof: '#3d7a3a' },   // park och trädgård
     pub:        { kind: 'big', variants: 1, from: 6,  after: 3,  rate: 0.07,  perMinute: 0.02,  max: 25,  color: '#a5703d', roof: '#5a3a22' },   // pub / ölstuga
-    fountain:   { kind: 'big', variants: 1, from: 8,  after: 4,  rate: 0.05,  perMinute: 0.01,  max: 16,  color: '#8fb4c9', roof: '#6f93a8' },   // fontän
-    market:     { kind: 'big', variants: 2, from: 10, after: 5,  rate: 0.04,  perMinute: 0.01,  max: 16,  color: '#c9a24b', roof: '#a8432f' },   // marknadsplats
+    fountain:   { kind: 'big', enter: false, variants: 1, from: 8,  after: 4,  rate: 0.05,  perMinute: 0.01,  max: 16,  color: '#8fb4c9', roof: '#6f93a8' },   // fontän
+    market:     { kind: 'big', enter: false, variants: 2, from: 10, after: 5,  rate: 0.04,  perMinute: 0.01,  max: 16,  color: '#c9a24b', roof: '#a8432f' },   // marknadsplats
     inn:        { kind: 'big', variants: 1, from: 12, after: 6,  rate: 0.04,  perMinute: 0.01,  max: 12,  color: '#b08a62', roof: '#6f4a2d' },   // värdshus
     infirmary:  { kind: 'big', variants: 1, from: 12, after: 7,  rate: 0.03,  perMinute: 0.005, max: 10,  color: '#d9d4c7', roof: '#a33a3a' },   // sjukstuga
-    graveyard:  { kind: 'big', variants: 2, from: 14, after: 8,  rate: 0.025, perMinute: 0.005, max: 8,   color: '#7d8a7a', roof: '#59615a' },   // kyrkogård
+    graveyard:  { kind: 'big', enter: false, variants: 2, from: 14, after: 8,  rate: 0.025, perMinute: 0.005, max: 8,   color: '#7d8a7a', roof: '#59615a' },   // kyrkogård
     theater:    { kind: 'big', variants: 1, from: 15, after: 8,  rate: 0.03,  perMinute: 0.01,  max: 10,  color: '#a9566a', roof: '#6d2f3f' },   // teater / underhållning / festplats
     bathhouse:  { kind: 'big', variants: 1, from: 15, after: 8,  rate: 0.03,  perMinute: 0.005, max: 10,  color: '#9fc0c9', roof: '#5f8794' },   // badhus
     poorhouse:  { kind: 'big', variants: 1, from: 16, after: 10, rate: 0.025, perMinute: 0.005, max: 8,   color: '#8a7d6a', roof: '#5f5446' },   // fattighus

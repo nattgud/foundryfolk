@@ -57,9 +57,9 @@
 
     reset() { this.list = []; this.time = 0; this.spawnIn = 0; this.tinted.clear(); },
 
-    // En civil byggnad som en invånare kan gå till eller från: färdig (inte under inbördes tonande), inte på väg att försvinna, och synlig om den är någon annans
+    // En civil byggnad som en invånare kan gå till eller från: något man kan gå in i (inte park, fontän, kyrkogård eller marknad: enter: false i config/civils.js), färdig (inte under inbördes tonande), inte på väg att försvinna, och synlig om den är någon annans
     usable(item) {
-      return item.kind === 'big' && item.dying === undefined && CityBuilder.Civils.time - item.born >= item.fade && (item.player === Players.HUMAN || CityBuilder.Vision.visible(Players.HUMAN, item.x, item.y));
+      return item.kind === 'big' && Config.civils?.types?.[item.type]?.enter !== false && item.dying === undefined && CityBuilder.Civils.time - item.born >= item.fade && (item.player === Players.HUMAN || CityBuilder.Vision.visible(Players.HUMAN, item.x, item.y));
     },
 
     // Föder en invånare vid ett slumpat civilt hus (helst) i vyn, om det finns färre än vad vyn har plats för
