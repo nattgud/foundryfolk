@@ -201,7 +201,6 @@
       panel.id = 'goalPanel';
       panel.addEventListener('click', event => {
         if (event.target.closest('[data-next]')) CityBuilder.Levels.advance(); // "Nästa bana" när banan är klar
-        else if (event.target.closest('[data-reread]')) CityBuilder.StoryUI.reread();   // kapitlets brev och dialog igen
         else panel.classList.toggle('collapsed');
       });
       document.body.appendChild(panel);
@@ -246,9 +245,8 @@
         : Levels.completed
           ? `<b>${t('Level complete!')}</b> ${'★'.repeat(Levels.stars)}${'☆'.repeat(3 - Levels.stars)} <button type="button" data-next class="goal-next">${t('Next level')}</button>`
           : `<b>${t('Goals')}</b> · ${t('Time: {time}', { time: this.formatTime(Levels.seconds) })}<div class="goal-stars">${this.starTimesHtml(level.goal.par, Levels.seconds)}</div>`;
-      const story = level.story, again = story && (story.letter || story.dialogue) ? `<div class="goal-new"><button type="button" data-reread class="goal-next">${t('Read the letter again')}</button></div>` : '';
       const title = level.name ? `<div class="goal-title">${String(level.name).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])}</div>` : '';
-      const html = `${title}<div class="goal-header">${header}</div>${lines.join('')}` + (unlocks ? `<div class="goal-new">${t('New: {list}', { list: unlocks })}</div>` : '') + again;
+      const html = `${title}<div class="goal-header">${header}</div>${lines.join('')}` + (unlocks ? `<div class="goal-new">${t('New: {list}', { list: unlocks })}</div>` : '');
 
       if (panel.dataset.html !== html) {
         panel.dataset.html = html;

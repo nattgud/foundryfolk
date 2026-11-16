@@ -159,12 +159,6 @@
       });
     },
 
-    // Kapitlets brev och dialog igen (knappen i målpanelen under hela kapitlet)
-    reread() {
-      const chapter = CityBuilder.Levels.story;
-      if (chapter) this.read([...(chapter.letter ? [{ type: 'letter', letter: chapter.letter }] : []), ...(chapter.dialogue ? [{ type: 'dialogue', lines: chapter.dialogue }] : [])]);
-    },
-
     // Rutan när ett kapitel är klart: först rådgivarnas avslutande dialog om det finns en, sedan nästa kapitel (eller epilogen efter det sista)
     complete() {
       this.injectStyles();
