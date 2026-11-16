@@ -703,10 +703,11 @@
         }
       }
       const problem = isFinished && !building.paused && building.player === CityBuilder.Players.HUMAN ? building.eff?.problem : null;
-      if (problem) {   // fel (se Behaviors.problemColor): ram ytterst, röd eller gul
-        const line = 1 / renderer.zoom;   // alltid en skärmpixel bred, oavsett zoom
-        context.strokeStyle = problem === 'red' ? '#ff3b30' : '#ffb020'; context.lineWidth = line;
-        context.strokeRect(x + line / 2, y + line / 2, tileSize - line, tileSize - line);
+      if (problem) {   // fel (se Behaviors.problemColor): puls över hela byggnaden, röd eller gul. Ingen ram: ramar är spelarfärg (fiender) och urval
+        const beat = (Math.sin(performance.now() / (problem === 'red' ? 260 : 420)) + 1) / 2;   // röd pulsar snabbare
+        context.fillStyle = problem === 'red' ? '#ff2a1c' : '#ffb020';
+        context.globalAlpha = (problem === 'red' ? .12 : .08) + beat * (problem === 'red' ? .26 : .16);
+        context.fillRect(x, y, tileSize, tileSize); context.globalAlpha = 1;
       }
       if (building.prioritized) {   // prioriterad: tunn guldram (tar ingen plats från ikonerna)
         context.strokeStyle = '#ffd23f'; context.lineWidth = 1;
