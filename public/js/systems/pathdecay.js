@@ -15,21 +15,26 @@
   CityBuilder.Systems.pathDecay = {
     reset() { lastTouched.clear(); },
 
-    touch(tile) {
-      lastTouched.set(tile, 0);
+    touch(tile, x, y) {   // x, y: rutans plats (behövs för att kunna säga till civils.js när en stig försvinner)
+      const entry = lastTouched.get(tile);
+      if (entry) { entry.idle = 0; if (x !== undefined) { entry.x = x; entry.y = y; } } else lastTouched.set(tile, { idle: 0, x, y });
     },
 
     // Går bara igenom rutorna som har slitage (de som trampats, eller laddats med slitage): lastTouched, inte hela världen.
     update(deltaSeconds) {
-      for (const [tile, lastIdle] of lastTouched) {
+      const Civils = CityBuilder.Civils;
+      for (const [tile, entry] of lastTouched) {
         if (tile.wear <= 0) {
           lastTouched.delete(tile);
           continue;
         }
 
-        const idle = lastIdle + deltaSeconds;
-        lastTouched.set(tile, idle);
-        if (idle > GRACE_SECONDS) tile.wear = Math.max(0, tile.wear - DECAY_PER_SECOND * deltaSeconds);
+        entry.idle += deltaSeconds;
+        if (entry.idle > GRACE_SECONDS) {
+          const before = tile.wear;
+          tile.wear = Math.max(0, before - DECAY_PER_SECOND * deltaSeconds);
+          if (Civils && entry.x !== undefined && before >= Civils.limit() && tile.wear < Civils.limit()) Civils.onWear(entry.x, entry.y, before, tile.wear);   // stigen försvann: rutan blir ledig för civila byggnader
+        }
       }
     },
   };

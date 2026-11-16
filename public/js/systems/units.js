@@ -133,8 +133,10 @@
         unit.x = nextTile.x + .5 + laneX; unit.y = nextTile.y + .5 + laneY; step.pathIndex++;
         if (unit.definition.wearsPaths) { // trampar upp stigen
           const tile = World.getTile(nextTile.x, nextTile.y);
-          tile.wear = Math.min(2, tile.wear + Config.settings.wearPerPass);
-          CityBuilder.Systems.pathDecay?.touch(tile); // startar om stigens vilotid (pathdecay.js)
+          const before = tile.wear;
+          tile.wear = Math.min(2, before + Config.settings.wearPerPass);
+          CityBuilder.Systems.pathDecay?.touch(tile, nextTile.x, nextTile.y); // startar om stigens vilotid (pathdecay.js)
+          CityBuilder.Civils?.onWear(nextTile.x, nextTile.y, before, tile.wear); // en ny stig tar bort civila byggnader på rutan (civils.js)
         }
       } else {
         unit.x += dx / distance * stepLength; unit.y += dy / distance * stepLength;

@@ -217,7 +217,7 @@
           const tile = World.getTile(x, y);
           if (!tile) continue;
           Object.assign(tile, changed);
-          if (changed.wear > 0) CityBuilder.Systems.pathDecay?.touch(tile); // slitna stigar börjar om sin vilotid (pathdecay.js)
+          if (changed.wear > 0) CityBuilder.Systems.pathDecay?.touch(tile, x, y); // slitna stigar börjar om sin vilotid (pathdecay.js)
         }
       });
       part('spells', () => { CityBuilder.Spells.zones = data.spellZones || []; CityBuilder.Spells.locks = data.spellLocks || {}; });
