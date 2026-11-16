@@ -28,6 +28,8 @@
     counts: new Map(),    // spelare -> Map(sort -> antal)
     queue: [],            // bokade försök, tidigast först: { at, player, x, y, building, gone }
     leaving: [],          // föremål som tonar ut: en stig har uppstått under dem
+    ghost: 1,             // genomskinlighet medan spelaren placerar en byggnad (rena utseendet, nollställs inte)
+    drawn: 0,
     time: 0,              // speltid (sekunder) sedan världen började
     beat: 0,              // när nästa heartbeat kontrolleras
     nextBeat: new Map(),  // spelare -> när tiden ensam nästa gång ger den ett försök
@@ -258,6 +260,10 @@
     draw(context, renderer) {
       if (!this.buckets.size) return;
       const tileSize = renderer.tileSize, view = renderer.viewBounds(tileSize * 2), Vision = CityBuilder.Vision, types = options().types;
+      // Medan spelaren placerar en byggnad blir de civila nästan genomskinliga: man ser att man kan bygga rakt över dem (de försvinner då direkt). Mjuk övergång i riktig tid.
+      const now = performance.now(), seconds = Math.min(.1, (now - (this.drawn || now)) / 1000);
+      this.drawn = now;
+      this.ghost += ((CityBuilder.Game?.placingType ? options().placing ?? .3 : 1) - this.ghost) * Math.min(1, seconds * 10);
       const left = Math.floor(view.left / tileSize / BUCKET), right = Math.floor(view.right / tileSize / BUCKET), top = Math.floor(view.top / tileSize / BUCKET), bottom = Math.floor(view.bottom / tileSize / BUCKET);
       for (const kind of ['big', 'decor']) {   // hela byggnader först, sedan detaljerna ovanpå
         for (let by = top; by <= bottom; by++) {
@@ -269,7 +275,7 @@
               const px = item.x * tileSize, py = item.y * tileSize;
               if (px < view.left || px > view.right || py < view.top || py > view.bottom) continue;
               if (item.player !== Players.HUMAN && !Vision.visible(Players.HUMAN, item.x, item.y)) continue;   // andras byggnader syns bara när spelaren ser dem
-              const alpha = Math.min(1, (this.time - item.born) / item.fade) * (item.dying === undefined ? 1 : 1 - (this.time - item.dying) / item.dieFor);
+              const alpha = this.ghost * Math.min(1, (this.time - item.born) / item.fade) * (item.dying === undefined ? 1 : 1 - (this.time - item.dying) / item.dieFor);
               if (alpha <= 0) continue;
               const size = item.size * tileSize, image = this.imageOf(item);
               context.globalAlpha = alpha;

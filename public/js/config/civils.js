@@ -22,6 +22,7 @@ CityBuilder.Config.civils = {
   delay: [1, 15],       // sekunder från att en byggnad byggts eller rivits till att något nytt kan växa fram
   fade: [5, 10],        // sekunder det tar att tona in
   pathWear: 0.125,      // en ruta med minst så här mycket slitage är en stig (syns som stig): inget civilt byggs där, och står något där när stigen uppstår tonar det ut
+  placing: 0.3,         // hur synliga de är medan spelaren placerar en byggnad (0-1): man kan bygga rakt över dem
   leave: [2, 4],        // sekunder det tar att tona ut när en stig uppstår under något
   roadWear: 0.3,        // en ruta räknas som väg när dess slitage är minst så här (0-1, se pathdecay.js)
   heartbeat: 20,        // sekunder mellan att tiden ensam ger en ny (per spelare)
