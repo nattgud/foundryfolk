@@ -285,6 +285,8 @@
       const base = building.deadRace ? Config.definitionOf(building.type, building.deadRace) || building.definition : building.definition;
       building.definition = { ...base, ...(building.deadRace ? { race: building.deadRace } : {}), job: undefined, soulCounter: undefined, requiredEquipment: undefined, isStorage: false, boost: null };
       building.inputStock = {}; building.outputStock = {};
+      for (const unit of this.units) if (unit.homeBuilding === building) unit.removed = true;   // en död byggnad har inget jobb: dess arbetare försvinner (annars kraschar planeringen)
+      this.units = this.units.filter(unit => unit.homeBuilding !== building);
       return building;
     },
 

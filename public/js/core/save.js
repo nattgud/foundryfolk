@@ -235,7 +235,7 @@
 
           // En färdigbyggd byggnad ska ha gått igenom "just färdigbyggd" (construction-systemet): onBuilt sätter
           // upp t.ex. arbetaren. Det steget hoppas över när vi sätter buildProgress direkt, så vi kör det här.
-          if (building.buildProgress >= 1 && building.definition.job) {
+          if (building.buildProgress >= 1 && building.definition.job && !saved.fields.dead) {
             const behavior = CityBuilder.Behaviors && CityBuilder.Behaviors.forBuilding(building);
             if (behavior && behavior.onBuilt) behavior.onBuilt(building);
           }
