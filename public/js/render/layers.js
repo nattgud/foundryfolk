@@ -616,9 +616,9 @@
     for (const item of World.sceneryList) {
       const x = item.x * tileSize, y = item.y * tileSize;
       if (outside(view, x, y)) continue;
-      const kind = types[item.type] || {}, seed = CityBuilder.Utils.hash(item.x, item.y, 31);
+      const kind = types[item.type] || {}, seed = CityBuilder.Utils.hash(item.x, item.y, 31), full = kind.size || 1;   // size: andel av en ruta (små civila detaljer)
       if (kind.light) { drawFire(context, item.type, item.x, item.y, tileSize, seed, now, 1); continue; }   // eld: samma som meteoreldarna
-      const image = Assets.get(`images/scenery/${item.type}${kind.variants >= 1 ? 1 + Math.floor(seed * kind.variants) : ''}.png`);
+      const image = Assets.get(kind.image || `images/scenery/${item.type}${kind.variants >= 1 ? 1 + Math.floor(seed * kind.variants) : ''}.png`);
       if (image) {
         if (kind.frames > 1) {
           const frame = Math.floor(now * (kind.fps || 6) + seed * kind.frames) % kind.frames, width = image.width / kind.frames;
@@ -626,8 +626,8 @@
           else context.drawImage(image, frame * width, 0, width, image.height, x, y, tileSize, tileSize);
         } else if (item.turn || item.flip) {   // vriden (kvarts varv medurs) och/eller speglad kuliss: speglas först, vrids sedan
           context.save(); context.translate(x + tileSize / 2, y + tileSize / 2); context.rotate((item.turn || 0) * Math.PI / 2); if (item.flip) context.scale(-1, 1);
-          context.drawImage(image, -tileSize / 2, -tileSize / 2, tileSize, tileSize); context.restore();
-        } else context.drawImage(image, x, y, tileSize, tileSize);
+          context.drawImage(image, -tileSize * full / 2, -tileSize * full / 2, tileSize * full, tileSize * full); context.restore();
+        } else context.drawImage(image, x + tileSize * (1 - full) / 2, y + tileSize * (1 - full) / 2, tileSize * full, tileSize * full);
       } else if (kind.fallback === 'corpse') {   // reservbild: en liggande figur, vriden olika för varje ruta
         context.save(); context.translate(x + tileSize / 2, y + tileSize / 2); context.rotate(seed * Math.PI * 2);
         context.fillStyle = '#3d3530'; context.beginPath(); context.ellipse(0, 0, tileSize * .3, tileSize * .1, 0, 0, Math.PI * 2); context.fill();

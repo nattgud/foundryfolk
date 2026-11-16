@@ -71,3 +71,19 @@ CityBuilder.Config.civils = {
     signpost:   { kind: 'decor', variants: 1, from: 5, after: 2,   rate: 0.25, perMinute: 0.08, max: 160, weight: 0.8, anchor: 'road', color: '#c9b38a' },   // vägskylt (bara längs vägar)
   },
 };
+
+// Alla civila bilder finns också som kulisser (images/buildings/<ras>/civil_<sort>.png): i berättelseeditorn (kategorier "Civila ...") och i kapitlens scenery som civil_house1, demon_civil_house1 ...
+// De är bara bilder (gåbara: man kan bygga över dem) och detaljerna ritas i sin lilla storlek (size: 25 % av en ruta).
+(function () {
+  const sceneryTypes = CityBuilder.Config.story?.sceneryTypes;
+  if (!sceneryTypes) return;
+  const kinds = { big: 'byggnader', decor: 'detaljer' };
+  for (const [id, spec] of Object.entries(CityBuilder.Config.civils.types)) {
+    for (let variant = 1; variant <= (spec.variants > 1 ? spec.variants : 1); variant++) {
+      const name = id + (spec.variants > 1 ? variant : '');
+      for (const [race, prefix, label] of [['human', '', 'människa'], ['demon', 'demon_', 'demon']]) {
+        sceneryTypes[`${prefix}civil_${name}`] = { image: `images/buildings/${race}/civil_${name}.png`, walkable: true, size: spec.kind === 'decor' ? 0.25 : 1, category: `Civila ${kinds[spec.kind]} (${label})` };
+      }
+    }
+  }
+})();

@@ -24,6 +24,29 @@
     const sceneryTypes = Object.keys(Config.story.sceneryTypes || {});
     const defaultLayer = { blood: 0, corpse: 1, skeleton: 1, ruin: 0, fire: 1 };
     const buildingTypes = Object.keys(Config.buildings).filter(id => !Config.buildings[id].pile && id !== 'hq' && id !== 'monument').sort();
+    // ---- bildväljaren (kartan): kategorier med bilder, så att man slipper en lång lista ----
+    const sceneCategory = type => Config.story.sceneryTypes?.[type]?.category || (/^(corpse|blood|skeleton|edda)/.test(type) ? 'Lik och blod' : /^(ruin|fire|burnt|wagon)/.test(type) ? 'Ruiner, eld och bränd mark' : 'Spår och föremål');
+    const sceneImage = type => { const kind = Config.story.sceneryTypes?.[type] || {}; return kind.image || `images/scenery/${type}${kind.variants >= 1 ? 1 : ''}.png`; };
+    const buildingImage = id => { const image = Config.buildings[id].image; return C.Assets.raced(Array.isArray(image) ? image[0] : image || '', 'human'); };
+    const CATEGORY_ORDER = ['Lik och blod', 'Ruiner, eld och bränd mark', 'Spår och föremål', 'Civila byggnader (människa)', 'Civila detaljer (människa)', 'Civila byggnader (demon)', 'Civila detaljer (demon)'];
+    let pickerCache = null;
+    const picker = () => pickerCache ??= (() => {   // [[kategori, [{ value, label, image }]]] i ordning
+      const categories = new Map(), add = (name, item) => { if (!categories.has(name)) categories.set(name, []); categories.get(name).push(item); };
+      for (const type of sceneryTypes) add(sceneCategory(type), { value: 's:' + type, label: type, image: sceneImage(type) });
+      for (const id of buildingTypes) add('Döda byggnader: ' + (Config.buildings[id].category || 'övrigt'), { value: 'b:' + id, label: id, image: buildingImage(id) });
+      const rank = name => { const at = CATEGORY_ORDER.indexOf(name); return at < 0 ? 100 : at; };
+      return [...categories.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]));
+    })();
+    const pickerHtml = () => {
+      const categories = picker();
+      if (!categories.some(([name]) => name === st.cat)) st.cat = (categories.find(([, items]) => items.some(item => item.value === st.type)) || categories[0])[0];
+      return `<div class="row"><select data-bind="cat" style="flex:1">${categories.map(([name, items]) => `<option value="${esc(name)}"${name === st.cat ? ' selected' : ''}>${esc(name)} (${items.length})</option>`).join('')}</select> <input data-bind="find" placeholder="Sök i alla" value="${esc(st.find || '')}" style="width:84px"></div>
+        <div class="se-grid" id="sePicker">${categories.map(([name, items]) => items.map(item => `<button type="button" class="se-pick${item.value === st.type ? ' on' : ''}" data-act="pick" data-value="${esc(item.value)}" data-cat="${esc(name)}" data-name="${esc(item.label)}" title="${esc(item.label)}"><img loading="lazy" src="${esc(item.image)}" alt=""><span>${esc(item.label)}</span></button>`).join('')).join('')}</div>
+        <div class="hint">Vald: <b id="sePicked">${esc(st.type.slice(2))}</b></div>`;
+    };
+    // Kulissvalen som <option> i kategorier (för scenstegen), utan de döda byggnaderna
+    const sceneryOptionsHtml = (selected, allOption) => (allOption ? `<option value=""${!selected ? ' selected' : ''}>alla kulisser</option>` : '') + picker().filter(([, items]) => items[0].value.startsWith('s:'))
+      .map(([name, items]) => `<optgroup label="${esc(name)}">${items.map(item => `<option value="${esc(item.label)}"${item.label === selected ? ' selected' : ''}>${esc(item.label)}</option>`).join('')}</optgroup>`).join('');
     const resourceIds = Object.keys(Config.resources).sort();
     const speakerIds = Object.keys(Config.story.speakers || {});
     const strip = path => path.replace(/\?.*$/, '');
@@ -232,6 +255,12 @@
       #storyEditor .row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:3px 0}
       #storyEditor button{cursor:pointer;background:#3a3a42;color:#eee;border:1px solid #555;border-radius:4px;padding:3px 7px;font:inherit}
       #storyEditor button:hover{background:#4a4a54}
+      #storyEditor .se-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:4px;max-height:250px;overflow-y:auto;margin:4px 0;padding:2px}
+      #storyEditor .se-pick{display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px;min-height:62px;font-size:10px;line-height:1.1;overflow:hidden}
+      #storyEditor .se-pick[hidden]{display:none}
+      #storyEditor .se-pick img{width:44px;height:44px;object-fit:contain;image-rendering:pixelated;background:#2f4a2f;border-radius:3px}
+      #storyEditor .se-pick span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      #storyEditor .se-pick.on{outline:2px solid #ffd54a;background:#55553a}
       #storyEditor button.primary{background:#2d6a3d;border-color:#3f8d55}
       #storyEditor button.danger{background:#6a2d2d;border-color:#8d3f3f}
       #storyEditor button.small{padding:0 5px}
@@ -252,6 +281,12 @@
     document.body.appendChild(panel);
     for (const type of ['pointerdown', 'pointerup', 'wheel']) panel.addEventListener(type, event => event.stopPropagation());
     const $ = selector => panel.querySelector(selector);
+    // Bildväljaren visar vald kategori, eller allt som matchar sökordet
+    const filterPicker = () => {
+      const grid = $('#sePicker'); if (!grid) return;
+      const query = (st.find || '').trim().toLowerCase();
+      for (const button of grid.children) button.hidden = query ? !button.dataset.name.toLowerCase().includes(query) : button.dataset.cat !== st.cat;
+    };
 
     // ---------------------------------------------------------------- flikarna
     const tabsNow = () => [['scene', 'Scener'], ['map', 'Karta'], ['export', 'Exportera']];
@@ -260,8 +295,7 @@
       return `<p class="hint">Placera kulisser och döda byggnader direkt på kartan. Klicka eller dra för att måla.</p>
         <div class="row"><label><input type="radio" name="mode" data-bind="mode" value="place"${st.mode === 'place' ? ' checked' : ''}> Placera</label>
         <label><input type="radio" name="mode" data-bind="mode" value="move"${st.mode === 'move' ? ' checked' : ''}> Flytta / ta bort</label></div>
-        <div class="row"><select data-bind="type" style="width:100%"><optgroup label="Kulisser">${sceneryTypes.map(t => `<option value="s:${t}"${st.type === 's:' + t ? ' selected' : ''}>${t}</option>`).join('')}</optgroup>
-        <optgroup label="Döda byggnader">${buildingTypes.map(t => `<option value="b:${t}"${st.type === 'b:' + t ? ' selected' : ''}>${t}</option>`).join('')}</optgroup></select></div>
+        ${pickerHtml()}
         <div class="row">Lager <input type="number" data-bind="layer" value="${esc(st.layer)}" placeholder="auto" style="width:60px"> <span class="hint">(auto = blod under lik)</span></div>
         <div class="row">Vridning <select data-bind="turn">${[0, 1, 2, 3].map(n => `<option value="${n}"${+st.turn === n ? ' selected' : ''}>${n * 90}°</option>`).join('')}</select> <label><input type="checkbox" data-bind="flip"${st.flip ? ' checked' : ''}> Spegla</label> <span class="hint">(tangent R vrider, F speglar. Måla över en kuliss för att ändra den)</span></div>
         <div class="row"><label title="Gäller de döda byggnader du placerar härefter"><input type="checkbox" data-bind="beacon"${st.beacon ? ' checked' : ''}> Döda byggnader syns alltid (även i dimman)</label></div>
@@ -486,7 +520,7 @@
         case 'terrain': return `${area}<div class="row">Blir ${select('', [['', 'samma (ändra bara mängden)'], ['grass', 'ingenting / gräs (tar bort)'], ...terrainIds.filter(id => id !== 'grass').map(id => [id, terrainName(id)])], d.terrainTo, 'stepDraft.terrainTo')}</div>
           <div class="row">Mängd ${num('amount', 70)} <span class="hint">tomt = full mängd; 0 = slut (blir gräs)</span></div>
           <div class="hint" style="margin:0">Som när en samlare tömmer en ruta eller en formel skapar en fyndighet. Vatten och rutor med byggnader rörs inte.</div>`;
-        case 'scenery': return `${area}<div class="row">${select('', [['add', 'lägg till'], ['remove', 'ta bort']], d.scenMode, 'stepDraft.scenMode')} ${select('', [...(d.scenMode === 'remove' ? [['', 'alla kulisser']] : []), ...sceneryIds.map(id => [id, id])], d.scenType, 'stepDraft.scenType')}${d.scenMode === 'add' ? ` lager ${num('scenLayer', 50)} ${select('', [[0, 'ingen vridning'], [1, 'vriden 90°'], [2, 'vriden 180°'], [3, 'vriden 270°']], d.scenTurn, 'stepDraft.scenTurn')} <label><input type="checkbox" data-bind="stepDraft.scenFlip"${d.scenFlip ? ' checked' : ''}> spegla</label>` : ''}</div>`;
+        case 'scenery': return `${area}<div class="row">${select('', [['add', 'lägg till'], ['remove', 'ta bort']], d.scenMode, 'stepDraft.scenMode')} <select data-bind="stepDraft.scenType">${sceneryOptionsHtml(d.scenType, d.scenMode === 'remove')}</select>${d.scenMode === 'add' ? ` lager ${num('scenLayer', 50)} ${select('', [[0, 'ingen vridning'], [1, 'vriden 90°'], [2, 'vriden 180°'], [3, 'vriden 270°']], d.scenTurn, 'stepDraft.scenTurn')} <label><input type="checkbox" data-bind="stepDraft.scenFlip"${d.scenFlip ? ' checked' : ''}> spegla</label>` : ''}</div>`;
       }
       return '';
     }
@@ -599,7 +633,7 @@
         ${armText ? `<div class="banner"><span>${armText}</span><button data-act="cancelArm">Avbryt</button></div>` : ''}
         <div class="se-body">${{ scene: viewScene, map: viewMap, export: viewExport }[st.tab]()}
           ${st.note ? `<p class="ok">${esc(st.note)}</p>` : ''}<div class="hint" id="seHover"></div></div>`;
-      panel.scrollTop = scrollTop; persist();
+      panel.scrollTop = scrollTop; filterPicker(); persist();
     }
     const note = text => { st.note = text; render(); };
     // Ett felmeddelande utan omritning: det du fyllt i bevaras, och meddelandet står vid knapparna längst ned
@@ -613,6 +647,7 @@
     panel.addEventListener('input', event => { const bind = event.target.dataset?.bind; if (bind && event.target.type !== 'radio' && event.target.tagName !== 'SELECT') setPath(bind, event.target.type === 'checkbox' ? event.target.checked : event.target.value);
       if (bind === 'scene.name') { const option = $('select[data-bind=sceneIndex]')?.selectedOptions[0]; const label = event.target.value || '(namnlös)'; if (option) option.textContent = label; persist(); }   // namnet syns direkt i scenlistan medan du skriver
     });
+        panel.addEventListener('input', event => { if (event.target.dataset?.bind === 'find') { st.find = event.target.value; filterPicker(); } });
     panel.addEventListener('keydown', event => { if (event.key === 'Enter' && event.target.dataset?.bind === 'scene.name') { event.preventDefault(); event.target.blur(); } });
     panel.addEventListener('change', event => {
       const target = event.target;
@@ -661,6 +696,12 @@
     const topKey = cond => Object.keys(COND[cond.kind].make(cond.v).top || {})[0];
     const addCond = (sc, cond) => { const key = topKey(cond); sc.conds = sc.conds.filter(c => !(key && (topKey(c) === key || (key === 'on' && topKey(c) === 'on')))); sc.conds.push(cond); };
     const actions = {
+      pick: dataset => {   // bildväljaren: välj utan att rita om panelen (rutnätets rullning bevaras)
+        st.type = dataset.value;
+        for (const button of panel.querySelectorAll('.se-pick')) button.classList.toggle('on', button.dataset.value === st.type);
+        const label = $('#sePicked'); if (label) label.textContent = st.type.slice(2);
+        persist();
+      },
       newScene: () => { const n = scenes.length + 1; let id = 'scene' + n; while (scenes.some(sc => sc.id === id)) id += 'b'; scenes.push({ id, name: 'Scen ' + n, conds: [], cast: [], steps: [] }); cur = scenes.length - 1; render(); },
       deleteScene: () => { scenes.splice(cur, 1); cur = Math.max(0, cur - 1); render(); },
       sceneCondAdd: () => { const sc = sceneNow(), spec = COND[sceneCond], v = read(spec, 'sc'); if (spec.f.some(([name, type]) => type !== 'text' && type !== 'opt' && type !== 'near' && v[name] === '')) { notice('Fyll i alla fält.'); return; } if (v.near === '__map') { st.arm = { kind: 'condNear', cond: { kind: sceneCond, v } }; render(); return; } addCond(sc, { kind: sceneCond, v }); render(); },
