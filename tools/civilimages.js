@@ -123,12 +123,12 @@ const decodePng = buffer => {
 
 // ---- bildbehandling ----
 // Bakgrunden: färgen i hörnen, och allt som liknar den och hänger ihop med kanten blir genomskinligt (grönt inne i motivet rörs inte)
-const removeBackground = image => {
+const removeBackground = (image, tolerance = 90) => {
   const { width, height, data } = image, corner = [0, width - 1, (height - 1) * width, height * width - 1].map(i => [data[i * 4], data[i * 4 + 1], data[i * 4 + 2]]);
   const bg = [0, 1, 2].map(k => corner.map(c => c[k]).sort((a, b) => a - b)[1]);   // medianen av hörnen
   const near = i => Math.hypot(data[i * 4] - bg[0], data[i * 4 + 1] - bg[1], data[i * 4 + 2] - bg[2]);
   const gone = new Uint8Array(width * height), stack = [];
-  const push = i => { if (!gone[i] && near(i) < 90) { gone[i] = 1; stack.push(i); } };
+  const push = i => { if (!gone[i] && near(i) < tolerance) { gone[i] = 1; stack.push(i); } };
   for (let x = 0; x < width; x++) { push(x); push((height - 1) * width + x); }
   for (let y = 0; y < height; y++) { push(y * width); push(y * width + width - 1); }
   while (stack.length) { const i = stack.pop(), x = i % width, y = (i / width) | 0; if (x > 0) push(i - 1); if (x < width - 1) push(i + 1); if (y > 0) push(i - width); if (y < height - 1) push(i + width); }
