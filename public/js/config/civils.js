@@ -47,7 +47,7 @@ CityBuilder.Config.civils = {
     barrel:     { kind: 'decor', variants: 1, from: 3, after: 1, rate: 0.25, perMinute: 0.1,  max: 200, weight: 0.6, color: '#8a5a32' },   // tunna
     crates:     { kind: 'decor', variants: 1, from: 4, after: 1, rate: 0.25, perMinute: 0.1,  max: 200, weight: 0.6, color: '#a37a45' },   // lådor
     haybale:    { kind: 'decor', variants: 1, from: 3, after: 1, rate: 0.2,  perMinute: 0.1,  max: 150, weight: 0.6, color: '#d1b34f' },   // hövändel
-    bench:      { kind: 'decor', variants: 1, from: 6, after: 2, rate: 0.2,  perMinute: 0.08, max: 150, weight: 0.5, color: '#6f4a2d' },   // bänk
+    woodpile:      { kind: 'decor', variants: 1, from: 6, after: 2, rate: 0.2,  perMinute: 0.08, max: 150, weight: 0.5, color: '#6f4a2d' },   // vedtrave
     signpost:   { kind: 'decor', variants: 1, from: 5, after: 2, rate: 0.15, perMinute: 0.05, max: 100, weight: 0.4, color: '#c9b38a' },   // vägskylt
   },
 };

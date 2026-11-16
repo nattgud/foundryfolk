@@ -64,7 +64,7 @@ const MOTIFS = {
   barrel: 'a wooden barrel with iron bands',
   crates: 'a stack of two wooden crates',
   haybale: 'a round hay bale',
-  bench: 'a small wooden bench',
+  woodpile: 'a small stack of firewood logs',
   signpost: 'a wooden signpost with two arrows',
 };
 
@@ -205,7 +205,7 @@ const finish = (job, rawBuffer) => {
   fs.writeFileSync(job.out, encodePng(image));
 };
 
-(async () => {
+if (require.main === module) (async () => {
   const list = jobs();
   if (flag('list')) { for (const job of list) console.log(`${fs.existsSync(job.out) && !flag('force') ? '(finns) ' : '         '}civil_${job.name}.png  ${job.size}x${job.size}\n    ${job.prompt}`); return; }
   const todo = list.filter(job => flag('force') || flag('reprocess') || !fs.existsSync(job.out));
@@ -233,4 +233,4 @@ const finish = (job, rawBuffer) => {
   try { console.log(`racemanifest: ${require('./racemanifest.js')()} bilder`); } catch (error) { console.warn('racemanifest:', error.message); }
 })().catch(error => { console.error(error); process.exit(1); });
 
-module.exports = { decodePng, encodePng, removeBackground, fit };
+module.exports = { decodePng, encodePng, removeBackground, boundingBox, loadTypes };
