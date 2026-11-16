@@ -15,6 +15,7 @@
   const BUCKET = 8;
   const SIDES = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // upp, höger, ner, vänster
   const DIAGONALS = [[1, 1], [-1, 1], [1, -1], [-1, -1]];   // snedvägar (stigar ritas diagonalt, se layers.js drawPathChunk)
+  const JITTER = 5 / 36;                             // detaljernas "slumpade" avvikelse från sin plats: 5 px (av 36 per ruta), alltid samma för samma detalj
   const ROAD_INTO = .08;                              // hur långt in på vägkanten en liten detalj sitter (andel av en ruta)
   const MAX_QUEUE = 500, PER_FRAME = 3;               // bokade försök, och hur många som kan köras en bildruta
   const bucketKey = (bx, by) => (bx + 32768) * 65536 + (by + 32768);
@@ -341,7 +342,11 @@
             if (!list) continue;
             for (const item of list) {
               if (kind === 'big' ? item.kind === 'decor' : item.kind !== 'decor') continue;
-              const px = item.x * tileSize, py = item.y * tileSize;
+              let px = item.x * tileSize, py = item.y * tileSize;
+              if (item.kind === 'decor') {   // lite oordning så att de inte står på exakta avstånd: en fast punkt i en cirkel (samma för samma detalj, ritas bara om)
+                const angle = Utils.hash(Math.round(item.x * 1000), Math.round(item.y * 1000), 71) * Math.PI * 2, reach = Math.sqrt(Utils.hash(Math.round(item.x * 1000), Math.round(item.y * 1000), 72)) * JITTER * tileSize;
+                px += Math.cos(angle) * reach; py += Math.sin(angle) * reach;
+              }
               if (px < view.left || px > view.right || py < view.top || py > view.bottom) continue;
               if (item.player !== Players.HUMAN && !Vision.visible(Players.HUMAN, item.x, item.y)) continue;   // andras byggnader syns bara när spelaren ser dem
               const alpha = this.ghost * Math.min(1, (this.time - item.born) / item.fade) * (item.dying === undefined ? 1 : Math.max(0, Math.min(1, 1 - (this.time - item.dying) / item.dieFor)));
