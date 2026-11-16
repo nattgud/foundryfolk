@@ -4,7 +4,7 @@
    Växten: varje gång en spelares byggnad byggs eller rivs (World.placeBuilding / removeBuilding -> onBuilding) bokas ett försök 1-15 sekunder fram, och var
    heartbeat:e sekund bokas ett för varje spelare. Ett försök räknar ut vad som saknas mest (tabellen mot spelarens byggnader och speltiden), letar en lämplig plats nära byggnaden
    (en hel ruta intill en väg eller en egen byggnad; en liten detalj i kanten av en sådan ruta, mot vägen) och lägger en enda ny där. Den tonar in under några sekunder.
-   Bygger spelaren på rutan försvinner den direkt (clearTile i World.placeBuilding). Försvinner vägen eller byggnaden den står intill, eller blir rutan en resurs, tonar den ut inom 10 sekunder (recheck, sweep). Uppstår en stig under en tonar den ut (onWear/leave), och aldrig byggs något på en stig. Vatten, meteorer, tornados, eld och utslagning tar bort dem (clearTile, clearArea, update, clearPlayer).
+   Bygger spelaren på rutan försvinner den direkt (clearTile i World.placeBuilding). Snedda vägar: stigen ritas över de två hörnrutorna vid en snedsteg (layers.js), så de räknas som stig (corner), och hus och detaljer kan stå vid en snedd väg hörn mot hörn (DIAGONALS). Försvinner vägen eller byggnaden den står intill, eller blir rutan en resurs, tonar den ut inom 10 sekunder (recheck, sweep). Uppstår en stig under en tonar den ut (onWear/leave), och aldrig byggs något på en stig. Vatten, meteorer, tornados, eld och utslagning tar bort dem (clearTile, clearArea, update, clearPlayer).
 
    Prestanda: allt ligger i rutnätshinkar (BUCKET x BUCKET rutor) som liken. Ritningen går bara över hinkarna på skärmen, borttagning bara över hinkarna i närheten, och växten
    söker bara i en liten ruta runt byggnaden, högst ett fåtal gånger per sekund. Slumpen är Math.random (bara utseende, påverkar aldrig spelets gång). */
@@ -14,6 +14,7 @@
 
   const BUCKET = 8;
   const SIDES = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // upp, höger, ner, vänster
+  const DIAGONALS = [[1, 1], [-1, 1], [1, -1], [-1, -1]];   // snedvägar (stigar ritas diagonalt, se layers.js drawPathChunk)
   const ROAD_INTO = .08;                              // hur långt in på vägkanten en liten detalj sitter (andel av en ruta)
   const MAX_QUEUE = 500, PER_FRAME = 3;               // bokade försök, och hur många som kan köras en bildruta
   const bucketKey = (bx, by) => (bx + 32768) * 65536 + (by + 32768);
@@ -92,10 +93,19 @@
     // ---- stigar som uppstår och slits bort (units.js trampar upp, pathdecay.js slits ner) ----
     // En stig (samma gräns som den ritas med, pathWear) är aldrig en plats för civila byggnader: uppstår en under en tonar den ut, slits en bort blir rutan ledig igen.
     limit() { return options().pathWear ?? .125; },
-    path(x, y) { const tile = World.getTile(x, y); return !!tile && tile.terrainType === 'grass' && tile.ground === 'grass' && tile.wear >= this.limit(); },
+    // En ruta med stig som syns: den egna rutan är sliten, eller så är den ett hörn i en snedsteg (två slitna rutor som bara hänger ihop snett: stigen ritas då över båda hörnrutorna också)
+    worn(x, y) { const tile = World.getTile(x, y); return !!tile && tile.terrainType === 'grass' && tile.ground === 'grass' && tile.wear >= this.limit() && !World.buildingAt(x, y); },
+    corner(x, y) {
+      for (const [sx, sy] of DIAGONALS) if (this.worn(x + sx, y) && this.worn(x, y + sy) && !this.worn(x + sx, y + sy)) return true;
+      return false;
+    },
+    path(x, y) {
+      const tile = World.getTile(x, y);
+      return !!tile && ((tile.terrainType === 'grass' && tile.ground === 'grass' && tile.wear >= this.limit()) || this.corner(x, y));
+    },
     onWear(x, y, before, after) {   // anropas när en rutas slitage ändras; gör något bara när det går över gränsen
       const limit = this.limit();
-      if (before < limit && after >= limit) { if (this.tiles.size) this.leave(x, y); return; }
+      if (before < limit && after >= limit) { if (this.tiles.size) { this.leave(x, y); this.recheck(x, y, 1); } return; }   // (recheck: hörnrutorna vid en snedsteg)
       if (before < limit || after >= limit || !enabled()) return;
       this.bookRecheck(x, y);   // det som stod vid stigen får tona ut
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {   // en ledig ruta: ge närmaste spelares by ett nytt försök
@@ -119,6 +129,7 @@
       if (!this.free(item.tx, item.ty)) return false;
       const wanted = item.kind === 'decor' ? options().types?.[item.type]?.anchor : null;
       for (const [sx, sy] of SIDES) { const kind = this.anchorKind(item.tx + sx, item.ty + sy, item.player); if (kind && (!wanted || wanted === kind)) return true; }
+      if (!wanted || wanted === 'road') for (const [sx, sy] of DIAGONALS) if (this.road(item.tx + sx, item.ty + sy)) return true;   // en snedd väg räknas också
       return false;
     },
     // Kontrollerar föremålen runt (cx, cy): de som förlorat sin väg eller byggnad tonar ut inom ett par sekunder
@@ -247,6 +258,7 @@
         if (this.tiles.has(Utils.tileKey(x, y))) return;
         let anchors = 0, friends = 0;
         for (const [sx, sy] of SIDES) { if (this.anchor(x + sx, y + sy, player)) anchors++; else if (this.tiles.get(Utils.tileKey(x + sx, y + sy))?.big) friends++; }
+        for (const [sx, sy] of DIAGONALS) if (this.road(x + sx, y + sy)) anchors += .7;   // snedvägar: hörn mot hörn
         if (!anchors) return;
         const score = anchors * 2 + friends * .7 - distance * .15 + Math.random() * 1.2;
         if (score > bestScore) { bestScore = score; best = { x: x + .5, y: y + .5 }; }
@@ -261,6 +273,13 @@
       this.scan(cx, cy, (x, y, distance) => {
         const use = this.tiles.get(Utils.tileKey(x, y));
         if (use?.big) return;
+        if (!spec.anchor || spec.anchor === 'road') for (const [sx, sy] of DIAGONALS) {   // en snedd väg: i rutans hörn mot den
+          if (!this.road(x + sx, y + sy)) continue;
+          const fx = x + (sx > 0 ? 1 + ROAD_INTO : -ROAD_INTO), fy = y + (sy > 0 ? 1 + ROAD_INTO : -ROAD_INTO);
+          if (use?.decor.some(other => Math.abs(other.x - fx) < .25 && Math.abs(other.y - fy) < .25)) continue;
+          const score = Math.random() - distance * .06 - .1;
+          if (score > bestScore) { bestScore = score; best = { x: fx, y: fy, tile: [x, y] }; }
+        }
         for (const [sx, sy] of SIDES) {
           const kind = this.anchorKind(x + sx, y + sy, player);
           if (!kind || (spec.anchor && spec.anchor !== kind)) continue;
