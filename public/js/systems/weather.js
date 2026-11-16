@@ -510,6 +510,7 @@
         flood.tiles[Utils.tileKey(x, y)] = { x, y, type: tile.terrainType, amount: tile.remainingAmount, ring: index };
         Utils.assign(tile, Config.terrain.water, { terrainType: 'water', remainingAmount: Config.terrain.water.resourceAmount });
         CityBuilder.Corpses?.clearTile(x, y);   // liken och skeletten på rutan försvinner
+        CityBuilder.Civils?.clearTile(x, y);    // och de civila byggnaderna
       }
       CityBuilder.Pathfinder.clearCache();
     },
@@ -625,6 +626,7 @@
       const settings = Config.settings.weather.meteor, hit = big ? settings.big : settings.small, tile = World.getTile(x, y), Sound = CityBuilder.Sound, seen = new Set();
       if (!tile) return;
       CityBuilder.Corpses?.clearArea(x + .5, y + .5, hit.radius + .5);   // liken och skeletten där försvinner
+      CityBuilder.Civils?.clearArea(x + .5, y + .5, hit.radius + .5);    // och de civila byggnaderna
       for (let dy = -hit.radius; dy <= hit.radius; dy++) for (let dx = -hit.radius; dx <= hit.radius; dx++) {
         const building = Utils.distance(dx, dy) <= hit.radius && World.buildingAt(x + dx, y + dy);
         if (!building || seen.has(building)) continue;

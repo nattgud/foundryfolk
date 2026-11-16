@@ -82,6 +82,7 @@
       CityBuilder.Spells.reset();
       CityBuilder.Weather.reset();
       CityBuilder.Corpses?.reset();
+      CityBuilder.Civils?.reset();
       Players.team = { ...CityBuilder.Levels?.current?.teams };
       Players.race = { ...CityBuilder.Levels?.current?.races };
       CityBuilder.UI?.applyRace?.();   // byggmenyns bilder och menyernas färger följer spelarens ras
@@ -273,6 +274,7 @@
       this.buildingsByTile.set(Utils.tileKey(x, y), building);
       this.buildingVersion++;
       CityBuilder.Pathfinder.clearCache();
+      CityBuilder.Civils?.onBuilding(building, true);   // civila byggnader på rutan försvinner direkt, och byn växer vidare (systems/civils.js)
       return building;
     },
 
@@ -314,6 +316,7 @@
       if (this.hqs[building.player] === building) delete this.hqs[building.player];
       this.buildings = this.buildings.filter(other => other !== building);
       this.units = this.units.filter(unit => unit.homeBuilding !== building);
+      CityBuilder.Civils?.onBuilding(building, false);
     },
 
     // homeBuilding = byggnaden enheten arbetar åt (endast arbetare).

@@ -22,6 +22,7 @@ self.GAME_SCRIPTS = [
   'js/config/ai.js',
   'js/config/levels.js',
   'js/config/story.js',
+  'js/config/civils.js',
   'js/config/changelog.js',
   'js/config/finalize.js',
   // 3. Language and options
@@ -55,6 +56,7 @@ self.GAME_SCRIPTS = [
   'js/systems/monsters.js',
   'js/systems/weather.js',
   'js/systems/corpses.js',
+  'js/systems/civils.js',
   'js/systems/combat.js',
   'js/systems/story.js',
   'js/systems/actors.js',

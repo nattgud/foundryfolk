@@ -319,6 +319,7 @@
     // En spelare utan bas är utslagen: allt hens byggnader och enheter försvinner. Utslagen spelare = förlust, sista datorspelaren = seger.
     eliminate(player, restoring = false) {
       for (const building of [...World.buildings]) if (building.player === player) CityBuilder.Construction.dismantle(building, false);
+      CityBuilder.Civils?.clearPlayer(player);   // hens civila byggnader försvinner med resten
       for (const unit of [...World.units]) if (unit.player === player) { if (player === Players.HUMAN) this.kill(unit); else this.rout(unit); }   // en utslagen dator: enheterna flyr mot närmaste dimma och försvinner när de inte syns
       if (player !== Players.HUMAN) Players.active = Players.active.filter(other => other !== player);
       // Kapitel som slutar när dimman lyfter (end: 'fog'): faller basen faller också Eye of Shades, och dimman lyfter. Det är målet, inte en förlust. Och när dimman väl lyft är banan klarad:

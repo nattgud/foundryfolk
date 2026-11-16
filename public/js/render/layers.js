@@ -645,6 +645,7 @@
     }
   });
 
+  Renderer.addLayer('civils', (context, renderer) => CityBuilder.Civils.draw(context, renderer));   // civila byggnader och detaljer (systems/civils.js)
   Renderer.addLayer('corpses', (context, renderer) => CityBuilder.Corpses.draw(context, renderer));   // liken och skeletten (systems/corpses.js), under byggnader och enheter
 
   Renderer.addLayer('buildings', (context, renderer) => {
