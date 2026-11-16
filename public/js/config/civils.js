@@ -7,7 +7,7 @@
    Rasmappen är human eller demon; saknas rasens bild används människans, och saknas den också ritas en enkel reservbild. Kör node tools/racemanifest.js efter nya bilder.
 
    Var de byggs: en hel ruta bara på ledig gräs- eller sandruta som ligger intill en väg (stig, slitage >= roadWear) eller intill spelarens egen byggnad, aldrig på själva vägen.
-   En liten detalj sitter i kanten av en sådan ruta, mot vägen eller byggnaden (tre platser per sida). När: 1-15 sekunder (delay) efter att en spelares byggnad byggts eller rivits,
+   En liten detalj sitter i kanten av en sådan ruta, mot vägen (lite inne på vägkanten) eller byggnaden (tre platser per sida). anchor: 'road' eller 'building' på en sort begränsar den till vägar eller hus. När: 1-15 sekunder (delay) efter att en spelares byggnad byggts eller rivits,
    och dessutom var heartbeat:e sekund (så att tiden ensam också ger fler). Varje gång läggs en enda ny, av den sort som saknas mest. De tonar in under 5-10 sekunder (fade).
    Försvinner: bygger spelaren på rutan (direkt), vattnet stiger över den, en meteor slår ner vid den, en tornado far över den, eld bränner rutan, eller spelaren slås ut.
 
@@ -44,13 +44,13 @@ CityBuilder.Config.civils = {
     school:     { kind: 'big', variants: 1, from: 25, after: 14, rate: 0.015, perMinute: 0.003, max: 6,   color: '#b3874f', roof: '#7a2f2f' },   // skola
 
     // ---- små detaljer längs vägar och byggnader ----
-    flowers:    { kind: 'decor', variants: 3, from: 2, after: 0, rate: 0.8,  perMinute: 0.3,  max: 600, weight: 1,   color: '#d94f8c' },   // blommor
-    lamppost:   { kind: 'decor', variants: 1, from: 4, after: 1, rate: 0.6,  perMinute: 0.2,  max: 400, weight: 1,   color: '#f2c14e' },   // lyktstolpe
-    bush:       { kind: 'decor', variants: 2, from: 3, after: 0, rate: 0.4,  perMinute: 0.15, max: 300, weight: 0.8, color: '#3f7a3c' },   // buske
-    barrel:     { kind: 'decor', variants: 1, from: 3, after: 1, rate: 0.25, perMinute: 0.1,  max: 200, weight: 0.6, color: '#8a5a32' },   // tunna
-    crates:     { kind: 'decor', variants: 1, from: 4, after: 1, rate: 0.25, perMinute: 0.1,  max: 200, weight: 0.6, color: '#a37a45' },   // lådor
-    haybale:    { kind: 'decor', variants: 1, from: 3, after: 1, rate: 0.2,  perMinute: 0.1,  max: 150, weight: 0.6, color: '#d1b34f' },   // hövändel
-    woodpile:      { kind: 'decor', variants: 1, from: 6, after: 2, rate: 0.2,  perMinute: 0.08, max: 150, weight: 0.5, color: '#6f4a2d' },   // vedtrave
-    signpost:   { kind: 'decor', variants: 1, from: 5, after: 2, rate: 0.15, perMinute: 0.05, max: 100, weight: 0.4, color: '#c9b38a' },   // vägskylt
+    flowers:    { kind: 'decor', variants: 3, from: 2, after: 0,   rate: 1.2,  perMinute: 0.4,  max: 900, weight: 1,   color: '#d94f8c' },   // blommor
+    lamppost:   { kind: 'decor', variants: 1, from: 3, after: 0.5, rate: 1.2,  perMinute: 0.5,  max: 800, weight: 2.5, anchor: 'road', color: '#f2c14e' },   // lyktstolpe (bara längs vägar)
+    bush:       { kind: 'decor', variants: 2, from: 3, after: 0,   rate: 0.5,  perMinute: 0.2,  max: 400, weight: 0.8, color: '#3f7a3c' },   // buske
+    barrel:     { kind: 'decor', variants: 1, from: 3, after: 1,   rate: 0.35, perMinute: 0.12, max: 300, weight: 0.8, anchor: 'building', color: '#8a5a32' },   // tunna (vid hus)
+    crates:     { kind: 'decor', variants: 1, from: 4, after: 1,   rate: 0.35, perMinute: 0.12, max: 300, weight: 0.8, anchor: 'building', color: '#a37a45' },   // lådor (vid hus)
+    haybale:    { kind: 'decor', variants: 1, from: 3, after: 1,   rate: 0.3,  perMinute: 0.12, max: 250, weight: 0.7, anchor: 'building', color: '#d1b34f' },   // hövändel (vid hus)
+    woodpile:   { kind: 'decor', variants: 1, from: 6, after: 2,   rate: 0.3,  perMinute: 0.1,  max: 250, weight: 0.7, anchor: 'building', color: '#6f4a2d' },   // vedtrave (vid hus)
+    signpost:   { kind: 'decor', variants: 1, from: 5, after: 2,   rate: 0.25, perMinute: 0.08, max: 160, weight: 0.8, anchor: 'road', color: '#c9b38a' },   // vägskylt (bara längs vägar)
   },
 };

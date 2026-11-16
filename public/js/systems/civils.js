@@ -14,6 +14,7 @@
 
   const BUCKET = 8;
   const SIDES = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // upp, höger, ner, vänster
+  const ROAD_INTO = .08;                              // hur långt in på vägkanten en liten detalj sitter (andel av en ruta)
   const MAX_QUEUE = 500, PER_FRAME = 3;               // bokade försök, och hur många som kan köras en bildruta
   const bucketKey = (bx, by) => (bx + 32768) * 65536 + (by + 32768);
   const round = value => Math.round(value * 100) / 100;
@@ -38,10 +39,10 @@
 
     // ---- föremålen ----
     // Ett föremål: { type, kind, x, y (mitten, i kommatal), tx, ty (rutan), player, variant, born, fade, size (andel av en ruta), gone }
-    add(type, x, y, player, variant, born = this.time) {
+    add(type, x, y, player, variant, born = this.time, tile = null) {   // tile: [tx, ty] när föremålet ritas utanför sin egen ruta (en detalj som sitter inne på vägkanten)
       const spec = options().types?.[type];
       if (!spec) return null;
-      const big = spec.kind !== 'decor', item = { type, kind: spec.kind, x, y, tx: Math.floor(x), ty: Math.floor(y), player, variant, born, fade: between(options().fade || [5, 10]), size: big ? 1 : .25, gone: false };
+      const big = spec.kind !== 'decor', item = { type, kind: spec.kind, x, y, tx: tile ? tile[0] : Math.floor(x), ty: tile ? tile[1] : Math.floor(y), player, variant, born, fade: between(options().fade || [5, 10]), size: big ? 1 : .25, gone: false };
       const bucket = bucketKey(Math.floor(x / BUCKET), Math.floor(y / BUCKET));
       let list = this.buckets.get(bucket);
       if (!list) this.buckets.set(bucket, list = []);
@@ -171,8 +172,8 @@
       for (let tries = 0; tries < 3 && list.length; tries++) {   // sorten väljs slumpat efter hur mycket som saknas; går den inte att placera prövas nästa
         let pick = Math.random() * list.reduce((sum, entry) => sum + entry.weight, 0), index = 0;
         while (index < list.length - 1 && (pick -= list[index].weight) > 0) index++;
-        const { type, spec } = list.splice(index, 1)[0], spot = spec.kind === 'decor' ? this.decorSpot(player, cx, cy) : this.bigSpot(player, cx, cy);
-        if (spot) { this.add(type, spot.x, spot.y, player, spec.variants > 1 ? 1 + Math.floor(Math.random() * spec.variants) : 1); return true; }
+        const { type, spec } = list.splice(index, 1)[0], spot = spec.kind === 'decor' ? this.decorSpot(player, cx, cy, spec) : this.bigSpot(player, cx, cy);
+        if (spot) { this.add(type, spot.x, spot.y, player, spec.variants > 1 ? 1 + Math.floor(Math.random() * spec.variants) : 1, undefined, spot.tile); return true; }
       }
       return false;
     },
@@ -187,11 +188,13 @@
       const tile = World.getTile(x, y);
       return !!tile && tile.terrainType === 'grass' && tile.ground === 'grass' && tile.wear >= (options().roadWear ?? .3) && !World.buildingAt(x, y);
     },
-    // Något att bygga intill: en väg, eller en egen byggnad (inte en kuliss, en varuhög eller en mur)
-    anchor(x, y, player) {
+    // Något att bygga intill: en väg, eller en egen byggnad (inte en kuliss, en varuhög eller en mur). anchorKind säger vilket: 'road', 'building' eller null
+    anchorKind(x, y, player) {
       const building = World.buildingAt(x, y);
-      return building ? building.player === player && countsAs(building) : this.road(x, y);
+      if (building) return building.player === player && countsAs(building) ? 'building' : null;
+      return this.road(x, y) ? 'road' : null;
     },
+    anchor(x, y, player) { return !!this.anchorKind(x, y, player); },
     // Rutorna inom radien runt (cx, cy) som är lediga, inte väg och inte upptagna av en civil byggnad: callback(x, y, avstånd)
     scan(cx, cy, callback) {
       const radius = options().radius || 10;
@@ -216,19 +219,22 @@
       });
       return best;
     },
-    // En liten detalj: i kanten av en ledig ruta mot en väg eller en egen byggnad, på en av tre platser (25 % bred, så de aldrig överlappar varandra eller en hel civil byggnad)
-    decorSpot(player, cx, cy) {
+    // En liten detalj: i kanten av en ledig ruta mot en väg eller en egen byggnad, på en av tre platser (25 % bred, så de aldrig överlappar varandra eller en hel civil byggnad).
+    // Mot en väg sitter den lite inne på vägkanten (ROAD_INTO rutor in över gränsen), mot en byggnad vid kanten. spec.anchor: 'road' eller 'building' begränsar vad sorten står intill
+    // (lyktstolpar och skyltar längs vägar, tunnor och lådor vid hus). Rutan som den räknas till (tile) är ändå den lediga, så den tonar ut och sparas som förut.
+    decorSpot(player, cx, cy, spec = {}) {
       let best = null, bestScore = -Infinity;
       this.scan(cx, cy, (x, y, distance) => {
         const use = this.tiles.get(Utils.tileKey(x, y));
         if (use?.big) return;
         for (const [sx, sy] of SIDES) {
-          if (!this.anchor(x + sx, y + sy, player)) continue;
-          const slot = Math.floor(Math.random() * 3), along = .2 + .3 * slot;
-          const fx = x + (sx ? (sx > 0 ? .875 : .125) : along), fy = y + (sy ? (sy > 0 ? .875 : .125) : along);
+          const kind = this.anchorKind(x + sx, y + sy, player);
+          if (!kind || (spec.anchor && spec.anchor !== kind)) continue;
+          const slot = Math.floor(Math.random() * 3), along = .2 + .3 * slot, inward = kind === 'road' ? ROAD_INTO : -.125;   // inward: rutor bortom kanten (negativt = innanför)
+          const fx = x + (sx ? (sx > 0 ? 1 + inward : -inward) : along), fy = y + (sy ? (sy > 0 ? 1 + inward : -inward) : along);
           if (use?.decor.some(other => Math.abs(other.x - fx) < .25 && Math.abs(other.y - fy) < .25)) continue;
           const score = Math.random() - distance * .06;
-          if (score > bestScore) { bestScore = score; best = { x: fx, y: fy }; }
+          if (score > bestScore) { bestScore = score; best = { x: fx, y: fy, tile: [x, y] }; }
         }
       });
       return best;
@@ -237,15 +243,15 @@
     // ---- sparning: { time, items: [[sort, x, y, spelare, variant, ålder i sekunder], ...] } ----
     pack() {
       const items = [];
-      for (const list of this.buckets.values()) for (const item of list) if (item.dying === undefined) items.push([item.type, round(item.x), round(item.y), item.player, item.variant, Math.min(9999, Math.round(this.time - item.born))]);
+      for (const list of this.buckets.values()) for (const item of list) if (item.dying === undefined) items.push([item.type, round(item.x), round(item.y), item.player, item.variant, Math.min(9999, Math.round(this.time - item.born)), item.tx, item.ty]);
       return { time: round(this.time), items };
     },
     restore(data) {
       this.reset();
       this.time = Number.isFinite(data?.time) ? data.time : 0;
-      for (const [type, x, y, player, variant, age] of Array.isArray(data?.items) ? data.items : []) {
-        if (![x, y].every(Number.isFinite) || !options().types?.[type] || this.path(Math.floor(x), Math.floor(y))) continue;
-        this.add(type, x, y, player, variant || 1, this.time - (age || 0));
+      for (const [type, x, y, player, variant, age, tx, ty] of Array.isArray(data?.items) ? data.items : []) {
+        if (![x, y].every(Number.isFinite) || !options().types?.[type] || this.path(Number.isFinite(tx) ? tx : Math.floor(x), Number.isFinite(ty) ? ty : Math.floor(y))) continue;
+        this.add(type, x, y, player, variant || 1, this.time - (age || 0), Number.isFinite(tx) && Number.isFinite(ty) ? [tx, ty] : null);
       }
     },
 
