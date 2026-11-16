@@ -37,7 +37,7 @@
     beat: 0,              // när nästa heartbeat kontrolleras
     nextBeat: new Map(),  // spelare -> när tiden ensam nästa gång ger den ett försök
 
-    reset() { Object.assign(this, { buckets: new Map(), tiles: new Map(), counts: new Map(), queue: [], leaving: [], sweepKeys: [], time: 0, beat: 0, nextBeat: new Map() }); },
+    reset() { Object.assign(this, { buckets: new Map(), tiles: new Map(), counts: new Map(), queue: [], leaving: [], sweepKeys: [], time: 0, beat: 0, nextBeat: new Map() }); CityBuilder.Villagers?.reset(); },
 
     // ---- föremålen ----
     // Ett föremål: { type, kind, x, y (mitten, i kommatal), tx, ty (rutan), player, variant, born, fade, size (andel av en ruta), gone }
@@ -67,6 +67,16 @@
       if (use) { if (use.big === item) use.big = null; else use.decor = use.decor.filter(other => other !== item); if (!use.big && !use.decor.length) this.tiles.delete(key); }
       const have = this.counts.get(item.player);
       if (have) have.set(item.type, Math.max(0, (have.get(item.type) || 0) - 1));
+    },
+
+    // callback(item) för alla föremål i hinkarna som täcker rutorna left..right, top..bottom (hinkarna täcker lite mer än rutorna: anroparen filtrerar själv)
+    each(left, top, right, bottom, callback) {
+      for (let by = Math.floor(top / BUCKET); by <= Math.floor(bottom / BUCKET); by++) {
+        for (let bx = Math.floor(left / BUCKET); bx <= Math.floor(right / BUCKET); bx++) {
+          const list = this.buckets.get(bucketKey(bx, by));
+          if (list) for (const item of list) callback(item);
+        }
+      }
     },
 
     // ---- borttagning ----

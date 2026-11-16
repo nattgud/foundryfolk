@@ -26,6 +26,23 @@ CityBuilder.Config.civils = {
   leave: [2, 4],        // sekunder det tar att tona ut när en stig uppstår under något
   roadWear: 0.3,        // en ruta räknas som väg när dess slitage är minst så här (0-1, se pathdecay.js)
   heartbeat: 20,        // sekunder mellan att tiden ensam ger en ny (per spelare)
+  // Invånare (systems/villagers.js): går mellan de civila byggnaderna. Bilder: images/units/<ras>/villager1.png ... villager4.png (64x64 per ruta, flera rutor i rad = gå-animation, ser åt höger)
+  villagers: {
+    enabled: true,
+    max: 40,              // högst så många samtidigt (de finns bara nära det som syns)
+    perBuilding: 0.5,     // invånare per civil byggnad i bild (uppåt begränsat av max)
+    every: 0.6,           // sekunder mellan att en ny kan födas
+    speed: 0.8,           // rutor per sekund
+    range: 12,            // hur långt bort målet får ligga (rutor, högst 14)
+    margin: 6,            // hur långt utanför bilden de lever kvar (rutor)
+    stay: [4, 12],        // sekunder de är inne i en byggnad
+    legs: [2, 4],         // antal besök innan en invånare försvinner
+    variants: 4,
+    size: 16,             // storlek i bildpunkter, som enheternas imageSize (16 = en vanlig enhet)
+    fade: 0.4,            // sekunder det tar att gå in/komma ut
+    fps: 6,               // gå-animationens bildrutor per sekund (om bilden har flera)
+    tint: ['#c9a27a', '#9fb4c9', '#c98a8a', '#a9c98a'],   // platshållarens färger tills villager-bilderna finns
+  },
   types: {
     // ---- hela rutor ----
     house:      { kind: 'big', variants: 4, from: 1,  after: 0,  rate: 0.5,   perMinute: 0.15,  max: 400, weight: 3, color: '#b98a5a', roof: '#8a3b2d' },   // boningshus: hyddor och hus
