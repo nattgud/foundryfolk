@@ -13,6 +13,7 @@
     last: 0, windowStart: 0, frames: 0, interval: 0, work: 0,   // mätfönstret (en sekund)
     warm: 0, slowRun: 0, goodRun: 0, recoverWait: 0, recoveredAt: 0, locked: false,
     refreshHz: 0, probeHz: 0, probing: false, fastest: [], samples: new Float32Array(1024), count: 0,   // skärmens uppdateringsfrekvens (mäts), och bildtiderna i det pågående mätfönstret
+    sleeping: false, hiddenSince: 0,
     heapMB: 0, peakMB: 0, memoryAt: 0, trimmedAt: 0, trimmedMB: 0, trims: 0, pressure: false, caches: [],
 
     // Ett minne som kan städas: register('namn', { size: () => ({ count, mb }), trim: () => släpp allt som går att bygga om }). report() visar dem, trim() släpper dem.
@@ -34,6 +35,21 @@
       console.log(`JS-minne ${memory ? Math.round(memory.usedJSHeapSize / 1048576) : '?'} MB (topp ${Math.round(this.peakMB)}), DOM-element ${document.getElementsByTagName('*').length}, devicePixelRatio ${devicePixelRatio}, skärm ${innerWidth}x${innerHeight}, optimerarnivå ${this.level}, städningar ${this.trims}. Summa avkodade bilder, ljud och canvas: ${Math.round(rows.reduce((sum, row) => sum + (row.mb || 0), 0))} MB (utanför JS-minnet)`);
       if (console.table) console.table(rows);
       return rows;
+    },
+
+    // En dold flik (ingen bild ritas, spelet står stilla) behöver inget av det som byggts för att rita: släpp det. Vaknar när fliken visas: skärmen får tillbaka sin storlek och cacharna byggs om efter hand.
+    sleep() {
+      if (this.sleeping) return;
+      this.sleeping = true;
+      this.trim();
+      const canvas = CityBuilder.Renderer?.canvas;
+      if (canvas) { canvas.width = 1; canvas.height = 1; }   // minnet för skärmens bild (bredd x höjd x 4 byte, ofta tiotals MB)
+    },
+    wake() {
+      if (!this.sleeping) return;
+      this.sleeping = false;
+      CityBuilder.Renderer?.resize();
+      this.last = 0;   // första bildrutan efter uppvaknandet räknas inte som segt
     },
 
     // Mäter JS-minnet (Chrome) med jämna mellanrum: passerar det gränsen, eller har det vuxit mycket sedan senaste städningen, städas det
@@ -147,6 +163,11 @@
   if (typeof addEventListener === 'function' && typeof document !== 'undefined') {
     const start = () => setTimeout(() => Optimizer.probe(), 1200);   // efter laddningen: sidan hinner bli tyst
     if (document.readyState === 'complete') start(); else addEventListener('load', start, { once: true });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) Optimizer.hiddenSince = performance.now(); else Optimizer.wake(); });
+    setInterval(() => {   // timers går långsamt i en dold flik, men räcker för att se hur länge den varit dold
+      const config = CityBuilder.Config.optimizer;
+      if (document.hidden && Optimizer.enabled() && config && !Optimizer.sleeping && performance.now() - Optimizer.hiddenSince >= config.sleepSeconds * 1000) Optimizer.sleep();
+    }, 5000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { Optimizer.probeHz = 0; Optimizer.fastest = []; setTimeout(() => Optimizer.probe(), 800); } });   // kanske på en annan skärm nu
   }
 })(window.CityBuilder);

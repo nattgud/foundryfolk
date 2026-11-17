@@ -15,6 +15,7 @@
     recoverSeconds: 20,   // så många sekunder i rad måste det gå lätt innan en nivå tas bort; dubblas (till högst maxRecoverSeconds) om det blir segt igen strax efter
     maxRecoverSeconds: 240,
     warmup: 3,            // sekunder som hoppas över efter laddning, paus eller en hackig stund
+    sleepSeconds: 60,     // en flik som är dold så här länge "sover": cacharna släpps och skärmens canvas krymper till 1x1 pixel (frigör minne); allt byggs upp igen när fliken visas
     memory: {             // minnet (bara där webbläsaren visar det: Chrome ger performance.memory för JS-minnet)
       checkSeconds: 10,   // hur ofta minnet mäts
       softMB: 500,        // över så här mycket JS-minne släpps cacharna (Optimizer.register)
