@@ -6,10 +6,12 @@
 (function (CityBuilder) {
   'use strict';
   CityBuilder.Config.optimizer = {
-    targetFps: 60,        // önskad bildfrekvens (30 om bildfrekvensen är begränsad till 30 i menyn)
-    tolerance: .12,       // för segt = bildtiden är mer än så här mycket över målet (12 % = under ca 54 av 60 fps)
+    targetFps: 60,        // målet innan skärmens uppdateringsfrekvens är mätt (optimizer.js mäter den: 60, 144, 240 Hz ...). Begränsas bildfrekvensen i menyn (30 FPS) är det målet
+    maxTargetFps: 144,    // högsta målet: på en 240 Hz-skärm räcker 144
+    minTargetFps: 30,
+    tolerance: .1,        // för segt = bildtiden är mer än så här mycket över målet (10 % = under ca 130 av 144 fps, under 54 av 60)
     slowSeconds: 3,       // så många sekunder i rad måste det vara segt innan en nivå läggs på
-    headroom: .6,         // "går lätt" = bildens beräkning och ritning tar mindre än så här av tiden per bild
+    headroom: .75,        // "går lätt" = bildens beräkning och ritning tar mindre än så här av tiden som målet ger per bild
     recoverSeconds: 20,   // så många sekunder i rad måste det gå lätt innan en nivå tas bort; dubblas (till högst maxRecoverSeconds) om det blir segt igen strax efter
     maxRecoverSeconds: 240,
     warmup: 3,            // sekunder som hoppas över efter laddning, paus eller en hackig stund

@@ -6,10 +6,13 @@
 (function (CityBuilder) {
   'use strict';
 
+  const RATES = [24, 30, 48, 50, 60, 72, 75, 90, 100, 120, 144, 165, 180, 240, 360];   // vanliga skärmfrekvenser
+
   const Optimizer = {
     level: 0, villagers: 1, decor: true, civils: true, simpleCarriers: false,
     last: 0, windowStart: 0, frames: 0, interval: 0, work: 0,   // mätfönstret (en sekund)
     warm: 0, slowRun: 0, goodRun: 0, recoverWait: 0, recoveredAt: 0, locked: false,
+    refreshHz: 0, probeHz: 0, probing: false, fastest: [], samples: new Float32Array(1024), count: 0,   // skärmens uppdateringsfrekvens (mäts), och bildtiderna i det pågående mätfönstret
     heapMB: 0, peakMB: 0, memoryAt: 0, trimmedAt: 0, trimmedMB: 0, trims: 0, pressure: false, caches: [],
 
     // Ett minne som kan städas: register('namn', { size: () => ({ count, mb }), trim: () => släpp allt som går att bygga om }). report() visar dem, trim() släpper dem.
@@ -60,6 +63,44 @@
 
     force(level) { this.locked = level !== null && level !== undefined; this.setLevel(this.locked ? level : 0); this.slowRun = this.goodRun = 0; },
 
+    // Mäter skärmens uppdateringsfrekvens på ett tomt sätt, utan spelet: 90 bilder i en egen rAF-slinga (snabbaste tiondelen). Görs i menyn när sidan laddats, och om fönstret flyttas/visas igen.
+    // Spelets egna bildtider duger inte ensamma: går spelet alltid lite för segt hinner det aldrig på en uppdatering, utan på varannan (144 Hz ser då ut som 72 Hz).
+    probe(frames = 90) {
+      if (this.probing || typeof requestAnimationFrame !== 'function' || document.hidden) return;
+      this.probing = true;
+      const gaps = []; let last = 0;
+      const step = time => {
+        if (last) gaps.push(time - last);
+        last = time;
+        if (document.hidden) { this.probing = false; return; }   // fliken göms: mätningen blir inte rättvis
+        if (gaps.length < frames) return requestAnimationFrame(step);
+        this.probing = false;
+        gaps.sort((a, b) => a - b);
+        this.probeHz = Math.max(this.probeHz, this.snap(1000 / Math.max(2, gaps[Math.floor(gaps.length * .1)])));
+        this.refreshHz = Math.max(this.refreshHz, this.probeHz);
+      };
+      requestAnimationFrame(step);
+    },
+
+    snap(hz) { return RATES.find(rate => Math.abs(rate - hz) / rate < .06) || Math.round(hz); },
+
+    // Spelets egna bildtider: de snabbaste bildtiderna (tionde percentilen per sekund; en bild som hinner i tid kommer vid varje bildskärmsuppdatering) under de senaste 30 sekunderna,
+    // avrundad till en vanlig frekvens. Går spelet för segt för att nå den syns det ändå på bilder som hinner i tid emellanåt.
+    measureRefresh() {
+      const samples = this.samples.subarray(0, this.count).sort();
+      if (samples.length >= 20) { this.fastest.push(samples[Math.floor(samples.length * .1)]); if (this.fastest.length > 30) this.fastest.shift(); }
+      this.count = 0;
+      if (this.fastest.length < 3) return;
+      const hz = 1000 / Math.max(2, Math.min(...this.fastest));
+      this.refreshHz = Math.max(this.probeHz, this.snap(hz));   // mätningen utan spelet har företräde när den är högre
+    },
+
+    // Målet: skärmens frekvens (högst maxTargetFps), eller standardmålet tills den är mätt
+    targetFps() {
+      const config = CityBuilder.Config.optimizer;
+      return Math.max(config.minTargetFps, Math.min(config.maxTargetFps, this.refreshHz || config.targetFps));
+    },
+
     // Bildrutans tid (ms) och hur länge den tog att beräkna och rita (ms)
     record(time, workMs) {
       const config = CityBuilder.Config.optimizer;
@@ -70,16 +111,18 @@
       const gap = time - this.last;
       this.last = time;
       if (gap > 250 || gap <= 0) {   // laddning, paus eller fönstret utan fokus: börja om och ge det en stund att lugna sig
-        this.frames = this.interval = this.work = 0; this.windowStart = time; this.warm = config.warmup; this.slowRun = this.goodRun = 0;
+        this.frames = this.interval = this.work = this.count = 0; this.windowStart = time; this.warm = config.warmup; this.slowRun = this.goodRun = 0;
         return;
       }
       this.frames++; this.interval += gap; this.work += workMs;
+      if (this.count < this.samples.length) this.samples[this.count++] = gap;
       if (time - this.windowStart < 1000) return;
+      this.measureRefresh();
       const interval = this.interval / this.frames, work = this.work / this.frames;
       this.frames = this.interval = this.work = 0; this.windowStart = time;
       if (this.warm > 0) { this.warm--; return; }
 
-      const limit = CityBuilder.Options?.settings.fpsLimit, budget = 1000 / (limit || config.targetFps);
+      const limit = CityBuilder.Options?.settings.fpsLimit, target = limit || this.targetFps(), budget = 1000 / target;
       const slow = interval > budget * (1 + config.tolerance) && (work > interval * .5 || interval > budget * 1.6);   // för långsamt, och det är spelet (inte skärmen) som tar tid
       if (!this.recoverWait) this.recoverWait = config.recoverSeconds;
       if (this.recoveredAt && time - this.recoveredAt > 40000) { this.recoverWait = config.recoverSeconds; this.recoveredAt = 0; }   // steget ner höll: tillbaka till vanlig väntan
@@ -101,4 +144,9 @@
   };
 
   CityBuilder.Optimizer = Optimizer;
+  if (typeof addEventListener === 'function' && typeof document !== 'undefined') {
+    const start = () => setTimeout(() => Optimizer.probe(), 1200);   // efter laddningen: sidan hinner bli tyst
+    if (document.readyState === 'complete') start(); else addEventListener('load', start, { once: true });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { Optimizer.probeHz = 0; Optimizer.fastest = []; setTimeout(() => Optimizer.probe(), 800); } });   // kanske på en annan skärm nu
+  }
 })(window.CityBuilder);

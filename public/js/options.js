@@ -144,7 +144,7 @@
         this.positionFpsCounter();
         const units = CityBuilder.World ? CityBuilder.World.units.length : 0;
         const optimizer = CityBuilder.Optimizer, memory = performance.memory;
-        this.fpsElement.textContent = `${Math.round(fps)} FPS · ${(this.frameMs / this.frames).toFixed(1)} ms · ${t('{n} units', { n: units })}${memory ? ` · ${Math.round(memory.usedJSHeapSize / 1048576)} MB` : ''}${optimizer?.level ? ` · ${t('Optimizing')} ${optimizer.level}` : ''}`;
+        this.fpsElement.textContent = `${Math.round(fps)}${optimizer?.refreshHz ? '/' + optimizer.refreshHz : ''} FPS · ${(this.frameMs / this.frames).toFixed(1)} ms · ${t('{n} units', { n: units })}${memory ? ` · ${Math.round(memory.usedJSHeapSize / 1048576)} MB` : ''}${optimizer?.level ? ` · ${t('Optimizing')} ${optimizer.level}` : ''}`;
       }
       this.frames = 0; this.frameMs = 0; this.windowStart = time;
     },
