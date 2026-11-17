@@ -24,8 +24,11 @@
     // Visar vad som tar minne (kör CityBuilder.Optimizer.report() i konsolen efter en lång session och skicka resultatet)
     report() {
       const memory = performance.memory, rows = this.caches.map(cache => ({ cache: cache.name, ...cache.size() }));
-      const canvases = document.querySelectorAll('canvas').length;
-      console.log(`JS-minne ${memory ? Math.round(memory.usedJSHeapSize / 1048576) : '?'} MB (topp ${Math.round(this.peakMB)}), ${canvases} canvas i sidan, devicePixelRatio ${devicePixelRatio}, optimerarnivå ${this.level}, städningar ${this.trims}`);
+      const canvases = [...document.querySelectorAll('canvas')], canvasMB = Math.round(canvases.reduce((sum, canvas) => sum + canvas.width * canvas.height * 4, 0) / 1048576);
+      let imageBytes = 0, imageCount = 0;   // avkodade bilder: 4 byte per pixel
+      for (const image of Object.values(CityBuilder.Assets?.imageCache || {})) if (image.complete && image.naturalWidth) { imageCount++; imageBytes += image.naturalWidth * image.naturalHeight * 4; }
+      rows.push({ cache: 'images (decoded)', count: imageCount, mb: Math.round(imageBytes / 1048576) }, { cache: 'canvas in the page (screen, minimap...)', count: canvases.length, mb: canvasMB });
+      console.log(`JS-minne ${memory ? Math.round(memory.usedJSHeapSize / 1048576) : '?'} MB (topp ${Math.round(this.peakMB)}), DOM-element ${document.getElementsByTagName('*').length}, devicePixelRatio ${devicePixelRatio}, skärm ${innerWidth}x${innerHeight}, optimerarnivå ${this.level}, städningar ${this.trims}. Summa avkodade bilder, ljud och canvas: ${Math.round(rows.reduce((sum, row) => sum + (row.mb || 0), 0))} MB (utanför JS-minnet)`);
       if (console.table) console.table(rows);
       return rows;
     },
@@ -49,7 +52,11 @@
       this.level = Math.max(0, Math.min(levels.length, level));
       Object.assign(this, { villagers: 1, decor: true, civils: true, simpleCarriers: false });
       for (let i = 0; i < this.level; i++) { const { name, ...changes } = levels[i]; Object.assign(this, changes); }
+      CityBuilder.Civils?.cull();   // det som nu är avstängt tas också bort ur minnet (växer tillbaka av sig självt när nivån sänks)
     },
+
+    // Är den här sortens civila (big/decor) avstängd just nu? Då ritas de inte och nya växer inte fram
+    hides(kind) { return this.civils === false || (kind === 'decor' && this.decor === false); },
 
     force(level) { this.locked = level !== null && level !== undefined; this.setLevel(this.locked ? level : 0); this.slowRun = this.goodRun = 0; },
 

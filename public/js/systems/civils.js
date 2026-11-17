@@ -96,6 +96,11 @@
         }
       }
     },
+    cull() {   // optimeraren: ta bort det den har stängt av (frigör minne och arbete); det som saknas växer tillbaka när nivån sänks
+      const Optimizer = CityBuilder.Optimizer;
+      if (!Optimizer || (Optimizer.civils !== false && Optimizer.decor !== false)) return;
+      for (const list of [...this.buckets.values()]) for (const item of [...list]) if (Optimizer.hides(item.kind)) this.drop(item);
+    },
     clearPlayer(player) {   // en utslagen spelares by försvinner med resten
       this.queue = this.queue.filter(event => event.player !== player);
       for (const list of [...this.buckets.values()]) for (const item of list.filter(other => other.player === player)) this.drop(item);
@@ -222,6 +227,7 @@
       if (!buildings || total >= (settings.max ?? 1e9)) return false;
       const minutes = this.time / 60, list = [];
       for (const [type, spec] of Object.entries(settings.types || {})) {
+        if (CityBuilder.Optimizer?.hides(spec.kind)) continue;   // optimeraren har stängt av den här sorten: inget nytt växer fram
         const lack = this.want(spec, buildings, minutes) - (have.get(type) || 0);
         if (lack > 0) list.push({ type, spec, weight: Math.sqrt(lack) * (spec.weight ?? 1) });
       }

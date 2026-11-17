@@ -848,4 +848,10 @@
   };
 
   CityBuilder.Sound = Sound;
+  const audioMB = buffers => { let bytes = 0, count = 0; for (const buffer of buffers) if (buffer) { count++; bytes += buffer.length * buffer.numberOfChannels * 4; } return { count, mb: Math.round(bytes / 1048576) }; };   // avkodat ljud: 4 byte per sample och kanal
+  CityBuilder.Optimizer?.register('sound effects (decoded)', { size: () => audioMB([...Sound.sounds.values()].flatMap(sound => (sound.variants || [sound]).map(variant => variant.fileBuffer))), trim: () => {} });
+  CityBuilder.Optimizer?.register('sound loops (decoded)', { size: () => audioMB([...(Sound.loopFiles?.values() || [])].map(entry => entry.buffer)), trim: () => {   // långa loopar (storm, regn) som inte spelas just nu släpps; de avkodas igen nästa gång
+    const playing = new Set([...(Sound.loops?.values() || [])].map(loop => loop.source?.buffer));
+    for (const [file, entry] of [...(Sound.loopFiles || [])]) if (!entry.buffer || !playing.has(entry.buffer)) Sound.loopFiles.delete(file);
+  } });
 })(window.CityBuilder);
