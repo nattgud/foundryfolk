@@ -25,7 +25,7 @@
   const FPS_CHOICES = [[0, 'Unlimited'], [30, '30 FPS']];
   const TEXT_CHOICES = [[0.9, 'Small'], [1, 'Standard'], [1.25, 'Large'], [1.5, 'Larger'], [2, 'Largest']];   // textstorlek i menyer, dialoger och tooltips (CSS-variabeln --ts)
   const GRAPHICS_CHOICES = ['Minimum', 'Low', 'Medium', 'High'];   // index = nivå
-  const DEFAULTS = { showFps: false, autosaveMs: 30000, fpsLimit: 0, textScale: 1, shapesOnly: false, graphics: GRAPHICS_CHOICES.length - 1 };
+  const DEFAULTS = { optimizer: true, showFps: false, autosaveMs: 30000, fpsLimit: 0, textScale: 1, shapesOnly: false, graphics: GRAPHICS_CHOICES.length - 1 };
 
   const Options = {
     settings: { ...DEFAULTS },
@@ -36,6 +36,7 @@
       try {
         const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
         if (typeof saved.showFps === 'boolean') this.settings.showFps = saved.showFps;
+        if (typeof saved.optimizer === 'boolean') this.settings.optimizer = saved.optimizer;
         if (typeof saved.shapesOnly === 'boolean') this.settings.shapesOnly = saved.shapesOnly;
         if (Number.isInteger(saved.graphics) && saved.graphics >= 0 && saved.graphics < GRAPHICS_CHOICES.length) this.settings.graphics = saved.graphics;
         if (AUTOSAVE_CHOICES.some(([value]) => value === saved.autosaveMs)) this.settings.autosaveMs = saved.autosaveMs;
@@ -142,7 +143,8 @@
       if (this.settings.showFps && this.fpsElement) {
         this.positionFpsCounter();
         const units = CityBuilder.World ? CityBuilder.World.units.length : 0;
-        this.fpsElement.textContent = `${Math.round(fps)} FPS · ${(this.frameMs / this.frames).toFixed(1)} ms · ${t('{n} units', { n: units })}`;
+        const optimizer = CityBuilder.Optimizer, memory = performance.memory;
+        this.fpsElement.textContent = `${Math.round(fps)} FPS · ${(this.frameMs / this.frames).toFixed(1)} ms · ${t('{n} units', { n: units })}${memory ? ` · ${Math.round(memory.usedJSHeapSize / 1048576)} MB` : ''}${optimizer?.level ? ` · ${t('Optimizing')} ${optimizer.level}` : ''}`;
       }
       this.frames = 0; this.frameMs = 0; this.windowStart = time;
     },
@@ -195,6 +197,7 @@
           select(TEXT_CHOICES, this.settings.textScale, value => this.set('textScale', Number(value))),
           t('Makes the text in menus, dialogs and tooltips larger or smaller')),
         row(t('FPS counter'), toggle('showFps'), t('Shown below the resource bar')),
+        row(t('Optimizer'), toggle('optimizer'), t('Turns off extras (villagers, small details, civil buildings, ...) and frees memory when the game runs slowly or uses too much memory')),
         row(t('Frame rate'),
           select(FPS_CHOICES, this.settings.fpsLimit, value => this.set('fpsLimit', Number(value))),
           t('30 FPS saves battery and processing power')),

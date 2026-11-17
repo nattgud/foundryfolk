@@ -419,4 +419,5 @@
   };
 
   CityBuilder.Pathfinder = Pathfinder;
+  CityBuilder.Optimizer?.register('path searches', { size: () => ({ count: Pathfinder.pathCache.size + Pathfinder.assessCache.size }), trim: () => { Pathfinder.pathCache.clear(); Pathfinder.assessCache.clear(); } });   // sökningarna görs om vid behov
 })(window.CityBuilder);

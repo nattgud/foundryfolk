@@ -23,6 +23,7 @@ self.GAME_SCRIPTS = [
   'js/config/levels.js',
   'js/config/story.js',
   'js/config/civils.js',
+  'js/config/optimizer.js',
   'js/config/changelog.js',
   'js/config/finalize.js',
   // 3. Language and options
@@ -33,6 +34,7 @@ self.GAME_SCRIPTS = [
   'js/lang/ar.js',
   'js/lang/lang.js',
   'js/options.js',
+  'js/optimizer.js',
   'js/custommap.js',
   'js/storyui.js',
   // 4. Värld

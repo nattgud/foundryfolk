@@ -237,6 +237,9 @@
   const built = new Uint8Array(GRID * GRID);
   const ground = new Uint8Array(GRID * GRID);
   const pathChunks = new Map();
+  const canvasMB = chunks => { let bytes = 0, count = 0; for (const chunk of chunks.values()) if (chunk.canvas) { count++; bytes += chunk.canvas.width * chunk.canvas.height * 4; } return { count, mb: Math.round(bytes / 1048576) }; };
+  CityBuilder.Optimizer?.register('terrain chunks', { size: () => canvasMB(terrainChunks), trim: () => terrainChunks.clear() });   // byggs om vid behov
+  CityBuilder.Optimizer?.register('path chunks', { size: () => canvasMB(pathChunks), trim: () => pathChunks.clear() });
   const scratch = document.createElement('canvas'), mapCanvas = document.createElement('canvas'), mapContext = mapCanvas.getContext('2d');
   const fillMap = new Float32Array(GRID * GRID), fillWorn = new Float32Array(GRID * GRID);
   let mapImage = null;
@@ -754,10 +757,16 @@
     const tileSize = renderer.tileSize, now = performance.now(); // animationen går på verklig tid: lika snabb vid 30 som vid 144 fps
     const gfx = CityBuilder.Options.gfx;
     context.imageSmoothingQuality = gfx.smoothing ? 'high' : 'low';
-    const view = renderer.viewBounds(tileSize * 2);
+    const view = renderer.viewBounds(tileSize * 2), simpleCarriers = CityBuilder.Optimizer?.simpleCarriers;
     for (const unit of World.units) {
       const shownAtX = shownX(unit), shownAtY = shownY(unit);
       if (outside(view, shownAtX * tileSize, shownAtY * tileSize) || hidden(unit) || restingInside(unit)) { unit.lastX = shownAtX; unit.lastY = shownAtY; continue; } // förflyttningen utanför bild ger ingen riktning
+      if (simpleCarriers && unit.kind === 'carrier') {   // optimeraren: bärare som små färgade rutor (ingen bild, ingen animation)
+        unit.lastX = shownAtX; unit.lastY = shownAtY;
+        context.fillStyle = unit.carriedResource ? Config.resources[unit.carriedResource]?.color || '#ddd' : unit.definition.color || '#c9b38a';
+        context.fillRect(shownAtX * tileSize - 3, shownAtY * tileSize - 3, 6, 6);
+        continue;
+      }
       const definition = unit.definition, image = findUnitImage(unit);
       const frameW = image && (definition.frame || image.naturalWidth), frameH = image && (definition.frame || image.naturalHeight);
       const cols = image ? Math.max(1, Math.floor(image.naturalWidth / frameW)) : 1, rows = image ? Math.max(1, Math.floor(image.naturalHeight / frameH)) : 1;

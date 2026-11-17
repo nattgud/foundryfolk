@@ -13,7 +13,7 @@
   const dist = new Float32Array(SIDE * SIDE), came = new Int32Array(SIDE * SIDE);
   const STEPS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [-1, 1, 1.414], [1, -1, 1.414], [-1, -1, 1.414]];
   const options = () => (Config.civils || {}).villagers || {};
-  const enabled = () => Config.civils?.enabled !== false && options().enabled !== false && CityBuilder.Levels?.current?.civils !== false;
+  const enabled = () => Config.civils?.enabled !== false && options().enabled !== false && CityBuilder.Levels?.current?.civils !== false && CityBuilder.Optimizer?.civils !== false;
   const between = ([low, high]) => low + Math.random() * (high - low);
 
   // Kostnad att gå över en ruta (0 = går inte): tom gräsmark; stig billigast, civil byggnad dyr (de går helst runt)
@@ -65,14 +65,14 @@
     // Föder en invånare vid ett slumpat civilt hus (helst) i vyn, om det finns färre än vad vyn har plats för
     spawn() {
       const Civils = CityBuilder.Civils, view = this.view, settings = options();
-      if (!view || !Civils.buckets.size || this.list.length >= (settings.max ?? 40)) return;
+      if (!view || !Civils.buckets.size || this.list.length >= (settings.max ?? 40) * (CityBuilder.Optimizer?.villagers ?? 1)) return;
       let seen = 0, houses = 0, house = null, any = null;
       Civils.each(view.left, view.top, view.right, view.bottom, item => {
         if (item.tx < view.left || item.tx > view.right || item.ty < view.top || item.ty > view.bottom || !this.usable(item)) return;
         if (Math.random() * ++seen < 1) any = item;
         if (item.type === 'house' && Math.random() * ++houses < 1) house = item;
       });
-      if (!any || this.list.length >= Math.floor(seen * (settings.perBuilding ?? .5))) return;
+      if (!any || this.list.length >= Math.floor(seen * (settings.perBuilding ?? .5) * (CityBuilder.Optimizer?.villagers ?? 1))) return;
       const origin = house || any, trip = this.trip(origin.tx, origin.ty, origin.type);
       if (!trip) return;
       this.list.push({ x: origin.tx + .5, y: origin.ty + .5, player: origin.player, variant: 1 + Math.floor(Math.random() * (settings.variants ?? 4)), path: trip.path, step: 0, legs: Math.round(between(settings.legs || [2, 4])),
@@ -161,6 +161,7 @@
   };
 
   CityBuilder.Villagers = Villagers;
+  CityBuilder.Optimizer?.register('villager images', { size: () => ({ count: Villagers.tinted.size }), trim: () => Villagers.tinted.clear() });
   (CityBuilder.Systems = CityBuilder.Systems || {}).villagers = { update: deltaSeconds => Villagers.update(deltaSeconds), reset: () => Villagers.reset() };
   const order = Config.settings?.systemOrder;
   if (Array.isArray(order) && !order.includes('villagers')) order.push('villagers');

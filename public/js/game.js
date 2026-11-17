@@ -401,6 +401,7 @@
         CityBuilder.Renderer.draw();
         UI.refresh();
         if (options) options.recordFrame(time, performance.now() - started, simulatedSeconds);
+        CityBuilder.Optimizer?.record(time, performance.now() - started);   // övervakar bildfrekvensen och minnet (optimizer.js)
       } catch (error) { Errors.report(error, 'draw'); }
       next(); // loopen fortsätter alltid, även om en ritning eller panel kastade fel
     },

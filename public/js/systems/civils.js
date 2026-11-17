@@ -335,7 +335,9 @@
       this.drawn = now;
       this.ghost += ((CityBuilder.Game?.placingType ? options().placing ?? .3 : 1) - this.ghost) * Math.min(1, seconds * 10);
       const left = Math.floor(view.left / tileSize / BUCKET), right = Math.floor(view.right / tileSize / BUCKET), top = Math.floor(view.top / tileSize / BUCKET), bottom = Math.floor(view.bottom / tileSize / BUCKET);
+      const Optimizer = CityBuilder.Optimizer;   // optimeraren kan stänga av det som ritas (nivåer när det går segt)
       for (const kind of ['big', 'decor']) {   // hela byggnader först, sedan detaljerna ovanpå
+        if (kind === 'big' ? Optimizer?.civils === false : Optimizer?.decor === false || Optimizer?.civils === false) continue;
         for (let by = top; by <= bottom; by++) {
           for (let bx = left; bx <= right; bx++) {
             const list = this.buckets.get(bucketKey(bx, by));
