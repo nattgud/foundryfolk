@@ -1750,11 +1750,13 @@
 				ai: 55,
 				races: { 2: "demon" },
 				goals: [more("bread", 40), more("plank", 40)],
+				music: null,
 				waves: {
 					from: 90,
 					every: 60,
-					size: [3, 1],
+					size: [3, 1, 12],
 					kinds: ["swordsman", "swordsman", "archer", "knight"],
+					maxAlive: 14,
 				},
 				dialogue: [
 					say("survivor", "[angry]We know who gave the order."),
@@ -1767,6 +1769,33 @@
 					say("reeve", "Because Onden is still doing it. And because I will not leave the next people to face him alone."),
 				],
 				events: [
+					// De överlevande kommer över passet och slår läger vid kanten av byn
+					{
+						id: "arrival",
+						at: 0,
+						spawn: [
+							{ id: "survivor", image: "images/units/survivor.png", at: [-16, 9], script: [] },
+							{ id: "camp", image: "images/units/carrier.png", count: 14, at: [-18, 10], script: [] },
+						],
+						scene: [
+							{ weather: "fog" },
+							{ camera: "survivor", zoom: 4 },
+							{ who: "survivor", say: { text: "[sad]Two hundred of us crossed the pass. Sixty reached the gate.", wait: true } },
+							{ who: "survivor", walk: [-6, 6] },
+							{ who: "camp", walk: [-8, 7], together: true },
+							{ camera: "hq", zoom: 3 },
+							{ weather: "clear" },
+						],
+					},
+					{
+						id: "burned_camp",
+						at: 4,
+						scene: [
+							{ scenery: { at: [-22, 12], radius: 3, share: 40, add: "ruin" } },
+							{ scenery: { at: [-22, 12], radius: 2, share: 25, add: "fire" } },
+						],
+					},
+					// Förråden räcker inte: Reeve måste välja vem som får först
 					{
 						at: 180,
 						tell: [
@@ -1780,6 +1809,75 @@
 							say("reeve", "[sad]No. I am asking them to survive."),
 						],
 					},
+					{
+						id: "first_bread",
+						when: { resource: "bread", amount: 15 },
+						spawn: [{ id: "mother", image: "images/units/survivor.png", at: [-9, 8], script: [] }],
+						scene: [
+							{ camera: "mother", zoom: 5 },
+							{ who: "mother", walk: "hq" },
+							{ who: "mother", say: { text: "[sad]My daughter ate today. I will remember who put it on the table.", wait: true } },
+							{ who: "mother", say: { text: "[angry]I will also remember who put the sword in my husband's hand.", wait: true } },
+							{ camera: "hq", zoom: 3 },
+							{ who: "mother", walk: [-9, 8] },
+							{ who: "mother", vanish: true },
+						],
+					},
+					// Ondens långa arm: askregn och eld över lägret
+					{
+						id: "ember_rain",
+						at: 330,
+						weather: "rain",
+						scene: [
+							{ camera: [-8, 7], zoom: 3 },
+							{ tell: [
+								say("onden", "[whisper]“Every loaf you bake is a debt you cannot pay.”"),
+								say("survivor", "[scared]He is in the smoke again. He knows where we are."),
+								say("reeve", "[angry]Then we make it expensive for him to look."),
+							] },
+							{ meteor: { at: [-8, 7] } },
+							{ scenery: { at: [-8, 7], radius: 2, share: 30, add: "fire" } },
+							{ wait: 1 },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
+					{
+						id: "rain_puts_out",
+						on: { event: "weather", weather: "rain" },
+						scene: [{ scenery: { at: [-8, 7], radius: 4, remove: "fire" } }],
+					},
+					{
+						id: "planks_for_shelter",
+						when: { resource: "plank", amount: 25 },
+						spawn: [{ id: "builder", image: "images/units/pipwick.png", at: [0, 0], script: [] }],
+						scene: [
+							{ who: "builder", walk: [-7, 6] },
+							{ who: "builder", say: { text: "[happy]Roofs! Real roofs! They stopped glaring at me for almost a minute.", wait: true } },
+							{ who: "builder", walk: "hq" },
+							{ who: "builder", vanish: true },
+						],
+					},
+					// Ett riktigt anfall: stormen kommer med soldaterna
+					{
+						id: "night_raid",
+						at: 540,
+						weather: "storm",
+						music: null,
+						tell: [
+							say("survivor", "[scared]They are coming from the ridge! All of them!"),
+							say("reeve", "[yell]Everyone behind the walls. Carriers, to the shelter!"),
+						],
+					},
+					{
+						id: "storm_ends",
+						at: 700,
+						weather: "clear",
+						tell: [
+							say("survivor", "[sad]You stood in front of us."),
+							say("reeve", "[sad]It is the least that I can do."),
+							say("survivor", "[slow]It is a start."),
+						],
+					},
 				],
 				after: [
 					say("survivor", "[sad]I still do not trust you."),
@@ -1788,6 +1886,8 @@
 					say("reeve", "[sad]I should have come sooner."),
 					say("survivor", "[sad]That does not make us even."),
 					say("reeve", "[sad]I know."),
+					say("survivor", "[slow]There are more of us in the hills. When you march on the gate, they will follow. Not for you."),
+					say("reeve", "[slow]That is enough."),
 				],
 			},
 			// 21
@@ -1798,6 +1898,13 @@
 				races: { 2: "demon" },
 				end: "hq",
 				meteorProof: ["knight"],
+				waves: {
+					from: 100,
+					every: 45,
+					size: [4, 1, 16],
+					kinds: ["swordsman", "archer", "swordsman", "knight", "archer", "knight"],
+					maxAlive: 20,
+				},
 				dialogue: [
 					say("narrator", "Smoke gathers at the last gate, and a voice speaks from it."),
 					say("onden", "[slow]“At last. The servant who broke kingdoms for me.”"),
@@ -1821,12 +1928,44 @@
 					say("reeve", "[angry]I have learned the difference between choosing violence and obeying someone who profits from it."),
 				],
 				events: [
+					// Porten: kameran sveper ut mot rökpelaren, elden flammar upp
+					{
+						id: "the_gate",
+						at: 6,
+						scene: [
+							{ weather: "fog" },
+							{ camera: [50, 0], zoom: 1 },
+							{ scenery: { at: [50, 0], radius: 5, share: 30, add: "fire" } },
+							{ wait: 2 },
+							{ tell: [say("narrator", "The last gate stands open. Nothing that walks through it has ever walked back.")] },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
 					{
 						at: 90,
 						weather: "storm",
 						tell: [
 							say("onden", "[yell]“The sky answers power. It always has.”"),
 							say("reeve", "[angry]Then let it answer."),
+						],
+					},
+					// De överlevande från bana 20 kommer tillbaka, inte för Reeve
+					{
+						id: "survivors_return",
+						at: 200,
+						spawn: [
+							{ id: "survivor", image: "images/units/survivor.png", at: [-20, 5], script: [] },
+							{ id: "hill_folk", image: "images/units/carrier.png", count: 20, at: [-24, 6], script: [] },
+						],
+						scene: [
+							{ camera: "survivor", zoom: 4 },
+							{ who: "survivor", walk: "hq" },
+							{ who: "survivor", say: { text: "[slow]We did not come for you. We came because he is the one who burned the pass.", wait: true } },
+							{ who: "survivor", say: { text: "[angry]Where do we stand?", wait: true } },
+							{ camera: "hq", zoom: 3 },
+							{ who: "hill_folk", walk: [-6, 4], together: true },
+							{ who: "survivor", walk: [-6, 4] },
+							{ give: { plank: 40, bread: 40 } },
 						],
 					},
 					{
@@ -1837,6 +1976,25 @@
 							say("reeve", "[sad]I know."),
 							say("onden", "[question]Then why continue?"),
 							say("reeve", "[angry]Because failing to save everyone is not permission to serve you."),
+						],
+					},
+					// Pipwick kommer med de sista förråden genom stormen
+					{
+						id: "pipwick_arrives",
+						at: 420,
+						spawn: [{ id: "pipwick", image: "images/units/pipwick.png", at: [-14, -8], script: [] }],
+						scene: [
+							{ camera: "pipwick", zoom: 4 },
+							{ who: "pipwick", walk: "hq" },
+							{ who: "pipwick", say: { text: "[yell]Do not look at me like that! I walked all the way from the capital with a cart full of bricks!", wait: true } },
+							{ tell: [
+								say("reeve", "[happy]Pipwick."),
+								say("pipwick", "[happy]I found the real order book. Every forged page, in his handwriting. The kingdoms will see it."),
+								say("pipwick", "[whisper]After you finish this, of course."),
+							] },
+							{ give: { plank: 50, brick: 30 } },
+							{ who: "pipwick", vanish: true },
+							{ camera: "hq", zoom: 3 },
 						],
 					},
 					{
@@ -1850,11 +2008,34 @@
 						],
 					},
 					{
+						id: "sees_demons",
+						when: { sees: "rival" },
+						tell: [
+							say("survivor", "[scared]Those are his own guard. They do not break."),
+							say("reeve", "[angry]Everything breaks. Hold the line."),
+						],
+					},
+					{
+						id: "meteor_storm",
 						at: 780,
 						meteors: 60,
 						tell: [
 							say("onden", "[yell]“Look at what you have become. You will be remembered for the same things I am.”"),
 							say("reeve", "[sad]Then let the living decide what they remember."),
+						],
+					},
+					{
+						id: "calm_before",
+						at: 900,
+						weather: "clear",
+						music: null,
+						scene: [
+							{ camera: [50, 0], zoom: 2 },
+							{ tell: [
+								say("onden", "[slow]“Come, then. Come and finish it, Reeve of Thunebrook.”"),
+								say("reeve", "[slow]I am coming. Not as your servant."),
+							] },
+							{ camera: "hq", zoom: 3 },
 						],
 					},
 				],

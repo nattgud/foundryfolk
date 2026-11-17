@@ -22,6 +22,7 @@ self.GAME_SCRIPTS = [
   'js/config/ai.js',
   'js/config/levels.js',
   'js/config/story.js',
+  'js/config/expansions.js',
   'js/config/civils.js',
   'js/config/optimizer.js',
   'js/config/changelog.js',
