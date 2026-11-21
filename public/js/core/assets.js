@@ -21,7 +21,7 @@
     raced(source, race) { return RACED.test(source) ? source.replace(RACED, `$1${race || 'human'}/$2`) : source; },
 
     // Finns rasbilden? Listan (js/config/raceimages.js, skapas av tools/racemanifest.js) gör att en bild som saknas aldrig begärs (inget 404-fel). Saknas listan antas bilden finnas.
-    exists(raceSource) { const list = CityBuilder.RaceImages; return !list || list.has(raceSource); },
+    exists(raceSource) { const list = CityBuilder.RaceImages; return !list || list.has(raceSource.split('?')[0]); },   // utan ?v=… som config/finalize.js lägger på byggnadsbilder
     // Som raced, men människans bild om rasens version saknas (för <img> som annars ger 404)
     racedIfExists(source, race) { const raceSource = this.raced(source, race); return this.exists(raceSource) ? raceSource : this.raced(source, 'human'); },
 
