@@ -40,6 +40,8 @@
      { seen: id }         spelaren ser den just nu
      { gone: id }         den har försvunnit eller dött
      { killed: id }       den har dödats av en annan skådespelare
+     { soldierNear: mål, radius }  en av spelarens soldater är inom radius rutor (standard 4) från målet
+     { fired: 'händelse-id' } / { notFired: 'händelse-id' }  en annan händelse har / har inte utlösts (så att två händelser utesluter varandra)
      { near: id, of: mål, radius }  skådespelaren är inom radius rutor (standard 3) från målet
      { read: 'händelse-id' }  dialogen i händelsen med id: 'händelse-id' är läst
      { scene: 'id' }      en annan scen (händelsens id) har spelats klart
@@ -568,6 +570,7 @@
 
   // ---- triggers ----
   const seen = id => { const unit = Actors.unitOf(id); return !!unit && CityBuilder.Vision.sees(Players.HUMAN, unit); };
+  const firedEvent = id => { const events = CityBuilder.Story.chapter?.events || [], i = events.findIndex(event => event.id === id); return i >= 0 && levels().told('fired:' + i); };
   const Triggers = {
     arrived: id => { const data = Actors.data(id); return !!data && data.arrived && !data.gone; },
     arrivedSeen: id => Triggers.arrived(id) && seen(id),
@@ -578,6 +581,14 @@
       const unit = Actors.unitOf(id), tile = unit && Actors.resolve(need.of, { x: unit.x, y: unit.y });
       return !!tile && Utils.distance(unit.x - tile.x - .5, unit.y - tile.y - .5) <= (need.radius ?? 3);
     },
+    // En av spelarens soldater står inom radius rutor (standard 4) från målet (en ruta [dx, dy] från HQ, en byggnad, en skådespelare): { soldierNear: [13, -7], radius: 4 }
+    soldierNear: (at, need) => {
+      const tile = Actors.resolve(at, null);
+      return !!tile && World.units.some(unit => !unit.removed && !unit.actor && unit.player === CityBuilder.Players.HUMAN && unit.definition?.isSoldier && Utils.distance(unit.x - tile.x - .5, unit.y - tile.y - .5) <= (need.radius ?? 4));
+    },
+    // En annan händelse (event.id) har utlösts, eller inte: gör att två händelser kan utesluta varandra, { notFired: 'rädda_a' }
+    fired: id => firedEvent(id),
+    notFired: id => !firedEvent(id),
     read: key => levels().told('read:' + key),
     told: key => levels().told(key),
     scene: id => levels().told(`scene:${id}:done`),   // en scen (event.id) har spelats klart

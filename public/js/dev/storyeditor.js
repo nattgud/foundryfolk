@@ -127,6 +127,9 @@
           for (const [type, kind] of [['soldiers', 'soldiers'], ['carriers', 'carriers'], ['casts', 'casts']]) if (need.type === type && sameKeys(need, ['type', 'amount'])) return { kind, v: num(need.amount) };
           if (need.type === 'fog' && sameKeys(need, ['type', 'amount']) && need.amount === 1) return { kind: 'fogLifted', v: {} };
           if (need.scene && sameKeys(need, ['scene'])) return { kind: 'sceneDone', v: { sc: need.scene } };
+          if (need.fired && sameKeys(need, ['fired'])) return { kind: 'sceneFired', v: { sc: need.fired } };
+          if (need.notFired && sameKeys(need, ['notFired'])) return { kind: 'sceneNotFired', v: { sc: need.notFired } };
+          if (need.soldierNear !== undefined && keys.every(k => ['soldierNear', 'radius'].includes(k))) return { kind: 'soldierNear', v: { near: need.soldierNear, radius: String(need.radius ?? 4) } };
           return null;
         });
         if (made.every(Boolean)) conds.push(...made); else leftover.when = event.when;
@@ -323,6 +326,9 @@
       casts:     { label: 'När spelaren har trollat så här många gånger', f: [['n', 'num', 'antal']], make: v => ({ when: { type: 'casts', amount: +v.n } }), text: v => `när ${v.n} förtrollningar är gjorda` },
       fogLifted: { label: 'När dimman har lyft', f: [], make: () => ({ when: { type: 'fog', amount: 1 } }), text: () => 'när dimman har lyft' },
       sceneDone: { label: 'När en annan scen är klar', f: [['sc', 'scn']], make: v => ({ when: { scene: v.sc } }), text: v => `när scenen “${scenes.find(other => other.id === v.sc)?.name || v.sc}” är klar` },
+      soldierNear: { label: 'När en av spelarens soldater är nära en plats', needNear: true, f: [['near', 'near', 'plats']], make: v => ({ when: { soldierNear: v.near, radius: Math.max(1, +v.radius || 4) } }), text: v => `när en soldat är nära ${targetText(v.near)}, ${v.radius || 4} rutor` },
+      sceneFired:    { label: 'När en annan scen har startat', f: [['sc', 'scn']], make: v => ({ when: { fired: v.sc } }), text: v => `när scenen “${scenes.find(other => other.id === v.sc)?.name || v.sc}” har startat` },
+      sceneNotFired: { label: 'Bara om en annan scen inte har startat (så att två scener utesluter varandra)', f: [['sc', 'scn']], make: v => ({ when: { notFired: v.sc } }), text: v => `bara om scenen “${scenes.find(other => other.id === v.sc)?.name || v.sc}” inte har startat` },
       end:   { label: 'När alla mål är uppnådda (banan avslutas efter scenen)', f: [], make: () => ({ top: { end: true } }), text: () => 'när alla mål är uppnådda' },
       made:  { label: 'När så här mycket har tillverkats', f: [['res', 'res'], ['n', 'num', 'antal']], make: v => ({ when: { resource: v.res, made: +v.n } }), text: v => `när ${v.n} ${v.res} är tillverkat` },
     };
@@ -348,7 +354,7 @@
       onWeather:   onCond('vädret byts', 'weather', [['weather', 'opt', 'till', ANY(() => Object.keys(Config.settings.weather?.chances || {}))]]),
     });
     // Rullistan delas i grupper; händelserna i spelet körs direkt när något sker
-    const GROUPS = [['Tid och mål', ['time', 'goal', 'end']], ['Framsteg (kollas löpande)', ['stock', 'soldiers', 'carriers']], ['Framsteg (direkt när det sker)', ['built', 'made', 'kills', 'destroyed', 'casts', 'fogLifted']], ['Syn', ['seesRival', 'seesSoldier', 'seesWorker', 'seesCarrier', 'seesMonster']], ['Andra scener', ['sceneDone']], ['Händelser i spelet (direkt)', Object.keys(COND).filter(k => k.startsWith('on'))]];
+    const GROUPS = [['Tid och mål', ['time', 'goal', 'end']], ['Framsteg (kollas löpande)', ['stock', 'soldiers', 'carriers']], ['Framsteg (direkt när det sker)', ['built', 'made', 'kills', 'destroyed', 'casts', 'fogLifted']], ['Syn', ['seesRival', 'seesSoldier', 'seesWorker', 'seesCarrier', 'seesMonster']], ['Andra scener', ['sceneDone', 'sceneFired', 'sceneNotFired']], ['Spelarens soldater', ['soldierNear']], ['Händelser i spelet (direkt)', Object.keys(COND).filter(k => k.startsWith('on'))]];
     const condOptions = current => GROUPS.map(([label, keys]) => `<optgroup label="${esc(label)}">${keys.filter(k => COND[k]).map(k => `<option value="${k}"${current === k ? ' selected' : ''}>${esc(COND[k].label.replace(/^HÄNDELSE: /, ''))}</option>`).join('')}</optgroup>`).join('');
     const field = (type, id, hint, opts) => {
       if (type === 'near') return `<span class="hint">${esc(hint)}</span> ${select(id, [['', 'var som helst'], ['hq', 'basen'], ...buildingTypes.filter(b => b !== 'hq').map(b => [b, 'byggnaden ' + b]), ['__map', 'en plats på kartan…']], '')} <input type="number" id="${id}r" value="5" min="1" style="width:55px" title="radie i rutor"> <span class="hint">rutor</span>`;
@@ -460,7 +466,7 @@
       if (sc.where === TRIGGER && !hasTrigger(sc)) out.push({ text: `${tag}: vädret ska slå till där det som utlöste händelsen hände, men scenen startar inte av en händelse eller något spelaren ser.` });
       if (!sc.steps.length) out.push({ text: `${tag} gör ingenting: lägg till ett steg.` });
       if (!hasTrigger(sc) && flatSteps(sc.steps).some(s => s.arg === TRIGGER || s.arg?.at === TRIGGER || s.where === TRIGGER || (s.who === UNIT && (s.pick || 'trigger') === 'trigger'))) out.push({ text: `${tag} använder "det som utlöste händelsen", men startar inte av en händelse eller något spelaren ser. Lägg till ett villkor under "Händelser i spelet" eller "Syn".` });
-      for (const cond of sc.conds) if (cond.kind === 'sceneDone' && !scenes.some(other => other !== sc && other.id === cond.v.sc)) out.push({ text: `${tag} väntar på en scen som inte finns längre.` });
+      for (const cond of sc.conds) if (['sceneDone', 'sceneFired', 'sceneNotFired'].includes(cond.kind) && !scenes.some(other => other !== sc && other.id === cond.v.sc)) out.push({ text: `${tag} väntar på en scen som inte finns längre.` });
       const here = new Set(sc.cast.filter(c => c.at).map(c => c.id));
       let busy = new Set();   // personer som redan gör något i en grupp av steg som börjar samtidigt
       sc.steps.forEach((s, i) => {
@@ -659,7 +665,7 @@
           sc.name = sc.name.trim() || sc.id;
           const slug = sc.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'scen';
           let id = slug, n = 2; while (scenes.some(other => other !== sc && other.id === id)) id = slug + n++;
-          if (id !== sc.id) { for (const other of scenes) for (const cond of other.conds || []) if (cond.kind === 'sceneDone' && cond.v.sc === sc.id) cond.v.sc = id; sc.id = id; }
+          if (id !== sc.id) { for (const other of scenes) for (const cond of other.conds || []) if (['sceneDone', 'sceneFired', 'sceneNotFired'].includes(cond.kind) && cond.v.sc === sc.id) cond.v.sc = id; sc.id = id; }
         }
       }
       if (bind === 'stepDraft.target' && target.value === '__map') { actions.stepAdd(); return; }   // "en plats på kartan": väntar direkt på ett klick (utan att man behöver trycka Lägg till)
@@ -704,7 +710,7 @@
       },
       newScene: () => { const n = scenes.length + 1; let id = 'scene' + n; while (scenes.some(sc => sc.id === id)) id += 'b'; scenes.push({ id, name: 'Scen ' + n, conds: [], cast: [], steps: [] }); cur = scenes.length - 1; render(); },
       deleteScene: () => { scenes.splice(cur, 1); cur = Math.max(0, cur - 1); render(); },
-      sceneCondAdd: () => { const sc = sceneNow(), spec = COND[sceneCond], v = read(spec, 'sc'); if (spec.f.some(([name, type]) => type !== 'text' && type !== 'opt' && type !== 'near' && v[name] === '')) { notice('Fyll i alla fält.'); return; } if (v.near === '__map') { st.arm = { kind: 'condNear', cond: { kind: sceneCond, v } }; render(); return; } addCond(sc, { kind: sceneCond, v }); render(); },
+      sceneCondAdd: () => { const sc = sceneNow(), spec = COND[sceneCond], v = read(spec, 'sc'); if (spec.f.some(([name, type]) => type !== 'text' && type !== 'opt' && type !== 'near' && v[name] === '') || (spec.needNear && !v.near)) { notice(spec.needNear && !v.near ? 'Välj en plats.' : 'Fyll i alla fält.'); return; } if (v.near === '__map') { st.arm = { kind: 'condNear', cond: { kind: sceneCond, v } }; render(); return; } addCond(sc, { kind: sceneCond, v }); render(); },
       sceneCondDel: ({ i }) => { sceneNow().conds.splice(+i, 1); render(); },
       castAdd: () => { st.arm = { kind: 'cast' }; if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); if (!castDraft.race && characters[castDraft.image] === 'demon') castDraft.race = 'demon'; render(); },
       castLater: () => { const sc = sceneNow(); if (!castDraft.id) castDraft.id = uniqueId(nameOf(castDraft.image).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); sc.cast.push({ id: castDraft.id, image: castDraft.image, race: castDraft.race || (characters[castDraft.image] === 'demon' ? 'demon' : ''), count: countOf(), at: null }); stepDraft.who = stepDraft.who || castDraft.id; castDraft = blankCast(); render(); },

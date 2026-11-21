@@ -31,7 +31,7 @@
                   fiendens HQ mot spelarens, oberoende av datorns vanliga anfallsregler (ai.js). until: 'fog' = tills dimman lyft, annars tills kapitlet är klart
      events       [{ at (sekunder), goal, when, tell: dialog | give: { vara: antal, ... } (läggs i spelarens huvudlager) | music: byter musiken (samma form som kapitlets music, och läggs läge för läge ovanpå kapitlets och tidigare händelsers; null = tillbaka till standardmusiken) | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]. En händelse sker en gång, när alla
                   villkor den har slår till. at: sekunder in i kapitlet. goal: målet med det numret (1 = första målet) är klart. whileFog: true = bara så länge dimman ligger (en händelse som kommer för sent hoppas över). when: { resource, amount } (har så mycket av en vara)
-                  eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { goal: n, left: k } = mål nummer n har högst k kvar (t.ex. näst sista yxan, utan att upprepa målets siffror); { resource, made: n } = n har tillverkats eller samlats i kapitlet, oavsett vart varan tog vägen (också direkt till nästa hus, utan att passera lagret); { resource, more: n } = lagret har n fler än man började med; { sees: 'rival' } = man har sett någon av fiendens byggnader (soldater räknas inte); { sees: 'soldier' } = en av datorns soldater syns (t.ex. en anfallsvåg, som inte har någon byggnad). T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
+                  eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { goal: n, left: k } = mål nummer n har högst k kvar (t.ex. näst sista yxan, utan att upprepa målets siffror); { resource, made: n } = n har tillverkats eller samlats i kapitlet, oavsett vart varan tog vägen (också direkt till nästa hus, utan att passera lagret); { resource, more: n } = lagret har n fler än man började med; { sees: 'rival' } = man har sett någon av fiendens byggnader (soldater räknas inte); { sees: 'soldier' } = en av datorns soldater syns (t.ex. en anfallsvåg, som inte har någon byggnad); { soldierNear: [dx, dy], radius } = en av spelarens soldater är inom radius rutor (standard 4) från platsen; { fired: 'id' } / { notFired: 'id' } = en annan händelse har / har inte utlösts (så att två händelser utesluter varandra). T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
      scenery      [[typ, x, y, bredd, höjd, lager, vridning, spegla], ...] kulisser på exakta rutor (bredd, höjd, lager, vridning och spegla valfria, null/false hoppar över: fyller en rektangel; lager 0 är standard, högre ritas ovanpå, negativa under; vridning 0-3 = kvarts varv medurs, spegla 1 = speglad i sidled före vridningen). Bara bilder, ingen byggnad: går att gå över, men inget kan byggas där.
                   Typerna står i sceneryTypes. Spelarens bas ligger på 0, 0. Exempel: scenery: [['ruin', 4, -3], ['ruin', 5, -3, 3, 2], ['fire', 6, -2, null, null, 1]]
      meteorProof  enhetstyper som meteorer inte skadar */
@@ -41,6 +41,15 @@
   const letter = (lines, signature, greeting) => ({ lines, signature: typeof signature === "string" ? signature : undefined, throne: signature === true, greeting });
   const say = (who, text) => ({ who, text });
   const more = (resource, n) => ({ resource, more: n });
+  // Bana 18: det Reeve och Pipwick säger när den ena gruppen är räddad och den andra förlorad
+  const PRICE = [
+    say("reeve", "[sad]We got them out. Not everyone."),
+    say("pipwick", "[sad]No."),
+    say("reeve", "[sad]I want you to tell me there was another way."),
+    say("pipwick", "[sad]I will not tell you something I cannot prove."),
+    say("reeve", "[angry]Then tell me what we do now."),
+    say("pipwick", "[sad]We remember the ones we could not reach. And we do not use their loss as an excuse to stop."),
+  ];
 
   CityBuilder.Config.story = {
 		title: "The Gentle Turning",
@@ -1711,75 +1720,82 @@
 					say("pipwick", "[sad]No. But pretending we can save both will not make it true."),
 				],
 				events: [
-					// Efter dialogen: kameran visar de två instängda grupperna, en i taget och inom synhåll (ingen hoppar runt i dimman)
+					// Två instängda grupper, båda inom synhåll från början: signalposten i sydost och de sårade i norr. Väg en soldat till någon av dem: dit man kommer först är den man räddar.
 					{
 						id: "trapped",
-						at: 5,
+						at: 1,
 						spawn: [
-							{ id: "signal", image: "images/units/carrier.png", count: 6, at: [13, -7], script: [] },
-							{ id: "wounded", image: "images/units/villager1.png", count: 8, at: [-12, 8], script: [] },
-							{ id: "guard", image: "images/units/footman.png", count: 3, at: [-11, 7], script: [] },
+							{ id: "signal", image: "images/units/carrier.png", count: 6, at: [12, 8], script: [] },
+							{ id: "wounded", image: "images/units/villager1.png", count: 8, at: [3, -14], script: [] },
+							{ id: "guard", image: "images/units/footman.png", count: 3, at: [2, -14], script: [] },
 						],
 						scene: [
-							{ scenery: { at: [13, -7], radius: 3, share: 30, add: "ruin" } },
-							{ scenery: { at: [13, -7], radius: 4, share: 25, add: "weapons" } },
-							{ scenery: { at: [13, -7], radius: 2, share: 20, add: "fire" } },
-							{ scenery: { at: [-12, 8], radius: 2, share: 40, add: "wagon" } },
-							{ scenery: { at: [-12, 8], radius: 4, share: 30, add: "baggage" } },
-							{ scenery: { at: [-12, 8], radius: 3, share: 20, add: "blood" } },
-							{ camera: [13, -7], zoom: 3 },
-							{ who: "signal", say: { text: "[scared]We still hold the post! Hurry!", wait: true } },
-							{ camera: [-12, 8], zoom: 3 },
-							{ who: "wounded", say: { text: "[scared]We cannot walk. Please!", wait: true } },
-							{ camera: "hq", zoom: 3 },
+							{ scenery: { at: [10, 7], radius: 0, add: "wagon" } },
+							{ scenery: { at: [14, 9], radius: 0, add: "fire" } },
+							{ scenery: { at: [9, 9], radius: 0, add: "weapons" } },
+							{ scenery: { at: [2, -15], radius: 0, add: "baggage" } },
+							{ scenery: { at: [3, -13], radius: 0, add: "blood" } },
+							{ who: "signal", say: { text: "[scared]We still hold the post! Hurry!", for: 4 } },
+							{ who: "wounded", say: { text: "[scared]We cannot walk. Please!", for: 4 } },
 						],
 					},
-					// Demoner går på signalposten: ett tryck, inte en våg
+					// Först till signalposten: de räddas, och de sårade får ingen hjälp
 					{
-						id: "signal_attacked",
-						at: 90,
-						scene: [
-							{ spawn: { id: "raiders", image: "images/units/swordsman.png", race: "demon", count: 3, at: [13, -7], enter: true } },
-							{ who: "raiders", attack: { actor: "signal" }, for: 4, with: "swordsman" },
-							{ who: "raiders", leave: true },
-						],
-					},
-					// När soldaterna är byggda (mål 1) hämtas signalposten hem
-					{
-						id: "signal_home",
-						goal: 1,
+						id: "signal_saved",
+						when: [{ soldierNear: [12, 8], radius: 4 }, { notFired: "wounded_saved" }],
 						scene: [
 							{ camera: "signal", zoom: 4 },
-							{ who: "signal", walk: "hq", follow: true },
-							{ who: "signal", say: { text: "[sad]We held it as long as we could. Their camp lies to the east, past the second ridge.", wait: true } },
+							{ who: "signal", say: { text: "[sad]You came. We held it as long as we could.", wait: true } },
+							{ who: "signal", walk: "hq" },
 							{ who: "signal", vanish: true },
 							{ camera: "hq", zoom: 3 },
 						],
 					},
-					// När fienden är slagen (mål 2) går de sårade hem, utom de man inte nådde
 					{
-						id: "wounded_home",
-						goal: 2,
+						id: "wounded_lost",
+						when: { fired: "signal_saved" },
 						scene: [
-							{ scenery: { at: [-12, 8], radius: 3, share: 25, add: "corpse" } },
-							{ camera: "wounded", zoom: 3 },
-							{ who: "wounded", walk: "hq", follow: true },
+							{ camera: [3, -14], zoom: 3 },
+							{ spawn: { id: "raiders_n", image: "images/units/swordsman.png", race: "demon", count: 4, at: [3, -12], enter: true } },
+							{ who: "raiders_n", attack: { actor: "wounded" }, for: 5, with: "swordsman" },
+							{ who: "wounded", vanish: true },
+							{ who: "guard", vanish: true },
+							{ scenery: { at: [3, -14], radius: 0, add: "corpse" } },
+							{ scenery: { at: [2, -14], radius: 0, add: "corpse" } },
+							{ scenery: { at: [4, -15], radius: 0, add: "blood" } },
+							{ who: "raiders_n", leave: true },
+							{ tell: PRICE },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
+					// Först till de sårade: de räddas, och signalposten faller
+					{
+						id: "wounded_saved",
+						when: [{ soldierNear: [3, -14], radius: 4 }, { notFired: "signal_saved" }],
+						scene: [
+							{ camera: "wounded", zoom: 4 },
+							{ who: "wounded", say: { text: "[sad]Thank you. We cannot walk far.", wait: true } },
+							{ who: "wounded", walk: "hq" },
 							{ who: "guard", walk: "hq", together: true },
-							{ who: "wounded", say: { text: "[sad]Thank you. We counted the ones who did not come.", wait: true } },
 							{ who: "wounded", vanish: true },
 							{ who: "guard", vanish: true },
 							{ camera: "hq", zoom: 3 },
 						],
 					},
 					{
-						at: 240,
-						tell: [
-							say("reeve", "[sad]We got them out. Not everyone."),
-							say("pipwick", "[sad]No."),
-							say("reeve", "[sad]I want you to tell me there was another way."),
-							say("pipwick", "[sad]I will not tell you something I cannot prove."),
-							say("reeve", "[angry]Then tell me what we do now."),
-							say("pipwick", "[sad]We remember the ones we could not reach. And we do not use their loss as an excuse to stop."),
+						id: "signal_lost",
+						when: { fired: "wounded_saved" },
+						scene: [
+							{ camera: [12, 8], zoom: 3 },
+							{ spawn: { id: "raiders_s", image: "images/units/swordsman.png", race: "demon", count: 4, at: [13, 9], enter: true } },
+							{ who: "raiders_s", attack: { actor: "signal" }, for: 5, with: "swordsman" },
+							{ who: "signal", vanish: true },
+							{ scenery: { at: [12, 8], radius: 0, add: "corpse" } },
+							{ scenery: { at: [11, 9], radius: 0, add: "corpse" } },
+							{ scenery: { at: [13, 7], radius: 0, add: "blood" } },
+							{ who: "raiders_s", leave: true },
+							{ tell: PRICE },
+							{ camera: "hq", zoom: 3 },
 						],
 					},
 				],
