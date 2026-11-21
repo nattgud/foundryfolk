@@ -84,8 +84,12 @@ CityBuilder.Config.settings = {
       alarm: 'sounds/sfx/alarm.mp3',
       arrow: 'sounds/sfx/battle/arrow.mp3',          // pil avfyras
       swing: 'sounds/sfx/battle/swing.mp3',          // närstrid
-      hit: ['sounds/sfx/battle/hit/hit1.mp3','sounds/sfx/battle/hit/hit2.mp3','sounds/sfx/battle/hit/hit3.mp3','sounds/sfx/battle/hit/hit4.mp3'],              // träff (flera filer: en lista, ['sounds/hit1.mp3', 'sounds/hit2.mp3'], så slumpas en varje gång)
-      died: ['sounds/sfx/battle/died/died1.mp3','sounds/sfx/battle/died/died2.mp3','sounds/sfx/battle/died/died3.mp3'],            // soldat dör
+      hit: ['sounds/sfx/battle/hit/hit1.mp3','sounds/sfx/battle/hit/hit2.mp3','sounds/sfx/battle/hit/hit3.mp3','sounds/sfx/battle/hit/hit4.mp3'], 
+      human_hit: ['sounds/sfx/battle/hit/hit1.mp3','sounds/sfx/battle/hit/hit2.mp3','sounds/sfx/battle/hit/hit3.mp3','sounds/sfx/battle/hit/hit4.mp3'], 
+      demon_hit: ['sounds/sfx/battle/hit/demon_hit1.mp3', 'sounds/sfx/battle/hit/demon_hit2.mp3', 'sounds/sfx/battle/hit/demon_hit3.mp3'],
+      died: ['sounds/sfx/battle/died/died1.mp3','sounds/sfx/battle/died/died2.mp3','sounds/sfx/battle/died/died3.mp3'], // soldat dör
+      human_die: ['sounds/sfx/battle/died/died1.mp3','sounds/sfx/battle/died/died2.mp3','sounds/sfx/battle/died/died3.mp3'], // soldat dör
+      demon_die: ['sounds/sfx/battle/died/demon_died1.mp3','sounds/sfx/battle/died/demon_died2.mp3'],
       destroyed: 'sounds/sfx/buildings/destroyed.mp3',  // byggnad förstörs
 
       // MONSTER

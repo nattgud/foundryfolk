@@ -60,6 +60,11 @@
 				color: "#5ae655",
 				voice: { pitch: 0.75 },
 			},
+			warrior: {
+				name: "Warrior",
+				color: "#e08a3c",
+				voice: { pitch: 0.85, stretch: 1.1 },
+			},
 			albertha: {
 				name: "Albertha",
 				color: "#e266ab",
@@ -245,6 +250,8 @@
 			weapons: { variants: 4, walkable: true },
 			tracks: { variants: 1, walkable: true },
 			wagon: { variants: 2 },
+			// edda_dead: Eddas kropp (images/scenery/edda_dead.png, en enda bild). Gabar som en kropp.
+			edda_dead: { walkable: true },
 		},
 
 		unlock: {
@@ -372,7 +379,8 @@
 					say("pipwick", "[sad]I know. I am trying not to encourage her hopes."),
 				],
 				events: [
-					{ when: { type: "build", id: "woodcutter", amount: 1 }, spawn: [{ id: "pipwick1", image: "images/units/pipwick.png", at: [0, 0], script: [{ walk: "woodcutter" }, { say: { text: "This is good!", for: 3, wait: true } }, { walk: "hq" }, { vanish: true }] }] },
+					{ id: "pipwick1_scene", when: { type: "build", id: "woodcutter", amount: 1 }, spawn: [{ id: "pipwick1", image: "images/units/pipwick.png", at: [0, 0], script: [] }], scene: [{ who: "pipwick1", walk: "woodcutter" }, { who: "pipwick1", say: { text: "This is an exemplary hut for a woodcutter!", wait: true } }, { who: "pipwick1", walk: "hq" }, { who: "pipwick1", vanish: true }] },
+					{ id: "scene1", at: 0, spawn: [{ id: "pipwick", image: "images/units/pipwick.png", at: [0, 0], script: [] }], scene: [{ who: "pipwick", walk: [4, -4] }, { camera: "pipwick", zoom: 5 }, { who: "pipwick", say: { text: "This here! This would be a great spot for a woodcutters hut!", wait: true } }, { who: "pipwick", walk: "hq" }, { camera: "hq", zoom: 3, together: true }, { who: "pipwick", vanish: true }] },
 				],
 			},
 			// 2
@@ -398,6 +406,9 @@
 					say("pipwick", "[happy]Precisely. I am protecting you."),
 					say("reeve", "[question]By feeding them?"),
 					say("pipwick", "[happy]It is a surprisingly reliable method."),
+				],
+				events: [
+					{ id: "pipwick_scene", when: { resource: "fish", amount: 10 }, spawn: [{ id: "pipwick", image: "images/units/pipwick.png", at: [0, 0], script: [] }], scene: [{ who: "pipwick", walk: "fishing_hut" }, { who: "pipwick", say: { text: "Fisher's be fishin'. He's working well.", wait: true } }, { who: "pipwick", walk: "hq" }, { who: "pipwick", vanish: true }] },
 				],
 				after: [
 					say("pipwick", "[happy]Enough food for the order. I have also suggested that the fish be cooked before anyone tries to store it for winter."),
@@ -435,6 +446,9 @@
 					say("reeve", "[happy]Bridges are not supposed to move."),
 					say("pipwick", "[happy]That was the general consensus."),
 				],
+				events: [
+					{ id: "pipwick_scene", when: { resource: "brick", amount: 5 }, spawn: [{ id: "pipwick", image: "images/units/pipwick.png", at: [0, 0], script: [] }], scene: [{ who: "pipwick", walk: "brickworks" }, { who: "pipwick", say: { text: "These are stong bricks. They'll be great!", wait: true } }, { who: "pipwick", walk: "hq" }, { who: "pipwick", vanish: true }] },
+				],
 				after: [
 					say("pipwick", "[happy]The wall can take a proper hit now. It still needs people watching it, but at least the bricks will not desert their posts."),
 					say("reeve", "The king will be satisfied."),
@@ -463,28 +477,71 @@
 					],
 					"In service of the throne",
 				),
-				dialogue: [
-					say("thordram", "Reeve. By order of the crown, future military requisitions will pass through us."),
-					say("albertha", "It is a small administrative change. The king wants fewer delays."),
-					say("reeve", "Pipwick has been handling the requests."),
-					say("thordram", "Pipwick has been useful. He is needed elsewhere."),
-					say("pipwick", "“Needed elsewhere” usually means somewhere with a broken machine and no sensible tools."),
-					say("albertha", "The royal signalworks at the capital require your attention. The king has asked for your expertise."),
-					say("pipwick", "[confused]The signalworks? Those were functioning last time I saw them."),
-					say("thordram", "Then you should have an easy assignment."),
-					say("pipwick", "[whisper]That is exactly what worries me."),
-					say("reeve", "If the king ordered it, you should go."),
-					say("pipwick", "[whisper]I know. Keep the inventory records. And do not let anyone convince you that a stamped order is the same thing as a sensible one."),
-					say("reeve", "[angry]You just told me to follow the king's order."),
-					say("pipwick", "[happy]I contain contradictions. It keeps me interesting."),
-					say("narrator", "Pipwick gathers his tools and leaves for the capital."),
-					say("albertha", "Iron for the fittings. Axes for the crews. The request is straightforward."),
-					say("reeve", "[question]What is being built?"),
-					say("thordram", "Defensive equipment. The details are above your rank."),
-					say("reeve", "[angry]Then provide the details relevant to my task."),
-					say("albertha", "A practical answer. I see why the king relies on you."),
-				],
 				events: [
+					{ 
+						id: "scene1", 
+						at: 0, 
+						spawn: [
+							{ 
+								id: "thordramandalbertha", 
+								image: "images/units/thordramandalbertha.png", 
+								size: 24, 
+								at: [1, -19], 
+								script: [] 
+							}
+						], 
+						scene: [
+							{ 
+								who: "thordramandalbertha", 
+								walk: "hq" 
+							}, { 
+								tell: [
+									say("thordram", "Reeve. By order of the crown, future military requisitions will pass through us."),
+									say("albertha", "It is a small administrative change. The king wants fewer delays."),
+									say("reeve", "Pipwick has been handling the requests."),
+									say("thordram", "Pipwick has been useful. He is needed elsewhere."),
+									say("pipwick", "“Needed elsewhere” usually means somewhere with a broken machine and no sensible tools."),
+									say("albertha", "The royal signalworks at the capital require your attention. The king has asked for your expertise."),
+									say("pipwick", "[confused]The signalworks? Those were functioning last time I saw them."),
+									say("thordram", "Then you should have an easy assignment."),
+									say("pipwick", "[whisper]That is exactly what worries me."),
+									say("reeve", "If the king ordered it, you should go."),
+									say("pipwick", "[whisper]I know. Keep the inventory records. And do not let anyone convince you that a stamped order is the same thing as a sensible one."),
+									say("reeve", "[angry]You just told me to follow the king's order."),
+									say("pipwick", "[happy]I contain contradictions. It keeps me interesting."),
+									say("narrator", "Pipwick gathers his tools and leaves for the capital."),
+								] 
+							}, { 
+								who: "thordramandalbertha", 
+								vanish: true 
+							}, { 
+								spawn: { 
+									id: "pipwick", 
+									image: "images/units/pipwick.png", 
+									size: 24, 
+									at: "hq" 
+								} 
+							}, { 
+								who: "pipwick", 
+								say: { 
+									text: "Good luck Reeve!", 
+									for: 2, 
+									wait: false 
+								} 
+							}, { 
+								who: "pipwick", 
+								leave: true 
+							}, { 
+								tell: [
+									say("albertha", "Iron for the fittings. Axes for the crews. The request is straightforward."),
+									say("reeve", "[question]What is being built?"),
+									say("thordram", "Defensive equipment. The details are above your rank."),
+									say("reeve", "[angry]Then provide the details relevant to my task."),
+									say("albertha", "A practical answer. I see why the king relies on you."),
+								] 
+							}
+						] 
+					},
 					{
 						when: { resource: "iron_ore", made: 1 },
 						tell: [
@@ -557,14 +614,9 @@
 					],
 					"In service of the throne",
 				),
-				dialogue: [
-					say("albertha", "The king requires a clear view of the border. The Eye of Shade will provide it."),
-					say("reeve", "[question]What does it see?"),
-					say("thordram", "Movement, the players browser history, anything approaching the settlements, etc."),
-					say("reeve", "[question]Can it distinguish soldiers from civilians?"),
-					say("albertha", "It can distinguish a threat from an ordinary presence."),
-					say("reeve", "[angry]That is not the same thing."),
-					say("thordram", "No instrument is perfect. This one is better than sending scouts into every ravine."),
+				events: [
+					{ id: "scene1", at: 0, spawn: [{ id: "albertha", image: "images/units/albertha.png", at: [-8, -13], script: [] }], scene: [{ camera: "eye_of_shades", zoom: 5 }, { who: "albertha", say: { text: "The king requires a clear view of the border. The Eye of Shade will provide it.", wait: true } }, { camera: "hq", zoom: 3 }, { tell: [say("reeve", "[question]What does it see?"), say("thordram", "Movement, the players browser history, anything approaching the settlements, etc."), say("reeve", "[question]Can it distinguish soldiers from civilians?"), say("albertha", "It can distinguish a threat from an ordinary presence."), say("reeve", "[angry]That is not the same thing."), say("thordram", "No instrument is perfect. This one is better than sending scouts into every ravine.")] }, { who: "albertha", vanish: true }] },
+					{ id: "scene2", when: { type: "build", id: "mint", amount: 1 }, spawn: [{ id: "thordram", image: "images/units/thordram.png", at: [0, 0], script: [] }], scene: [{ who: "thordram", walk: "mint" }, { who: "thordram", say: { text: "Gold! The second best color of all!", wait: true } }, { who: "thordram", say: { text: "Only second to red. Love a good dark red.", wait: true } }, { who: "thordram", walk: "hq" }, { who: "thordram", vanish: true }] },
 				],
 				after: [
 					say("albertha", "The Eye is active. The border will not surprise us."),
@@ -613,6 +665,9 @@
 					say("reeve", "[question]And what happens when the fear is gone?"),
 					say("albertha", "They can hear their orders clearly."),
 				],
+				events: [
+					{ id: "scene1", when: { type: "build", id: "alchemist", amount: 1 }, spawn: [{ id: "albertha", image: "images/units/albertha.png", at: [0, 0], script: [] }], scene: [{ who: "albertha", walk: "glassworks", otherwise: [{ who: "albertha", walk: "alchemist" }, { who: "albertha", say: { text: "Great. But... How do you intend to make any brews if you don't make anything to put it in?", wait: true } }, { who: "albertha", walk: "hq" }, { who: "albertha", vanish: true }] }, { who: "albertha", say: { text: "Bottles!", wait: true } }, { who: "albertha", walk: "alchemist" }, { who: "albertha", say: { text: "And an alchemist! You got everything else?", wait: true } }, { who: "albertha", walk: "hq" }, { who: "albertha", vanish: true }] },
+				],
 				after: [
 					say("reeve", "The soldiers say the draughts make the watch easier."),
 					say("albertha", "Then they are working."),
@@ -647,7 +702,7 @@
 					],
 				},
 				eye: true,
-				goals: [more("ancient_relic", 2), more("fallen_star", 2)],
+				goals: [more("ancient_relic", 5), more("fallen_star", 2)],
 				letter: letter(
 					[
 						"My counsellors speak of relics and fallen stars, old magic that might turn the war.",
@@ -656,7 +711,7 @@
 					"In service of the throne",
 				),
 				dialogue: [
-					say("reeve", "Two ancient relics and two fallen stars. That is a strange requisition."),
+					say("reeve", "Five ancient relics and five fallen stars. That is a strange requisition."),
 					say("thordram", "The king's scholars have identified them as necessary."),
 					say("reeve", "[question]Necessary for what?"),
 					say("albertha", "A protective working. The details are being handled by specialists."),
@@ -665,8 +720,13 @@
 					say("reeve", "[question]Secure from whom?"),
 					say("albertha", "From anyone who has not been authorised to ask."),
 				],
+				events: [
+					{ id: "scene1", on: { event: "made", resource: "ancient_relic" }, spawn: [], scene: [{ camera: { trigger: true }, zoom: 5 }, { who: { pick: "trigger", side: "own" }, say: { text: "I found one! I found one!", wait: true } }, { camera: { trigger: true }, zoom: 2 }] },
+					{ id: "letter", at: 0, spawn: [], scene: [{ letter: { lines: ["My counsellors speak of relics and fallen stars, old magic that might turn the war.", "Find what you can. I do not pretend to understand all of it, but I trust those who do."], signature: "In service of the throne" } }], name: "Brev" },
+					{ id: "meteor", at: 60, spawn: [], scene: [{ camera: [5, 3], zoom: 1 }, { meteor: { at: [5, 3] } }, { camera: [5, 3], zoom: 5 }, { terrain: { at: [5, 3], to: "fallen_star", amount: 1 } }, { wait: 1 }, { camera: "hq", zoom: 4 }] },
+				],
 				after: [
-					say("thordram", "Both relics. Both stars. The set is complete."),
+					say("thordram", "All relics and stars. The set is complete."),
 					say("reeve", "[question]What will the relics do?"),
 					say("albertha", "Hold the working together."),
 					say("reeve", "[question]And the stars?"),
@@ -735,6 +795,7 @@
 							say("albertha", "She'll do her job."),
 						],
 					},
+					{ id: "scene1", end: true, spawn: [{ id: "carrier2", image: "images/units/carrier.png", count: 40, at: [0, 0], script: [] }, { id: "edda", image: "images/units/edda.png", at: [0, 0], script: [] }], scene: [{ camera: "edda", zoom: 5 }, { who: "edda", say: { text: "Thank you for the opportunity Reeve! I'll say hi to Pipwick from you!", wait: true } }, { camera: "hq", zoom: 1 }, { who: "carrier2", leave: true }, { who: "edda", leave: true, together: true }] },
 				],
 				after: [
 					say("reeve", "[sad]One hundred and twenty. The full roster."),
@@ -789,6 +850,10 @@
 					say("reeve", "Then we follow the order."),
 					say("thordram", "Precisely."),
 				],
+				events: [
+					{ id: "scene1", at: 0, spawn: [{ id: "swordsman", image: "images/units/swordsman.png", at: [1, -7], script: [] }], scene: [{ camera: "swordsman", zoom: 5 }, { who: "swordsman", say: { text: "Please! Don't kill me too! Why are you doing this!?", wait: true } }, { camera: "hq", zoom: 3 }, { who: "swordsman", leave: true }] },
+					{ id: "scene2", when: { sees: "carrier" }, spawn: [], scene: [{ camera: { trigger: true }, zoom: 4 }, { who: { pick: "trigger" }, say: { text: "They're attacking! Run!", wait: true } }] },
+				],
 				after: [
 					say("reeve", "[sad]Their stores were full of winter grain. Not weapons."),
 					say("albertha", "Supplies can sustain an army."),
@@ -803,32 +868,30 @@
 			// 10
 			{
 				name: "The Second Royal Order",
-				start: {
-					buildings: [
-						{ type: "guard_tower", dx: 19, dy: -8 },
-						{ type: "quarry", dx: -1, dy: -7 },
-						{ type: "clay_pit", dx: -7, dy: -5 },
-						{ type: "quarry", dx: -4, dy: -5 },
-						{ type: "brickworks", dx: -5, dy: -3 },
-						{ type: "woodcutter", dx: 3, dy: -2 },
-						{ type: "charcoal_burner", dx: -10, dy: -1 },
-						{ type: "iron_mine", dx: -8, dy: -1 },
-						{ type: "iron_smelter", dx: -10, dy: 0 },
-						{ type: "kitchen", dx: -8, dy: 0 },
-						{ type: "bakery", dx: -6, dy: 0 },
-						{ type: "mill", dx: -5, dy: 0 },
-						{ type: "farm", dx: -4, dy: 0 },
-						{ type: "hunters_cottage", dx: -2, dy: 0 },
-						{ type: "berry_gatherer", dx: -2, dy: 2 },
-						{ type: "sawmill", dx: 1, dy: 2 },
-						{ type: "woodcutter", dx: 2, dy: 3 },
-						{ type: "herb_gatherer", dx: -8, dy: 4 },
-						{ type: "woodcutter", dx: 12, dy: 4 },
-						{ type: "mushroom_gatherer", dx: -3, dy: 8 },
-						{ type: "well", dx: 0, dy: 9 },
-						{ type: "fishing_hut", dx: -1, dy: 10 },
-					],
-				},
+				start: { buildings: [
+					{ type: 'guard_tower', dx: 19, dy: -8 },
+					{ type: 'quarry', dx: -1, dy: -7 },
+					{ type: 'clay_pit', dx: -7, dy: -5 },
+					{ type: 'quarry', dx: -4, dy: -5 },
+					{ type: 'brickworks', dx: -5, dy: -3 },
+					{ type: 'woodcutter', dx: 3, dy: -2 },
+					{ type: 'charcoal_burner', dx: -10, dy: -1 },
+					{ type: 'iron_mine', dx: -8, dy: -1 },
+					{ type: 'iron_smelter', dx: -10, dy: 0 },
+					{ type: 'kitchen', dx: -8, dy: 0 },
+					{ type: 'bakery', dx: -6, dy: 0 },
+					{ type: 'mill', dx: -5, dy: 0 },
+					{ type: 'farm', dx: -4, dy: 0 },
+					{ type: 'hunters_cottage', dx: -2, dy: 0 },
+					{ type: 'berry_gatherer', dx: -2, dy: 2 },
+					{ type: 'sawmill', dx: 1, dy: 2 },
+					{ type: 'woodcutter', dx: 2, dy: 3 },
+					{ type: 'woodcutter', dx: 12, dy: 3 },
+					{ type: 'herb_gatherer', dx: -8, dy: 4 },
+					{ type: 'mushroom_gatherer', dx: -3, dy: 8 },
+					{ type: 'well', dx: 0, dy: 9 },
+					{ type: 'fishing_hut', dx: -1, dy: 10 },
+				] },
 				eye: true,
 				rivals: 1,
 				ai: 16,
@@ -847,6 +910,9 @@
 					say("thordram", "You are mistaking sequence for cause."),
 					say("reeve", "[angry]I know what happened first."),
 					say("albertha", "And the king knows what must happen next."),
+				],
+				events: [
+					{ id: "scene1", when: { sees: "carrier" }, spawn: [], scene: [{ camera: { trigger: true }, zoom: 5 }, { who: { pick: "trigger" }, say: { text: "Why are you attacking us!?", wait: true } }] },
 				],
 				after: [
 					say("reeve", "[sad]Their commander was trying to evacuate the villages."),
@@ -1207,58 +1273,11 @@
 					say("reeve", "[angry]Then we defend it."),
 				],
 				events: [
-					{
-						at: 0,
-						music: "music/siege1.mp3",
-					},
-					{
-						at: 30,
-						give: {
-							wood: 100,
-							sword: 20,
-							bow: 40,
-							steel: 40,
-							leather_armor: 40,
-							iron_armor: 30,
-						},
-						tell: [
-							say(
-								"albertha",
-								"How about some extra weapons and armor?",
-							),
-							say(
-								"thordram",
-								"This makes you happy now, Reeve. Does it not?",
-							),
-						],
-					},
-					{
-						at: 300,
-						tell: [
-							say("thordram", "They are testing the perimeter. Do not let them reach the structure."),
-							say("reeve", "[angry]They are concentrating their attacks on the Eye."),
-							say("albertha", "Then keep them away from it."),
-						],
-					},
-					{
-						when: { sees: "soldier" },
-						music: { calm: "music/siege2.mp3", battle: false },
-						whileFog: true,
-					},
-					{
-						at: 720,
-						whileFog: true,
-						tell: [
-							say("reeve", "[angry]They are not trying to take the settlement. They are trying to reach the Eye."),
-							say("thordram", "You are distracted by the wrong detail."),
-							say("reeve", "[angry]It is the detail that keeps repeating."),
-							say("albertha", "[angry]Then stop watching and defend."),
-						],
-					},
-				],
-				lifted: [
-					say("narrator", "The Eye falls, the fog lifts, and the disguises of the two counsellors fall away with it."),
-					say("reeve", "[confused]What are you?"),
+					{ id: "scene1", at: 0, music: "music/siege1.mp3", spawn: [] },
+					{ id: "scene2", at: 30, give: { wood: 100, sword: 20, bow: 40, steel: 40, leather_armor: 40, iron_armor: 30 }, spawn: [], scene: [{ tell: [say("albertha", "[happy]How about some extra weapons and armor?"), say("thordram", "This makes you happy now, Reeve. Does it not?")] }] },
+					{ id: "scene4", when: { sees: "soldier" }, music: { calm: "music/siege2.mp3", battle: false }, whileFog: true, spawn: [], scene: [{ tell: [say("thordram", "They are testing the perimeter. Do not let them reach the structure."), say("reeve", "[angry]They are concentrating their attacks on the Eye."), say("albertha", "Then keep them away from it.")] }] },
+					{ id: "scene5", at: 720, whileFog: true, spawn: [], scene: [{ tell: [say("reeve", "[angry]They are not trying to take the settlement. They are trying to reach the Eye."), say("thordram", "You are distracted by the wrong detail."), say("reeve", "[angry]It is the detail that keeps repeating."), say("albertha", "[angry]Then stop watching and defend.")] }] },
+					{ id: "scene5b", when: { type: "fog", amount: 1 }, spawn: [{ id: "thordram", image: "images/units/thordram.png", at: [0, 0], script: [] }, { id: "albertha", image: "images/units/albertha.png", at: [0, 0], script: [] }], scene: [{ tell: [say("narrator", "The Eye falls and the fog lifts.")] }, { camera: "hq", zoom: 5 }, { who: "thordram", walk: [-1, -1] }, { who: "albertha", walk: [0, -1], together: true }, { who: "albertha", vanish: true }, { who: "thordram", vanish: true, together: true }, { spawn: { id: "mordrath", image: "images/units/mordrath.png", race: "demon", at: [-1, -1] } }, { spawn: { id: "baelthar", image: "images/units/baelthar.png", race: "demon", at: [0, -1] }, together: true }, { wait: 1 }, { who: "baelthar", say: { text: "Muahahaha!", wait: true } }, { tell: [say("reeve", "[confused]What are you?"),
 					say("baelthar", "The part of the truth your little instrument kept from you."),
 					say("mordrath", "The Eye concealed us. It also kept your attention exactly where we required it."),
 					say("reeve", "[angry]You were never royal counsellors."),
@@ -1287,7 +1306,40 @@
 					say("reeve", "[question]Where is the king's crown?"),
 					say("mordrath", "With the lord who took it."),
 					say("reeve", "[whisper]Onden."),
-					say("baelthar", "At last, a name spoken without permission."),
+					say("baelthar", "At last, a name spoken without permission."),] }] },
+				],
+				lifted: [
+					// say("narrator", "The Eye falls, the fog lifts, and the disguises of the two counsellors fall away with it."),
+					// say("reeve", "[confused]What are you?"),
+					// say("baelthar", "The part of the truth your little instrument kept from you."),
+					// say("mordrath", "The Eye concealed us. It also kept your attention exactly where we required it."),
+					// say("reeve", "[angry]You were never royal counsellors."),
+					// say("baelthar", "We were counsellors. The crown was simply not ours to serve."),
+					// say("reeve", "[confused]The king. Maegnius. Did he know?"),
+					// say("mordrath", "Which king?"),
+					// say("reeve", "[angry]The king whose seal you used."),
+					// say("baelthar", "[slow]The one who is dead."),
+					// say("reeve", "[angry]YOU sent the orders."),
+					// say("mordrath", "You carried them out."),
+					// say("reeve", "[angry]Numbjar. Vedahast. They were not preparing to invade us."),
+					// say("baelthar", "They were human kingdoms with armies, stores, and borders. You did the rest."),
+					// say("reeve", "[angry]You used me to attack them."),
+					// say("mordrath", "We used your obedience. It was remarkably dependable."),
+					// say("reeve", "[scared]And the carriers?"),
+					// say("baelthar", "Delivered as fuel to our master. Every one of them served their purpose."),
+					// say("reeve", "[angry]Fuel? You sacrificed them!?"),
+					// say("mordrath", "The relics held the working. The fallen stars gave it strength. The carriers supplied what remained."),
+					// say("reeve", "[sad]Edda was among them!"),
+					// say("baelthar", "A name does not alter the result."),
+					// say("reeve", "[angry]It alters everything to the person who knew them!"),
+					// say("baelthar", "Then you should have asked what the assignment meant before you filled the roster."),
+					// say("mordrath", "We never raised a hand. You did."),
+					// say("reeve", "[angry]You tricked me!"),
+					// say("baelthar", "The end justify the means."),
+					// say("reeve", "[question]Where is the king's crown?"),
+					// say("mordrath", "With the lord who took it."),
+					// say("reeve", "[whisper]Onden."),
+					// say("baelthar", "At last, a name spoken without permission."),
 				],
 				after: [
 					say("reeve", "[angry]You are not leaving."),
@@ -1307,75 +1359,89 @@
 				// races: { 2: 'demon' },
 				music: "music/ashes.mp3",
 				scenery: [
-					["ruin", 2, -4, 1, 4, 0],
-					["fire", 2, -3, 1, 1, 1],
-					["ruin", 4, -3, 2, 1, 0],
-					["ruin", 4, -1, 2, 1, 0],
-					["fire", 4, -1, 1, 1, 1],
-					["ruin", 2, 1, 1, 3, 0],
+					["ruin", -1, -3],
+					["ruin", 5, -3],
+					["ruin", 2, -2],
+					["ruin", -2, -1],
+					["ruin", 6, -1],
+					["ruin", 5, 0],
+					["ruin", -1, 2],
+					["ruin", 2, 2],
+					["fire", 2, -2, 1, 1, 1],
+					["fire", -2, -1, 1, 1, 1],
+					["fire", 5, 0, 1, 1, 1],
 					["fire", 2, 2, 1, 1, 1],
-					["ruin", 4, 1, 1, 1, 0],
-					["ruin", 6, 1, 1, 1, 0],
-				], // kulisser på exakta rutor, bas = 0, 0: [['ruin', x, y], ['ruin', x, y, bredd, höjd], ['fire', x, y]]
-				letter: letter([
-						"The castle has fallen. The demons are inside the inner halls, and I do not expect to survive what comes next.",
-						"My seal is in danger of being taken. If orders arrive bearing it, do not trust the seal alone. Verify the messenger. Verify the command. I fear my name will be used when I can no longer speak for it.",
-						"The crown must not be mistaken for the king. Remember that.",
-					], "In service of the realm", "To whoever finds this,"),
-				dialogue: [
-					say("narrator", "Half of what is left of the village is still burning. Water to douse the fires, sand to smother the embers."),
-					say("pipwick", "[happy]Reeve! I was beginning to think I would have to repair this entire place alone."),
-					say("reeve", "[sad]You were at the capital."),
-					say("pipwick", "[sad]I was. The signalworks were not functioning. They were not even standing by the time I reached them."),
-					say("reeve", "[question]What happened?"),
-					say("pipwick", "[sad]The castle was invaded. I survived by being somewhere unimportant and [whisper]very, very quiet."),
-					say("reeve", "[scared]The king?"),
-					say("pipwick", "[sad]Dead. Demons killed him."),
-					say("reeve", "[sad]He knew they could use the seal."),
-					say("pipwick", "[sad]He wrote it while the castle was being taken. I found it beneath the fallen records in the signal chamber."),
-					say("reeve", "[sad]Why did you not bring it sooner?"),
-					say("pipwick", "[sad]I could not. The capital was cut off. I had to get out alive, and then I had to find a way back here."),
-					say("reeve", "[sad]The orders after his death..."),
-					say("pipwick", "[sad]Yes."),
-					say("reeve", "[sad]Every order since the counsellors arrived."),
-					say("pipwick", "[sad]They knew you wouldn't question it from the king."),
-					say("reeve", "[sad]I attacked Numbjar. I attacked Vedahast."),
-					say("pipwick", "[sad]The counsellors lied to you."),
-					say("reeve", "[sad]I still gave the orders."),
-					say("pipwick", "[sad]Both things can be true."),
-					say("reeve", "[scared]Oh my god! The carriers! [slow]Edda!"),
-					say("pipwick", "[sad]What of her? Where is she?"),
-					say("reeve", "[sad]I am so sorry."),
-					say("pipwick", "[sad]My Edda. My dear dear Edda."),
-					say("reeve", "..."),
-					say("reeve", "We need to put these fires out before everything's gone."),
-					say("pipwick", "You're right. This is not the time to mourn."),
 				],
-
+				// letter: letter([
+				// 		"The castle has fallen. The demons are inside the inner halls, and I do not expect to survive what comes next.",
+				// 		"My seal is in danger of being taken. If orders arrive bearing it, do not trust the seal alone. Verify the messenger. Verify the command. I fear my name will be used when I can no longer speak for it.",
+				// 		"The crown must not be mistaken for the king. Remember that.",
+				// 	], "In service of the realm", "To whoever finds this,"),
+				// dialogue: [
+				// 	say("narrator", "Half of what is left of the village is still burning. Water to douse the fires, sand to smother the embers."),
+				// 	say("pipwick", "[happy]Reeve! I was beginning to think I would have to repair this entire place alone."),
+				// 	say("reeve", "[sad]You were at the capital."),
+				// 	say("pipwick", "[sad]I was. The signalworks were not functioning. They were not even standing by the time I reached them."),
+				// 	say("reeve", "[question]What happened?"),
+				// 	say("pipwick", "[sad]The castle was invaded. I survived by being somewhere unimportant and very, very quiet."),
+				// 	say("reeve", "[scared]The king?"),
+				// 	say("pipwick", "[sad]Dead. Demons killed him."),
+				// 	say("reeve", "[sad]He knew they could use the seal."),
+				// 	say("pipwick", "[sad]He wrote it while the castle was being taken. I found it beneath the fallen records in the signal chamber."),
+				// 	say("reeve", "[sad]Why did you not bring it sooner?"),
+				// 	say("pipwick", "[sad]I could not. The capital was cut off. I had to get out alive, and then I had to find a way back here."),
+				// 	say("reeve", "[sad]The orders after his death..."),
+				// 	say("pipwick", "[sad]Yes."),
+				// 	say("reeve", "[sad]Every order since the counsellors arrived."),
+				// 	say("pipwick", "[sad]They knew you wouldn't question it from the king."),
+				// 	say("reeve", "[sad]I attacked Numbjar. I attacked Vedahast."),
+				// 	say("pipwick", "[sad]The counsellors lied to you."),
+				// 	say("reeve", "[sad]I still gave the orders."),
+				// 	say("pipwick", "[sad]Both things can be true."),
+				// 	say("reeve", "[scared]Oh my god! The carriers! [slow]Edda!"),
+				// 	say("pipwick", "[sad]What of her? Where is she?"),
+				// 	say("reeve", "[sad]I am so sorry."),
+				// 	say("pipwick", "[sad]My Edda. My dear dear Edda."),
+				// 	say("reeve", "..."),
+				// 	say("reeve", "We need to put these fires out before everything's gone."),
+				// 	say("pipwick", "You're right. This is not the time to mourn."),
+				// ],
 				events: [
-					{
-						at: 120,
-						tell: [
-							say("narrator", "A distant crash echoes from the ruined outskirts. Baelthar and Mordrath stagger into the village, injured."),
-							say("mordrath", "This wasn't the plan."),
-							say("baelthar", "You need to help us."),
-							say("reeve", "[angry]You expect shelter here?"),
-							say("baelthar", "We can help you."),
-						],
-					},
-					{
-						at: 125,
-						tell: [
-							say("pipwick", "They are injured. That makes them easier to restrain."),
-							say("baelthar", "You have become quite bold, little engineer."),
-							say("pipwick", "[sad]I've had no choice."),
-							say("narrator", "Pipwick brings heavy iron restraints and a length of chain out of his equipment."),
-							say("reeve", "[angry]Bind them. They stay alive until they answer for Edda, and the king."),
-							say("mordrath", "A temporary arrangement."),
-							say("reeve", "[angry]You should be grateful that's all you're getting right now."),
-						],
-					},
+					{ id: "letter", when: { scene: "scene5" }, spawn: [], scene: [{ letter: { lines: ["The castle has fallen. The demons are inside the inner halls, and I do not expect to survive what comes next.", "My seal is in danger of being taken. If orders arrive bearing it, do not trust the seal alone. Verify the messenger. Verify the command. I fear my name will be used when I can no longer speak for it.", "The crown must not be mistaken for the king. Remember that."], greeting: "To whoever finds this,", signature: "In service of the realm" } }], name: "Brev" },
+					{ id: "scene1b", at: 120, spawn: [{ id: "mordrath", image: "images/units/mordrath.png", race: "demon", at: [5, -3], script: [] }, { id: "baelthar", image: "images/units/baelthar.png", race: "demon", at: [6, -2], script: [] }], scene: [{ tell: [say("narrator", "A distant crash echoes from a nearby ruined building. Baelthar and Mordrath stagger out of the rubble, injured.")] }, { camera: "mordrath", zoom: 5 }, { who: "mordrath", say: { text: "This wasn't the plan.", wait: true } }, { who: "baelthar", say: { text: "You need to help us.", wait: true } }, { who: "baelthar", walk: "hq", follow: true }, { who: "mordrath", walk: "hq", together: true }, { camera: "hq", zoom: 3 }, { who: "mordrath", vanish: true, together: true }, { who: "baelthar", vanish: true, together: true }, { tell: [say("reeve", "[angry]You expect shelter here?"), say("baelthar", "We can help you.")] }] },
+					{ id: "scene2", when: { scene: "scene1b" }, spawn: [], scene: [{ tell: [say("pipwick", "They are injured. That makes them easier to restrain."), say("baelthar", "You have become quite bold, little engineer."), say("pipwick", "[sad]I've had no choice."), say("narrator", "Pipwick brings heavy iron restraints and a length of chain out of his equipment."), say("reeve", "[angry]Bind them. They stay alive until they answer for Edda, and the king."), say("mordrath", "A temporary arrangement."), say("reeve", "[angry]You should be grateful that's all you're getting right now.")] }] },
+					{ id: "scene4", at: 0, spawn: [{ id: "pipwick", image: "images/units/pipwick.png", at: [-10, 1], script: [] }], scene: [{ tell: [say("narrator", "Half of what is left of the village is still burning. Water to douse the fires, sand to smother the embers.")] }, { camera: "pipwick", zoom: 5, together: true }, { who: "pipwick", walk: "hq", follow: true }, { who: "pipwick", say: { text: "Reeve! I was beginning to think I would have to repair this entire place alone.", wait: true }, together: true }, { camera: "hq", zoom: 5 }, { who: "pipwick", vanish: true }] },
+					{ id: "scene5", when: { scene: "scene4" }, spawn: [], scene: [{ tell: [say("reeve", "[sad]You were at the capital."), say("pipwick", "[sad]I was. The signalworks were not functioning. They were not even standing by the time I reached them."), say("reeve", "[question]What happened?"), say("pipwick", "[sad]The castle was invaded. I survived by being somewhere unimportant and very, very quiet."), say("reeve", "[scared]The king?"), say("pipwick", "[sad]Dead. Demons killed him."), say("reeve", "[sad]He knew they could use the seal."), say("pipwick", "[sad]I found this letter beneath the fallen records in the signal chamber. He wrote it while the castle was being taken.")] }] },
+					{ id: "scene6", when: { scene: "letter" }, spawn: [], scene: [{ tell: [say("reeve", "[sad]Why did you not bring it sooner?"), say("pipwick", "[sad]I could not. The capital was cut off. I had to get out alive, and then I had to find a way back here."), say("reeve", "[sad]The orders after his death..."), say("pipwick", "[sad]Yes."), say("reeve", "[sad]Every order since the \"counsellors\" arrived."), say("pipwick", "[sad]They knew you wouldn't question it from the king."), say("reeve", "[sad]I attacked Numbjar. I attacked Vedahast."), say("pipwick", "[sad]The counsellors lied to you."), say("reeve", "[sad]I still gave the orders."), say("pipwick", "[sad]Both things can be true."), say("reeve", "[scared]Oh my god! The carriers!"), say("reeve", "[slow]Edda!"), say("pipwick", "[confused]What of her? Where is she?"), say("reeve", "[slow]I am so sorry."), say("pipwick", "[slow]My Edda. My dear dear Edda."), say("reeve", "[slow]..."), say("reeve", "We need to put these fires out before everything's gone."), say("pipwick", "You're right. This is not the time to mourn.")] }] },
+					{ id: "douse_fire_1", when: { resource: "water", amount: 20 }, spawn: [], scene: [{ scenery: { at: [-2, -1], remove: "fire" } }] },
+					{ id: "douse_fire_2", when: { resource: "water", amount: 40 }, spawn: [], scene: [{ scenery: { at: [5, 0], remove: "fire" } }] },
+					{ id: "douse_fire_3", when: { resource: "sand", amount: 20 }, spawn: [], scene: [{ scenery: { at: [2, 2], remove: "fire" } }] },
+					{ id: "douse_fire_4", when: { resource: "sand", amount: 40 }, spawn: [], scene: [{ scenery: { at: [2, -2], remove: "fire" } }] },
 				],
+				// events: [
+				// 	{
+				// 		at: 120,
+				// 		tell: [
+				// 			say("narrator", "A distant crash echoes from the ruined outskirts. Baelthar and Mordrath stagger into the village, injured."),
+				// 			say("mordrath", "This wasn't the plan."),
+				// 			say("baelthar", "You need to help us."),
+				// 			say("reeve", "[angry]You expect shelter here?"),
+				// 			say("baelthar", "We can help you."),
+				// 		],
+				// 	},
+				// 	{
+				// 		at: 125,
+				// 		tell: [
+				// 			say("pipwick", "They are injured. That makes them easier to restrain."),
+				// 			say("baelthar", "You have become quite bold, little engineer."),
+				// 			say("pipwick", "[sad]I've had no choice."),
+				// 			say("narrator", "Pipwick brings heavy iron restraints and a length of chain out of his equipment."),
+				// 			say("reeve", "[angry]Bind them. They stay alive until they answer for Edda, and the king."),
+				// 			say("mordrath", "A temporary arrangement."),
+				// 			say("reeve", "[angry]You should be grateful that's all you're getting right now."),
+				// 		],
+				// 	},
+				// ],
 			},
 			// 13
 			{
@@ -1399,39 +1465,34 @@
 					say("reeve", "[confused]There must be a mistake."),
 					say("pipwick", "[sad]I checked it three times. I was hoping the third check would improve the answer."),
 				],
+				scenery: [
+					["blood", 3, -11, 1, 1, -1],
+					["blood", 3, -9, 1, 1, -1],
+					["blood", 7, -9, 1, 1, -1],
+					["fire", 5, -11, 1, 1, -1, 1, 0],
+					["fire", 6, -10, 1, 1, -1, 1, 0],
+					["runes1", 5, -10, 1, 1, -1, 2, 0],
+					["runes2", 4, -9, 1, 1, -1, 2, 0],
+					["runes2", 4, -11, 1, 1, -1, 3, 0],
+					["runes2", 6, -11, 1, 1, -1],
+					["runes2", 6, -9, 1, 1, -1, 1, 0],
+					["skeleton", 3, -10, 1, 1, -1],
+					["baggage", 5, -8],
+					["corpse4", 3, -11],
+					["corpse5", 3, -9],
+					["corpse6", 7, -9],
+					["edda_dead", 5, -10],
+					["tracks", 3, -8],
+					["tracks", 2, -7],
+					["wagon", 3, -7, 1, 2],
+					["corpse2", 4, -10, 1, 1, 1],
+					["skeleton", 5, -9, 1, 1, 1, 0, 1],
+				],
 				events: [
-					{
-						when: [
-							{ resource: "wood", made: 20 },
-							{ resource: "stone", made: 20 },
-						],
-						tell: [
-							say("pipwick", "[sad]The relic housings were built to hold a ritual in place. These grooves kept the working from breaking apart."),
-							say("reeve", "[question]And the stars?"),
-							say("pipwick", "[sad]Their residue is here. They supplied the force. The carriers were the final part."),
-							say("reeve", "[angry]They were not transported. They were delivered to be killed."),
-							say("pipwick", "[sad]Edda wasn't looking for a cause. She was just looking for a job."),
-							say("reeve", "[sad]I know."),
-						],
-					},
-					{
-						when: [
-							{ resource: "wood", made: 30 },
-							{ resource: "stone", made: 25 },
-						],
-						tell: [
-							say("baelthar", "You are still questioning the records. How diligent."),
-							say("reeve", "[angry]I am checking what you left out."),
-							say("baelthar", "Then check Mordrath's figures carefully. He counts every expected casualty. He simply does not consider the number a reason to change the plan."),
-							say("mordrath", "Accurate accounting is not cruelty. It is the refusal to lie about cost."),
-							say("reeve", "[angry]You both speak as if the other is the greater danger."),
-							say("baelthar", "We have different ambitions. That does not make either of us your ally."),
-							say("reeve", "[question]Why tell me this?"),
-							say("baelthar", "Because you may find it useful. And because I prefer you alive long enough to understand who benefits when you die."),
-							say("pipwick", "[happy]That almost sounded like concern."),
-							say("baelthar", "Then your hearing is worse than your inventions."),
-						],
-					},
+					{ id: "scene1", at: 0, spawn: [{ id: "pipwick", image: "images/units/pipwick.png", at: [1, -6], script: [] }], scene: [{ weather: "fog" }, { camera: "hq", zoom: 5 }, { tell: [say("pipwick", "[sad]The relic housings were built to hold a ritual in place. These grooves kept the working from breaking apart."), say("reeve", "[question]And the stars?"), say("pipwick", "[sad]Their residue is here. They supplied the force. The carriers were the final part."), say("reeve", "[angry]They were not transported. They were delivered to be killed."), say("pipwick", "[sad]Edda wasn't looking for a cause. She was just looking for a job."), say("reeve", "[sad]I know.")] }, { camera: [5, -10], zoom: 5 }, { weather: "clear" }, { wait: 1 }, { tell: [say("pipwick", "[slow]Oh my god!"), say("reeve", "[slow]Is it?"), say("pipwick", "[slow]It is. I'll need to give her a proper burial Reeve. I need to."), say("reeve", "[slow]Of course. Take your time.")] }, { who: "pipwick", walk: [5, -10], follow: true }, { scenery: { at: [5, -10], remove: "edda_dead" } }, { who: "pipwick", walk: "hq", follow: true }, { who: "pipwick", vanish: true }] },
+					{ id: "scene2", when: [{ resource: "wood", made: 30 }, { resource: "stone", made: 25 }], spawn: [], scene: [{ tell: [say("baelthar", "You are still questioning the records. How diligent."), say("reeve", "[angry]I am checking what you left out."), say("baelthar", "Then check Mordrath's figures carefully. He counts every expected casualty. He simply does not consider the number a reason to change the plan."), say("mordrath", "Accurate accounting is not cruelty. It is the refusal to lie about cost."), say("reeve", "[angry]You both speak as if the other is the greater danger."), say("baelthar", "We have different ambitions. That does not make either of us your ally."), say("reeve", "[question]Why tell me this?"), say("baelthar", "Because you may find it useful. And because I prefer you alive long enough to understand who benefits when you die."), say("pipwick", "[happy]That almost sounded like concern."), say("baelthar", "Then your hearing is worse than your inventions.")] }] },
+					{ id: "scene3", on: { event: "weather", weather: "rain" }, spawn: [], scene: [{ scenery: { at: [5, -10], radius: 2, remove: "fire" } }] },
+					{ id: "scene4", at: 120, spawn: [], scene: [{ scenery: { at: [5, -10], radius: 5, remove: "blood" } }, { scenery: { at: [5, -10], radius: 5, remove: "corpse2" } }, { scenery: { at: [5, -10], radius: 5, remove: "corpse4" } }, { scenery: { at: [5, -10], radius: 5, remove: "corpse5" } }, { scenery: { at: [5, -10], radius: 5, remove: "corpse6" } }, { scenery: { at: [3, -11], add: "skeleton" } }, { scenery: { at: [3, -9], add: "skeleton" } }, { scenery: { at: [4, -10], add: "skeleton" } }, { scenery: { at: [7, -9], add: "skeleton" } }] },
 				],
 				after: [
 					say("pipwick", "[question]Can we prove who arranged it?"),
@@ -1465,28 +1526,8 @@
 					say("narrator", "The old grimoire from the enchanter's tower will not open for a reader. Only for someone who casts from it."),
 				],
 				events: [
-					{
-						when: { type: "casts", amount: 1 },
-						tell: [
-							say("narrator", "[whisper]The grimoire opens by itself. A few lines are written across the page."),
-							say("narrator", "[whisper]“Let the unseen counsel. Let the willing hand choose.”"),
-							say("narrator", "[whisper]“Whispers are permitted. Hands are not.”"),
-							say("reeve", "[confused]It says they may influence us, but they may not act openly against us."),
-							say("pipwick", "A prohibition. Not an explanation."),
-							say("reeve", "[question]Who made the rule?"),
-							say("pipwick", "The book does not say."),
-							say("reeve", "[question]Who enforces it?"),
-							say("pipwick", "It does not say that either."),
-							say("reeve", "[question]Then how do we know it is real?"),
-							say("pipwick", "Onden's invasion. He crossed a boundary the others were content to exploit from a distance."),
-							say("reeve", "[confused]Baelthar and Mordrath knew about it."),
-							say("pipwick", "They knew enough to avoid breaking it themselves."),
-							say("reeve", "[angry]They still helped Onden."),
-							say("pipwick", "They wanted power without becoming the target of whatever keeps that rule."),
-							say("reeve", "And now they want Onden gone."),
-							say("pipwick", "Not because they care what he did to us."),
-						],
-					},
+					{ id: "scene1", when: { type: "casts", amount: 1 }, spawn: [], scene: [{ tell: [say("narrator", "[whisper]The grimoire opens by itself. A few lines are written across the page."), say("narrator", "[whisper]“Let the unseen counsel. Let the willing hand choose.”"), say("narrator", "[whisper]“Whispers are permitted. Hands are not.”"), say("reeve", "[confused]It says they may influence us, but they may not act openly against us."), say("pipwick", "A prohibition. Not an explanation."), say("reeve", "[question]Who made the rule?"), say("pipwick", "The book does not say."), say("reeve", "[question]Who enforces it?"), say("pipwick", "It does not say that either."), say("reeve", "[question]Then how do we know it is real?"), say("pipwick", "Onden's invasion. He crossed a boundary the others were content to exploit from a distance."), say("reeve", "[confused]Baelthar and Mordrath knew about it."), say("pipwick", "They knew enough to avoid breaking it themselves."), say("reeve", "[angry]They still helped Onden."), say("pipwick", "They wanted power without becoming the target of whatever keeps that rule."), say("reeve", "And now they want Onden gone."), say("pipwick", "Not because they care what he did to us.")] }] },
+					{ id: "scene2", when: { type: "build", id: "enchanter", amount: 1 }, spawn: [{ id: "pipwick", image: "images/units/pipwick.png", at: [0, 0], script: [] }], scene: [{ who: "pipwick", walk: "enchanter" }, { camera: "pipwick", zoom: 4 }, { who: "pipwick", say: { text: "Great! Now we have someone who can read the book!", wait: true } }, { who: "pipwick", walk: "hq" }, { who: "pipwick", vanish: true }] },
 				],
 				after: [
 					say("reeve", "[angry]Baelthar says you count casualties and never change the plan."),
@@ -1508,14 +1549,14 @@
 				ai: 30,
 				races: { 2: "demon" },
 				end: "hq",
-        start: { buildings: [
-          { type: 'quarry', dx: 1, dy: -8 },
-          { type: 'quarry', dx: 7, dy: -7 },
-          { type: 'woodcutter', dx: -2, dy: -3 },
-          { type: 'woodcutter', dx: 8, dy: -3 },
-          { type: 'sawmill', dx: -2, dy: 1 },
-          { type: 'woodcutter', dx: -3, dy: 2 },
-        ] },
+					start: { buildings: [
+					{ type: 'quarry', dx: 1, dy: -8 },
+					{ type: 'quarry', dx: 7, dy: -7 },
+					{ type: 'woodcutter', dx: -2, dy: -3 },
+					{ type: 'woodcutter', dx: 8, dy: -3 },
+					{ type: 'sawmill', dx: -2, dy: 1 },
+					{ type: 'woodcutter', dx: -3, dy: 2 },
+					] },
 				dialogue: [
 					say("pipwick", "This position supplies the forces around Onden's stronghold."),
 					say("reeve", "Then taking it will slow them down."),
@@ -1528,19 +1569,8 @@
 					say("pipwick", "[sad]They used the system we built for them. I am not going to pretend otherwise."),
 				],
 				events: [
-					{
-						at: 120,
-						tell: [
-							say("reeve", "Baelthar, you have information about Onden's command."),
-							say("baelthar", "Of course. I spent years close enough to hear what he thought no one else deserved to hear."),
-							say("reeve", "[angry]Then give me something useful."),
-							say("baelthar", "Do not mistake his anger for poor judgement. He is cruel, but he is not careless. When he appears to leave an opening, ask what he expects you to do with it."),
-							say("reeve", "[angry]That is a warning, not a location or a plan."),
-							say("baelthar", "It is a warning that may keep your soldiers alive. You are welcome."),
-							say("pipwick", "[question]And what do you get from helping us?"),
-							say("baelthar", "The possibility that Onden falls. I have never pretended to want anything more noble."),
-						],
-					},
+					{ id: "scene1", at: 120, spawn: [], scene: [{ tell: [say("reeve", "Baelthar, you have information about Onden's command."), say("baelthar", "Of course. I spent years close enough to hear what he thought no one else deserved to hear."), say("reeve", "[angry]Then give me something useful."), say("baelthar", "Do not mistake his anger for poor judgement. He is cruel, but he is not careless. When he appears to leave an opening, ask what he expects you to do with it."), say("reeve", "[angry]That is a warning, not a location or a plan."), say("baelthar", "It is a warning that may keep your soldiers alive. You are welcome."), say("pipwick", "[question]And what do you get from helping us?"), say("baelthar", "The possibility that Onden falls.I wouldn't mind a nice power void.")] }] },
+					{ id: "scene2", when: { sees: "soldier" }, spawn: [], scene: [{ camera: { trigger: true }, zoom: 3 }, { who: { pick: "trigger", side: "own", kind: "soldier" }, say: { text: "Attack!", wait: true } }] },
 				],
 				after: [
 					say("reeve", "[happy]The stores are secured."),
@@ -1584,6 +1614,9 @@
 					{ type: 'iron_mine', dx: 8, dy: 9 },
 					{ type: 'apple_gatherer', dx: 0, dy: 15 },
 				] },
+				scenery: [
+					["baggage", 8, 0],
+				],
 				dialogue: [
 					say("pipwick", "[happy]Prototype ready."),
 					say("reeve", "[happy]You sound confident."),
@@ -1594,19 +1627,7 @@
 					say("pipwick", "[happy]We are about to establish that."),
 				],
 				events: [
-					{
-						at: 180,
-						tell: [
-							say("reeve", "[angry]It missed the target."),
-							say("pipwick", "[happy]It hit the target. It also hit the wall, the storage rack, and a rather innocent barrel."),
-							say("reeve", "[happy]The barrel was not attacking us."),
-							say("pipwick", "[happy]It was standing in a dangerous place."),
-							say("reeve", "[question]Can you fix it?"),
-							say("pipwick", "[happy]Yes. The release arm is too stiff, and the spread is wider than I calculated."),
-							say("reeve", "[happy]So it is fixable."),
-							say("pipwick", "[happy]Almost everything is fixable. The difficulty is persuading it to stay fixed."),
-						],
-					},
+					{ id: "scene1", at: 180, spawn: [{ id: "catapult", image: "images/units/catapult.png", at: [0, 0], script: [] }], scene: [{ camera: "catapult", zoom: 5 }, { who: "catapult", walk: [2, 0], otherwise: [{ who: "catapult", walk: [3, 0] }] }, { camera: [8, -1], zoom: 5 }, { scenery: { at: [8, -1], add: "burnt" }, together: true }, { scenery: { at: [8, -1], radius: 1, add: "fire", layer: 1 }, together: true }, { wait: 1 }, { tell: [say("reeve", "[angry]It missed the target."), say("pipwick", "[happy]It hit the target. It also hit the wall, the storage rack, and a rather innocent barrel."), say("reeve", "[happy]The barrel was not attacking us."), say("pipwick", "[happy]It was standing in a dangerous place."), say("reeve", "[question]Can you fix it?"), say("pipwick", "[happy]Yes. The release arm is too stiff, and the spread is wider than I calculated."), say("reeve", "[happy]So it is fixable."), say("pipwick", "[happy]Almost everything is fixable. The difficulty is persuading it to stay fixed.")] }, { who: "catapult", walk: "hq", follow: true }, { who: "catapult", vanish: true }, { camera: "hq", zoom: 2 }, { wait: 30 }, { scenery: { at: [8, -1], radius: 5, remove: "fire" } }] },
 				],
 				after: [
 					say("pipwick", "[happy]I have a better release mechanism. The next test should be less destructive."),
@@ -1636,9 +1657,16 @@
 					{ type: 'woodcutter', dx: 2, dy: 5 },
 					{ type: 'woodcutter', dx: 0, dy: 6 },
 					{ type: 'planter', dx: 0, dy: 7 },
+					{ type: 'fishing_hut', dx: -20, dy: 28, dead: true, sight: 4 },
+					{ type: 'warehouse', dx: -21, dy: 31, dead: true, sight: 4 },
+					{ type: 'farm', dx: -23, dy: 32, dead: true, sight: 4 },
+					{ type: 'woodcutter', dx: -18, dy: 32, dead: true, sight: 4 },
+					{ type: 'quarry', dx: -20, dy: 33, dead: true, sight: 4 },
+					{ type: 'herb_gatherer', dx: -22, dy: 34, dead: true, sight: 4 },
+					{ type: 'berry_gatherer', dx: -18, dy: 34, dead: true, sight: 4 },
 				] },
 				dialogue: [
-					say("survivor", "[angry]Keep the soldiers back."),
+					say("survivor", "[angry]Keep the soldiers back!"),
 					say("reeve", "We are not here to take your supplies."),
 					say("survivor", "[angry]You said that before."),
 					say("reeve", "I gave the orders at Numbjar. I will not deny it."),
@@ -1648,26 +1676,11 @@
 					say("reeve", "[angry]Because they are wounded."),
 				],
 				events: [
-					{
-						at: 60,
-						tell: [
-							say("pipwick", "[happy]Reeve, the new release mechanism holds. The catapult works."),
-							say("reeve", "[question]Works how?"),
-							say("pipwick", "[happy]It throws a burning stone a very long way, slowly, and sets fire to whatever it lands on. Build an Inventor's Workshop and I will show your people how to make one."),
-							say("reeve", "[happy]Slowly is acceptable."),
-							say("pipwick", "[happy]It is the only speed it has."),
-						],
-					},
-					{
-						at: 150,
-						tell: [
-							say("pipwick", "[sad]Some of them accepted the supplies. Others would not let us near."),
-							say("reeve", "They have reason."),
-							say("pipwick", "[sad]I know. I wanted a better answer than that."),
-							say("reeve", "[sad]There is no answer that gives them back what we took."),
-							say("pipwick", "[sad]No. But we can stop taking more."),
-						],
-					},
+					{ id: "scene1", at: 30, spawn: [], scene: [{ tell: [say("pipwick", "[happy]Reeve, the new release mechanism holds. The catapult works."), say("reeve", "[question]Works how?"), say("pipwick", "[happy]It throws a burning stone a very long way, slowly, and sets fire to whatever it lands on. Build an Inventor's Workshop and I will show your people how to make one."), say("reeve", "[happy]Slowly is acceptable."), say("pipwick", "[happy]It is the only speed it has.")] }] },
+					{ id: "pipwick_back", at: 150, spawn: [{ id: "pipwick2", image: "images/units/pipwick.png", at: [-21, 30], script: [] }], scene: [{ who: "pipwick2", walk: "hq" }, { tell: [say("pipwick", "[sad]Some of them accepted the supplies. Others would not let us near."), say("reeve", "They have reason."), say("pipwick", "[sad]I know. I wanted a better answer than that."), say("reeve", "[sad]There is no answer that gives them back what we took."), say("pipwick", "[sad]No. But we can stop taking more.")] }, { who: "pipwick2", vanish: true }] },
+					{ id: "pipwick_leave", at: 30, spawn: [{ id: "pipwick", image: "images/units/pipwick.png", at: [0, 0], script: [] }], scene: [{ camera: "pipwick", zoom: 4 }, { who: "pipwick", say: { text: "Reeve, I will go and try to help them. I'll be back shortly!", wait: true } }, { who: "pipwick", walk: [-21, 30] }, { who: "pipwick", vanish: true }] },
+					{ id: "survivor_leave", at: 0, spawn: [{ id: "survivor", image: "images/units/survivor.png", at: [1, 0], script: [] }], scene: [{ who: "survivor", say: { text: "We don't need your help! Leave us alone!", wait: true } }, { who: "survivor", walk: [-21, 30] }, { who: "survivor", vanish: true }] },
+					{ id: "ending", end: true, spawn: [], scene: [, , { spawn: { id: "carrier", image: "images/units/carrier.png", count: 5, at: "hq" }, enter: true }, { who: "carrier", leave: true }] },
 				],
 				after: [
 					say("narrator", "Suddenly, a demon soldier appears. Your men stand ready to defend. But doesn't seem to need to."),
@@ -1697,7 +1710,84 @@
 					say("reeve", "[sad]We cannot pretend one group does not matter."),
 					say("pipwick", "[sad]No. But pretending we can save both will not make it true."),
 				],
+				waves: {
+					from: 150,
+					every: 75,
+					size: [2, 1, 8],
+					kinds: ["swordsman", "archer", "swordsman", "knight"],
+					maxAlive: 10,
+				},
 				events: [
+					// Två instängda grupper: kameran visar signalposten och de sårade, med barrikaden mellan dem
+					{
+						id: "two_groups",
+						at: 0,
+						spawn: [
+							{ id: "signal", image: "images/units/carrier.png", count: 6, at: [30, -10], script: [] },
+							{ id: "wounded", image: "images/units/villager1.png", count: 8, at: [-28, 12], script: [] },
+							{ id: "guard", image: "images/units/footman.png", count: 3, at: [-27, 11], script: [] },
+						],
+						scene: [
+							{ weather: "fog" },
+							{ scenery: { at: [30, -10], radius: 3, share: 30, add: "ruin" } },
+							{ scenery: { at: [30, -10], radius: 4, share: 25, add: "weapons" } },
+							{ scenery: { at: [30, -10], radius: 2, share: 20, add: "fire" } },
+							{ scenery: { at: [-28, 12], radius: 3, share: 30, add: "wagon" } },
+							{ scenery: { at: [-28, 12], radius: 4, share: 30, add: "baggage" } },
+							{ scenery: { at: [-28, 12], radius: 3, share: 20, add: "blood" } },
+							{ camera: [30, -10], zoom: 3 },
+							{ who: "signal", say: { text: "[scared]We still have the post! Hurry!", for: 3 } },
+							{ camera: [-28, 12], zoom: 3 },
+							{ who: "wounded", say: { text: "[scared]We cannot walk! Please!", for: 3 } },
+							{ camera: "hq", zoom: 3 },
+							{ weather: "clear" },
+						],
+					},
+					// Demonerna går på signalposten först
+					{
+						id: "signal_attacked",
+						at: 60,
+						scene: [
+							{ camera: [30, -10], zoom: 3 },
+							{ spawn: { id: "raiders", image: "images/units/swordsman.png", race: "demon", count: 4, at: [30, -10], enter: true } },
+							{ who: "raiders", attack: { actor: "signal" }, for: 4, with: "swordsman" },
+							{ who: "signal", walk: "hq" },
+							{ who: "raiders", leave: true },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
+					{
+						id: "signal_saved",
+						when: { kills: 4 },
+						scene: [
+							{ camera: "signal", zoom: 4 },
+							{ who: "signal", say: { text: "[sad]We held it as long as we could. Their camp lies to the east, past the second ridge.", wait: true } },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
+					// Sedan de sårade
+					{
+						id: "wounded_attacked",
+						at: 150,
+						scene: [
+							{ camera: [-28, 12], zoom: 3 },
+							{ spawn: { id: "raiders2", image: "images/units/knight.png", race: "demon", count: 3, at: [-28, 12], enter: true } },
+							{ who: "raiders2", attack: { actor: "guard" }, for: "destroy", with: "knight" },
+							{ who: "raiders2", leave: true },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
+					{
+						id: "wounded_saved",
+						when: { kills: 10 },
+						scene: [
+							{ camera: "wounded", zoom: 3 },
+							{ who: "wounded", walk: "hq", follow: true },
+							{ who: "wounded", say: { text: "[sad]Thank you. We counted the ones who did not come.", wait: true } },
+							{ scenery: { at: [-28, 12], radius: 3, share: 25, add: "corpse" } },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
 					{
 						at: 240,
 						tell: [
@@ -1735,6 +1825,79 @@
 					say("reeve", "[angry]It made people obey."),
 					say("pipwick", "The seal did that too. Until someone checked the truth behind it."),
 				],
+				waves: {
+					from: 120,
+					every: 70,
+					size: [3, 1, 10],
+					kinds: ["swordsman", "archer", "knight", "swordsman"],
+					maxAlive: 12,
+				},
+				events: [
+					// Kronan syns som ett svagt sken i fiendens sal: kameran sveper dit, vakterna står stilla
+					{
+						id: "crown_hall",
+						at: 0,
+						spawn: [
+							{ id: "hall_guard", image: "images/units/knight.png", race: "demon", count: 6, at: [46, -2], script: [] },
+						],
+						scene: [
+							{ weather: "fog" },
+							{ camera: [36, 0], zoom: 1 },
+							{ scenery: { at: [50, 0], radius: 4, share: 25, add: "runes" } },
+							{ scenery: { at: [50, 0], radius: 5, share: 20, add: "burnt" } },
+							{ scenery: { at: [50, 0], radius: 3, share: 15, add: "fire" } },
+							{ scenery: { at: [47, 4], radius: 3, share: 30, add: "ruin" } },
+							{ camera: [50, 0], zoom: 3 },
+							{ who: "hall_guard", walk: [47, 0] },
+							{ wait: 1 },
+							{ camera: "hq", zoom: 3 },
+							{ weather: "clear" },
+						],
+					},
+					// Ett sändebud i röken: kronan är inte deras att behålla
+					{
+						id: "herald",
+						at: 200,
+						spawn: [{ id: "herald", image: "images/units/knight.png", race: "demon", size: 24, at: [20, 0], script: [] }],
+						scene: [
+							{ camera: "herald", zoom: 4 },
+							{ who: "herald", walk: [8, 0], follow: true },
+							{ who: "herald", say: { text: "[slow]Return what is not yours, Reeve. He will not ask twice.", wait: true } },
+							{ who: "herald", say: { text: "[angry]I was not asking you.", wait: true, speaker: "reeve" } },
+							{ who: "herald", leave: true },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
+					{
+						id: "storm_over_the_keep",
+						at: 420,
+						weather: "storm",
+						meteors: 20,
+						scene: [
+							{ camera: [50, 0], zoom: 2 },
+							{ tell: [say("pipwick", "[whisper]He is burning the hall to keep us out of it."), say("reeve", "[angry]Then we get there first.")] },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
+					// Banan slut: kronan bärs ut genom en kedja av bärare
+					{
+						id: "crown_carried_out",
+						end: true,
+						spawn: [
+							{ id: "pipwick", image: "images/units/pipwick.png", at: [44, 0], script: [] },
+							{ id: "carriers", image: "images/units/carrier.png", count: 6, at: [44, 1], script: [] },
+						],
+						scene: [
+							{ camera: [50, 0], zoom: 3 },
+							{ scenery: { at: [50, 0], radius: 5, remove: "fire" } },
+							{ who: "pipwick", walk: [50, 0] },
+							{ who: "pipwick", say: { text: "[slow]Careful. It is lighter than it should be.", wait: true } },
+							{ who: "pipwick", walk: "hq", follow: true },
+							{ who: "carriers", walk: "hq", together: true },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
+				],
 				after: [
 					say("reeve", "[sad]This is evidence. The king's property, taken when the castle fell."),
 					say("pipwick", "It can show the human settlements who claimed the throne."),
@@ -1769,16 +1932,20 @@
 					say("reeve", "Because Onden is still doing it. And because I will not leave the next people to face him alone."),
 				],
 				events: [
-					// De överlevande kommer över passet och slår läger vid kanten av byn
+					// De överlevande kommer ur dimman i en lång rad, med packning och en vält vagn
 					{
 						id: "arrival",
 						at: 0,
 						spawn: [
 							{ id: "survivor", image: "images/units/survivor.png", at: [-16, 9], script: [] },
-							{ id: "camp", image: "images/units/carrier.png", count: 14, at: [-18, 10], script: [] },
 						],
 						scene: [
 							{ weather: "fog" },
+							{ scenery: { at: [-15, 11], radius: 0, add: "wagon" } },
+							{ scenery: { at: [-14, 10], radius: 3, share: 25, add: "baggage" } },
+							{ scenery: { at: [-12, 9], radius: 5, share: 20, add: "tracks" } },
+							{ camera: [-16, 9], zoom: 3 },
+							{ spawn: { id: "camp", image: "images/units/carrier.png", count: 14, at: [-8, 7], enter: true } },
 							{ camera: "survivor", zoom: 4 },
 							{ who: "survivor", say: { text: "[sad]Two hundred of us crossed the pass. Sixty reached the gate.", wait: true } },
 							{ who: "survivor", walk: [-6, 6] },
@@ -1787,12 +1954,35 @@
 							{ weather: "clear" },
 						],
 					},
+					// Det de lämnat bakom sig syns i kanten av lägret
 					{
 						id: "burned_camp",
 						at: 4,
 						scene: [
-							{ scenery: { at: [-22, 12], radius: 3, share: 40, add: "ruin" } },
+							{ scenery: { at: [-22, 12], radius: 4, share: 35, add: "ruin" } },
+							{ scenery: { at: [-22, 12], radius: 3, share: 40, add: "burnt" } },
 							{ scenery: { at: [-22, 12], radius: 2, share: 25, add: "fire" } },
+							{ scenery: { at: [-20, 14], radius: 2, share: 40, add: "weapons" } },
+							{ scenery: { at: [-24, 10], radius: 1, share: 50, add: "skeleton" } },
+						],
+					},
+					// Lägerliv: eld, ett barn som springer, någon bär ved
+					{
+						id: "camp_life",
+						at: 12,
+						spawn: [
+							{ id: "child", image: "images/units/villager1.png", at: [-7, 8], script: [] },
+							{ id: "woodbearer", image: "images/units/villager3.png", at: [-9, 6], script: [] },
+						],
+						scene: [
+							{ scenery: { at: [-8, 8], radius: 0, add: "fire" } },
+							{ who: "woodbearer", walk: [-12, 4] },
+							{ who: "child", walk: [-3, 3] },
+							{ who: "child", say: { text: "[happy]Is it true there is bread here?", for: 3 } },
+							{ who: "child", walk: [-8, 7] },
+							{ who: "woodbearer", walk: [-8, 7], together: true },
+							{ who: "woodbearer", walk: [-12, 4] },
+							{ who: "woodbearer", walk: [-8, 7] },
 						],
 					},
 					// Förråden räcker inte: Reeve måste välja vem som får först
@@ -1815,15 +2005,28 @@
 						spawn: [{ id: "mother", image: "images/units/survivor.png", at: [-9, 8], script: [] }],
 						scene: [
 							{ camera: "mother", zoom: 5 },
-							{ who: "mother", walk: "hq" },
+							{ who: "mother", walk: "hq", follow: true },
 							{ who: "mother", say: { text: "[sad]My daughter ate today. I will remember who put it on the table.", wait: true } },
 							{ who: "mother", say: { text: "[angry]I will also remember who put the sword in my husband's hand.", wait: true } },
+							{ who: "mother", walk: [-9, 8], follow: true },
 							{ camera: "hq", zoom: 3 },
-							{ who: "mother", walk: [-9, 8] },
 							{ who: "mother", vanish: true },
 						],
 					},
-					// Ondens långa arm: askregn och eld över lägret
+					// Spejare ur dimman: demonerna vet var lägret ligger
+					{
+						id: "scouts",
+						at: 240,
+						scene: [
+							{ camera: [-8, 7], zoom: 2 },
+							{ spawn: { id: "scout", image: "images/units/swordsman.png", race: "demon", count: 3, at: [-20, 8], enter: true } },
+							{ who: "scout", attack: [-8, 7], for: "once", with: "swordsman" },
+							{ tell: [say("survivor", "[scared]Demons! They have found the camp!")] },
+							{ who: "scout", leave: true },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
+					// Ondens långa arm: eld regnar över lägret
 					{
 						id: "ember_rain",
 						at: 330,
@@ -1835,16 +2038,19 @@
 								say("survivor", "[scared]He is in the smoke again. He knows where we are."),
 								say("reeve", "[angry]Then we make it expensive for him to look."),
 							] },
-							{ meteor: { at: [-8, 7] } },
-							{ scenery: { at: [-8, 7], radius: 2, share: 30, add: "fire" } },
+							{ meteor: { at: [-8, 7], radius: 4 } },
 							{ wait: 1 },
+							{ meteor: { at: [-12, 5], radius: 3 } },
+							{ scenery: { at: [-8, 7], radius: 3, share: 30, add: "fire" } },
+							{ scenery: { at: [-8, 7], radius: 4, share: 25, add: "burnt" } },
+							{ who: "camp", walk: "hq" },
 							{ camera: "hq", zoom: 3 },
 						],
 					},
 					{
 						id: "rain_puts_out",
 						on: { event: "weather", weather: "rain" },
-						scene: [{ scenery: { at: [-8, 7], radius: 4, remove: "fire" } }],
+						scene: [{ scenery: { at: [-8, 7], radius: 5, remove: "fire" } }],
 					},
 					{
 						id: "planks_for_shelter",
@@ -1853,29 +2059,46 @@
 						scene: [
 							{ who: "builder", walk: [-7, 6] },
 							{ who: "builder", say: { text: "[happy]Roofs! Real roofs! They stopped glaring at me for almost a minute.", wait: true } },
+							{ scenery: { at: [-8, 7], radius: 5, remove: "baggage" } },
 							{ who: "builder", walk: "hq" },
 							{ who: "builder", vanish: true },
 						],
 					},
-					// Ett riktigt anfall: stormen kommer med soldaterna
+					// Ett riktigt anfall: stormen kommer med soldaterna, uppe på åsen
 					{
 						id: "night_raid",
 						at: 540,
 						weather: "storm",
-						music: null,
-						tell: [
-							say("survivor", "[scared]They are coming from the ridge! All of them!"),
-							say("reeve", "[yell]Everyone behind the walls. Carriers, to the shelter!"),
+						scene: [
+							{ camera: [-20, 14], zoom: 2 },
+							{ spawn: { id: "ridge_knights", image: "images/units/knight.png", race: "demon", count: 4, at: [-18, 8], enter: true } },
+							{ spawn: { id: "ridge_archers", image: "images/units/archer.png", race: "demon", count: 5, at: [-16, 6], enter: true } },
+							{ tell: [
+								say("survivor", "[scared]They are coming from the ridge! All of them!"),
+								say("reeve", "[yell]Everyone behind the walls. Carriers, to the shelter!"),
+							] },
+							{ who: "ridge_archers", shoot: [-8, 7], with: "archer" },
+							{ who: "ridge_knights", walk: [-9, 6] },
+							{ who: "camp", walk: "hq" },
+							{ camera: "hq", zoom: 3 },
+							{ who: "ridge_knights", leave: true },
+							{ who: "ridge_archers", leave: true, together: true },
 						],
 					},
 					{
 						id: "storm_ends",
 						at: 700,
 						weather: "clear",
-						tell: [
-							say("survivor", "[sad]You stood in front of us."),
-							say("reeve", "[sad]It is the least that I can do."),
-							say("survivor", "[slow]It is a start."),
+						scene: [
+							{ camera: [-8, 7], zoom: 3 },
+							{ tell: [
+								say("survivor", "[sad]You stood in front of us."),
+								say("reeve", "[sad]It is the least that I can do."),
+								say("survivor", "[slow]It is a start."),
+							] },
+							{ scenery: { at: [-8, 7], radius: 5, remove: "fire" } },
+							{ who: "camp", walk: [-8, 7] },
+							{ camera: "hq", zoom: 3 },
 						],
 					},
 				],
@@ -1928,16 +2151,29 @@
 					say("reeve", "[angry]I have learned the difference between choosing violence and obeying someone who profits from it."),
 				],
 				events: [
-					// Porten: kameran sveper ut mot rökpelaren, elden flammar upp
+					// Porten: kameran sveper ut mot rökpelaren, vakten står upp, ritualtecken glöder
 					{
 						id: "the_gate",
 						at: 6,
+						spawn: [
+							{ id: "gate_guard", image: "images/units/knight.png", race: "demon", count: 8, at: [48, -4], script: [] },
+							{ id: "lords", image: "images/units/demon/baeltharandmordrath.png", size: 24, at: [52, 0], script: [] },
+						],
 						scene: [
 							{ weather: "fog" },
-							{ camera: [50, 0], zoom: 1 },
-							{ scenery: { at: [50, 0], radius: 5, share: 30, add: "fire" } },
-							{ wait: 2 },
+							{ camera: [30, 0], zoom: 1 },
+							{ scenery: { at: [50, 0], radius: 7, share: 25, add: "runes" } },
+							{ scenery: { at: [50, 0], radius: 6, share: 20, add: "burnt" } },
+							{ scenery: { at: [50, 0], radius: 5, share: 20, add: "fire" } },
+							{ scenery: { at: [46, 3], radius: 4, share: 20, add: "ruin" } },
+							{ scenery: { at: [44, -3], radius: 4, share: 35, add: "weapons" } },
+							{ scenery: { at: [47, 0], radius: 5, share: 30, add: "skeleton" } },
+							{ camera: [50, 0], zoom: 2 },
+							{ who: "gate_guard", walk: [46, 0] },
+							{ wait: 1 },
 							{ tell: [say("narrator", "The last gate stands open. Nothing that walks through it has ever walked back.")] },
+							{ who: "lords", say: { text: "[slow]He is coming.", for: 3 } },
+							{ who: "lords", vanish: true },
 							{ camera: "hq", zoom: 3 },
 						],
 					},
@@ -1949,43 +2185,49 @@
 							say("reeve", "[angry]Then let it answer."),
 						],
 					},
-					// De överlevande från bana 20 kommer tillbaka, inte för Reeve
+					// Hillfolket från bana 20 kommer tillbaka, i en lång marsch, inte för Reeve
 					{
 						id: "survivors_return",
 						at: 200,
 						spawn: [
 							{ id: "survivor", image: "images/units/survivor.png", at: [-20, 5], script: [] },
-							{ id: "hill_folk", image: "images/units/carrier.png", count: 20, at: [-24, 6], script: [] },
 						],
 						scene: [
+							{ camera: [-24, 6], zoom: 2 },
+							{ spawn: { id: "hill_folk", image: "images/units/carrier.png", count: 20, at: [-12, 5], enter: true } },
 							{ camera: "survivor", zoom: 4 },
-							{ who: "survivor", walk: "hq" },
+							{ who: "survivor", walk: "hq", follow: true },
+							{ who: "hill_folk", walk: [-5, 4], together: true },
 							{ who: "survivor", say: { text: "[slow]We did not come for you. We came because he is the one who burned the pass.", wait: true } },
 							{ who: "survivor", say: { text: "[angry]Where do we stand?", wait: true } },
-							{ camera: "hq", zoom: 3 },
-							{ who: "hill_folk", walk: [-6, 4], together: true },
-							{ who: "survivor", walk: [-6, 4] },
 							{ give: { plank: 40, bread: 40 } },
+							{ who: "survivor", walk: [-6, 4] },
+							{ camera: "hq", zoom: 3 },
 						],
 					},
 					{
 						at: 300,
 						tornado: 6,
-						tell: [
-							say("onden", "[slow]“You cannot protect everyone. You never could.”"),
-							say("reeve", "[sad]I know."),
-							say("onden", "[question]Then why continue?"),
-							say("reeve", "[angry]Because failing to save everyone is not permission to serve you."),
+						scene: [
+							{ camera: [20, 0], zoom: 2 },
+							{ tell: [
+								say("onden", "[slow]“You cannot protect everyone. You never could.”"),
+								say("reeve", "[sad]I know."),
+								say("onden", "[question]Then why continue?"),
+								say("reeve", "[angry]Because failing to save everyone is not permission to serve you."),
+							] },
+							{ camera: "hq", zoom: 3 },
 						],
 					},
-					// Pipwick kommer med de sista förråden genom stormen
+					// Pipwick kommer med de sista förråden genom stormen, med en vagn
 					{
 						id: "pipwick_arrives",
 						at: 420,
 						spawn: [{ id: "pipwick", image: "images/units/pipwick.png", at: [-14, -8], script: [] }],
 						scene: [
-							{ camera: "pipwick", zoom: 4 },
-							{ who: "pipwick", walk: "hq" },
+							{ camera: [-14, -8], zoom: 3 },
+							{ scenery: { at: [-14, -9], radius: 0, add: "wagon" } },
+							{ who: "pipwick", walk: "hq", follow: true },
 							{ who: "pipwick", say: { text: "[yell]Do not look at me like that! I walked all the way from the capital with a cart full of bricks!", wait: true } },
 							{ tell: [
 								say("reeve", "[happy]Pipwick."),
@@ -1993,18 +2235,22 @@
 								say("pipwick", "[whisper]After you finish this, of course."),
 							] },
 							{ give: { plank: 50, brick: 30 } },
-							{ who: "pipwick", vanish: true },
+							{ who: "pipwick", walk: [-4, -3] },
 							{ camera: "hq", zoom: 3 },
 						],
 					},
 					{
 						at: 540,
 						super: 8,
-						tell: [
-							say("onden", "“You are still acting from guilt.”"),
-							say("reeve", "[sad]I was. Not now."),
-							say("onden", "[angry]You think a change of words makes you free?"),
-							say("reeve", "No. The choice does."),
+						scene: [
+							{ camera: [8, 0], zoom: 2 },
+							{ tell: [
+								say("onden", "“You are still acting from guilt.”"),
+								say("reeve", "[sad]I was. Not now."),
+								say("onden", "[angry]You think a change of words makes you free?"),
+								say("reeve", "No. The choice does."),
+							] },
+							{ camera: "hq", zoom: 3 },
 						],
 					},
 					{
@@ -2015,22 +2261,30 @@
 							say("reeve", "[angry]Everything breaks. Hold the line."),
 						],
 					},
+					// En hel kolonn demoner marscherar förbi bakom stormen, medan himlen faller
 					{
 						id: "meteor_storm",
 						at: 780,
 						meteors: 60,
-						tell: [
-							say("onden", "[yell]“Look at what you have become. You will be remembered for the same things I am.”"),
-							say("reeve", "[sad]Then let the living decide what they remember."),
+						scene: [
+							{ camera: [30, 0], zoom: 2 },
+							{ spawn: { id: "march", image: "images/units/swordsman.png", race: "demon", count: 10, at: [44, 2], enter: true } },
+							{ who: "march", walk: [22, 0] },
+							{ tell: [
+								say("onden", "[yell]“Look at what you have become. You will be remembered for the same things I am.”"),
+								say("reeve", "[sad]Then let the living decide what they remember."),
+							] },
+							{ who: "march", leave: true },
+							{ camera: "hq", zoom: 3 },
 						],
 					},
 					{
 						id: "calm_before",
 						at: 900,
 						weather: "clear",
-						music: null,
 						scene: [
 							{ camera: [50, 0], zoom: 2 },
+							{ scenery: { at: [50, 0], radius: 5, remove: "fire" } },
 							{ tell: [
 								say("onden", "[slow]“Come, then. Come and finish it, Reeve of Thunebrook.”"),
 								say("reeve", "[slow]I am coming. Not as your servant."),
