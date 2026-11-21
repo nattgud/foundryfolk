@@ -1,3 +1,5 @@
 backup
 debug.log
 out
+*~
+.tmp_*
