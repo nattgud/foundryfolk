@@ -50,9 +50,18 @@
     // men fienden aldrig använder eller försvarar dem. Se World.makeDead.
     deadOwner() { return Players.hostileAI()[0] ?? Players.ENEMY; },
 
+    // Tar bort det som växer på en ruta (blir gräs). Vatten, berg och lava rörs inte.
+    clearGround(x, y) {
+      const tile = World.getTile(x, y);
+      if (!tile || World.buildingAt(x, y) || ['grass', 'water', 'mountain', 'lava', 'tar_pit'].includes(tile.terrainType)) return;
+      if (Config.exposesDirt.has(tile.terrainType)) tile.ground = 'dirt';
+      Utils.assign(tile, Config.terrain.grass, { terrainType: 'grass', remainingAmount: 0, wear: 0 });
+    },
+
     // Placerar en byggnad på exakt plats (dx, dy rutor från HQ). Går det inte (vatten, berg, upptaget) skrivs en varning och den närmaste lediga rutan används.
     placeAt(type, dx, dy, dead, race) {
       const hq = World.headquarters, x = hq.x + dx, y = hq.y + dy;
+      if (dead) this.clearGround(x, y);   // en död byggnad står på exakt den plats som anges: växtligheten under den (träd, buskar, sten) får vika
       type = CityBuilder.Construction.variantFor(type, x, y) || type;   // 'gatherer' eller 'mine' ger inriktningen som passar rutan; ett variant-id (berry_gatherer ...) behålls
       if (!World.canPlace(type, x, y)) {
         console.warn(`Story: ${type} cannot stand at dx ${dx}, dy ${dy} in chapter ${this.chapter.number}; using the nearest free spot`);

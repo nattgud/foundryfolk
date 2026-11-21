@@ -1708,18 +1708,29 @@
 				ai: 45,
 				races: { 2: "demon" },
 				goals: [{ key: "m:soldiers", type: "soldiers", amount: 8 }, { key: "m:kills", type: "kills", amount: 10 }],
-				// Den inre barrikaden: döda demonmurar (kulisser som ingen använder, men som går att slå sönder) med en lucka framför varje grupp
+				// Två dalar, var och en omringad av en bergsring (se händelsen "valleys") med en enda ingång. Ingången är pluggad av en liten demonbas av döda byggnader
+				// (kulisser som går att slå sönder): vill man nå gruppen innanför måste man ta sig igenom basen. Vakttornen syns alltid, med pil på minimapen.
 				start: { buildings: [
-					{ type: 'wall', dx: 8, dy: 4, dead: true, race: 'demon', sight: 3 },
-					{ type: 'wall', dx: 8, dy: 5, dead: true, race: 'demon', sight: 3 },
-					{ type: 'wall', dx: 8, dy: 8, dead: true, race: 'demon', sight: 3 },
-					{ type: 'wall', dx: 8, dy: 9, dead: true, race: 'demon', sight: 3 },
-					{ type: 'wall', dx: 8, dy: 11, dead: true, race: 'demon', sight: 3 },
-					{ type: 'wall', dx: 8, dy: 12, dead: true, race: 'demon', sight: 3 },
-					{ type: 'wall', dx: 2, dy: -12, dead: true, race: 'demon', sight: 3 },
-					{ type: 'wall', dx: 3, dy: -12, dead: true, race: 'demon', sight: 3 },
-					{ type: 'wall', dx: 9, dy: -12, dead: true, race: 'demon', sight: 3 },
-					{ type: 'wall', dx: 8, dy: -12, dead: true, race: 'demon', sight: 3 },
+					// Västra dalen (signalposten): mur över ingången, torn, kasern och förråd
+					{ type: 'wall', dx: -44, dy: -14, dead: true, race: 'demon' },
+					{ type: 'wall', dx: -44, dy: -13, dead: true, race: 'demon' },
+					{ type: 'wall', dx: -44, dy: -12, dead: true, race: 'demon' },
+					{ type: 'wall', dx: -44, dy: -11, dead: true, race: 'demon' },
+					{ type: 'wall', dx: -44, dy: -10, dead: true, race: 'demon' },
+					{ type: 'guard_tower', dx: -47, dy: -15, dead: true, race: 'demon', sight: 4, arrow: true },
+					{ type: 'guard_tower', dx: -47, dy: -9, dead: true, race: 'demon', sight: 4, arrow: true },
+					{ type: 'garrison', dx: -50, dy: -12, dead: true, race: 'demon' },
+					{ type: 'warehouse', dx: -50, dy: -15, dead: true, race: 'demon' },
+					// Norra dalen (de sårade)
+					{ type: 'wall', dx: -2, dy: -46, dead: true, race: 'demon' },
+					{ type: 'wall', dx: -1, dy: -46, dead: true, race: 'demon' },
+					{ type: 'wall', dx: 0, dy: -46, dead: true, race: 'demon' },
+					{ type: 'wall', dx: 1, dy: -46, dead: true, race: 'demon' },
+					{ type: 'wall', dx: 2, dy: -46, dead: true, race: 'demon' },
+					{ type: 'guard_tower', dx: -3, dy: -48, dead: true, race: 'demon', sight: 4, arrow: true },
+					{ type: 'guard_tower', dx: 3, dy: -48, dead: true, race: 'demon', sight: 4, arrow: true },
+					{ type: 'garrison', dx: 0, dy: -50, dead: true, race: 'demon' },
+					{ type: 'warehouse', dx: -3, dy: -50, dead: true, race: 'demon' },
 				] },
 				dialogue: [
 					say("pipwick", "[scared]There are two groups trapped beyond the inner barricade."),
@@ -1733,29 +1744,41 @@
 					say("pipwick", "[sad]No. But pretending we can save both will not make it true."),
 				],
 				events: [
-					// Två instängda grupper, båda inom synhåll från början: vakterna vid signalposten i sydost och de sårade (med några vakter) i norr.
-					// Når spelaren den ena börjar den inre barrikaden stängas: hinner man till den andra inom en minut och en halv räddas båda, annars går den förlorad.
+					// Dalarna: en bergsring runt varje (15 rutor ut, 3 tjock), gräs innanför, och en 5 rutor bred ingång mot basen där demonbasen står. Kör först av allt.
+					{
+						id: "valleys",
+						at: 0,
+						scene: [
+							{ terrain: { at: [-58, -16], radius: 15, to: "mountain" } },
+							{ terrain: { at: [-58, -16], radius: 12, to: "grass" } },
+							{ terrain: { at: [-44, -12], radius: 2, to: "grass" } },
+							{ terrain: { at: [0, -60], radius: 15, to: "mountain" } },
+							{ terrain: { at: [0, -60], radius: 12, to: "grass" } },
+							{ terrain: { at: [0, -46], radius: 2, to: "grass" } },
+						],
+					},
+					// De instängda, långt bortom varsin demonbas: vakterna i väster och de sårade (med några vakter) i norr
 					{
 						id: "trapped",
 						at: 1,
 						spawn: [
-							{ id: "signal", image: "images/units/footman.png", count: 6, at: [12, 8], script: [] },
-							{ id: "wounded", image: "images/units/villager1.png", count: 8, at: [3, -14], script: [] },
-							{ id: "guard", image: "images/units/footman.png", count: 3, at: [2, -14], script: [] },
+							{ id: "signal", image: "images/units/footman.png", count: 6, at: [-66, -18], script: [] },
+							{ id: "wounded", image: "images/units/villager1.png", count: 8, at: [0, -68], script: [] },
+							{ id: "guard", image: "images/units/footman.png", count: 3, at: [1, -68], script: [] },
 						],
 						scene: [
-							{ scenery: { at: [10, 7], radius: 0, add: "wagon" } },
-							{ scenery: { at: [14, 9], radius: 0, add: "fire" } },
-							{ scenery: { at: [9, 9], radius: 0, add: "weapons" } },
-							{ scenery: { at: [2, -15], radius: 0, add: "baggage" } },
-							{ scenery: { at: [3, -13], radius: 0, add: "blood" } },
-							{ who: "signal", say: { text: "[scared]We still hold the post! Hurry!", for: 4 } },
-							{ who: "wounded", say: { text: "[scared]We cannot walk. Please!", for: 4 } },
+							{ scenery: { at: [-64, -17], radius: 0, add: "baggage" } },
+							{ scenery: { at: [-65, -19], radius: 0, add: "blood" } },
+							{ scenery: { at: [-64, -20], radius: 0, add: "wagon" } },
+							{ scenery: { at: [1, -66], radius: 0, add: "baggage" } },
+							{ scenery: { at: [-1, -67], radius: 0, add: "blood" } },
+							{ scenery: { at: [-2, -66], radius: 0, add: "wagon" } },
 						],
 					},
+					// Först in till signalposten: de räddas, och de sårade i norr hinner demonerna före
 					{
 						id: "signal_saved",
-						when: { soldierNear: [12, 8], radius: 4 },
+						when: [{ soldierNear: [-66, -18], radius: 5 }, { notFired: "wounded_saved" }],
 						scene: [
 							{ camera: "signal", zoom: 4 },
 							{ who: "signal", say: { text: "[sad]You came. We held the post as long as we could.", wait: true } },
@@ -1765,8 +1788,25 @@
 						],
 					},
 					{
+						id: "wounded_lost",
+						when: { fired: "signal_saved" },
+						scene: [
+							{ spawn: { id: "raiders_n", image: "images/units/swordsman.png", race: "demon", count: 4, at: [0, -66] } },
+							{ who: "raiders_n", attack: { actor: "wounded" }, for: 5, with: "swordsman" },
+							{ who: "wounded", vanish: true },
+							{ who: "guard", vanish: true },
+							{ scenery: { at: [0, -68], radius: 0, add: "corpse" } },
+							{ scenery: { at: [1, -68], radius: 0, add: "corpse" } },
+							{ scenery: { at: [-1, -69], radius: 0, add: "blood" } },
+							{ who: "raiders_n", vanish: true },
+							{ tell: [say("narrator", "Far to the north, beyond the ridge, smoke rises. Nobody has to tell the soldiers what it means.")] },
+							{ tell: PRICE },
+						],
+					},
+					// Först in till de sårade: de räddas, och signalposten i väster faller
+					{
 						id: "wounded_saved",
-						when: { soldierNear: [3, -14], radius: 4 },
+						when: [{ soldierNear: [0, -68], radius: 5 }, { notFired: "signal_saved" }],
 						scene: [
 							{ camera: "wounded", zoom: 4 },
 							{ who: "wounded", say: { text: "[sad]Thank you. We cannot walk far.", wait: true } },
@@ -1777,59 +1817,19 @@
 							{ camera: "hq", zoom: 3 },
 						],
 					},
-					// Barrikaden börjar stängas när den första gruppen är hemma
-					{
-						id: "closing_a",
-						when: [{ fired: "signal_saved" }, { notFired: "wounded_saved" }],
-						tell: [say("pipwick", "[scared]The inner barricade is closing behind them. We have a minute and a half, no more."), say("reeve", "[angry]Then we do not waste it.")],
-					},
-					{
-						id: "closing_b",
-						when: [{ fired: "wounded_saved" }, { notFired: "signal_saved" }],
-						tell: [say("pipwick", "[scared]The inner barricade is closing behind them. We have a minute and a half, no more."), say("reeve", "[angry]Then we do not waste it.")],
-					},
-					// Hinner man inte till den andra gruppen kommer demonerna först
-					{
-						id: "wounded_lost",
-						when: [{ since: "signal_saved", seconds: 90 }, { notFired: "wounded_saved" }],
-						scene: [
-							{ camera: [3, -14], zoom: 3 },
-							{ spawn: { id: "raiders_n", image: "images/units/swordsman.png", race: "demon", count: 4, at: [3, -12], enter: true } },
-							{ who: "raiders_n", attack: { actor: "wounded" }, for: 5, with: "swordsman" },
-							{ who: "wounded", vanish: true },
-							{ who: "guard", vanish: true },
-							{ scenery: { at: [3, -14], radius: 0, add: "corpse" } },
-							{ scenery: { at: [2, -14], radius: 0, add: "corpse" } },
-							{ scenery: { at: [4, -15], radius: 0, add: "blood" } },
-							{ who: "raiders_n", leave: true },
-							{ tell: PRICE },
-							{ camera: "hq", zoom: 3 },
-						],
-					},
 					{
 						id: "signal_lost",
-						when: [{ since: "wounded_saved", seconds: 90 }, { notFired: "signal_saved" }],
+						when: { fired: "wounded_saved" },
 						scene: [
-							{ camera: [12, 8], zoom: 3 },
-							{ spawn: { id: "raiders_s", image: "images/units/swordsman.png", race: "demon", count: 4, at: [13, 9], enter: true } },
+							{ spawn: { id: "raiders_s", image: "images/units/swordsman.png", race: "demon", count: 4, at: [-64, -18] } },
 							{ who: "raiders_s", attack: { actor: "signal" }, for: 5, with: "swordsman" },
 							{ who: "signal", vanish: true },
-							{ scenery: { at: [12, 8], radius: 0, add: "corpse" } },
-							{ scenery: { at: [11, 9], radius: 0, add: "corpse" } },
-							{ scenery: { at: [13, 7], radius: 0, add: "blood" } },
-							{ who: "raiders_s", leave: true },
+							{ scenery: { at: [-66, -18], radius: 0, add: "corpse" } },
+							{ scenery: { at: [-65, -17], radius: 0, add: "corpse" } },
+							{ scenery: { at: [-64, -19], radius: 0, add: "blood" } },
+							{ who: "raiders_s", vanish: true },
+							{ tell: [say("narrator", "Far to the west, beyond the ridge, smoke rises. Nobody has to tell the soldiers what it means.")] },
 							{ tell: PRICE },
-							{ camera: "hq", zoom: 3 },
-						],
-					},
-					// Hann man med båda
-					{
-						id: "both_saved",
-						when: [{ fired: "signal_saved" }, { fired: "wounded_saved" }],
-						tell: [
-							say("reeve", "[slow]Both groups. All of them that could still walk."),
-							say("pipwick", "[happy]I did the arithmetic twice. It should not have worked."),
-							say("reeve", "[sad]It worked because the soldiers did not stop to ask which group mattered more."),
 						],
 					},
 				],
