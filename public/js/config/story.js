@@ -31,7 +31,7 @@
                   fiendens HQ mot spelarens, oberoende av datorns vanliga anfallsregler (ai.js). until: 'fog' = tills dimman lyft, annars tills kapitlet är klart
      events       [{ at (sekunder), goal, when, tell: dialog | give: { vara: antal, ... } (läggs i spelarens huvudlager) | music: byter musiken (samma form som kapitlets music, och läggs läge för läge ovanpå kapitlets och tidigare händelsers; null = tillbaka till standardmusiken) | weather: 'storm' | tornado: radie | super: radie | meteors: sekunder }]. En händelse sker en gång, när alla
                   villkor den har slår till. at: sekunder in i kapitlet. goal: målet med det numret (1 = första målet) är klart. whileFog: true = bara så länge dimman ligger (en händelse som kommer för sent hoppas över). when: { resource, amount } (har så mycket av en vara)
-                  eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { goal: n, left: k } = mål nummer n har högst k kvar (t.ex. näst sista yxan, utan att upprepa målets siffror); { resource, made: n } = n har tillverkats eller samlats i kapitlet, oavsett vart varan tog vägen (också direkt till nästa hus, utan att passera lagret); { resource, more: n } = lagret har n fler än man började med; { sees: 'rival' } = man har sett någon av fiendens byggnader (soldater räknas inte); { sees: 'soldier' } = en av datorns soldater syns (t.ex. en anfallsvåg, som inte har någon byggnad); { soldierNear: [dx, dy], radius } = en av spelarens soldater är inom radius rutor (standard 4) från platsen; { fired: 'id' } / { notFired: 'id' } = en annan händelse har / har inte utlösts (så att två händelser utesluter varandra). T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
+                  eller { type: 'build', id, amount } (har byggt så många), samma slag som goals. { goal: n, left: k } = mål nummer n har högst k kvar (t.ex. näst sista yxan, utan att upprepa målets siffror); { resource, made: n } = n har tillverkats eller samlats i kapitlet, oavsett vart varan tog vägen (också direkt till nästa hus, utan att passera lagret); { resource, more: n } = lagret har n fler än man började med; { sees: 'rival' } = man har sett någon av fiendens byggnader (soldater räknas inte); { sees: 'soldier' } = en av datorns soldater syns (t.ex. en anfallsvåg, som inte har någon byggnad); { soldierNear: [dx, dy], radius } = en av spelarens soldater är inom radius rutor (standard 4) från platsen; { fired: 'id' } / { notFired: 'id' } = en annan händelse har / har inte utlösts (så att två händelser utesluter varandra); { since: 'id', seconds: n } = n sekunder har gått sedan en annan händelse utlöstes. T.ex. { goal: 1, tell: [say('albertha', 'Well done!')] }
      scenery      [[typ, x, y, bredd, höjd, lager, vridning, spegla], ...] kulisser på exakta rutor (bredd, höjd, lager, vridning och spegla valfria, null/false hoppar över: fyller en rektangel; lager 0 är standard, högre ritas ovanpå, negativa under; vridning 0-3 = kvarts varv medurs, spegla 1 = speglad i sidled före vridningen). Bara bilder, ingen byggnad: går att gå över, men inget kan byggas där.
                   Typerna står i sceneryTypes. Spelarens bas ligger på 0, 0. Exempel: scenery: [['ruin', 4, -3], ['ruin', 5, -3, 3, 2], ['fire', 6, -2, null, null, 1]]
      meteorProof  enhetstyper som meteorer inte skadar */
@@ -1708,6 +1708,19 @@
 				ai: 45,
 				races: { 2: "demon" },
 				goals: [{ key: "m:soldiers", type: "soldiers", amount: 8 }, { key: "m:kills", type: "kills", amount: 10 }],
+				// Den inre barrikaden: döda demonmurar (kulisser som ingen använder, men som går att slå sönder) med en lucka framför varje grupp
+				start: { buildings: [
+					{ type: 'wall', dx: 8, dy: 4, dead: true, race: 'demon', sight: 3 },
+					{ type: 'wall', dx: 8, dy: 5, dead: true, race: 'demon', sight: 3 },
+					{ type: 'wall', dx: 8, dy: 8, dead: true, race: 'demon', sight: 3 },
+					{ type: 'wall', dx: 8, dy: 9, dead: true, race: 'demon', sight: 3 },
+					{ type: 'wall', dx: 8, dy: 11, dead: true, race: 'demon', sight: 3 },
+					{ type: 'wall', dx: 8, dy: 12, dead: true, race: 'demon', sight: 3 },
+					{ type: 'wall', dx: 2, dy: -12, dead: true, race: 'demon', sight: 3 },
+					{ type: 'wall', dx: 3, dy: -12, dead: true, race: 'demon', sight: 3 },
+					{ type: 'wall', dx: 9, dy: -12, dead: true, race: 'demon', sight: 3 },
+					{ type: 'wall', dx: 8, dy: -12, dead: true, race: 'demon', sight: 3 },
+				] },
 				dialogue: [
 					say("pipwick", "[scared]There are two groups trapped beyond the inner barricade."),
 					say("reeve", "[question]How many can we reach?"),
@@ -1720,12 +1733,13 @@
 					say("pipwick", "[sad]No. But pretending we can save both will not make it true."),
 				],
 				events: [
-					// Två instängda grupper, båda inom synhåll från början: signalposten i sydost och de sårade i norr. Väg en soldat till någon av dem: dit man kommer först är den man räddar.
+					// Två instängda grupper, båda inom synhåll från början: vakterna vid signalposten i sydost och de sårade (med några vakter) i norr.
+					// Når spelaren den ena börjar den inre barrikaden stängas: hinner man till den andra inom en minut och en halv räddas båda, annars går den förlorad.
 					{
 						id: "trapped",
 						at: 1,
 						spawn: [
-							{ id: "signal", image: "images/units/carrier.png", count: 6, at: [12, 8], script: [] },
+							{ id: "signal", image: "images/units/footman.png", count: 6, at: [12, 8], script: [] },
 							{ id: "wounded", image: "images/units/villager1.png", count: 8, at: [3, -14], script: [] },
 							{ id: "guard", image: "images/units/footman.png", count: 3, at: [2, -14], script: [] },
 						],
@@ -1739,21 +1753,45 @@
 							{ who: "wounded", say: { text: "[scared]We cannot walk. Please!", for: 4 } },
 						],
 					},
-					// Först till signalposten: de räddas, och de sårade får ingen hjälp
 					{
 						id: "signal_saved",
-						when: [{ soldierNear: [12, 8], radius: 4 }, { notFired: "wounded_saved" }],
+						when: { soldierNear: [12, 8], radius: 4 },
 						scene: [
 							{ camera: "signal", zoom: 4 },
-							{ who: "signal", say: { text: "[sad]You came. We held it as long as we could.", wait: true } },
+							{ who: "signal", say: { text: "[sad]You came. We held the post as long as we could.", wait: true } },
 							{ who: "signal", walk: "hq" },
 							{ who: "signal", vanish: true },
 							{ camera: "hq", zoom: 3 },
 						],
 					},
 					{
+						id: "wounded_saved",
+						when: { soldierNear: [3, -14], radius: 4 },
+						scene: [
+							{ camera: "wounded", zoom: 4 },
+							{ who: "wounded", say: { text: "[sad]Thank you. We cannot walk far.", wait: true } },
+							{ who: "wounded", walk: "hq" },
+							{ who: "guard", walk: "hq", together: true },
+							{ who: "wounded", vanish: true },
+							{ who: "guard", vanish: true },
+							{ camera: "hq", zoom: 3 },
+						],
+					},
+					// Barrikaden börjar stängas när den första gruppen är hemma
+					{
+						id: "closing_a",
+						when: [{ fired: "signal_saved" }, { notFired: "wounded_saved" }],
+						tell: [say("pipwick", "[scared]The inner barricade is closing behind them. We have a minute and a half, no more."), say("reeve", "[angry]Then we do not waste it.")],
+					},
+					{
+						id: "closing_b",
+						when: [{ fired: "wounded_saved" }, { notFired: "signal_saved" }],
+						tell: [say("pipwick", "[scared]The inner barricade is closing behind them. We have a minute and a half, no more."), say("reeve", "[angry]Then we do not waste it.")],
+					},
+					// Hinner man inte till den andra gruppen kommer demonerna först
+					{
 						id: "wounded_lost",
-						when: { fired: "signal_saved" },
+						when: [{ since: "signal_saved", seconds: 90 }, { notFired: "wounded_saved" }],
 						scene: [
 							{ camera: [3, -14], zoom: 3 },
 							{ spawn: { id: "raiders_n", image: "images/units/swordsman.png", race: "demon", count: 4, at: [3, -12], enter: true } },
@@ -1768,23 +1806,9 @@
 							{ camera: "hq", zoom: 3 },
 						],
 					},
-					// Först till de sårade: de räddas, och signalposten faller
-					{
-						id: "wounded_saved",
-						when: [{ soldierNear: [3, -14], radius: 4 }, { notFired: "signal_saved" }],
-						scene: [
-							{ camera: "wounded", zoom: 4 },
-							{ who: "wounded", say: { text: "[sad]Thank you. We cannot walk far.", wait: true } },
-							{ who: "wounded", walk: "hq" },
-							{ who: "guard", walk: "hq", together: true },
-							{ who: "wounded", vanish: true },
-							{ who: "guard", vanish: true },
-							{ camera: "hq", zoom: 3 },
-						],
-					},
 					{
 						id: "signal_lost",
-						when: { fired: "wounded_saved" },
+						when: [{ since: "wounded_saved", seconds: 90 }, { notFired: "signal_saved" }],
 						scene: [
 							{ camera: [12, 8], zoom: 3 },
 							{ spawn: { id: "raiders_s", image: "images/units/swordsman.png", race: "demon", count: 4, at: [13, 9], enter: true } },
@@ -1796,6 +1820,16 @@
 							{ who: "raiders_s", leave: true },
 							{ tell: PRICE },
 							{ camera: "hq", zoom: 3 },
+						],
+					},
+					// Hann man med båda
+					{
+						id: "both_saved",
+						when: [{ fired: "signal_saved" }, { fired: "wounded_saved" }],
+						tell: [
+							say("reeve", "[slow]Both groups. All of them that could still walk."),
+							say("pipwick", "[happy]I did the arithmetic twice. It should not have worked."),
+							say("reeve", "[sad]It worked because the soldiers did not stop to ask which group mattered more."),
 						],
 					},
 				],

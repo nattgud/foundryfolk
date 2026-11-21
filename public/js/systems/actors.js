@@ -41,6 +41,7 @@
      { gone: id }         den har försvunnit eller dött
      { killed: id }       den har dödats av en annan skådespelare
      { soldierNear: mål, radius }  en av spelarens soldater är inom radius rutor (standard 4) från målet
+     { since: 'händelse-id', seconds: n }  n sekunder har gått sedan en annan händelse utlöstes
      { fired: 'händelse-id' } / { notFired: 'händelse-id' }  en annan händelse har / har inte utlösts (så att två händelser utesluter varandra)
      { near: id, of: mål, radius }  skådespelaren är inom radius rutor (standard 3) från målet
      { read: 'händelse-id' }  dialogen i händelsen med id: 'händelse-id' är läst
@@ -588,6 +589,8 @@
     },
     // En annan händelse (event.id) har utlösts, eller inte: gör att två händelser kan utesluta varandra, { notFired: 'rädda_a' }
     fired: id => firedEvent(id),
+    // Så många sekunder har gått sedan en annan händelse (event.id) utlöstes: { since: 'rädda_a', seconds: 90 }
+    since: (id, need) => { const i = (CityBuilder.Story.chapter?.events || []).findIndex(event => event.id === id), at = i >= 0 ? levels().progressRef().told['last:' + i] : undefined; return at !== undefined && levels().seconds - at >= (need.seconds ?? 0); },
     notFired: id => !firedEvent(id),
     read: key => levels().told('read:' + key),
     told: key => levels().told(key),
