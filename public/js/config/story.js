@@ -1706,7 +1706,7 @@
 				name: "The Price of Rescue",
 				rivals: 0,   // ingen levande fiende som går genom basen: demonerna finns bara som döda byggnader och i scenerna
 				races: { 2: "demon" },
-				goals: [{ key: "m:soldiers", type: "soldiers", amount: 8 }, { key: "m:destroy", type: "destroy", amount: 6 }],
+				goals: [{ key: "m:soldiers", type: "soldiers", amount: 8 }, { key: "m:destroy:any", type: "destroy", id: "any", amount: 6 }],
 				// Två dalar, var och en omringad av en bergsring (se händelsen "valleys") med en enda ingång. Ingången är pluggad av en liten demonbas av döda byggnader
 				// (kulisser som går att slå sönder): vill man nå gruppen innanför måste man ta sig igenom basen. Vakttornen syns alltid, med pil på minimapen.
 				start: { buildings: [
