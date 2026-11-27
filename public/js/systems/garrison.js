@@ -55,7 +55,7 @@
     flagOf: building => Garrison.isAttacking(building) ? CityBuilder.Flags.of(building.player) : undefined,
 
     // Hur långt byggnadens soldater letar efter fiender när de vaktar byggnaden
-    radius: building => building.definition.job.searchRadius ?? Config.settings.military.searchRadius,
+    radius: building => building.guard ?? building.definition.job.searchRadius ?? Config.settings.military.searchRadius,   // guard: storyns egen vaktradie (story.js, start.buildings)
 
     // Vald soldattyp (den första om inget valts eller valet inte längre gäller)
     trainingType(building) {

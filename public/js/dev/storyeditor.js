@@ -296,13 +296,15 @@
     const tabsNow = () => [['scene', 'Scener'], ['map', 'Karta'], ['export', 'Exportera']];
 
     function viewMap() {
-      return `<p class="hint">Placera kulisser och döda byggnader direkt på kartan. Klicka eller dra för att måla.</p>
+      return `<p class="hint">Placera kulisser, döda byggnader och vaktande fiendebyggnader direkt på kartan. Klicka eller dra för att måla.</p>
         <div class="row"><label><input type="radio" name="mode" data-bind="mode" value="place"${st.mode === 'place' ? ' checked' : ''}> Placera</label>
         <label><input type="radio" name="mode" data-bind="mode" value="move"${st.mode === 'move' ? ' checked' : ''}> Flytta / ta bort</label></div>
         ${pickerHtml()}
         <div class="row">Lager <input type="number" data-bind="layer" value="${esc(st.layer)}" placeholder="auto" style="width:60px"> <span class="hint">(auto = blod under lik)</span></div>
         <div class="row">Vridning <select data-bind="turn">${[0, 1, 2, 3].map(n => `<option value="${n}"${+st.turn === n ? ' selected' : ''}>${n * 90}°</option>`).join('')}</select> <label><input type="checkbox" data-bind="flip"${st.flip ? ' checked' : ''}> Spegla</label> <span class="hint">(tangent R vrider, F speglar. Måla över en kuliss för att ändra den)</span></div>
         <div class="row"><label title="Gäller de döda byggnader du placerar härefter"><input type="checkbox" data-bind="beacon"${st.beacon ? ' checked' : ''}> Döda byggnader syns alltid (även i dimman)</label></div>
+        <div class="row"><label title="Gäller byggnader du placerar härefter: ett torn eller en kasern med fiendesoldater som rycker ut mot spelarens enheter nära den och går hem igen"><input type="checkbox" data-bind="enemy"${st.enemy ? ' checked' : ''}> Levande fiendebyggnad som vaktar (i stället för död)</label></div>
+        ${st.enemy ? `<div class="row">Soldater <select data-bind="guardKind">${soldierKinds.map(id => `<option value="${id}"${(st.guardKind || 'archer') === id ? ' selected' : ''}>${esc(Config.units[id].name || id)}</option>`).join('')}</select> <input type="number" min="0" data-bind="guardCount" value="${esc(st.guardCount ?? 3)}" style="width:50px"> st. Vaktradie <input type="number" min="1" data-bind="guardRadius" value="${esc(st.guardRadius ?? 7)}" style="width:50px"> rutor</div><p class="hint">Soldaterna finns bara i torn och kaserner. De tränar inga nya.</p>` : ''}
         <div class="row">Ras <select data-bind="deadRace">${raceChoices.map(([value, label]) => `<option value="${esc(value)}"${(st.deadRace || '') === value ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select> <span class="hint">(döda byggnader härefter)</span></div>
         ${st.beacon ? `<div class="row">Radie <input type="number" min="1" data-bind="beaconRadius" value="${esc(st.beaconRadius ?? 6)}" style="width:60px"> rutor <label><input type="checkbox" data-bind="beaconArrow"${st.beaconArrow ? ' checked' : ''}> pil mot den på minimapen</label></div><p class="hint">Gäller byggnader du placerar härefter. Ta bort och placera om för att ändra en som redan står.</p>` : ''}
         <p class="hint">Högerklick eller Delete tar bort det under pekaren. Skift + dra styr kameran.</p>
@@ -605,9 +607,9 @@
     }
     const editable = building => building && !building.removed && building.type !== 'hq' && !building.definition.pile;
     function exportParts() {
-      const base = hq(), list = World.buildings.filter(building => editable(building) && building.buildProgress >= 1 && (building.player === Players.HUMAN || building.dead)).sort((a, b) => a.y - b.y || a.x - b.x);
+      const base = hq(), list = World.buildings.filter(building => editable(building) && building.buildProgress >= 1 && (building.player === Players.HUMAN || building.dead || building.storyEnemy)).sort((a, b) => a.y - b.y || a.x - b.x);
       const eye = list.find(building => building.type === 'eye_of_shades' && !building.dead);
-      const row = building => `{ type: '${building.type}', dx: ${building.x - base.x}, dy: ${building.y - base.y}${building.dead ? ', dead: true' : ''}${building.dead && building.deadRace ? `, race: '${building.deadRace}'` : ''}${building.dead && building.sight ? ', sight: ' + building.sight : ''}${building.dead && building.arrow ? ', arrow: ' + (building.arrow === true ? 'true' : `'${building.arrow}'`) : ''} }`;
+      const row = building => `{ type: '${building.type}', dx: ${building.x - base.x}, dy: ${building.y - base.y}${building.dead ? ', dead: true' : ''}${building.dead && building.deadRace ? `, race: '${building.deadRace}'` : ''}${building.storyEnemy ? `, enemy: true${building.storyGarrison ? ', garrison: ' + ser(building.storyGarrison) : ''}${building.guard ? ', guard: ' + building.guard : ''}` : ''}${(building.dead || building.storyEnemy) && building.sight ? ', sight: ' + building.sight : ''}${(building.dead || building.storyEnemy) && building.arrow ? ', arrow: ' + (building.arrow === true ? 'true' : `'${building.arrow}'`) : ''} }`;
       const parts = [];
       parts.push({ title: 'Kulisser (ersätter kapitlets scenery)', text: `scenery: [\n${sceneryRows().map(line => '\t' + line + ',').join('\n')}\n],` });
       parts.push({ title: 'Startbyggnader och döda byggnader (ersätter kapitlets start)', text: `start: { buildings: [\n${list.filter(building => building !== eye).map(building => '\t' + row(building) + ',').join('\n')}\n] },` + (eye ? `\neye: { dx: ${eye.x - base.x}, dy: ${eye.y - base.y} },` : '') });
@@ -674,7 +676,7 @@
       if (bind === 'stepDraft.type') { if (STORMS.includes(target.value) && stepDraft.target === 'hq') stepDraft.target = ''; else if (!STORMS.includes(target.value) && stepDraft.target === '') stepDraft.target = 'hq'; if (stepDraft.target === '__keep' && !stepDraft.keepArg) stepDraft.target = 'hq'; }
       if (bind === 'stepDraft.scenMode') stepDraft.scenType = target.value === 'remove' ? '' : sceneryIds[0] || '';
       if (bind === 'castDraft.image') { castDraft.race = characters[target.value] === 'demon' ? 'demon' : ''; castDraft.id = uniqueId(nameOf(target.value).replace(/[^a-z0-9_]/gi, '').toLowerCase() || 'person'); }
-      if (target.tagName === 'SELECT' || target.type === 'radio' || bind === 'scene.name' || bind === 'stepDraft.together' || bind === 'stepDraft.letterThrone' || bind === 'stepDraft.battleOff' || bind === 'scene.repeat' || bind === 'scene.battleOff' || bind === 'scene.letterThrone' || ['scene.tornado', 'scene.super', 'scene.meteors'].includes(bind) || bind === 'beacon') render();
+      if (target.tagName === 'SELECT' || target.type === 'radio' || bind === 'scene.name' || bind === 'stepDraft.together' || bind === 'stepDraft.letterThrone' || bind === 'stepDraft.battleOff' || bind === 'scene.repeat' || bind === 'scene.battleOff' || bind === 'scene.letterThrone' || ['scene.tornado', 'scene.super', 'scene.meteors'].includes(bind) || bind === 'beacon' || bind === 'enemy') render();
     });
     panel.addEventListener('click', event => {
       const button = event.target.closest('[data-act]'); if (!button) return;
@@ -824,9 +826,11 @@
       World.sceneryList = World.sceneryList.filter(other => other !== item);
     }
     const buildingAt = (x, y) => { const building = World.buildingAt(x, y); return editable(building) ? building : null; };
-    function placeBuilding(type, x, y, dead, beacon) {
+    // enemy (valfritt): { garrison, guard } gör byggnaden till en levande fiendebyggnad (Story.arm) i stället för död
+    function placeBuilding(type, x, y, dead, beacon, enemy) {
       if (!World.canPlace(type, x, y)) { notice(`${type} kan inte stå på ${x}, ${y}.`); return null; }
-      const building = World.placeBuilding(C.Construction.variantFor(type, x, y) || type, x, y, true, dead ? Story.deadOwner() : Players.HUMAN);
+      const building = World.placeBuilding(C.Construction.variantFor(type, x, y) || type, x, y, true, dead || enemy ? Story.deadOwner() : Players.HUMAN);
+      if (enemy) { Story.arm(building, enemy.garrison, enemy.guard); if (beacon) { const { deadRace, ...seen } = beacon; Object.assign(building, seen); World.buildingVersion++; } return building; }
       if (!dead) return Story.equip(building);
       World.makeDead(building, beacon?.deadRace); if (beacon) { Object.assign(building, beacon); World.buildingVersion++; }
       return building;
@@ -835,7 +839,8 @@
     const tileOf = event => Renderer.screenToTile(event.clientX, event.clientY);
     function put(tile) {
       const [kind, type] = st.type.split(':');
-      if (kind === 's') addScenery(type, tile.x, tile.y, layerFor(type), +st.turn || 0, !!st.flip); else placeBuilding(type, tile.x, tile.y, true, st.beacon || st.deadRace ? { ...(st.beacon ? { sight: Math.max(1, +st.beaconRadius || 6), ...(st.beaconArrow ? { arrow: true } : {}) } : {}), ...(st.deadRace ? { deadRace: st.deadRace } : {}) } : null);
+      if (kind === 's') addScenery(type, tile.x, tile.y, layerFor(type), +st.turn || 0, !!st.flip); else placeBuilding(type, tile.x, tile.y, !st.enemy, st.beacon || st.deadRace ? { ...(st.beacon ? { sight: Math.max(1, +st.beaconRadius || 6), ...(st.beaconArrow ? { arrow: true } : {}) } : {}), ...(st.deadRace ? { deadRace: st.deadRace } : {}) } : null,
+        st.enemy ? { garrison: +(st.guardCount ?? 3) > 0 && Config.buildings[type]?.job?.kind === 'garrison' ? { [st.guardKind || 'archer']: +(st.guardCount ?? 3) } : null, guard: Math.max(1, +(st.guardRadius ?? 7)) } : null);
     }
     function removeAt(tile) {
       const items = sceneryOn(tile.x, tile.y), building = buildingAt(tile.x, tile.y);
@@ -873,7 +878,7 @@
       event.stopImmediatePropagation();
       const tile = tileOf(event);
       if (drag.item) { const { type, layer, turn, flip } = drag.item; removeScenery(drag.item); addScenery(type, tile.x, tile.y, layer, turn, flip); }
-      else { const { building } = drag, { type, dead, sight, arrow, deadRace } = building, from = { x: building.x, y: building.y }, beacon = sight || arrow || deadRace ? { ...(sight ? { sight } : {}), ...(arrow ? { arrow } : {}), ...(deadRace ? { deadRace } : {}) } : null; World.removeBuilding(building); if (!placeBuilding(type, tile.x, tile.y, dead, beacon)) placeBuilding(type, from.x, from.y, dead, beacon); }
+      else { const { building } = drag, { type, dead, sight, arrow, deadRace } = building, from = { x: building.x, y: building.y }, beacon = sight || arrow || deadRace ? { ...(sight ? { sight } : {}), ...(arrow ? { arrow } : {}), ...(deadRace ? { deadRace } : {}) } : null, enemy = building.storyEnemy ? { garrison: building.storyGarrison, guard: building.guard } : null; World.removeBuilding(building); if (!placeBuilding(type, tile.x, tile.y, dead, beacon, enemy)) placeBuilding(type, from.x, from.y, dead, beacon, enemy); }
     }, true);
     window.addEventListener('contextmenu', event => { if (event.target === canvas && !event.shiftKey && mine(event)) event.preventDefault(); }, true);
     window.addEventListener('keydown', event => {

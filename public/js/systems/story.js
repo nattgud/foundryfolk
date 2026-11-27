@@ -39,10 +39,20 @@
       return building;
     },
 
-    place(type, x, y, dead, race) {
+    // Gör en placerad fiendebyggnad levande (start.buildings enemy: true, och editorn): soldaterna i garrison bor där och vaktar inom guard rutor.
+    // Den pausas, så den tränar inga nya och beställer inget. storyGarrison minns styrkan från början (editorns export).
+    arm(building, garrison, guard) {
+      building.storyEnemy = true; building.paused = true;
+      if (garrison) { building.garrison = { ...garrison }; building.storyGarrison = { ...garrison }; }
+      if (guard) building.guard = guard;
+      return building;
+    },
+
+    // enemy: byggnaden är en levande fiendebyggnad (ägs av deadOwner), t.ex. ett torn som vaktar med sin garnison
+    place(type, x, y, dead, race, enemy) {
       const spot = this.freeSpot(type, x, y);
       if (!spot) return null;
-      const building = World.placeBuilding(CityBuilder.Construction.variantFor(type, spot.x, spot.y) || type, spot.x, spot.y, true, dead ? this.deadOwner() : Players.HUMAN);   // en samlare eller gruva får inriktningen som passar rutan
+      const building = World.placeBuilding(CityBuilder.Construction.variantFor(type, spot.x, spot.y) || type, spot.x, spot.y, true, dead || enemy ? this.deadOwner() : Players.HUMAN);   // en samlare eller gruva får inriktningen som passar rutan
       return dead ? World.makeDead(building, race) : this.equip(building);
     },
 
@@ -59,15 +69,15 @@
     },
 
     // Placerar en byggnad på exakt plats (dx, dy rutor från HQ). Går det inte (vatten, berg, upptaget) skrivs en varning och den närmaste lediga rutan används.
-    placeAt(type, dx, dy, dead, race) {
+    placeAt(type, dx, dy, dead, race, enemy) {
       const hq = World.headquarters, x = hq.x + dx, y = hq.y + dy;
-      if (dead) this.clearGround(x, y);   // en död byggnad står på exakt den plats som anges: växtligheten under den (träd, buskar, sten) får vika
+      if (dead || enemy) this.clearGround(x, y);   // en död byggnad står på exakt den plats som anges: växtligheten under den (träd, buskar, sten) får vika
       type = CityBuilder.Construction.variantFor(type, x, y) || type;   // 'gatherer' eller 'mine' ger inriktningen som passar rutan; ett variant-id (berry_gatherer ...) behålls
       if (!World.canPlace(type, x, y)) {
         console.warn(`Story: ${type} cannot stand at dx ${dx}, dy ${dy} in chapter ${this.chapter.number}; using the nearest free spot`);
-        return this.place(type, x, y, dead, race);
+        return this.place(type, x, y, dead, race, enemy);
       }
-      const building = World.placeBuilding(type, x, y, true, dead ? this.deadOwner() : Players.HUMAN);
+      const building = World.placeBuilding(type, x, y, true, dead || enemy ? this.deadOwner() : Players.HUMAN);
       return dead ? World.makeDead(building, race) : this.equip(building);
     },
 
@@ -75,6 +85,8 @@
     // En byggnad i start.buildings är antingen { type, dx, dy } (exakt plats, mätt i rutor från HQ) eller bara ett id (automatisk plats runt HQ).
     // { type, dx, dy, dead: true, race: 'demon' (valfritt: byggnadens utseende, annars fiendens ras) } är en död byggnad: bara en kuliss som ingen kan använda (se deadOwner). Lägg till sight: 6 för att den alltid ska synas genom dimman
     // (radie i rutor, som en egen byggnad) och arrow: true (eller en färg, t.ex. '#ff4fd8') för en pil mot den på minimapen när den ligger utanför.
+    // { type, dx, dy, enemy: true, garrison: { archer: 2 }, guard: 7 } är en levande fiendebyggnad: ett torn eller en kasern med soldater inne som rycker ut mot
+    // spelarens enheter inom guard rutor (annars byggnadens searchRadius) och går hem igen. Den tränar inga nya. sight och arrow fungerar som för döda byggnader.
     // Inriktningen är själva typen: layout() skriver t.ex. 'herb_gatherer' eller 'copper_mine'. Ett 'gatherer' eller 'mine' får den inriktning som passar platsen.
     // eye: true placerar Eye of Shades automatiskt mot fienden, eye: { reach } längre eller kortare dit (andel av avståndet mellan baserna), eye: { dx, dy } på en bestämd plats.
     begin() {
@@ -82,9 +94,10 @@
       if (!chapter || !hq) return;
       (chapter.start?.buildings || []).forEach((entry, i) => {
         if (entry.type) {
-          const building = this.placeAt(entry.type, entry.dx, entry.dy, entry.dead, entry.race);
+          const enemy = !entry.dead && !!entry.enemy, building = this.placeAt(entry.type, entry.dx, entry.dy, entry.dead, entry.race, enemy);
           // En död byggnad med sight (radie i rutor) syns alltid för spelaren, genom dimman, som en egen byggnad; arrow: true (eller en färg) ger en pil mot den på minimapen
-          if (building && entry.dead) { if (entry.sight) building.sight = entry.sight; if (entry.arrow) building.arrow = entry.arrow; }
+          if (building && (entry.dead || enemy)) { if (entry.sight) building.sight = entry.sight; if (entry.arrow) building.arrow = entry.arrow; }
+          if (building && enemy) this.arm(building, entry.garrison, entry.guard);
           return building;
         }
         const angle = i * 2.4 + chapter.number, distance = 6 + (i % 4) * 2;

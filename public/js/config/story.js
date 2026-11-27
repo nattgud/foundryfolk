@@ -1704,11 +1704,11 @@
 			// 18
 			{
 				name: "The Price of Rescue",
-				rivals: 0,   // ingen levande fiende som går genom basen: demonerna finns bara som döda byggnader och i scenerna
+				rivals: 0,   // ingen levande fiende som går genom basen: demonerna finns bara i baserna (döda byggnader och tornens vakter, som stannar vid sina torn) och i scenerna
 				races: { 2: "demon" },
 				goals: [{ key: "m:soldiers", type: "soldiers", amount: 8 }, { key: "m:destroy:any", type: "destroy", id: "any", amount: 6 }],
-				// Två dalar, var och en omringad av en bergsring (se händelsen "valleys") med en enda ingång. Ingången är pluggad av en liten demonbas av döda byggnader
-				// (kulisser som går att slå sönder): vill man nå gruppen innanför måste man ta sig igenom basen. Vakttornen syns alltid, med pil på minimapen.
+				// Två dalar, var och en omringad av en bergsring (se händelsen "valleys") med en enda ingång. Ingången är pluggad av en liten demonbas: en mur, kasern och förråd
+				// (döda kulisser som går att slå sönder) och framför muren två levande torn (en svärdsman och två bågskyttar var) som rycker ut inom 7 rutor och går hem igen. Tornen syns alltid, med pil på minimapen.
 				start: { buildings: [
 					// Västra dalen (signalposten): mur över ingången, torn, kasern och förråd
 					{ type: 'wall', dx: -44, dy: -14, dead: true, race: 'demon' },
@@ -1716,8 +1716,8 @@
 					{ type: 'wall', dx: -44, dy: -12, dead: true, race: 'demon' },
 					{ type: 'wall', dx: -44, dy: -11, dead: true, race: 'demon' },
 					{ type: 'wall', dx: -44, dy: -10, dead: true, race: 'demon' },
-					{ type: 'guard_tower', dx: -47, dy: -15, dead: true, race: 'demon', sight: 4, arrow: true },
-					{ type: 'guard_tower', dx: -47, dy: -9, dead: true, race: 'demon', sight: 4, arrow: true },
+					{ type: 'guard_tower', dx: -43, dy: -16, enemy: true, garrison: { swordsman: 1, archer: 2 }, guard: 7, sight: 4, arrow: true },
+					{ type: 'guard_tower', dx: -42, dy: -9, enemy: true, garrison: { swordsman: 1, archer: 2 }, guard: 7, sight: 4, arrow: true },
 					{ type: 'garrison', dx: -50, dy: -12, dead: true, race: 'demon' },
 					{ type: 'warehouse', dx: -50, dy: -15, dead: true, race: 'demon' },
 					// Norra dalen (de sårade)
@@ -1726,8 +1726,8 @@
 					{ type: 'wall', dx: 0, dy: -46, dead: true, race: 'demon' },
 					{ type: 'wall', dx: 1, dy: -46, dead: true, race: 'demon' },
 					{ type: 'wall', dx: 2, dy: -46, dead: true, race: 'demon' },
-					{ type: 'guard_tower', dx: -3, dy: -48, dead: true, race: 'demon', sight: 4, arrow: true },
-					{ type: 'guard_tower', dx: 3, dy: -48, dead: true, race: 'demon', sight: 4, arrow: true },
+					{ type: 'guard_tower', dx: -3, dy: -43, enemy: true, garrison: { swordsman: 1, archer: 2 }, guard: 7, sight: 4, arrow: true },
+					{ type: 'guard_tower', dx: 3, dy: -43, enemy: true, garrison: { swordsman: 1, archer: 2 }, guard: 7, sight: 4, arrow: true },
 					{ type: 'garrison', dx: 0, dy: -50, dead: true, race: 'demon' },
 					{ type: 'warehouse', dx: -3, dy: -50, dead: true, race: 'demon' },
 				] },
