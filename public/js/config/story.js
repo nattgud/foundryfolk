@@ -1706,7 +1706,7 @@
 				name: "The Price of Rescue",
 				rivals: 0,   // ingen levande fiende som går genom basen: demonerna finns bara i baserna (döda byggnader och tornens vakter, som stannar vid sina torn) och i scenerna
 				races: { 2: "demon" },
-				goals: [{ key: "m:soldiers", type: "soldiers", amount: 8 }, { key: "m:destroy:any", type: "destroy", id: "any", amount: 6 }],
+				goals: [{ key: "m:soldiers", type: "soldiers", amount: 8 }, { key: "m:destroy:any", type: "destroy", id: "any", amount: 5 }],
 				// Två dalar, var och en omringad av en bergsring (se händelsen "valleys") med en enda ingång. Ingången är pluggad av en liten demonbas: en mur, kasern och förråd
 				// (döda kulisser som går att slå sönder) och framför muren två levande torn (en svärdsman och två bågskyttar var) som rycker ut inom 7 rutor och går hem igen. Tornen syns alltid, med pil på minimapen.
 				start: { buildings: [
